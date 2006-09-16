@@ -1,0 +1,4 @@
+include ChangeLog MANIFEST.in NEWS
+include doc/*.txt doc/*.xhtml
+include doc/listings/*.py
+include doc/specifications/*.xhtml
