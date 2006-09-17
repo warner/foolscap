@@ -4,9 +4,19 @@ available = False # hack to deal with half-broken imports in python <2.4
 
 from OpenSSL import SSL
 
-from twisted.internet.ssl import DistinguishedName, KeyPair
-from twisted.internet.ssl import Certificate, PrivateCertificate
-from twisted.internet.ssl import CertificateOptions
+from twisted.internet import ssl
+if hasattr(ssl, "DistinguishedName"):
+    # Twisted-2.5 will contain these names
+    from twisted.internet.ssl import DistinguishedName, KeyPair
+    from twisted.internet.ssl import Certificate, PrivateCertificate
+    from twisted.internet.ssl import CertificateOptions
+else:
+    # but it hasn't been released yet (as of 16-Sep-2006). Without them, we
+    # cannot use any encrypted Tubs. We fall back to using a private copy of
+    # sslverify.py, copied from the Divmod tree.
+    from sslverify import DistinguishedName, KeyPair
+    from sslverify import Certificate, PrivateCertificate
+    from sslverify import OpenSSLCertificateOptions as CertificateOptions
 
 from foolscap import base32
 

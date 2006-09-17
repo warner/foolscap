@@ -1,3 +1,9 @@
+2006-09-16  Brian Warner  <warner@lothar.com>
+
+	* foolscap/crypto.py: fall back to using our own sslverify.py if
+	Twisted doesn't provide one (i.e. Twisted-2.4.x).
+	* foolscap/sslverify.py: copy from the Divmod tree
+
 2006-09-14  Brian Warner  <warner@lothar.com>
 
 	* foolscap/banana.py: remove #! line from non-script
