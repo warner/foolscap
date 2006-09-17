@@ -33,3 +33,6 @@
 \.cvsignore$
 (^|/)Thumbs\.db$
 (^|/)autom4te\.cache($|/)
+
+^_trial_temp($|/)
+
