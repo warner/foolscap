@@ -1,5 +1,12 @@
 2006-09-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/promise.py (Promise._resolve): I think I figured out
+	chained Promises. In the process, I made it illegal to call
+	_break after the Promise has already been resolved. This also
+	means that _resolve() can only be called once. We'll figure
+	out breakable Far references later.
+	* foolscap/test/test_promise.py (Chained): tests for them
+
 	* foolscap/broker.py (Broker.getRemoteInterfaceByName): fix a bunch
 	of typos caught by pyflakes. Left a couple of ones in there that I
 	haven't figured out how to fix yet.

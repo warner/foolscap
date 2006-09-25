@@ -7,7 +7,7 @@ from foolscap.eventual import eventually
 
 id = util.unsignedID
 
-EVENTUAL, NEAR, BROKEN = range(3)
+EVENTUAL, CHAINED, NEAR, BROKEN = range(4)
 
 class UsageError(Exception):
     """Raised when you do something inappropriate to a Promise."""
@@ -63,7 +63,7 @@ class Promise:
         eventually made. The call is guaranteed to not fire in this turn."""
         # this is called by send()
         p, resolver = makePromise()
-        if self._state == EVENTUAL:
+        if self._state in (EVENTUAL, CHAINED):
             self._pendingMethods.append((methname, args, kwargs, resolver))
         else:
             eventually(self._deliver, methname, args, kwargs, resolver)
@@ -72,7 +72,7 @@ class Promise:
     def _sendOnly(self, methname, args, kwargs):
         """Send a message like _send, but discard the result."""
         # this is called by sendOnly()
-        if self._state == EVENTUAL:
+        if self._state in (EVENTUAL, CHAINED):
             self._pendingMethods.append((methname, args, kwargs, _ignore))
         else:
             eventually(self._deliver, methname, args, kwargs, _ignore)
@@ -83,7 +83,7 @@ class Promise:
         _resolve) when this Promise moves to a RESOLVED state (either NEAR or
         BROKEN)."""
         # this is called by when()
-        if self._state == EVENTUAL:
+        if self._state in (EVENTUAL, CHAINED):
             d = defer.Deferred()
             self._watchers.append(d)
             return d
@@ -94,35 +94,39 @@ class Promise:
 
     def _resolve(self, target_or_failure):
         """Resolve this Promise to refer to the given target. If called with
-        a Failure, the Promise is now BROKEN."""
-        # E splits this out, into resolve(result) and smash(problem).
+        a Failure, the Promise is now BROKEN. _resolve may only be called
+        once."""
+        # E splits this method into two pieces resolve(result) and
+        # smash(problem). It is easier for us to keep them in one piece,
+        # because d.addBoth(p._resolve) is convenient.
+        if self._state != EVENTUAL:
+            raise UsageError("Promises may not be resolved multiple times")
+        self._resolve2(target_or_failure)
+
+    def _resolve2(self, target_or_failure):
+        # we may be called with a Promise, an immediate value, or a Failure
+        if isinstance(target_or_failure, Promise):
+            self._state = CHAINED
+            when(target_or_failure).addBoth(self._resolve2)
+            return
         if isinstance(target_or_failure, Failure):
             self._break(target_or_failure)
             return
-        target = target_or_failure
-        if self._state != EVENTUAL:
-            raise UsageError("Promises may not be resolved multiple times")
-        if isinstance(target, Promise):
-            raise UsageError("promise-chaining not implemented yet")
-            # we aren't actually resolved until that other Promise resolves.
-            # I think we need an intermediate state here, in which we queue
-            # messages as if we were in EVENTUAL, refuse normal _resolve()
-            # calls as if we were in NEAR, but add a resolution-watcher to
-            # the other Promise that will fire some new _resolve2 method.
-            when(target).addBoth(self._resolve)
-            return
-        self._target = target
+        self._target = target_or_failure
         self._deliver_queued_messages()
         self._state = NEAR
 
     def _break(self, failure):
+        # TODO: think about what you do to break a resolved promise. Once the
+        # Promise is in the NEAR state, it can't be broken, but eventually
+        # we're going to have a FAR state, which *can* be broken.
         """Put this Promise in the BROKEN state."""
         if not isinstance(failure, Failure):
             raise UsageError("Promises must be broken with a Failure")
-        if self._state not in (EVENTUAL, NEAR):
+        if self._state == BROKEN:
             raise UsageError("Broken Promises may not be re-broken")
         self._target = failure
-        if self._state == EVENTUAL:
+        if self._state in (EVENTUAL, CHAINED):
             self._deliver_queued_messages()
         self._state == BROKEN
 

@@ -84,18 +84,6 @@ class Send(unittest.TestCase):
         r(3)
         self.failUnlessRaises(UsageError, r, 4)
 
-    def testBreakAfterResolve(self):
-        p,r = makePromise()
-        r(3)
-        def _check1(res):
-            self.failUnlessEqual(res, 3)
-            r(Failure(KaboomError("broke afterwards")))
-        when(p).addBoth(_check1)
-        def _check2(res):
-            self.failUnless(isinstance(res, Failure))
-            self.failUnless(res.check(KaboomError))
-        when(p).addBoth(_check2)
-
     def testResolveBefore(self):
         t = Target()
         p,r = makePromise()
@@ -160,6 +148,9 @@ class SendOnly(unittest.TestCase):
         return d
 
 class Chained(unittest.TestCase):
+    def tearDown(self):
+        return flushEventualQueue()
+
     def testChain(self):
         p1,r1 = makePromise()
         p2,r2 = makePromise()
@@ -171,4 +162,17 @@ class Chained(unittest.TestCase):
             r2(1)
         flushEventualQueue().addCallback(_continue)
         return when(p1)
-    testChain.todo = "promise-chaining not implemented yet"
+
+    def testFailure(self):
+        p1,r1 = makePromise()
+        p2,r2 = makePromise()
+        r1(p2)
+        def _continue(res):
+            r2(Failure(KaboomError("foom")))
+        flushEventualQueue().addCallback(_continue)
+        def _check2(res):
+            self.failUnless(isinstance(res, Failure))
+            self.failUnless(res.check(KaboomError))
+        d = when(p1)
+        d.addBoth(_check2)
+        return d
