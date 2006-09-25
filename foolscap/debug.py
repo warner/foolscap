@@ -178,7 +178,7 @@ class TokenBanana(TokenBananaMixin, Banana):
 
     def reportReceiveError(self, f):
         Banana.reportReceiveError(self, f)
-        self.transport.disconnectReason = BananaFailure()
+        self.transport.disconnectReason = tokens.BananaFailure()
 
 class TokenStorageBanana(TokenBananaMixin, StorageBanana):
     def __init__(self):

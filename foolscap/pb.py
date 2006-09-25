@@ -12,7 +12,7 @@ urlparse.uses_netloc.append("pb")
 
 from foolscap import ipb, broker, base32, negotiate, tokens, referenceable
 from foolscap.referenceable import SturdyRef
-from foolscap.tokens import PBError
+from foolscap.tokens import PBError, BananaError
 try:
     from foolscap import crypto
 except ImportError:
@@ -92,7 +92,7 @@ class Listener(protocol.ServerFactory):
                                    "unencrypted Tub, you cannot add a second "
                                    "one" % self.port)
             raise RuntimeError("This Listener (on %s) is already connected "
-                               "to TubID '%s'" % (self,port, tub.tubID))
+                               "to TubID '%s'" % (self.port, tub.tubID))
         self.tubs[tub.tubID] = tub
         if self.parentTub is None:
             self.parentTub = tub

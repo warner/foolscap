@@ -3,7 +3,7 @@
 # this module is responsible for all copy-by-value objects
 
 from zope.interface import interface, implements
-from twisted.python import reflect
+from twisted.python import reflect, log
 from twisted.python.components import registerAdapter
 from twisted.internet import defer
 

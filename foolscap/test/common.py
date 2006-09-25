@@ -1,6 +1,7 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
 from zope.interface import implements
+from twisted.python import log
 from twisted.internet import defer, reactor
 from foolscap import schema, broker
 from foolscap import Referenceable, RemoteInterface

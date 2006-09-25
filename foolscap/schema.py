@@ -44,8 +44,9 @@ import types, inspect
 from zope.interface import implements, Interface
 from twisted.python import failure
 
-from tokens import Violation, SIZE_LIMIT, STRING, LIST, INT, NEG, \
-     LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, tokenNames, UnknownSchemaType
+from tokens import Violation, BananaError, SIZE_LIMIT, \
+     STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, \
+     tokenNames, UnknownSchemaType, InvalidRemoteInterface
 
 everythingTaster = {
     # he likes everything
@@ -669,12 +670,12 @@ class RemoteMethodSchema:
         names, _, _, typeList = inspect.getargspec(method)
         if names and names[0] == 'self':
             why = "RemoteInterface methods should not have 'self' in their argument list"
-            raise tokens.InvalidRemoteInterface(why)
+            raise InvalidRemoteInterface(why)
         if not names:
             typeList = []
         if len(names) != len(typeList):
             why = "RemoteInterface methods must have default values for all theirarguments"
-            raise tokens.InvalidRemoteInterface(why)
+            raise InvalidRemoteInterface(why)
         self.argumentNames = names
         self.argConstraints = {}
         self.required = []

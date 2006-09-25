@@ -945,7 +945,8 @@ class InstanceUnslicer(BaseUnslicer):
                 # it carefully first
                 raise BananaError("unreferenceable object in attribute")
             if self.d.has_key(self.attrname):
-                raise BananaError("duplicate attribute name '%s'" % name)
+                raise BananaError("duplicate attribute name '%s'" %
+                                  self.attrname)
             self.setAttribute(self.attrname, obj)
             self.attrname = None
 

@@ -718,31 +718,31 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         d.addCallback(self.failUnlessIdentical, r)
         return d
 
-    def NOTtestRemoteRef1(self):
-        # known URLRemoteReferences turn into Referenceables
-        root = Target()
-        rr, target = self.setupTarget(HelperTarget())
-        self.targetBroker.factory = pb.PBServerFactory(root)
-        urlRRef = self.callingBroker.remoteReferenceForName("", [])
-        # urlRRef points at root
-        d = rr.callRemote("set", obj=urlRRef)
-        self.failUnless(dr(d))
+##     def NOTtestRemoteRef1(self):
+##         # known URLRemoteReferences turn into Referenceables
+##         root = Target()
+##         rr, target = self.setupTarget(HelperTarget())
+##         self.targetBroker.factory = pb.PBServerFactory(root)
+##         urlRRef = self.callingBroker.remoteReferenceForName("", [])
+##         # urlRRef points at root
+##         d = rr.callRemote("set", obj=urlRRef)
+##         self.failUnless(dr(d))
 
-        self.failUnlessIdentical(target.obj, root)
+##         self.failUnlessIdentical(target.obj, root)
 
-    def NOTtestRemoteRef2(self):
-        # unknown URLRemoteReferences are errors
-        root = Target()
-        rr, target = self.setupTarget(HelperTarget())
-        self.targetBroker.factory = pb.PBServerFactory(root)
-        urlRRef = self.callingBroker.remoteReferenceForName("bogus", [])
-        # urlRRef points at nothing
-        d = rr.callRemote("set", obj=urlRRef)
-        f = de(d)
-        #print f
-        #self.failUnlessEqual(f.type, tokens.Violation)
-        self.failUnlessEqual(type(f.value), str)
-        self.failUnless(f.value.find("unknown clid 'bogus'") != -1)
+##     def NOTtestRemoteRef2(self):
+##         # unknown URLRemoteReferences are errors
+##         root = Target()
+##         rr, target = self.setupTarget(HelperTarget())
+##         self.targetBroker.factory = pb.PBServerFactory(root)
+##         urlRRef = self.callingBroker.remoteReferenceForName("bogus", [])
+##         # urlRRef points at nothing
+##         d = rr.callRemote("set", obj=urlRRef)
+##         f = de(d)
+##         #print f
+##         #self.failUnlessEqual(f.type, tokens.Violation)
+##         self.failUnlessEqual(type(f.value), str)
+##         self.failUnless(f.value.find("unknown clid 'bogus'") != -1)
 
     def testArgs1(self):
         # sending the same non-Referenceable object in multiple calls results

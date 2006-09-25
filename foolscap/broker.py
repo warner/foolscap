@@ -245,7 +245,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     # methods to handle RemoteInterfaces
     def getRemoteInterfaceByName(self, name):
-        return remoteinterfaces.RemoteInterfaceRegistry[name]
+        return remoteinterface.RemoteInterfaceRegistry[name]
 
     # methods to send my Referenceables to the other side
 

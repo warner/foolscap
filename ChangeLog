@@ -1,5 +1,17 @@
 2006-09-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py (Broker.getRemoteInterfaceByName): fix a bunch
+	of typos caught by pyflakes. Left a couple of ones in there that I
+	haven't figured out how to fix yet.
+	* foolscap/slicer.py (InstanceUnslicer.receiveChild): same
+	* foolscap/schema.py (RemoteMethodSchema.initFromMethod): same
+	* foolscap/pb.py (Listener.addTub): same
+	* foolscap/debug.py (TokenBanana.reportReceiveError): same
+	* foolscap/copyable.py: same
+	* foolscap/test/common.py: same
+	* foolscap/test/test_pb.py (TestReferenceable.NOTtestRemoteRef1):
+	same
+
 	* foolscap/eventual.py: move eventual-send handling out to a
 	separate file. This module now provides eventually(cb),
 	d=fireEventually(), and d=flushEventualQueue() (for use by
