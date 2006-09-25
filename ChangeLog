@@ -1,5 +1,10 @@
 2006-09-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReferenceTracker._refLost): now
+	that we have eventually(), use it to avoid the ugly bug-inducing
+	indeterminacies that result from weakref callbacks being fired in
+	the middle of other operations.
+
 	* foolscap/promise.py (Promise._resolve): I think I figured out
 	chained Promises. In the process, I made it illegal to call
 	_break after the Promise has already been resolved. This also

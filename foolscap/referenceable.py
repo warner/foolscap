@@ -18,6 +18,7 @@ BananaError = tokens.BananaError
 Violation = tokens.Violation
 from foolscap.remoteinterface import getRemoteInterface, getRemoteInterfaceByName
 from foolscap.copyable import Copyable, RemoteCopy
+from foolscap.eventual import eventually
 
 class OnlyReferenceable(object):
     implements(ipb.IReferenceable)
@@ -277,6 +278,14 @@ class RemoteReferenceTracker:
         return self.ref()
 
     def _refLost(self, wref):
+        # don't do anything right now, we could be in the middle of all sorts
+        # of weird code. both __del__ and weakref callbacks can fire at any
+        # time. Almost as bad as threads..
+
+        # instead, do stuff later.
+        eventually(self._handleRefLost)
+
+    def _handleRefLost(self):
         count, self.received_count = self.received_count, 0
         self.broker.freeYourReference(self, count)
 
