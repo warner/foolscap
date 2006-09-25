@@ -1,3 +1,17 @@
+2006-09-24  Brian Warner  <warner@lothar.com>
+
+	* foolscap/eventual.py: move eventual-send handling out to a
+	separate file. This module now provides eventually(cb),
+	d=fireEventually(), and d=flushEventualQueue() (for use by
+	unit tests, not user code).
+	* foolscap/negotiate.py: update to match
+	* foolscap/test/common.py: same
+	* foolscap/test/test_pb.py: same
+	* foolscap/test/test_eventual.py: new tests for eventually()
+	* foolscap/promise.py: rework Promise handling, now it behaves
+	like I want it to (although chained Promises aren't working yet)
+	* foolscap/test/test_promise.py: rework tests
+
 2006-09-16  Brian Warner  <warner@lothar.com>
 
 	* foolscap/crypto.py: fall back to using our own sslverify.py if

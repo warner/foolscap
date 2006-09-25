@@ -4,7 +4,7 @@ from zope.interface import implements
 from twisted.internet import defer, reactor
 from foolscap import schema, broker
 from foolscap import Referenceable, RemoteInterface
-from foolscap.negotiate import eventually, flushEventualQueue
+from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.remoteinterface import getRemoteInterface
 
 from twisted.python import failure
@@ -22,7 +22,7 @@ class Loopback:
 
     connected = True
     def write(self, data):
-        eventually(data).addCallback(self._write)
+        eventually(self._write, data)
 
     def _write(self, data):
         if not self.connected:
@@ -41,7 +41,7 @@ class Loopback:
         if self.connected:
             self.connected = False
             # this one is slightly weird because 'why' is a Failure
-            eventually().addCallback(lambda res: self._loseConnection(why))
+            eventually(self._loseConnection, why)
 
     def _loseConnection(self, why):
         self.protocol.connectionLost(why)
@@ -49,7 +49,7 @@ class Loopback:
 
     def flush(self):
         self.connected = False
-        return eventually()
+        return fireEventually()
 
 
 class RIHelper(RemoteInterface):

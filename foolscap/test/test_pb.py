@@ -30,7 +30,7 @@ if crypto and not crypto.available:
 
 from foolscap.test.common import HelperTarget, RIHelper, TargetMixin
 from foolscap.test.common import getRemoteInterfaceName
-from foolscap.negotiate import eventually, flushEventualQueue
+from foolscap.eventual import eventually, fireEventually
 
 
 class TestRequest(call.PendingRequest):
@@ -578,7 +578,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.lost = 0
         rr.notifyOnDisconnect(self.disconnected)
         rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
-        d = eventually()
+        d = fireEventually()
         d.addCallback(lambda res: self.failUnless(self.lost))
         return d
 
@@ -588,7 +588,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         rr.notifyOnDisconnect(self.disconnected)
         rr.dontNotifyOnDisconnect(self.disconnected)
         rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
-        d = eventually()
+        d = fireEventually()
         d.addCallback(lambda res: self.failIf(self.lost))
         return d
 

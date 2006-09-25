@@ -1,9 +1,12 @@
 
 from twisted.trial import unittest
 
-from twisted.python import failure
-from twisted.internet import defer, reactor
-from foolscap.promise import Promise, when
+from twisted.python.failure import Failure
+from foolscap.promise import makePromise, send, sendOnly, when, UsageError
+from foolscap.eventual import flushEventualQueue, fireEventually
+
+class KaboomError(Exception):
+    pass
 
 class Target:
     def __init__(self):
@@ -18,96 +21,154 @@ class Target:
         return self.d
     def four(self, newtarget, arg):
         return newtarget.one(arg)
+    def fail(self, arg):
+        raise KaboomError("kaboom!")
 
-class TestPromise(unittest.TestCase):
-    def testWhen(self):
-        d0 = defer.Deferred()
-        p = Promise(d0)
-        d = when(p)
-        results = []
-        d.addCallback(results.append)
-        self.failUnlessEqual(results, [])
-        d0.callback(42)
-        self.failUnlessEqual(results, [42])
+class Send(unittest.TestCase):
 
-    def test1(self):
+    def tearDown(self):
+        return flushEventualQueue()
+
+    def testNear(self):
         t = Target()
-        d = defer.Deferred()
-        p = Promise(d)
+        p = send(t).one(1)
+        self.failIf(t.calls)
+        def _check(res):
+            self.failUnlessEqual(res, 2)
+            self.failUnlessEqual(t.calls, [("one", 1)])
+        when(p).addCallback(_check)
 
-        p.one(12)
-        self.failUnlessEqual(t.calls, [])
-        d.callback(t)
-        self.failUnlessEqual(t.calls, [("one", 12)])
-
-    def test2(self):
+    def testOrdering(self):
         t = Target()
-        t.d = defer.Deferred()
-        d = defer.Deferred()
-        p = Promise(d)
-
-        p1 = p.one(12)
-        p.two(b=4, a=7, c=92)
-        p3 = p.three(4, 5, 6)
-        self.failUnlessEqual(t.calls, [])
-
-        results0a = []
-        d0a = when(p)
-        d0a.addCallback(self._test2_0a, results0a)
-        # the promise is not yet resolved, so this should not fire yet
-        self.failUnlessEqual(results0a, [])
-
-        d.callback(t)
-        self.failUnlessEqual(t.calls, [("one", 12),
-                                       ("two", 7, 4, {'c':92}),
-                                       ("three", 4, (5,6)),
-                                       ])
-        self.failUnlessEqual(results0a, [t])
-
-        results0b = []
-        d0b = when(p)
-        d0b.addCallback(self._test2_0b, t, results0b)
-        # because the promise has already been fulfilled, this should fire
-        # right away
-        self.failUnlessEqual(results0b, [t])
-
-        d1 = when(p1)
-        d1.addCallback(self._test2_1)
-
-        # p3 shouldn't fire until t.d is fired
-        d3 = when(p3)
-        d3.addCallback(self._test2_3)
-        reactor.callLater(0, t.d.callback, 35)
-        return defer.DeferredList([d0a, d0b, d1, d3])
-
-    def _test2_0a(self, res, results):
-        results.append(res)
-
-    def _test2_0b(self, res, t, results):
-        self.failUnlessIdentical(res, t)
-        results.append(res)
-
-    def _test2_1(self, res):
-        self.failUnlessEqual(res, 13)
-    
-    def _test2_3(self, res):
-        self.failUnlessEqual(res, 35)
+        p1 = send(t).one(1)
+        p2 = send(t).two(3, k="extra")
+        self.failIf(t.calls)
+        def _check1(res):
+            # we can't check t.calls here: the when() clause is not
+            # guaranteed to fire before the second send.
+            self.failUnlessEqual(res, 2)
+        when(p1).addCallback(_check1)
+        def _check2(res):
+            self.failUnlessEqual(res, None)
+        when(p2).addCallback(_check2)
+        def _check3(res):
+            self.failUnlessEqual(t.calls, [("one", 1),
+                                           ("two", 3, 2, {"k": "extra"}),
+                                           ])
+        fireEventually().addCallback(_check3)
 
     def testFailure(self):
-        d0 = defer.Deferred()
-        p = Promise(d0)
+        t = Target()
+        p1 = send(t).fail(0)
+        def _check(res):
+            self.failUnless(isinstance(res, Failure))
+            self.failUnless(res.check(KaboomError))
+        when(p1).addBoth(_check)
 
-        wresults = ([],[])
-        dw = when(p)
-        dw.addCallbacks(wresults[0].append, wresults[1].append)
+    def testBadName(self):
+        t = Target()
+        p1 = send(t).missing(0)
+        def _check(res):
+            self.failUnless(isinstance(res, Failure))
+            self.failUnless(res.check(AttributeError))
+        when(p1).addBoth(_check)
 
-        cresults = ([],[])
-        p2 = p.call(12)
-        d2 = when(p2)
-        d2.addCallbacks(cresults[0].append, cresults[1].append)
+    def testNoImmediateCall(self):
+        p,r = makePromise()
+        def wrong(p):
+            p.one(12)
+        self.failUnlessRaises(AttributeError, wrong, p)
 
-        f = failure.Failure(IndexError())
-        d0.errback(f)
+    def testNoMultipleResolution(self):
+        p,r = makePromise()
+        r(3)
+        self.failUnlessRaises(UsageError, r, 4)
 
-        self.failUnlessEqual(wresults, ([],[f]))
-        self.failUnlessEqual(cresults, ([],[f])) # TODO: really?
+    def testBreakAfterResolve(self):
+        p,r = makePromise()
+        r(3)
+        def _check1(res):
+            self.failUnlessEqual(res, 3)
+            r(Failure(KaboomError("broke afterwards")))
+        when(p).addBoth(_check1)
+        def _check2(res):
+            self.failUnless(isinstance(res, Failure))
+            self.failUnless(res.check(KaboomError))
+        when(p).addBoth(_check2)
+
+    def testResolveBefore(self):
+        t = Target()
+        p,r = makePromise()
+        r(t)
+        p = send(p).one(2)
+        def _check(res):
+            self.failUnlessEqual(res, 3)
+        when(p).addCallback(_check)
+
+    def testResolveAfter(self):
+        t = Target()
+        p,r = makePromise()
+        p = send(p).one(2)
+        def _check(res):
+            self.failUnlessEqual(res, 3)
+        when(p).addCallback(_check)
+        r(t)
+
+    def testResolveFailure(self):
+        t = Target()
+        p,r = makePromise()
+        p = send(p).one(2)
+        def _check(res):
+            self.failUnless(isinstance(res, Failure))
+            self.failUnless(res.check(KaboomError))
+        when(p).addBoth(_check)
+        f = Failure(KaboomError("oops"))
+        r(f)
+
+
+class SendOnly(unittest.TestCase):
+    def testNear(self):
+        t = Target()
+        sendOnly(t).one(1)
+        self.failIf(t.calls)
+        def _check(res):
+            self.failUnlessEqual(t.calls, [("one", 1)])
+        d = flushEventualQueue()
+        d.addCallback(_check)
+        return d
+
+    def testResolveBefore(self):
+        t = Target()
+        p,r = makePromise()
+        r(t)
+        sendOnly(p).one(1)
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnlessEqual(t.calls, [("one", 1)])
+        d.addCallback(_check)
+        return d
+
+    def testResolveAfter(self):
+        t = Target()
+        p,r = makePromise()
+        sendOnly(p).one(1)
+        r(t)
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnlessEqual(t.calls, [("one", 1)])
+        d.addCallback(_check)
+        return d
+
+class Chained(unittest.TestCase):
+    def testChain(self):
+        p1,r1 = makePromise()
+        p2,r2 = makePromise()
+        def _check(res):
+            self.failUnlessEqual(res, 1)
+        when(p1).addCallback(_check)
+        r1(p2)
+        def _continue(res):
+            r2(1)
+        flushEventualQueue().addCallback(_continue)
+        return when(p1)
+    testChain.todo = "promise-chaining not implemented yet"

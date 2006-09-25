@@ -5,6 +5,7 @@ from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor, defer
 
 from foolscap import broker, referenceable
+from foolscap.eventual import eventually
 from foolscap.tokens import BananaError, \
      NegotiationError, RemoteNegotiationError
 try:
@@ -20,59 +21,6 @@ def isSubstring(small, big):
 
 # negotiation phases
 PLAINTEXT, ENCRYPTED, DECIDING, BANANA, ABANDONED = range(5)
-
-class _SimpleCallQueue:
-    # XXX TODO: merge epsilon.cooperator in, and make this more complete.
-    def __init__(self):
-        self.events = []
-        self.flushObservers = []
-        self.timer = None
-
-    def do(self, c, *a, **k):
-        self.events.append((c, a, k))
-        if not self.timer:
-            self.timer = reactor.callLater(0, self.turn)
-
-    def turn(self):
-        self.timer = None
-        c, a, k = self.events.pop(0)
-        try:
-            c(*a, **k)
-        except:
-            log.err()
-        if self.events and not self.timer:
-            self.timer = reactor.callLater(0, self.turn)
-        if not self.events:
-            observers, self.flushObservers = self.flushObservers, []
-            for o in observers:
-                o.callback(None)
-
-    def flush(self):
-        if not self.events:
-            return defer.succeed(None)
-        d = defer.Deferred()
-        self.flushObservers.append(d)
-        return d
-
-
-_theSimpleQueue = _SimpleCallQueue()
-
-def eventually(value=None):
-    """This is the eventual-send operation, used as a plan-coordination
-    primitive. It will create a Deferred which fires after the current call
-    stack has been completed, and after all other deferreds previously
-    scheduled with eventually().
-    """
-    d = defer.Deferred()
-    _theSimpleQueue.do(d.callback, value)
-    return d
-
-def flushEventualQueue():
-    """This returns a Deferred which fires when the eventual-send queue is
-    finally empty. This is useful to wait upon as the last step of a Trial
-    test method.
-    """
-    return _theSimpleQueue.flush()
 
 
 class Negotiation(protocol.Protocol):
@@ -868,16 +816,13 @@ class Negotiation(protocol.Protocol):
             log.msg("Negotiation.negotiationFailed: %s" % reason)
         self.stopNegotiationTimer()
         if self.phase != ABANDONED and self.isClient:
-            d = eventually()
-            d.addCallback(lambda res:
-                          self.connector.negotiationFailed(self.factory,
-                                                           reason))
+            eventually(self.connector.negotiationFailed, self.factory, reason)
         self.phase = ABANDONED
         cb = self.options.get("debug_negotiationFailed_cb")
         if cb:
             # note that this gets called with a NegotiationError, not a
             # Failure
-            eventually().addCallback(lambda res: cb(reason))
+            eventually(cb, reason)
 
 # TODO: make sure code that examines self.phase handles ABANDONED
 
