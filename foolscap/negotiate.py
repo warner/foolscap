@@ -828,7 +828,7 @@ class Negotiation(protocol.Protocol):
 
 class TubConnectorClientFactory(protocol.ClientFactory):
     # this is for internal use only. Application code should use
-    # PBService.getReference(url)
+    # Tub.getReference(url)
 
     def __init__(self, tc, host):
         self.tc = tc # the TubConnector

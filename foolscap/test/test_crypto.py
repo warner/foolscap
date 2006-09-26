@@ -6,7 +6,7 @@ from zope.interface import implements
 from twisted.internet import defer
 from twisted.application.internet import TCPServer
 from foolscap import pb, schema
-from foolscap import RemoteInterface, Referenceable, PBService
+from foolscap import RemoteInterface, Referenceable, Tub
 try:
     from foolscap import crypto
 except ImportError:
@@ -49,7 +49,7 @@ class UsefulMixin:
     def setUp(self):
         self.services = []
         for i in range(self.num_services):
-            s = PBService()
+            s = Tub()
             s.startService()
             self.services.append(s)
 
@@ -78,7 +78,7 @@ class TestPersist(UsefulMixin, unittest.TestCase):
     testPersist.timeout = 5
     def _testPersist_1(self, res, s1, s2, t1, public_url, port):
         self.services.remove(s1)
-        s3 = PBService(certData=s1.getCertData())
+        s3 = Tub(certData=s1.getCertData())
         s3.startService()
         self.services.append(s3)
         t2 = Target()

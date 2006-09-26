@@ -103,7 +103,7 @@ TODO: decide upon a syntax for URLs that refer to non-TCP transports
  pb+foo://stuff, pby://stuff (for yURL-style self-authenticating names)
 
 TODO: write the URL parser, implementing pb.getRemoteURL and pb.callRemoteURL
- DONE: use a PBService instead
+ DONE: use a Tub/PBService instead
 
 TODO: decide upon a calling convention for callRemote when specifying which
 RemoteInterface is being used.

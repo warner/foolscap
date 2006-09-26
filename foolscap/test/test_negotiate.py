@@ -6,7 +6,7 @@ from twisted.trial import unittest
 from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
 from foolscap import pb, negotiate, tokens
-from foolscap import Referenceable, PBService, BananaError
+from foolscap import Referenceable, Tub, BananaError
 try:
     from foolscap import crypto
 except ImportError:
@@ -69,7 +69,10 @@ class BaseMixin:
         return d
 
     def makeServer(self, encrypted, options={}, listenerOptions={}):
-        self.tub = tub = PBService(encrypted=encrypted, options=options)
+        if encrypted:
+            self.tub = tub = Tub(options=options)
+        else:
+            self.tub = tub = UnencryptedTub(options=options)
         tub.startService()
         self.services.append(tub)
         l = tub.listenOn("tcp:0", listenerOptions)
@@ -100,7 +103,7 @@ class BaseMixin:
         return portnum
 
     def connectClient(self, portnum):
-        tub = PBService(encrypted=False)
+        tub = UnencryptedTub()
         tub.startService()
         self.services.append(tub)
         d = tub.getReference("pb://localhost:%d/hello" % portnum)
@@ -119,7 +122,7 @@ class Basic(BaseMixin, unittest.TestCase):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(True)
-        client = PBService(encrypted=True)
+        client = Tub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -128,7 +131,7 @@ class Basic(BaseMixin, unittest.TestCase):
 
     def testUnencrypted(self):
         url, portnum = self.makeServer(False)
-        client = PBService(encrypted=False)
+        client = UnencryptedTub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -139,7 +142,7 @@ class Basic(BaseMixin, unittest.TestCase):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(True)
-        client = PBService(encrypted=False)
+        client = UnencryptedTub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -150,7 +153,7 @@ class Basic(BaseMixin, unittest.TestCase):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(False)
-        client = PBService(encrypted=True)
+        client = Tub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -163,7 +166,7 @@ class Versus(BaseMixin, unittest.TestCase):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         portnum = self.makeHTTPServer()
-        client = PBService(encrypted=True)
+        client = Tub()
         client.startService()
         self.services.append(client)
         url = "pb://1234@localhost:%d/target" % portnum
@@ -179,7 +182,7 @@ class Versus(BaseMixin, unittest.TestCase):
 
     def testVersusHTTPServerUnencrypted(self):
         portnum = self.makeHTTPServer()
-        client = PBService(encrypted=False)
+        client = UnencryptedTub()
         client.startService()
         self.services.append(client)
         url = "pbu://localhost:%d/target" % portnum
@@ -224,7 +227,7 @@ class Versus(BaseMixin, unittest.TestCase):
     testNoConnection.timeout = 10
     def _testNoConnection_1(self, res, url):
         self.services.remove(self.tub)
-        client = PBService(encrypted=False)
+        client = UnencryptedTub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -238,7 +241,7 @@ class Versus(BaseMixin, unittest.TestCase):
     def testClientTimeout(self):
         portnum = self.makeNullServer()
         # lower the connection timeout to 2 seconds
-        client = PBService(encrypted=False, options={'connect_timeout': 1})
+        client = UnencryptedTub(options={'connect_timeout': 1})
         client.startService()
         self.services.append(client)
         url = "pbu://localhost:%d/target" % portnum
@@ -293,7 +296,7 @@ class Parallel(BaseMixin, unittest.TestCase):
     #   
 
     def makeServers(self, tubopts={}, lo1={}, lo2={}):
-        self.tub = tub = PBService(encrypted=True, options=tubopts)
+        self.tub = tub = Tub(options=tubopts)
         tub.startService()
         self.services.append(tub)
         l1 = tub.listenOn("tcp:0", lo1)
@@ -308,8 +311,10 @@ class Parallel(BaseMixin, unittest.TestCase):
         self.clientPhases = []
         opts = {"debug_stall_second_connection": True,
                 "debug_gatherPhases": self.clientPhases}
-        self.client = client = PBService(encrypted=encrypted,
-                                         options=opts)
+        if encrypted:
+            self.client = client = Tub(options=opts)
+        else:
+            self.client = client = UnencryptedTub(options=opts)
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -414,8 +419,14 @@ class CrossfireMixin(BaseMixin):
     def makeServers(self, t1opts={}, t2opts={}, lo1={}, lo2={},
                     tubAencrypted=True, tubBencrypted=True):
         # first we create two Tubs
-        a = PBService(encrypted=tubAencrypted, options=t1opts)
-        b = PBService(encrypted=tubBencrypted, options=t1opts)
+        if tubAencrypted:
+            a = Tub(options=t1opts)
+        else:
+            a = Unencrypted(options=t1opts)
+        if tubBencrypted:
+            b = Tub(options=t1opts)
+        else:
+            b = Unencrypted(options=t1opts)
 
         # then we figure out which one will be the master, and call it tub1
         if a.tubID > b.tubID:

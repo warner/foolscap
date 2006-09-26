@@ -2,7 +2,7 @@
 
 from twisted.application import service
 from twisted.internet import reactor
-from foolscap import Referenceable, PBService
+from foolscap import Referenceable, Tub
 
 class Calculator(Referenceable):
     def __init__(self):
@@ -31,7 +31,7 @@ class Calculator(Referenceable):
         self.log("pop")
         return self.stack.pop()
 
-tub = PBService()
+tub = Tub()
 tub.listenOn("tcp:12345")
 tub.setLocation("localhost:12345")
 url = tub.registerReference(Calculator(), "calculator")

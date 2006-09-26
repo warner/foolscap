@@ -2,7 +2,7 @@
 
 import sys
 from twisted.internet import reactor
-from foolscap import PBService
+from foolscap import Tub
 
 def gotError1(why):
     print "unable to get the RemoteReference:", why
@@ -26,7 +26,7 @@ if len(sys.argv) < 2:
     print "Usage: pb2client.py URL"
     sys.exit(1)
 url = sys.argv[1]
-tub = PBService()
+tub = Tub()
 d = tub.getReference(url)
 d.addCallbacks(gotReference, gotError1)
 

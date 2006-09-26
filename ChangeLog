@@ -1,3 +1,11 @@
+2006-09-26  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Tub): rename PBService to Tub, make it always
+	be encrypted
+	(UnencryptedTub): new class for unencrypted tubs
+	* all: fix everything else (code, docs, tests) to match
+	* foolscap/ipb.py (ITub): new interface to mark a Tub
+
 2006-09-24  Brian Warner  <warner@lothar.com>
 
 	* foolscap/referenceable.py (RemoteReferenceTracker._refLost): now

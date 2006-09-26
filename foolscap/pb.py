@@ -1,7 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-# This is the primary entry point for newpb
-
+from zope.interface import implements
 from twisted.python import failure, log, urlpath
 from twisted.python.components import registerAdapter
 from twisted.internet import defer, protocol
@@ -66,7 +65,7 @@ class Listener(protocol.ServerFactory):
         this method will return the port number that was allocated. This is
         useful for the following pattern::
 
-            t = PBService()
+            t = Tub()
             l = t.listenOn('tcp:0')
             t.setLocation('localhost:%d' % l.getPortnum())
         """
@@ -139,8 +138,12 @@ class Listener(protocol.ServerFactory):
         return self.tubs.get(tubID), self.redirects.get(tubID)
 
 
-class PBService(service.MultiService):
+class Tub(service.MultiService):
     """I am a presence in the PB universe, also known as a Tub.
+
+    I am a Service (in the twisted.application.service.Service sense),
+    so you either need to call my startService() method before using me,
+    or setServiceParent() me to a running service.
 
     This is the primary entry point for all PB-using applications, both
     clients and servers.
@@ -173,6 +176,7 @@ class PBService(service.MultiService):
     @ivar nameToReference: maps name to Referenceable
 
     """
+    implements(ipb.ITub)
 
     unsafeTracebacks = True # TODO: better way to enable this
     debugBanana = False
@@ -182,33 +186,29 @@ class PBService(service.MultiService):
         randpool = randpool.RandomPool()
     else:
         randpool = None
+    encrypted = True
 
-    def __init__(self, encrypted=None, certData=None, options={}):
+    def __init__(self, certData=None, options={}):
         service.MultiService.__init__(self)
-        if encrypted is None:
-            if crypto:
-                encrypted = True
-            else:
-                encrypted = False
-        assert encrypted in (True, False)
-        self.options = options
-        self.listeners = []
-        self.locationHints = []
-        self.encrypted = encrypted
-        if encrypted and not crypto:
+        self.setup(options)
+        self.setupEncryption(certData)
+
+    def setupEncryption(self, certData):
+        if not crypto:
             raise RuntimeError("crypto for PB is not available, "
                                "try importing foolscap.crypto and see "
                                "what happens")
-        if encrypted:
-            if certData:
-                cert = crypto.PrivateCertificate.loadPEM(certData)
-            else:
-                cert = self.createCertificate()
-            self.myCertificate = cert
-            self.tubID = crypto.digest32(cert.digest("sha1"))
+        if certData:
+            cert = crypto.PrivateCertificate.loadPEM(certData)
         else:
-            self.myCertificate = None
-            self.tubID = None
+            cert = self.createCertificate()
+        self.myCertificate = cert
+        self.tubID = crypto.digest32(cert.digest("sha1"))
+
+    def setup(self, options):
+        self.options = options
+        self.listeners = []
+        self.locationHints = []
 
         # local Referenceables
         self.nameToReference = {}
@@ -236,9 +236,9 @@ class PBService(service.MultiService):
 
     def getCertData(self):
         # the string returned by this method can be used as the certData=
-        # argument to create a new PBService with the same identity. TODO:
-        # actually test this, I don't know if dump/keypair.newCertificate is
-        # the right pair of methods.
+        # argument to create a new Tub with the same identity. TODO: actually
+        # test this, I don't know if dump/keypair.newCertificate is the right
+        # pair of methods.
         return self.myCertificate.dumpPEM()
 
     def setLocation(self, *hints):
@@ -295,8 +295,12 @@ class PBService(service.MultiService):
         return self.listeners[:]
 
     def clone(self):
-        """Return a new Tub, listening on the same ports as this one. """
-        t = PBService(encrypted=self.encrypted)
+        """Return a new Tub (with a different ID), listening on the same
+        ports as this one."""
+        if self.encrypted:
+            t = Tub()
+        else:
+            t = UnencryptedTub()
         for l in self.listeners:
             t.listenOn(l)
         return t
@@ -344,8 +348,8 @@ class PBService(service.MultiService):
                      used.
         @rtype: string
         @return: the URL which points to this object. This URL can be passed
-        to PBService.getReference() in any PBService on any host which can
-        reach this one.
+        to Tub.getReference() in any Tub on any host which can reach this
+        one.
         """
 
         if not self.locationHints:
@@ -498,8 +502,22 @@ class PBService(service.MultiService):
         if broker in self.unencryptedBrokers:
             self.unencryptedBrokers.remove(broker)
 
+class UnencryptedTub(Tub):
+    encrypted = False
+
+    def __init__(self, tubID=None, options={}):
+        service.MultiService.__init__(self)
+        self.setup(options)
+        self.myCertificate = None
+        assert not tubID # not yet
+        self.tubID = tubID
+
+
 def getRemoteURL_TCP(host, port, pathname, *interfaces):
     url = "pb://%s:%d/%s" % (host, port, pathname)
-    s = PBService()
+    if crypto:
+        s = Tub()
+    else:
+        s = UnencryptedTub()
     d = s.getReference(url, interfaces)
     return d

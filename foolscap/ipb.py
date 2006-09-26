@@ -37,3 +37,5 @@ class IRemotelyCallable(Interface):
         """Invoke the given remote method. This method may raise an
         exception, return normally, or return a Deferred."""
 
+class ITub(Interface):
+    """This marks a Tub."""

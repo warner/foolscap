@@ -102,23 +102,22 @@ d.addCallbacks(gotAnswer, gotError)
 make the <code>Referenceable</code> available to the outside world? For this,
 we'll need to discuss the <q>Tub</q>, and the concept of a <q>PB URL</q>.</p>
 
-<h2>Tubs: The PBService</h2>
+<h2>Tubs: The Foolscap Service</h2>
 
-<p>The <code class="API" base="foolscap.pb">PBService</code> is the
-container that you use to publish <code>Referenceable</code>s, and is the
-middle-man you use to access <code>Referenceable</code>s on other systems. It
-is also known as the <q>Tub</q>, since it provides similar naming and
-identification properties as the <a href="http://www.erights.org/">E
-language</a>'s <q>Vat</q><span class="footnote">but they do not provide quite
-the same insulation against other objects as E's Vats do. In this sense, Tubs
-are leaky Vats.</span>. If you want to make a <code>Referenceable</code>
-available to the world, you create a Tub, tell it to listen on a TCP port,
-and then register the <code>Referenceable</code> with it under a name of your
-choosing. If you want to access a remote <code>Referenceable</code>, you
-create a Tub and ask it to acquire a <code>RemoteReference</code> using that
-same name.</p>
+<p>The <code class="API" base="foolscap.pb">Tub</code> is the container that
+you use to publish <code>Referenceable</code>s, and is the middle-man you use
+to access <code>Referenceable</code>s on other systems. It is known as the
+<q>Tub</q>, since it provides similar naming and identification properties as
+the <a href="http://www.erights.org/">E language</a>'s <q>Vat</q><span
+class="footnote">but they do not provide quite the same insulation against
+other objects as E's Vats do. In this sense, Tubs are leaky Vats.</span>. If
+you want to make a <code>Referenceable</code> available to the world, you
+create a Tub, tell it to listen on a TCP port, and then register the
+<code>Referenceable</code> with it under a name of your choosing. If you want
+to access a remote <code>Referenceable</code>, you create a Tub and ask it to
+acquire a <code>RemoteReference</code> using that same name.</p>
 
-<p>The <code>PBService</code> is a Twisted <code class="API"
+<p>The <code>Tub</code> is a Twisted <code class="API"
 base="twisted.application.service">Service</code> subclass, so you use it in
 the same way: once you've created one, you attach it to a parent Service or
 Application object. Once the top-level Application object has been started,
@@ -143,22 +142,22 @@ connect to the wrong reference). You can also create a Tub with a
 pre-existing certificate, which is how Tubs can retain a persistent identity
 over multiple executions.</p>
 
-<p>You can also create an unencrypted Tub, which has an empty TubID. Hosting
-and connecting to unencrypted Tubs do not require the pyOpenSSL or PyCrypto
-libraries, but do not provide privacy, authentication, connection
-redirection, or shared listening ports. The PB-URLs that point to unencrypted
-Tubs have a distinct form (starting with <code>pbu:</code> instead of
-<code>pb:</code>) to make sure they are not mistaken for encrypted Tubs. PB
-uses encrypted Tubs by default.</p>
+<p>You can also create an <code>UnencryptedTub</code>, which has an empty
+TubID. Hosting and connecting to unencrypted Tubs do not require the
+pyOpenSSL or PyCrypto libraries, but do not provide privacy, authentication,
+connection redirection, or shared listening ports. The PB-URLs that point to
+unencrypted Tubs have a distinct form (starting with <code>pbu:</code>
+instead of <code>pb:</code>) to make sure they are not mistaken for encrypted
+Tubs. PB uses encrypted Tubs by default.</p>
 
 <p>Having the Tub listen on a TCP port is as simple as calling <code
-class="API" base="foolscap.pb.PBService">listenOn</code> with a <code
-class="API" base="twisted.application">strports</code>-formatted port
-specification string. The simplest such string would be <q>tcp:12345</q>, to
-listen on port 12345 on all interfaces. Using
-<q>tcp:12345:interface=127.0.0.1</q> would cause it to only listen on the
-localhost interface, making it available only to other processes on the same
-host. The <code>strports</code> module provides many other possibilities.</p>
+class="API" base="foolscap.pb.Tub">listenOn</code> with a <code class="API"
+base="twisted.application">strports</code>-formatted port specification
+string. The simplest such string would be <q>tcp:12345</q>, to listen on port
+12345 on all interfaces. Using <q>tcp:12345:interface=127.0.0.1</q> would
+cause it to only listen on the localhost interface, making it available only
+to other processes on the same host. The <code>strports</code> module
+provides many other possibilities.</p>
 
 <p>The Tub needs to be told how it can be reached, so it knows what host and
 port to put into the URLs it creates. This location is simply a string in the
@@ -169,9 +168,9 @@ your machine is reachable directly over the internet as
 <q>myhost.example.com</q>, then you could use something like this:</p>
 
 <pre class="python">
-from foolscap import PBService
+from foolscap import Tub
 
-tub = PBService()
+tub = Tub()
 tub.listenOn("tcp:12345")  # start listening on TCP port 12345
 tub.setLocation("myhost.example.com:12345")
 </pre>
@@ -205,9 +204,9 @@ possible for someone else to acquire it by guessing the name.</p>
 
 <p>To use an unencrypted Tub instead, you would do the following:</p>
 <pre class="python">
-from foolscap import PBService
+from foolscap import UnencryptedTub
 
-tub = PBService(encrypted=False)
+tub = UnencryptedTub()
 tub.listenOn("tcp:12345")  # start listening on TCP port 12345
 tub.setLocation("myhost.example.com:12345")
 url = tub.registerReference(myserver, "math-service")
@@ -229,12 +228,12 @@ don't need to perform the (<code>listenOn</code>, <code>setLocation</code>,
 <code>registerReference</code>) sequence unless you are also publishing
 <code>Referenceable</code>s to the world. To acquire a reference to somebody
 else's object, just use <code class="API"
-base="foolscap.pb.PBService">getReference</code>:</p>
+base="foolscap.pb.Tub">getReference</code>:</p>
 
 <pre class="python">
-from foolscap import PBService
+from foolscap import Tub
 
-tub = PBService()
+tub = Tub()
 d = tub.getReference("pb://ABCD@myhost.example.com:12345/math-service")
 def gotReference(remote):
     print "Got the RemoteReference:", remote

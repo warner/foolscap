@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 from twisted.internet import reactor
-from foolscap import PBService
+from foolscap import Tub
 
 def gotError1(why):
     print "unable to get the RemoteReference:", why
@@ -21,7 +21,7 @@ def gotAnswer(answer):
     print "the answer is", answer
     reactor.stop()
 
-tub = PBService()
+tub = Tub()
 d = tub.getReference("pbu://localhost:12345/math-service")
 d.addCallbacks(gotReference, gotError1)
 

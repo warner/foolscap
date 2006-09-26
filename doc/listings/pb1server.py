@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 from twisted.internet import reactor
-from foolscap import Referenceable, PBService
+from foolscap import Referenceable, UnencryptedTub
 
 class MathServer(Referenceable):
     def remote_add(self, a, b):
@@ -10,7 +10,7 @@ class MathServer(Referenceable):
         return a-b
 
 myserver = MathServer()
-tub = PBService(encrypted=False)
+tub = UnencryptedTub()
 tub.listenOn("tcp:12345")
 tub.setLocation("localhost:12345")
 url = tub.registerReference(myserver, "math-service")

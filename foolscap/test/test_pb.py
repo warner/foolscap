@@ -13,7 +13,7 @@ from twisted.internet.main import CONNECTION_LOST
 
 from twisted.application.internet import TCPServer
 from foolscap import schema, tokens, remoteinterface, referenceable
-from foolscap import Referenceable, RemoteInterface, PBService
+from foolscap import Referenceable, RemoteInterface, Tub
 from foolscap import getRemoteURL_TCP
 from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
 from foolscap.slicer import BananaFailure
@@ -819,7 +819,7 @@ class TestFactory(unittest.TestCase):
 
 class TestCallable(unittest.TestCase):
     def setUp(self):
-        self.services = [PBService(), PBService()]
+        self.services = [Tub(), Tub()]
         self.tubA, self.tubB = self.services
         for s in self.services:
             s.startService()
@@ -863,7 +863,7 @@ class TestCallable(unittest.TestCase):
 
 class TestService(unittest.TestCase):
     def setUp(self):
-        self.services = [PBService()]
+        self.services = [Tub()]
         self.services[0].startService()
 
     def tearDown(self):
@@ -900,7 +900,7 @@ class TestService(unittest.TestCase):
         # under multiple URLs
 
     def getRef(self, target):
-        self.services.append(PBService())
+        self.services.append(Tub())
         s1 = self.services[0]
         s2 = self.services[1]
         s2.startService()
@@ -1042,7 +1042,7 @@ class Test3Way(unittest.TestCase):
     # Bob-reference.
 
     def setUp(self):
-        self.services = [PBService(), PBService(), PBService()]
+        self.services = [Tub(), Tub(), Tub()]
         self.tubA, self.tubB, self.tubC = self.services
         for s in self.services:
             s.startService()

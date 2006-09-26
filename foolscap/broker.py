@@ -156,7 +156,7 @@ class RIBroker(remoteinterface.RemoteInterface):
 class Broker(banana.Banana, referenceable.Referenceable):
     """I manage a connection to a remote Broker.
 
-    @ivar tub: the L{PBService} which contains us
+    @ivar tub: the L{Tub} which contains us
     @ivar yourReferenceByCLID: maps your CLID to a RemoteReferenceData
     #@ivar yourReferenceByName: maps a per-Tub name to a RemoteReferenceData
     @ivar yourReferenceByURL: maps a global URL to a RemoteReferenceData
@@ -207,7 +207,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def setTub(self, tub):
         from foolscap import pb
-        assert isinstance(tub, pb.PBService)
+        assert ipb.ITub.providedBy(tub)
         self.tub = tub
 
     def connectionMade(self):

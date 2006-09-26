@@ -1005,7 +1005,7 @@ Kragen came up with a good use-case for partial-ordering:
   B.callRemote("getLatestDocument")
 
 
-* PBService
+* PBService / Tub
 
 Really, PB wants to be a Service, since third-party references mean it will
 need to make connections to arbitrary targets, and it may want to re-use
