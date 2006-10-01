@@ -1,5 +1,7 @@
 2006-09-30  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_negotiate.py: re-enable all negotiation tests
+
 	* foolscap/pb.py (UnauthenticatedTub): change the API and docs to
 	refer to "Unauthenticated" tubs rather than "Unencrypted" ones,
 	since that's really the choice you get to make. We use encrypted

@@ -506,9 +506,6 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
         d.addCallback(self._test1_1)
         return d
 
-    test1.todo = "This test fails intermittently far too regularly"
-
-
     def _test1_1(self, res):
         d,d1 = self.connect()
         d.addCallbacks(lambda res: self.fail("hey! this is supposed to fail"),
@@ -679,7 +676,7 @@ class Existing(CrossfireMixin, unittest.TestCase):
 # creating a loopback connection type (as a peer of TCP) which has
 # deterministic timing behavior.
 
-if not os.environ.get("NEWPB_TEST_NEGOTIATION"):
+if False: #not os.environ.get("NEWPB_TEST_NEGOTIATION"):
     del Basic
     del Versus
     del Parallel
