@@ -1,3 +1,18 @@
+2006-09-30  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (UnauthenticatedTub): change the API and docs to
+	refer to "Unauthenticated" tubs rather than "Unencrypted" ones,
+	since that's really the choice you get to make. We use encrypted
+	connections whenever possible; what you get to control is whether
+	we use keys to provide secure identification and introduction.
+	* foolscap/__init__.py: same, export UnauthenticatedTub instead of
+	UnencryptedTub
+	* foolscap/negotiate.py: same
+	* foolscap/referenceable.py: same
+	* foolscap/test/test_negotiate.py: same
+	* doc/listings/pb1server.py: update examples to match
+	* doc/using-pb.xhtml: same
+
 2006-09-26  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py (Tub): rename PBService to Tub, make it always

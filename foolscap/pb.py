@@ -38,8 +38,8 @@ class Listener(protocol.ServerFactory):
     child of one of my Tubs. If that Tub disconnects, I will reparent the
     Service to a remaining one.
 
-    Unencrypted Tubs use a TubID of 'None'. There may be at most one such Tub
-    attached to any given Listener."""
+    Unauthenticated Tubs use a TubID of 'None'. There may be at most one such
+    Tub attached to any given Listener."""
 
     # this also serves as the ServerFactory
 
@@ -88,8 +88,8 @@ class Listener(protocol.ServerFactory):
         if tub.tubID in self.tubs:
             if tub.tubID is None:
                 raise RuntimeError("This Listener (on %s) already has an "
-                                   "unencrypted Tub, you cannot add a second "
-                                   "one" % self.port)
+                                   "unauthenticated Tub, you cannot add a "
+                                   "second one" % self.port)
             raise RuntimeError("This Listener (on %s) is already connected "
                                "to TubID '%s'" % (self.port, tub.tubID))
         self.tubs[tub.tubID] = tub
@@ -121,7 +121,7 @@ class Listener(protocol.ServerFactory):
         return self.s
 
     def addRedirect(self, tubID, location):
-        assert tubID is not None # unencrypted Tubs don't get redirects
+        assert tubID is not None # unauthenticated Tubs don't get redirects
         self.redirects[tubID] = location
     def removeRedirect(self, tubID):
         del self.redirects[tubID]
@@ -154,8 +154,6 @@ class Tub(service.MultiService):
     I contain Referenceables, and manage RemoteReferences to Referenceables
     that live in other Tubs.
 
-    @param encrypted: True if this Tub should provide secure references.
-                      'True' is the default if crypto is available.
     @param certData: if provided, use it as a certificate rather than
                      generating a new one. This is a PEM-encoded
                      private/public keypair, as returned by Tub.getCertData()
@@ -218,7 +216,7 @@ class Tub(service.MultiService):
         self.tubConnectors = {} # maps TubRef to a TubConnector
         self.waitingForBrokers = {} # maps TubRef to list of Deferreds
         self.brokers = {} # maps TubRef to a Broker that connects to them
-        self.unencryptedBrokers = [] # inbound Brokers without TubRefs
+        self.unauthenticatedBrokers = [] # inbound Brokers without TubRefs
 
     def createCertificate(self):
         # this is copied from test_sslverify.py
@@ -253,10 +251,11 @@ class Tub(service.MultiService):
         You must set the location before you can register any references.
 
         Encrypted Tubs can have multiple location hints, just provide
-        multiple arguments. Unencrypted Tubs can only have one location."""
+        multiple arguments. Unauthenticated Tubs can only have one location."""
 
         if not self.encrypted and len(hints) > 1:
-            raise PBError("Unencrypted tubs may only have one location hint")
+            raise PBError("Unauthenticated tubs may only have one "
+                          "location hint")
         self.locationHints = hints
 
     def listenOn(self, what, options={}):
@@ -300,7 +299,7 @@ class Tub(service.MultiService):
         if self.encrypted:
             t = Tub()
         else:
-            t = UnencryptedTub()
+            t = UnauthenticatedTub()
         for l in self.listeners:
             t.listenOn(l)
         return t
@@ -316,7 +315,7 @@ class Tub(service.MultiService):
         for b in self.brokers.values():
             d = defer.maybeDeferred(b.transport.loseConnection)
             dl.append(d)
-        for b in self.unencryptedBrokers:
+        for b in self.unauthenticatedBrokers:
             d = defer.maybeDeferred(b.transport.loseConnection)
             dl.append(d)
         return defer.DeferredList(dl)
@@ -464,10 +463,10 @@ class Tub(service.MultiService):
 
     def brokerAttached(self, tubref, broker, isClient):
         if not tubref:
-            # this is an inbound connection from an unencrypted Tub
+            # this is an inbound connection from an unauthenticated Tub
             assert not isClient
             # we just track it so we can disconnect it later
-            self.unencryptedBrokers.append(broker)
+            self.unauthenticatedBrokers.append(broker)
             return
 
         if tubref in self.tubConnectors:
@@ -499,10 +498,10 @@ class Tub(service.MultiService):
         for tubref in self.brokers.keys():
             if self.brokers[tubref] is broker:
                 del self.brokers[tubref]
-        if broker in self.unencryptedBrokers:
-            self.unencryptedBrokers.remove(broker)
+        if broker in self.unauthenticatedBrokers:
+            self.unauthenticatedBrokers.remove(broker)
 
-class UnencryptedTub(Tub):
+class UnauthenticatedTub(Tub):
     encrypted = False
 
     def __init__(self, tubID=None, options={}):
@@ -518,6 +517,6 @@ def getRemoteURL_TCP(host, port, pathname, *interfaces):
     if crypto:
         s = Tub()
     else:
-        s = UnencryptedTub()
+        s = UnauthenticatedTub()
     d = s.getReference(url, interfaces)
     return d

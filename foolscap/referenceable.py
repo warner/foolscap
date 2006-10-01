@@ -602,7 +602,7 @@ class SturdyRef(Copyable, RemoteCopy):
             # it can live at any one of a variety of network-accessible
             # locations, or at a single UNIX-domain socket.
             #
-            # there is also an unencrypted form, which is indexed by the
+            # there is also an unauthenticated form, which is indexed by the
             # single locationHint, because it does not have a TubID
             
             if url.startswith("pb://"):
@@ -642,9 +642,9 @@ class SturdyRef(Copyable, RemoteCopy):
     def _distinguishers(self):
         """Two SturdyRefs are equivalent if they point to the same object.
         SturdyRefs to encrypted Tubs only pay attention to the TubID and the
-        reference name. SturdyRefs to unencrypted Tubs must use the location
-        hint instead of the (missing) TubID. This method makes it easier to
-        compare a pair of SturdyRefs."""
+        reference name. SturdyRefs to unauthenticated Tubs must use the
+        location hint instead of the (missing) TubID. This method makes it
+        easier to compare a pair of SturdyRefs."""
         if self.encrypted:
             return (True, self.tubID, self.name)
         return (False, self.location, self.name)

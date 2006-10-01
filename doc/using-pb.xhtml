@@ -142,13 +142,13 @@ connect to the wrong reference). You can also create a Tub with a
 pre-existing certificate, which is how Tubs can retain a persistent identity
 over multiple executions.</p>
 
-<p>You can also create an <code>UnencryptedTub</code>, which has an empty
-TubID. Hosting and connecting to unencrypted Tubs do not require the
+<p>You can also create an <code>UnauthenticatedTub</code>, which has an empty
+TubID. Hosting and connecting to unauthenticated Tubs do not require the
 pyOpenSSL or PyCrypto libraries, but do not provide privacy, authentication,
 connection redirection, or shared listening ports. The PB-URLs that point to
-unencrypted Tubs have a distinct form (starting with <code>pbu:</code>
-instead of <code>pb:</code>) to make sure they are not mistaken for encrypted
-Tubs. PB uses encrypted Tubs by default.</p>
+unauthenticated Tubs have a distinct form (starting with <code>pbu:</code>
+instead of <code>pb:</code>) to make sure they are not mistaken for
+authenticated Tubs. PB uses authenticated Tubs by default.</p>
 
 <p>Having the Tub listen on a TCP port is as simple as calling <code
 class="API" base="foolscap.pb.Tub">listenOn</code> with a <code class="API"
@@ -202,11 +202,11 @@ generated for you. This is useful when you want to give access to your
 <code>Referenceable</code> to someone specific, but do not want to make it
 possible for someone else to acquire it by guessing the name.</p>
 
-<p>To use an unencrypted Tub instead, you would do the following:</p>
+<p>To use an unauthenticated Tub instead, you would do the following:</p>
 <pre class="python">
-from foolscap import UnencryptedTub
+from foolscap import UnauthenticatedTub
 
-tub = UnencryptedTub()
+tub = UnauthenticatedTub()
 tub.listenOn("tcp:12345")  # start listening on TCP port 12345
 tub.setLocation("myhost.example.com:12345")
 url = tub.registerReference(myserver, "math-service")
@@ -217,7 +217,7 @@ url = tub.registerReference(myserver, "math-service")
 nature of this form makes it slightly easier to throw together
 quick-and-dirty PB applications, since you only need to hard-code the target
 host and port into the client side program. However any serious application
-should just used the default encrypted form and use a full URL as their
+should just used the default authenticated form and use a full URL as their
 starting point. Note that the URL can come from anywhere: typed in by the
 user, retrieved from a web page, or hardcoded into the application.</p>
 
@@ -252,7 +252,7 @@ connection, if one is available, and it will return an existing
 
 <p>Here are two programs, one implementing the server side of our
 remote-addition protocol, the other behaving as a client. This first example
-uses an unencrypted Tub so you don't have to manually copy a URL from the
+uses an unauthenticated Tub so you don't have to manually copy a URL from the
 server to the client. Both of these are standalone programs (you just run
 them), but normally you would create an <code class="API"
 base="twisted.application.service">Application</code> object and pass the
@@ -278,7 +278,7 @@ the answer is 3
 %
 </pre>
 
-<p>The second example uses encrypted Tubs. When running this example, you
+<p>The second example uses authenticated Tubs. When running this example, you
 must copy the URL printed by the server and provide it as an argument to the
 client.</p>
 
@@ -334,7 +334,7 @@ dropped. These attacks can cause a denial-of-service, but they cannot cause
 you to mistakenly connect to the wrong target.</p>
 
 <p>Obviously this second property only holds if you use SSL. If you choose to
-use unencrypted Tubs, all security properties are lost.</p>
+use unauthenticated Tubs, all security properties are lost.</p>
 
 <p>The format of a PB URL, like
 <code>pb://abcd123@example.com:5901,backup.example.com:8800/math-server</code>,
@@ -371,7 +371,7 @@ URL</span>:</p>
 the format <code>pb://ABCD@unix/path/to/socket/NAME</code>, but this needs
 some work)</p>
 
-<p>PB URLs for unencrypted Tubs, like
+<p>PB URLs for unauthenticated Tubs, like
 <code>pbu://example.com:8700/math-server</code>, are formatted as
 follows:</p>
 
@@ -443,9 +443,9 @@ example.</p>
 it is listening. You need to pass this PBURL to the client program so it
 knows how to contact the servre. If you have a modern version of Twisted (2.5
 or later) and the right encryption libraries installed, you'll get an
-encrypted Tub (for which the PBURL will start with "pb:" and will be fairly
-long). If you don't, you'll get an unencrypted Tub (with a relatively short
-PBURL that starts with "pbu:").</p>
+authenticated Tub (for which the PBURL will start with "pb:" and will be
+fairly long). If you don't, you'll get an unauthenticated Tub (with a
+relatively short PBURL that starts with "pbu:").</p>
 
 <a href="listings/pb3calculator.py" class="py-listing"
 skipLines="2">pb3calculator.py</a>

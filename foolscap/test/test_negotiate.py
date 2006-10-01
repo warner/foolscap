@@ -6,7 +6,7 @@ from twisted.trial import unittest
 from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
 from foolscap import pb, negotiate, tokens
-from foolscap import Referenceable, Tub, BananaError
+from foolscap import Referenceable, Tub, UnauthenticatedTub, BananaError
 try:
     from foolscap import crypto
 except ImportError:
@@ -68,11 +68,11 @@ class BaseMixin:
         reactor.callLater(timeout, d.callback, res)
         return d
 
-    def makeServer(self, encrypted, options={}, listenerOptions={}):
-        if encrypted:
+    def makeServer(self, authenticated, options={}, listenerOptions={}):
+        if authenticated:
             self.tub = tub = Tub(options=options)
         else:
-            self.tub = tub = UnencryptedTub(options=options)
+            self.tub = tub = UnauthenticatedTub(options=options)
         tub.startService()
         self.services.append(tub)
         l = tub.listenOn("tcp:0", listenerOptions)
@@ -103,7 +103,7 @@ class BaseMixin:
         return portnum
 
     def connectClient(self, portnum):
-        tub = UnencryptedTub()
+        tub = UnauthenticatedTub()
         tub.startService()
         self.services.append(tub)
         d = tub.getReference("pb://localhost:%d/hello" % portnum)
@@ -118,7 +118,7 @@ class Basic(BaseMixin, unittest.TestCase):
         url, portnum = self.makeServer(False, {'opt': 12})
         self.failUnlessEqual(self.tub.options['opt'], 12)
 
-    def testEncrypted(self):
+    def testAuthenticated(self):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(True)
@@ -127,29 +127,29 @@ class Basic(BaseMixin, unittest.TestCase):
         self.services.append(client)
         d = client.getReference(url)
         return d
-    testEncrypted.timeout = 10
+    testAuthenticated.timeout = 10
 
-    def testUnencrypted(self):
+    def testUnauthenticated(self):
         url, portnum = self.makeServer(False)
-        client = UnencryptedTub()
+        client = UnauthenticatedTub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
         return d
-    testUnencrypted.timeout = 10
+    testUnauthenticated.timeout = 10
 
-    def testHalfEncrypted1(self):
+    def testHalfAuthenticated1(self):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(True)
-        client = UnencryptedTub()
+        client = UnauthenticatedTub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
         return d
-    testHalfEncrypted1.timeout = 10
+    testHalfAuthenticated1.timeout = 10
 
-    def testHalfEncrypted2(self):
+    def testHalfAuthenticated2(self):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(False)
@@ -158,11 +158,11 @@ class Basic(BaseMixin, unittest.TestCase):
         self.services.append(client)
         d = client.getReference(url)
         return d
-    testHalfEncrypted2.timeout = 10
+    testHalfAuthenticated2.timeout = 10
 
 class Versus(BaseMixin, unittest.TestCase):
 
-    def testVersusHTTPServerEncrypted(self):
+    def testVersusHTTPServerAuthenticated(self):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         portnum = self.makeHTTPServer()
@@ -178,11 +178,11 @@ class Versus(BaseMixin, unittest.TestCase):
         # leftover HTTP server socket.
         d.addCallback(self.stall, 1)
         return d
-    testVersusHTTPServerEncrypted.timeout = 10
+    testVersusHTTPServerAuthenticated.timeout = 10
 
-    def testVersusHTTPServerUnencrypted(self):
+    def testVersusHTTPServerUnauthenticated(self):
         portnum = self.makeHTTPServer()
-        client = UnencryptedTub()
+        client = UnauthenticatedTub()
         client.startService()
         self.services.append(client)
         url = "pbu://localhost:%d/target" % portnum
@@ -191,9 +191,9 @@ class Versus(BaseMixin, unittest.TestCase):
                        lambda f: f.trap(BananaError))
         d.addCallback(self.stall, 1) # same reason as above
         return d
-    testVersusHTTPServerUnencrypted.timeout = 10
+    testVersusHTTPServerUnauthenticated.timeout = 10
 
-    def testVersusHTTPClientUnencrypted(self):
+    def testVersusHTTPClientUnauthenticated(self):
         try:
             from twisted.web import error
         except ImportError:
@@ -203,9 +203,9 @@ class Versus(BaseMixin, unittest.TestCase):
         d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
                        lambda f: f.trap(error.Error))
         return d
-    testVersusHTTPClientUnencrypted.timeout = 10
+    testVersusHTTPClientUnauthenticated.timeout = 10
 
-    def testVersusHTTPClientEncrypted(self):
+    def testVersusHTTPClientAuthenticated(self):
         if not crypto:
             raise unittest.SkipTest("crypto not available")
         try:
@@ -217,7 +217,7 @@ class Versus(BaseMixin, unittest.TestCase):
         d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
                        lambda f: f.trap(error.Error))
         return d
-    testVersusHTTPClientEncrypted.timeout = 10
+    testVersusHTTPClientAuthenticated.timeout = 10
 
     def testNoConnection(self):
         url, portnum = self.makeServer(False)
@@ -227,7 +227,7 @@ class Versus(BaseMixin, unittest.TestCase):
     testNoConnection.timeout = 10
     def _testNoConnection_1(self, res, url):
         self.services.remove(self.tub)
-        client = UnencryptedTub()
+        client = UnauthenticatedTub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -241,7 +241,7 @@ class Versus(BaseMixin, unittest.TestCase):
     def testClientTimeout(self):
         portnum = self.makeNullServer()
         # lower the connection timeout to 2 seconds
-        client = UnencryptedTub(options={'connect_timeout': 1})
+        client = UnauthenticatedTub(options={'connect_timeout': 1})
         client.startService()
         self.services.append(client)
         url = "pbu://localhost:%d/target" % portnum
@@ -307,14 +307,14 @@ class Parallel(BaseMixin, unittest.TestCase):
         self.target = Target()
         return tub.registerReference(self.target)
 
-    def connect(self, url, encrypted=True):
+    def connect(self, url, authenticated=True):
         self.clientPhases = []
         opts = {"debug_stall_second_connection": True,
                 "debug_gatherPhases": self.clientPhases}
-        if encrypted:
+        if authenticated:
             self.client = client = Tub(options=opts)
         else:
-            self.client = client = UnencryptedTub(options=opts)
+            self.client = client = UnauthenticatedTub(options=opts)
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -401,9 +401,9 @@ class Parallel(BaseMixin, unittest.TestCase):
         # when the first connection completes.
 
         # note: this requires that the listener winds up as the master. We
-        # force this by connecting from an unencrypted Tub.
+        # force this by connecting from an unauthenticated Tub.
         url = self.makeServers(lo2={'debug_slow_sendDecision': True})
-        d = self.connect(url, encrypted=False)
+        d = self.connect(url, authenticated=False)
         d.addCallback(self.checkConnectedToFirstListener,
                       [negotiate.DECIDING])
         return d
@@ -417,16 +417,16 @@ class CrossfireMixin(BaseMixin):
     tub1IsMaster = False
 
     def makeServers(self, t1opts={}, t2opts={}, lo1={}, lo2={},
-                    tubAencrypted=True, tubBencrypted=True):
+                    tubAauthenticated=True, tubBauthenticated=True):
         # first we create two Tubs
-        if tubAencrypted:
+        if tubAauthenticated:
             a = Tub(options=t1opts)
         else:
-            a = Unencrypted(options=t1opts)
-        if tubBencrypted:
+            a = UnauthenticatedTub(options=t1opts)
+        if tubBauthenticated:
             b = Tub(options=t1opts)
         else:
-            b = Unencrypted(options=t1opts)
+            b = UnauthenticatedTub(options=t1opts)
 
         # then we figure out which one will be the master, and call it tub1
         if a.tubID > b.tubID:
@@ -604,65 +604,69 @@ class Existing(CrossfireMixin, unittest.TestCase):
         if type(expected) not in (tuple,list):
             expected = [expected]
         self.failUnless(len(self.tub1.brokers) +
-                        len(self.tub1.unencryptedBrokers) in expected)
+                        len(self.tub1.unauthenticatedBrokers) in expected)
         self.failUnless(len(self.tub2.brokers) +
-                        len(self.tub2.unencryptedBrokers) in expected)
+                        len(self.tub2.unauthenticatedBrokers) in expected)
 
-    def testEncrypted(self):
-        # When two encrypted Tubs connect, that connection should be used in
-        # the reverse connection too
+    def testAuthenticated(self):
+        # When two authenticated Tubs connect, that connection should be used
+        # in the reverse connection too
         self.makeServers()
         d = self.tub1.getReference(self.url2)
-        d.addCallback(self._testEncrypted_1)
+        d.addCallback(self._testAuthenticated_1)
         return d
-    def _testEncrypted_1(self, r12):
+    def _testAuthenticated_1(self, r12):
         # this should use the existing connection
         d = self.tub2.getReference(self.url1)
         d.addCallback(self.checkNumBrokers, 1, (r12,))
         return d
 
-    def testUnencrypted(self):
-        # But when two non-encrypted Tubs connect, they don't get to share
-        # connections.
-        self.makeServers(tubAencrypted=False, tubBencrypted=False)
-        # the non-encrypted Tub gets a tubID of None, so it becomes tub2. We
-        # want to verify that connections are not shared regardless of which
-        # direction is encrypted. In this test, the first connection
+    def testUnauthenticated(self):
+        # But when two non-authenticated Tubs connect, they don't get to
+        # share connections.
+        self.makeServers(tubAauthenticated=False, tubBauthenticated=False)
+        # the non-authenticated Tub gets a tubID of None, so it becomes tub2.
+        # We want to verify that connections are not shared regardless of
+        # which direction is authenticated. In this test, the first
+        # connection
         d = self.tub1.getReference(self.url2)
-        d.addCallback(self._testUnencrypted_1)
+        d.addCallback(self._testUnauthenticated_1)
         return d
-    def _testUnencrypted_1(self, r12):
+    def _testUnauthenticated_1(self, r12):
         # this should *not* use the existing connection
         d = self.tub2.getReference(self.url1)
         d.addCallback(self.checkNumBrokers, 2, (r12,))
         return d
 
-    def testHalfEncrypted1(self):
-        # When an encrypted Tub connects to a non-encrypted Tub, the reverse
-        # connection *is* allowed to share the connection (although, due to
-        # what I think are limitations in SSL, it probably won't)
-        self.makeServers(tubAencrypted=True, tubBencrypted=False)
-        # The non-encrypted Tub gets a tubID of None, so it becomes tub2.
-        # Therefore this is the encrypted-to-non-encrypted connection.
+    def testHalfAuthenticated1(self):
+        # When an authenticated Tub connects to a non-authenticated Tub, the
+        # reverse connection *is* allowed to share the connection (although,
+        # due to what I think are limitations in SSL, it probably won't)
+        self.makeServers(tubAauthenticated=True, tubBauthenticated=False)
+        # The non-authenticated Tub gets a tubID of None, so it becomes tub2.
+        # Therefore this is the authenticated-to-non-authenticated
+        # connection.
         d = self.tub1.getReference(self.url2)
-        d.addCallback(self._testHalfEncrypted1_1)
+        d.addCallback(self._testHalfAuthenticated1_1)
         return d
-    def _testHalfEncrypted1_1(self, r12):
+    def _testHalfAuthenticated1_1(self, r12):
         d = self.tub2.getReference(self.url1)
         d.addCallback(self.checkNumBrokers, (1,2), (r12,))
         return d
 
-    def testHalfEncrypted2(self):
-        # On the other hand, when a non-encrypted Tub connects to an
-        # encrypted Tub, the reverse connection is forbidden (because the
-        # non-encrypted Tub's identity is based upon its Listener's location)
-        self.makeServers(tubAencrypted=True, tubBencrypted=False)
-        # The non-encrypted Tub gets a tubID of None, so it becomes tub2.
-        # Therefore this is the encrypted-to-non-encrypted connection.
+    def testHalfAuthenticated2(self):
+        # On the other hand, when a non-authenticated Tub connects to an
+        # authenticated Tub, the reverse connection is forbidden (because the
+        # non-authenticated Tub's identity is based upon its Listener's
+        # location)
+        self.makeServers(tubAauthenticated=True, tubBauthenticated=False)
+        # The non-authenticated Tub gets a tubID of None, so it becomes tub2.
+        # Therefore this is the authenticated-to-non-authenticated
+        # connection.
         d = self.tub2.getReference(self.url1)
-        d.addCallback(self._testHalfEncrypted2_1)
+        d.addCallback(self._testHalfAuthenticated2_1)
         return d
-    def _testHalfEncrypted2_1(self, r21):
+    def _testHalfAuthenticated2_1(self, r21):
         d = self.tub1.getReference(self.url2)
         d.addCallback(self.checkNumBrokers, 2, (r21,))
         return d

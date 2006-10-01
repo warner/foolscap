@@ -623,7 +623,7 @@ class Negotiation(protocol.Protocol):
         if theirTubID:
             theirTubRef = referenceable.TubRef(theirTubID)
         else:
-            theirTubRef = None # unencrypted
+            theirTubRef = None # unauthenticated
         self.theirTubRef = theirTubRef # for use by non-master side, later
 
         if self.isClient and self.target.encrypted:
