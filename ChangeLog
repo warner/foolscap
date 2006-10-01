@@ -1,5 +1,17 @@
 2006-09-30  Brian Warner  <warner@lothar.com>
 
+	* foolscap/promise.py (Promise): implement a simpler syntax, at
+	the encouragement of Zooko and others: now p.foo(args) does an
+	eventual-send. This is a simpler form of send(p).foo(args) . Added
+	_then and _except methods to do simple callback/errback handling.
+	You can still do send() and sendOnly() on either immediate values
+	or Promises: this shortcut only helps with send() on a Promise.
+	You can still do when() on a Promise, which is more flexible
+	because it returns a Deferred. The new syntax gives you a more
+	dataflow-ish style of coding, which might be confusing in some
+	ways but can also make the overall code much much easier to read.
+	* foolscap/test/test_promise.py: update tests
+
 	* foolscap/test/common.py (HelperTarget.remote_defer): replace
 	callLater(0) with fireEventually()
 	* foolscap/test/test_banana.py (ErrorfulSlicer.next): same

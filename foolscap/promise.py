@@ -38,6 +38,31 @@ class Promise:
 
      sendOnly(p1).foo(args)  # ignores the result
      p2 = send(p1).bar(args) # creates a Promise for the result
+     p2 = p1.bar(args)       # same as send(p1).bar(args)
+
+    Or wait for it to resolve, using one of the following::
+
+     d = when(p); d.addCallback(cb)  # provides a Deferred
+     p._then(cb, *args, **kwargs)    # like when(p).addCallback(cb,*a,**kw)
+     p._except(cb, *args, **kwargs)  # like when(p).addErrback(cb,*a,**kw)
+
+    The _then and _except forms return the same Promise. You can set up
+    chains of calls that will be invoked in the future, using a dataflow
+    style, like this::
+
+     p = getPromiseForServer()
+     d = p.getDatabase('db1')
+     r = d.getRecord(name)
+     def _print(record):
+         print 'the record says', record
+     def _oops(failure):
+         print 'something failed:', failure
+     r._then(_print)
+     r._except(_oops)
+
+    Or all collapsed in one sequence like::
+
+     getPromiseForServer().getDatabase('db1').getRecord(name)._then(_print)
 
     The eventual-send will eventually invoke the method foo(args) on the
     promise's resolution. This will return a new Promise for the results of
@@ -49,14 +74,41 @@ class Promise:
     # with a name that happens to match an internal one.
 
     _state = EVENTUAL
+    _useDataflowStyle = True # enables p.foo(args)
 
     def __init__(self):
         self._watchers = []
         self._pendingMethods = [] # list of (methname, args, kwargs, p)
 
+    # _then and _except are our only public methods. All other access is
+    # through normal (not underscore-prefixed) attribute names, which
+    # indicate names of methods on the target object that should be called
+    # later.
+    def _then(self, cb, *args, **kwargs):
+        d = self._wait_for_resolution()
+        d.addCallback(cb, *args, **kwargs)
+        d.addErrback(lambda ignore: None)
+        return self
+
+    def _except(self, cb, *args, **kwargs):
+        d = self._wait_for_resolution()
+        d.addErrback(cb, *args, **kwargs)
+        return self
+
+    # everything beyond here is private to this module
+
     def __repr__(self):
         return "<Promise %#x>" % id(self)
 
+    def __getattr__(self, name):
+        if not self._useDataflowStyle:
+            raise AttributeError("no such attribute %s" % name)
+        def newmethod(*args, **kwargs):
+            return self._send(name, args, kwargs)
+        return newmethod
+
+    # _send and _sendOnly are used by send() and sendOnly(). _send is also
+    # used by regular attribute access.
 
     def _send(self, methname, args, kwargs):
         """Return a Promise (for the result of the call) when the call is
@@ -77,6 +129,7 @@ class Promise:
         else:
             eventually(self._deliver, methname, args, kwargs, _ignore)
 
+    # _wait_for_resolution is used by when(), as well as _then and _except
 
     def _wait_for_resolution(self):
         """Return a Deferred that will fire (with whatever was passed to
@@ -92,6 +145,8 @@ class Promise:
         # self._state == BROKEN
         return defer.fail(self._target)
 
+    # _resolve is our resolver method, and is handed out by makePromise()
+
     def _resolve(self, target_or_failure):
         """Resolve this Promise to refer to the given target. If called with
         a Failure, the Promise is now BROKEN. _resolve may only be called
@@ -102,6 +157,8 @@ class Promise:
         if self._state != EVENTUAL:
             raise UsageError("Promises may not be resolved multiple times")
         self._resolve2(target_or_failure)
+
+    # the remaining methods are internal, for use by this class only
 
     def _resolve2(self, target_or_failure):
         # we may be called with a Promise, an immediate value, or a Failure
@@ -178,8 +235,8 @@ class _MethodGetterWrapper:
         self.cb = [callback]
 
     def __getattr__(self, name):
-        if name.startswith("__"):
-            raise AttributeError # TODO: really?
+        if name.startswith("_"):
+            raise AttributeError("method %s is probably private" % name)
         cb = self.cb[0] # avoid bound-methodizing
         def newmethod(*args, **kwargs):
             return cb(name, args, kwargs)
