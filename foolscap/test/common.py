@@ -94,8 +94,7 @@ class HelperTarget(Referenceable):
         return obj
 
     def remote_defer(self, obj):
-        d = defer.Deferred()
-        reactor.callLater(0, d.callback, obj)
+        return fireEventually(obj)
         return d
 
     def remote_hang(self):

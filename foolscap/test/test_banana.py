@@ -7,6 +7,7 @@ from twisted.internet import reactor, defer, protocol
 from foolscap.tokens import ISlicer, Violation, BananaError, NegotiationError
 from foolscap import banana, slicer, schema, tokens, debug, storage
 from foolscap.slicer import BananaFailure
+from foolscap.eventual import fireEventually, flushEventualQueue
 
 import StringIO, sys
 import sets
@@ -781,8 +782,7 @@ class ErrorfulSlicer(slicer.BaseSlicer):
         if obj == "next":
             raise Violation("next failed")
         if obj == "deferred-good":
-            d = defer.Deferred()
-            reactor.callLater(0, d.callback, None)
+            return fireEventually(None)
             return d
         if obj == "deferred-bad":
             d = defer.Deferred()
@@ -816,6 +816,9 @@ class ErrorfulSlicer(slicer.BaseSlicer):
 class EncodeFailureTest(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
+
+    def tearDown(self):
+        return flushEventualQueue()
 
     def send(self, obj):
         d = self.banana.send(obj)

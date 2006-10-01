@@ -1,5 +1,10 @@
 2006-09-30  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/common.py (HelperTarget.remote_defer): replace
+	callLater(0) with fireEventually()
+	* foolscap/test/test_banana.py (ErrorfulSlicer.next): same
+	(EncodeFailureTest.tearDown): use flushEventualQueue() for cleanup
+
 	* foolscap/crypto.py (CertificateError): In Twisted >2.5, this
 	exception is defined in twisted.internet.error, and it is
 	sometimes raised by the SSL transport (in getPeerCertificate), and
