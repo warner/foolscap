@@ -535,9 +535,12 @@ class Negotiation(protocol.Protocol):
         if self.encrypted:
             # we should be encrypted now
             # get the peer's certificate, if any
-            them = crypto.peerFromTransport(self.transport)
-            if them and them.original:
-                self.theirCertificate = them
+            try:
+                them = crypto.peerFromTransport(self.transport)
+                if them and them.original:
+                    self.theirCertificate = them
+            except crypto.CertificateError:
+                pass
 
         hello = self.parseLines(header)
         if hello.has_key("error"):

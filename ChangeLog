@@ -1,5 +1,18 @@
 2006-09-30  Brian Warner  <warner@lothar.com>
 
+	* foolscap/crypto.py (CertificateError): In Twisted >2.5, this
+	exception is defined in twisted.internet.error, and it is
+	sometimes raised by the SSL transport (in getPeerCertificate), and
+	we need to catch it. In older versions, we define it ourselves
+	even though it will never be raised, so that the code which
+	catches it doesn't have to have weird conditionals.
+	* foolscap/negotiate.py (Negotiation.handleENCRYPTED): catch the
+	CertificateError exception (which indicates that we have an
+	encrypted but unauthenticated connection: the other end did not
+	supply a certificate). In older versions of twisted's SSL code,
+	this was just indicated by having getPeerCertificate() return
+	None.
+
 	* foolscap/test/test_negotiate.py: re-enable all negotiation tests
 
 	* foolscap/pb.py (UnauthenticatedTub): change the API and docs to

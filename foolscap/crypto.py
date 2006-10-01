@@ -17,6 +17,17 @@ else:
     from sslverify import DistinguishedName, KeyPair
     from sslverify import Certificate, PrivateCertificate
     from sslverify import OpenSSLCertificateOptions as CertificateOptions
+from twisted.internet import error
+
+if hasattr(error, "CertificateError"):
+    # Twisted-2.4 contains this, and it is used by twisted.internet.ssl
+    CertificateError = error.CertificateError
+else:
+    class CertificateError(Exception):
+        """
+        We did not find a certificate where we expected to find one.
+        """
+
 
 from foolscap import base32
 
