@@ -36,11 +36,11 @@ PBOpenRegistry = {
     }
 
 class PBRootUnslicer(slicer.RootUnslicer):
-    # topRegistry defines what objects are allowed at the top-level
-    topRegistry = [PBTopRegistry]
-    # openRegistry defines what objects are allowed at the second level and
+    # topRegistries defines what objects are allowed at the top-level
+    topRegistries = [PBTopRegistry]
+    # openRegistries defines what objects are allowed at the second level and
     # below
-    openRegistry = [slicer.UnslicerRegistry, PBOpenRegistry]
+    openRegistries = [slicer.UnslicerRegistry, PBOpenRegistry]
     logViolations = False
 
     def checkToken(self, typebyte, size):
@@ -89,7 +89,7 @@ class PBRootUnslicer(slicer.RootUnslicer):
                 return child
             else:
                 return None # still need classname
-        for reg in self.openRegistry:
+        for reg in self.openRegistries:
             opener = reg.get(opentype)
             if opener is not None:
                 child = opener()

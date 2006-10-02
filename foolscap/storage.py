@@ -7,8 +7,8 @@ except ImportError:
 from foolscap import slicer, banana
 
 class UnsafeRootUnslicer(slicer.RootUnslicer):
-    topRegistry = [slicer.UnslicerRegistry, slicer.UnsafeUnslicerRegistry]
-    openRegistry = [slicer.UnslicerRegistry, slicer.UnsafeUnslicerRegistry]
+    topRegistries = [slicer.UnslicerRegistry, slicer.UnsafeUnslicerRegistry]
+    openRegistries = [slicer.UnslicerRegistry, slicer.UnsafeUnslicerRegistry]
 
 class StorageRootUnslicer(UnsafeRootUnslicer, slicer.ScopedUnslicer):
     # This version tracks references for the entire lifetime of the

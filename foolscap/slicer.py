@@ -1201,17 +1201,17 @@ class BooleanUnslicer(LeafUnslicer):
 
 
 class RootUnslicer(BaseUnslicer):
-    # topRegistry is used for top-level objects
-    topRegistry = [UnslicerRegistry]
-    # openRegistry is used for everything at lower levels
-    openRegistry = [UnslicerRegistry]
+    # topRegistries is used for top-level objects
+    topRegistries = [UnslicerRegistry]
+    # openRegistries is used for everything at lower levels
+    openRegistries = [UnslicerRegistry]
     constraint = None
     openCount = None
 
     def __init__(self):
         self.objects = {}
         keys = []
-        for r in self.topRegistry + self.openRegistry:
+        for r in self.topRegistries + self.openRegistries:
             for k in r.keys():
                 keys.append(len(k[0]))
         self.maxIndexLength = reduce(max, keys)
@@ -1248,7 +1248,7 @@ class RootUnslicer(BaseUnslicer):
         # of what kind of unslicer it is. This is only used for "internal"
         # objects: non-top-level nodes
         assert len(self.protocol.receiveStack) > 1
-        for reg in self.openRegistry:
+        for reg in self.openRegistries:
             opener = reg.get(opentype)
             if opener is not None:
                 child = opener()
@@ -1264,7 +1264,7 @@ class RootUnslicer(BaseUnslicer):
         if opentype == ("vocab",):
             # only legal at top-level
             return VocabUnslicer()
-        for reg in self.topRegistry:
+        for reg in self.topRegistries:
             opener = reg.get(opentype)
             if opener is not None:
                 child = opener()

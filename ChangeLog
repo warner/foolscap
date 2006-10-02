@@ -1,5 +1,12 @@
 2006-10-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py: s/topRegistry/topRegistries/, since it is
+	actually a list of Registries. Same for openRegistry and
+	openRegistries
+	* foolscap/slicer.py: same
+	* foolscap/storage.py: same
+	* foolscap/test/test_banana.py: same
+
 	* foolscap/slicer.py (BuiltinSetSlicer): use a different test to
 	look for python < 2.4, one which doesn't make pyflakes complain
 	about using __builtins__
