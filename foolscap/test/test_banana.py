@@ -1,15 +1,16 @@
 
 from twisted.trial import unittest
-from twisted.python import reflect, log, failure
+from twisted.python import reflect
 from twisted.python.components import registerAdapter
-from twisted.internet import reactor, defer, protocol
+from twisted.internet import defer
 
-from foolscap.tokens import ISlicer, Violation, BananaError, NegotiationError
+from foolscap.tokens import ISlicer, Violation, BananaError
 from foolscap.tokens import BananaFailure
-from foolscap import banana, slicer, schema, tokens, debug, storage
+from foolscap import slicer, schema, tokens, debug, storage
 from foolscap.eventual import fireEventually, flushEventualQueue
+from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
 
-import StringIO, sys
+import StringIO
 import sets
 
 #log.startLogging(sys.stderr)
@@ -63,7 +64,7 @@ class TokenBanana(debug.TokenStorageBanana):
 
     def testSlice(self, obj):
         assert len(self.slicerStack) == 1
-        assert isinstance(self.slicerStack[0][0], slicer.RootSlicer)
+        assert isinstance(self.slicerStack[0][0], RootSlicer)
         self.tokens = []
         d = self.send(obj)
         d.addCallback(self._testSlice_1)
@@ -71,7 +72,7 @@ class TokenBanana(debug.TokenStorageBanana):
     def _testSlice_1(self, res):
         assert len(self.slicerStack) == 1
         assert not self.rootSlicer.sendQueue
-        assert isinstance(self.slicerStack[0][0], slicer.RootSlicer)
+        assert isinstance(self.slicerStack[0][0], RootSlicer)
         return self.tokens
 
     def __del__(self):
@@ -254,7 +255,7 @@ def join(*args):
 
 
 
-class BrokenDictUnslicer(slicer.DictUnslicer):
+class BrokenDictUnslicer(DictUnslicer):
     dieInFinish = 0
 
     def receiveKey(self, key):
@@ -262,20 +263,20 @@ class BrokenDictUnslicer(slicer.DictUnslicer):
             raise Violation("aaagh")
         if key == "please_die_in_finish":
             self.dieInFinish = 1
-        slicer.DictUnslicer.receiveKey(self, key)
+        DictUnslicer.receiveKey(self, key)
 
     def receiveValue(self, value):
         if value == "die":
             raise Violation("aaaaaaaaargh")
-        slicer.DictUnslicer.receiveValue(self, value)
+        DictUnslicer.receiveValue(self, value)
 
     def receiveClose(self):
         if self.dieInFinish:
             raise Violation("dead in receiveClose()")
-        slicer.DictUnslicer.receiveClose(self)
+        DictUnslicer.receiveClose(self)
         return None, None
 
-class ReallyBrokenDictUnslicer(slicer.DictUnslicer):
+class ReallyBrokenDictUnslicer(DictUnslicer):
     def start(self, count):
         raise Violation("dead in start")
 
@@ -610,8 +611,7 @@ class EncodeTest(unittest.TestCase):
         return self.banana.testSlice(obj)
     def tearDown(self):
         self.failUnless(len(self.banana.slicerStack) == 1)
-        self.failUnless(isinstance(self.banana.slicerStack[0][0],
-                                   slicer.RootSlicer))
+        self.failUnless(isinstance(self.banana.slicerStack[0][0], RootSlicer))
 
     def testList(self):
         d = self.do([1,2])
@@ -783,7 +783,6 @@ class ErrorfulSlicer(slicer.BaseSlicer):
             raise Violation("next failed")
         if obj == "deferred-good":
             return fireEventually(None)
-            return d
         if obj == "deferred-bad":
             d = defer.Deferred()
             # the Banana should bail, so don't bother with the timer
@@ -1004,11 +1003,11 @@ class ErrorfulUnslicer(slicer.BaseUnslicer):
     def describe(self):
         return "errorful"
 
-class FailingUnslicer(slicer.TupleUnslicer):
+class FailingUnslicer(TupleUnslicer):
     def receiveChild(self, obj, ready_deferred=None):
         if self.protocol.mode != "success":
             raise Violation("foom")
-        return slicer.TupleUnslicer.receiveChild(self, obj, ready_deferred)
+        return TupleUnslicer.receiveChild(self, obj, ready_deferred)
     def describe(self):
         return "failing"
 
@@ -1604,7 +1603,12 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
         d = self.looptest(sets.Set([1,2]))
         d.addCallback(lambda res: self.looptest(sets.ImmutableSet([1,2])))
         # verify the python2.4 builtin 'set' type, which is mutable
-        if __builtins__.has_key("set"):
+        try:
+            set
+            have_set = True
+        except NameError:
+            have_set = False
+        if have_set:
             # we serialize builtin 'set' as a regular mutable sets.Set
             d.addCallback(lambda res:
                           self.looptest(set([1,2]), sets.Set([1,2])))
@@ -1806,8 +1810,7 @@ class Sliceable(unittest.TestCase):
         return self.banana.testSlice(obj)
     def tearDown(self):
         self.failUnless(len(self.banana.slicerStack) == 1)
-        self.failUnless(isinstance(self.banana.slicerStack[0][0],
-                                   slicer.RootSlicer))
+        self.failUnless(isinstance(self.banana.slicerStack[0][0], RootSlicer))
 
     def testDirect(self):
         # the object is its own Slicer

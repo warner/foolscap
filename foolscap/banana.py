@@ -5,7 +5,12 @@ from twisted.internet import protocol, defer
 from twisted.python.failure import Failure
 from twisted.python import log
 
-import slicer, tokens
+# make sure to import allslicers, so they all get registered. Even if the
+# need for RootSlicer/etc goes away, do the import here anyway.
+from foolscap.slicers.allslicers import RootSlicer, RootUnslicer
+from foolscap.slicers.allslicers import ReplaceVocabSlicer, AddVocabSlicer
+
+import tokens
 from tokens import SIZE_LIMIT, STRING, LIST, INT, NEG, \
      LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR, \
      BananaError, BananaFailure, Violation
@@ -108,7 +113,7 @@ class Banana(protocol.Protocol):
     # called by .send()
     # calls transport.write() and transport.loseConnection()
 
-    slicerClass = slicer.RootSlicer
+    slicerClass = RootSlicer
     paused = False
     streamable = True # this is only checked during __init__
     debugSend = False
@@ -347,7 +352,7 @@ class Banana(protocol.Protocol):
         for s in vocabStrings:
             assert isinstance(s, str)
         vocabDict = dict(zip(vocabStrings, range(len(vocabStrings))))
-        s = slicer.ReplaceVocabSlicer(vocabDict)
+        s = ReplaceVocabSlicer(vocabDict)
         # the ReplaceVocabSlicer does some magic to insure the VOCAB message
         # does not use vocab tokens itself. This would be legal (sort of a
         # differential compression), but confusing. It accomplishes this by
@@ -377,7 +382,7 @@ class Banana(protocol.Protocol):
         if value in self.pendingVocabAdditions:
             return
         self.pendingVocabAdditions.add(str)
-        s = slicer.AddVocabSlicer(value)
+        s = AddVocabSlicer(value)
         self.send(s)
 
     def outgoingVocabTableWasReplaced(self, newTable):
@@ -502,7 +507,7 @@ class Banana(protocol.Protocol):
     # called with dataReceived()
     # calls self.receivedObject()
 
-    unslicerClass = slicer.RootUnslicer
+    unslicerClass = RootUnslicer
     debugReceive = False
     logViolations = False
     logReceiveErrors = True

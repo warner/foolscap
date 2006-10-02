@@ -13,6 +13,7 @@ from foolscap import schema, banana, tokens, ipb
 from foolscap import call, slicer, referenceable, copyable, remoteinterface
 from foolscap.tokens import Violation, BananaError
 from foolscap.ipb import DeadReferenceError
+from foolscap.slicers.root import RootSlicer, RootUnslicer
 
 try:
     from foolscap import crypto
@@ -35,7 +36,7 @@ PBOpenRegistry = {
     # ('copyable', classname) is handled inline, through the CopyableRegistry
     }
 
-class PBRootUnslicer(slicer.RootUnslicer):
+class PBRootUnslicer(RootUnslicer):
     # topRegistries defines what objects are allowed at the top-level
     topRegistries = [PBTopRegistry]
     # openRegistries defines what objects are allowed at the second level and
@@ -100,7 +101,7 @@ class PBRootUnslicer(slicer.RootUnslicer):
         return child
 
     def doOpen(self, opentype):
-        child = slicer.RootUnslicer.doOpen(self, opentype)
+        child = RootUnslicer.doOpen(self, opentype)
         if child:
             child.broker = self.broker
         return child
@@ -113,7 +114,7 @@ class PBRootUnslicer(slicer.RootUnslicer):
     def receiveChild(self, token, ready_deferred=None):
         pass
 
-class PBRootSlicer(slicer.RootSlicer):
+class PBRootSlicer(RootSlicer):
     slicerTable = {types.MethodType: referenceable.CallableSlicer,
                    types.FunctionType: referenceable.CallableSlicer,
                    }
@@ -134,7 +135,7 @@ class PBRootSlicer(slicer.RootSlicer):
         if copier:
             s = tokens.ISlicer(copier)
             return s
-        return slicer.RootSlicer.slicerForObject(self, obj)
+        return RootSlicer.slicerForObject(self, obj)
 
 
 class RIBroker(remoteinterface.RemoteInterface):

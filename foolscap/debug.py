@@ -10,6 +10,7 @@ except ImportError:
 from foolscap import banana, slicer, tokens, storage
 Banana = banana.Banana
 StorageBanana = storage.StorageBanana
+from foolscap.slicers.root import RootSlicer
 
 class LoggingBananaMixin:
     # this variant prints a log of tokens sent and received, if you set the
@@ -109,7 +110,7 @@ class TokenBananaMixin:
     def getTokens(self):
         self.produce()
         assert(len(self.slicerStack) == 1)
-        assert(isinstance(self.slicerStack[0][0], slicer.RootSlicer))
+        assert(isinstance(self.slicerStack[0][0], RootSlicer))
         return self.tokens
 
     # TokenReceiveBanana

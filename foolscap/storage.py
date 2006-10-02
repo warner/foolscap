@@ -29,6 +29,8 @@ from foolscap import slicer, banana, tokens
 from foolscap.tokens import BananaError
 from twisted.internet.defer import Deferred
 from twisted.python import reflect
+from foolscap.slicers.dict import OrderedDictSlicer
+from foolscap.slicers.root import RootSlicer, RootUnslicer
 
 
 ################## Slicers for "unsafe" things
@@ -45,14 +47,14 @@ def getInstanceState(inst):
         state = inst.__dict__
     return state
 
-class InstanceSlicer(slicer.OrderedDictSlicer):
+class InstanceSlicer(OrderedDictSlicer):
     opentype = ('instance',)
     trackReferences = True
 
     def sliceBody(self, streamable, banana):
         yield reflect.qual(self.obj.__class__) # really a second index token
         self.obj = getInstanceState(self.obj)
-        for t in slicer.OrderedDictSlicer.sliceBody(self, streamable, banana):
+        for t in OrderedDictSlicer.sliceBody(self, streamable, banana):
             yield t
 
 class ModuleSlicer(slicer.BaseSlicer):
@@ -102,7 +104,7 @@ UnsafeSlicerTable.update({
 
 
 
-class UnsafeRootSlicer(slicer.RootSlicer):
+class UnsafeRootSlicer(RootSlicer):
     slicerTable = UnsafeSlicerTable
 
 class StorageRootSlicer(UnsafeRootSlicer):
@@ -134,6 +136,14 @@ def setInstanceState(inst, state):
     else:
         inst.__dict__ = state
     return inst
+
+class Dummy:
+    def __repr__(self):
+        return "<Dummy %s>" % self.__dict__
+    def __cmp__(self, other):
+        if not type(other) == type(self):
+            return -1
+        return cmp(self.__dict__, other.__dict__)
 
 UnsafeUnslicerRegistry = {}
 
@@ -360,7 +370,7 @@ class FunctionUnslicer(slicer.LeafUnslicer):
         return self.func, None
 
 
-class UnsafeRootUnslicer(slicer.RootUnslicer):
+class UnsafeRootUnslicer(RootUnslicer):
     topRegistries = [slicer.UnslicerRegistry,
                      slicer.BananaUnslicerRegistry,
                      UnsafeUnslicerRegistry]
