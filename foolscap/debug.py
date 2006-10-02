@@ -7,7 +7,7 @@ try:
 except ImportError:
     import StringIO
 
-from foolscap import banana, slicer, tokens, storage
+from foolscap import banana, tokens, storage
 Banana = banana.Banana
 StorageBanana = storage.StorageBanana
 from foolscap.slicers.root import RootSlicer

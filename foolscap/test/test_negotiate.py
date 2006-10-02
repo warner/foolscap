@@ -1,6 +1,4 @@
 
-import os
-
 from twisted.trial import unittest
 
 from twisted.internet import protocol, defer, reactor
@@ -676,6 +674,7 @@ class Existing(CrossfireMixin, unittest.TestCase):
 # creating a loopback connection type (as a peer of TCP) which has
 # deterministic timing behavior.
 
+#import os
 if False: #not os.environ.get("NEWPB_TEST_NEGOTIATION"):
     del Basic
     del Versus

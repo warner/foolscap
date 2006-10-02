@@ -7,11 +7,11 @@
 import weakref
 
 from zope.interface import interface
-from zope.interface import implements, providedBy
+from zope.interface import implements
 from twisted.python.components import registerAdapter
 Interface = interface.Interface
 from twisted.internet import defer, error
-from twisted.python import failure, log
+from twisted.python import failure
 
 from foolscap import ipb, schema, slicer, tokens, call
 BananaError = tokens.BananaError

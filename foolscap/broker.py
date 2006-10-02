@@ -6,8 +6,8 @@ import types
 from itertools import count
 
 from zope.interface import implements
-from twisted.python import failure, log
-from twisted.internet import defer, error, reactor
+from twisted.python import log
+from twisted.internet import defer, error
 
 from foolscap import schema, banana, tokens, ipb
 from foolscap import call, slicer, referenceable, copyable, remoteinterface
@@ -207,7 +207,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.activeLocalCalls = {} # the other side wants an answer from us
 
     def setTub(self, tub):
-        from foolscap import pb
         assert ipb.ITub.providedBy(tub)
         self.tub = tub
 

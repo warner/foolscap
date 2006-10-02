@@ -11,3 +11,14 @@ from foolscap.referenceable import Referenceable, SturdyRef
 from foolscap.copyable import Copyable, RemoteCopy, registerRemoteCopy
 from foolscap.ipb import DeadReferenceError
 from foolscap.tokens import BananaError
+
+# hush pyflakes
+_unused = [
+    Tub, UnauthenticatedTub, getRemoteURL_TCP,
+    RemoteInterface,
+    Referenceable, SturdyRef,
+    Copyable, RemoteCopy, registerRemoteCopy,
+    DeadReferenceError,
+    BananaError,
+    ]
+

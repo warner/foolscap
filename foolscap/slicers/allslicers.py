@@ -18,4 +18,19 @@ from foolscap.slicers.vocab import ReplaceVocabularyTable, AddToVocabularyTable
 from foolscap.slicers.vocab import AddVocabSlicer, AddVocabUnslicer
 from foolscap.slicers.root import RootSlicer, RootUnslicer
 
-
+# appease pyflakes
+unused = [
+    NoneSlicer, NoneUnslicer,
+    BooleanSlicer, BooleanUnslicer,
+    UnicodeSlicer, UnicodeUnslicer,
+    ListSlicer, ListUnslicer,
+    TupleSlicer, TupleUnslicer,
+    SetSlicer, SetUnslicer,
+    ImmutableSetSlicer, ImmutableSetUnslicer,
+    #from foolscap.slicers.set import BuiltinSetSlicer
+    DictSlicer, DictUnslicer, OrderedDictSlicer,
+    ReplaceVocabSlicer, ReplaceVocabUnslicer,
+    ReplaceVocabularyTable, AddToVocabularyTable,
+    AddVocabSlicer, AddVocabUnslicer,
+    RootSlicer, RootUnslicer,
+    ]

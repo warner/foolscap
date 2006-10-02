@@ -2,7 +2,7 @@
 
 from twisted.python import log
 from twisted.python.failure import Failure
-from twisted.internet import protocol, reactor, defer
+from twisted.internet import protocol, reactor
 
 from foolscap import broker, referenceable
 from foolscap.eventual import eventually

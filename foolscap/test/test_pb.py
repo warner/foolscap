@@ -1,23 +1,24 @@
 
 import gc
-import sys, re
+import re
 
-from twisted.python import log
-#log.startLogging(sys.stderr)
+if False:
+    import sys
+    from twisted.python import log
+    log.startLogging(sys.stderr)
 
 from zope.interface import implements, implementsOnly, implementedBy, Interface
-from twisted.python import failure, reflect
+from twisted.python import failure
 from twisted.internet import reactor, defer
 from twisted.trial import unittest
 from twisted.internet.main import CONNECTION_LOST
 
-from twisted.application.internet import TCPServer
 from foolscap import schema, tokens, remoteinterface, referenceable
 from foolscap import Referenceable, RemoteInterface, Tub
 from foolscap import getRemoteURL_TCP
 from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
 from foolscap.tokens import BananaFailure
-from foolscap import copyable, broker, call
+from foolscap import broker, call
 from foolscap.remoteinterface import getRemoteInterface
 from foolscap.remoteinterface import RemoteInterfaceRegistry
 
@@ -30,7 +31,7 @@ if crypto and not crypto.available:
 
 from foolscap.test.common import HelperTarget, RIHelper, TargetMixin
 from foolscap.test.common import getRemoteInterfaceName
-from foolscap.eventual import eventually, fireEventually
+from foolscap.eventual import fireEventually
 
 
 class TestRequest(call.PendingRequest):

@@ -2,14 +2,14 @@
 
 from zope.interface import implements
 from twisted.python import log
-from twisted.internet import defer, reactor
+from twisted.internet import defer
 from foolscap import schema, broker
 from foolscap import Referenceable, RemoteInterface
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.remoteinterface import getRemoteInterface
 
 from twisted.python import failure
-from twisted.internet.main import CONNECTION_DONE, CONNECTION_LOST
+from twisted.internet.main import CONNECTION_DONE
 
 def getRemoteInterfaceName(obj):
     i = getRemoteInterface(obj)
@@ -95,7 +95,6 @@ class HelperTarget(Referenceable):
 
     def remote_defer(self, obj):
         return fireEventually(obj)
-        return d
 
     def remote_hang(self):
         self.d = defer.Deferred()

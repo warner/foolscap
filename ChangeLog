@@ -1,5 +1,9 @@
 2006-10-02  Brian Warner  <warner@lothar.com>
 
+	* everything: fix most of the pyflakes warnings. Some of the
+	remaining ones are actual bugs where I need to finish implementing
+	something.
+
 	* foolscap/slicers/*.py: move most Slicers/Unslicers out to separate
 	files, since slicer.py was way too big
 	* foolscap/slicers/allslicers.py: new module to pull them all in.

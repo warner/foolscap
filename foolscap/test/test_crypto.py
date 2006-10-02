@@ -4,7 +4,6 @@ from twisted.trial import unittest
 
 from zope.interface import implements
 from twisted.internet import defer
-from twisted.application.internet import TCPServer
 from foolscap import pb, schema
 from foolscap import RemoteInterface, Referenceable, Tub
 try:
