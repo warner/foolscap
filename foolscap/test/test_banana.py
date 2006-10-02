@@ -1725,7 +1725,7 @@ class VocabTest1(unittest.TestCase):
         vdict = {1: 'list', 2: 'tuple', 3: 'dict'}
         keys = vdict.keys()
         keys.sort()
-        setVdict = [tOPEN(0),'vocab']
+        setVdict = [tOPEN(0),'set-vocab']
         for k in keys:
             setVdict.append(k)
             setVdict.append(vdict[k])
@@ -1736,18 +1736,18 @@ class VocabTest1(unittest.TestCase):
 
     def test_outgoing(self):
         b = TokenBanana()
-        vdict = {1: 'list', 2: 'tuple', 3: 'dict'}
+        strings = ["list", "tuple", "dict"]
+        vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
         keys = vdict.keys()
         keys.sort()
-        setVdict = [tOPEN(0),'vocab']
+        setVdict = [tOPEN(0),'set-vocab']
         for k in keys:
             setVdict.append(k)
             setVdict.append(vdict[k])
         setVdict.append(tCLOSE(0))
-        b.setOutgoingVocabulary(vdict)
+        b.setOutgoingVocabulary(strings)
         vocabTokens = b.getTokens()
         self.failUnlessEqual(vocabTokens, setVdict)
-        # banana should now know this vocabulary
 
 class VocabTest2(TestBananaMixin, unittest.TestCase):
     def vbOPEN(self, count, opentype):
@@ -1755,10 +1755,14 @@ class VocabTest2(TestBananaMixin, unittest.TestCase):
         return chr(count) + "\x88" + chr(num) + "\x87"
     
     def test_loop(self):
-        vdict = {1: 'list', 2: 'tuple', 3: 'dict'}
+        strings = ["list", "tuple", "dict"]
+        vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
         self.invdict = dict(zip(vdict.values(), vdict.keys()))
 
-        self.banana.setOutgoingVocabulary(vdict)
+        self.banana.setOutgoingVocabulary(strings)
+        # this next check only happens to work because there is nothing to
+        # keep serialization from completing synchronously. If Banana
+        # acquires some eventual-sends, this test might need to be rewritten.
         self.failUnlessEqual(self.banana.outgoingVocabulary, self.invdict)
         self.shouldDecode(self.banana.transport.getvalue())
         self.failUnlessEqual(self.banana.incomingVocabulary, vdict)

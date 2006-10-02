@@ -1,5 +1,35 @@
 2006-10-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/slicer.py (ReplaceVocabSlicer): clean up VOCAB
+	handling: add the ('add-vocab') sequence to incrementally add to
+	the receiving end's incomingVocabulary table, fix the race
+	condition that would have caused problems for strings that were
+	serialized after the setOutgoingVocabulary() call was made but
+	before the ('set-vocab') sequence was actually emitted. Lay the
+	groundwork for adaptive tokenization and negotiated vocab table
+	presets. Other classes involved are AddVocabSlicer,
+	AddVocabUnslicer, and ReplaceVocabUnslicer.
+	(BananaUnslicerRegistry): handle the add-vocab and set-vocab
+	sequences with a registry rather than special-casing them.
+	* foolscap/storage.py (UnsafeRootUnslicer): same, add the
+	BananaUnslicerRegistry
+
+	* foolscap/banana.py (setOutgoingVocabulary): make it safe
+	to call this function at any time, as it merely schedules
+	an update. Change the signature to accept a list of strings
+	that should be tokenized rather than expecting the caller to
+	choose the index values as well.
+	(addToOutgoingVocabulary): new function to tokenize a single
+	string, also safe to call at any time
+	(outgoingVocabTableWasReplaced):
+	(allocateEntryInOutgoingVocabTable):
+	(outgoingVocabTableWasAmended): new functions for use by the
+	Slicers that are sending the 'set-vocab' and 'add-vocab' sequences
+	(Banana.maybeVocabizeString): reserve a place for adaptize
+	tokenizing
+	* foolscap/test/test_banana.py: match the changes
+
+
 	* foolscap/broker.py: s/topRegistry/topRegistries/, since it is
 	actually a list of Registries. Same for openRegistry and
 	openRegistries

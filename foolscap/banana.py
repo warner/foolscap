@@ -1,9 +1,7 @@
 
-import types, struct
-import rfc822 # for version negotiation headers
-from cStringIO import StringIO
+import types, struct, sets
 
-from twisted.internet import protocol, error, defer
+from twisted.internet import protocol, defer
 from twisted.python.failure import Failure
 from twisted.python import log
 
@@ -128,6 +126,8 @@ class Banana(protocol.Protocol):
 
         self.openCount = 0
         self.outgoingVocabulary = {}
+        self.nextAvailableOutgoingVocabularyIndex = 0
+        self.pendingVocabAdditions = sets.Set()
 
     def send(self, obj):
         if self.debugSend: print "Banana.send(%s)" % obj
@@ -305,11 +305,10 @@ class Banana(protocol.Protocol):
         self.slicerStack.append(slicertuple)
 
     def popSlicer(self):
-        slicertuple = self.slicerStack.pop()
-        openID = slicertuple[2]
+        slicer, next, openID = self.slicerStack.pop()
         if openID is not None:
             self.sendClose(openID)
-        if self.debugSend: print "pop", slicertuple[0]
+        if self.debugSend: print "pop", slicer
 
     def describeSend(self):
         where = []
@@ -322,26 +321,93 @@ class Banana(protocol.Protocol):
                 piece = "???"
             where.append(piece)
         return ".".join(where)
-        
 
-    def setOutgoingVocabulary(self, vocabDict):
+    def setOutgoingVocabulary(self, vocabStrings):
+        """Schedule a replacement of the outbound VOCAB table.
+
+        Higher-level code may call this at any time with a list of strings.
+        Immediately after the replacement has occured, the outbound VOCAB
+        table will contain all of the strings in vocabStrings and nothing
+        else. This table tells the token-sending code which strings to
+        abbreviate with short integers in a VOCAB token.
+
+        This function can be called at any time (even while the protocol is
+        in the middle of serializing and transmitting some other object)
+        because it merely schedules a replacement to occur at some point in
+        the future. A special marker (the ReplaceVocabSlicer) is placed in
+        the outbound queue, and the table replacement will only happend after
+        all the items ahead of that marker have been serialized. At the same
+        time the table is replaced, a (set-vocab..) sequence will be
+        serialized towards the far end. This insures that we set our outbound
+        table at the same 'time' as the far end starts using it.
+        """
         # build a VOCAB message, send it, then set our outgoingVocabulary
         # dictionary to start using the new table
-        for key,value in vocabDict.items():
-            assert(isinstance(key, types.IntType))
-            assert(isinstance(value, types.StringType))
-        s = slicer.VocabSlicer(vocabDict)
-        # insure the VOCAB message does not use vocab tokens itself. This
-        # would be legal (sort of a differential compression), but
-        # confusing, and it would enhance the bugginess of the race
-        # condition.
-        self.outgoingVocabulary = {}
+        assert isinstance(vocabStrings, (list, tuple))
+        for s in vocabStrings:
+            assert isinstance(s, str)
+        vocabDict = dict(zip(vocabStrings, range(len(vocabStrings))))
+        s = slicer.ReplaceVocabSlicer(vocabDict)
+        # the ReplaceVocabSlicer does some magic to insure the VOCAB message
+        # does not use vocab tokens itself. This would be legal (sort of a
+        # differential compression), but confusing. It accomplishes this by
+        # clearing our self.outgoingVocabulary dict when it begins to be
+        # serialized.
         self.send(s)
-        # TODO: race condition between this being pushed on the stack and it
-        # taking effect for our own transmission. Don't set
-        # .outgoingVocabulary until it finishes being sent.
-        self.outgoingVocabulary = dict(zip(vocabDict.values(),
-                                           vocabDict.keys()))
+
+        # likewise, when it finishes, the ReplaceVocabSlicer replaces our
+        # self.outgoingVocabulary dict when it has finished sending the
+        # strings. It is important that this occur in the serialization code,
+        # or somewhen very close to it, because otherwise there could be a
+        # race condition that could result in some strings being vocabized
+        # with the wrong keys.
+
+    def addToOutgoingVocabulary(self, value):
+        """Schedule 'value' for addition to the outbound VOCAB table.
+
+        This may be called at any time. If the string is already scheduled
+        for addition, or if it is already in the VOCAB table, it will be
+        ignored. (TODO: does this introduce an annoying-but-not-fatal race
+        condition?) The string will not actually be added to the table until
+        the outbound serialization queue has been serviced.
+        """
+        assert isinstance(value, str)
+        if value in self.outgoingVocabulary:
+            return
+        if value in self.pendingVocabAdditions:
+            return
+        self.pendingVocabAdditions.add(str)
+        s = slicer.AddVocabSlicer(value)
+        self.send(s)
+
+    def outgoingVocabTableWasReplaced(self, newTable):
+        # this is called by the ReplaceVocabSlicer to manipulate our table.
+        # It must certainly *not* be called by higher-level user code.
+        log.msg("outgoingVocabTableWasReplaced(%s)" % newTable)
+        self.outgoingVocabulary = newTable
+        if newTable:
+            maxIndex = max(newTable.values()) + 1
+            self.nextAvailableOutgoingVocabularyIndex = maxIndex
+        else:
+            self.nextAvailableOutgoingVocabularyIndex = 0
+
+    def allocateEntryInOutgoingVocabTable(self, string):
+        assert string not in self.outgoingVocabulary
+        # TODO: a softer failure more for this assert is to re-send the
+        # existing key. To make sure that really happens, though, we have to
+        # remove it from the vocab table, otherwise we'll tokenize the
+        # string. If we can insure that, then this failure mode would waste
+        # time and network but would otherwise be harmless.
+        #
+        # return self.outgoingVocabulary[string]
+
+        self.pendingVocabAdditions.remove(self.value)
+        index = self.nextAvailableOutgoingVocabularyIndex
+        self.nextAvailableOutgoingVocabularyIndex = index + 1
+        return index
+
+    def outgoingVocabTableWasAmended(self, index, string):
+        self.outgoingVocabulary[string] = index
 
     # these methods define how we emit low-level tokens
 
@@ -380,15 +446,20 @@ class Banana(protocol.Protocol):
                 int2b128(symbolID, write)
                 write(VOCAB)
             else:
-                # TODO: keep track of the last 30 strings we've send in full.
-                # If this string appears more than 3 times on that list,
-                # create a vocab item for it. Make sure we don't start using
-                # the vocab number until the ADDVOCAB token has been queued.
+                self.maybeVocabizeString(obj)
                 int2b128(len(obj), write)
                 write(STRING)
                 write(obj)
         else:
             raise BananaError, "could not send object: %s" % repr(obj)
+
+    def maybeVocabizeString(self, string):
+        # TODO: keep track of the last 30 strings we've send in full. If this
+        # string appears more than 3 times on that list, create a vocab item
+        # for it. Make sure we don't start using the vocab number until the
+        # ADDVOCAB token has been queued.
+        if False:
+            self.addToOutgoingVocabulary(string)
 
     def sendClose(self, openID):
         int2b128(openID, self.transport.write)
@@ -480,10 +551,14 @@ class Banana(protocol.Protocol):
         raise ValueError, "dangling reference '%d'" % count
 
 
-    def setIncomingVocabulary(self, vocabDict):
+    def replaceIncomingVocabulary(self, vocabDict):
         # maps small integer to string, should be called in response to a
-        # OPEN(vocab) sequence.
+        # OPEN(set-vocab) sequence.
         self.incomingVocabulary = vocabDict
+
+    def addIncomingVocabulary(self, key, value):
+        # called in response to an OPEN(add-vocab) sequence
+        self.incomingVocabulary[key] = value
 
     def dataReceived(self, chunk):
         if self.connectionAbandoned:

@@ -47,7 +47,7 @@ class BaseSlicer:
     def __init__(self, obj):
         # this simplifies Slicers which are adapters
         self.obj = obj
-        
+
     def registerReference(self, refid, obj):
         # optimize: most Slicers will delegate this up to the Root
         return self.parent.registerReference(refid, obj)
@@ -222,15 +222,80 @@ class ReferenceSlicer(BaseSlicer):
     trackReferences = False
 
     def __init__(self, refid):
-        assert type(refid) == int
+        assert type(refid) is int
         self.refid = refid
     def sliceBody(self, streamable, banana):
         yield self.refid
 
-class VocabSlicer(OrderedDictSlicer):
-    # this is created explicitly, but otherwise works just like a dictionary
-    opentype = ('vocab',)
+class ReplaceVocabSlicer(BaseSlicer):
+    # this works somewhat like a dictionary
+    opentype = ('set-vocab',)
     trackReferences = False
+
+    def slice(self, streamable, banana):
+        # we need to implement slice() (instead of merely sliceBody) so we
+        # can get control at the beginning and end of serialization. It also
+        # gives us access to the Banana protocol object, so we can manipulate
+        # their outgoingVocabulary table.
+        self.streamable = streamable
+        self.start(banana)
+        for o in self.opentype:
+            yield o
+        # the vocabDict maps strings to index numbers. The far end needs the
+        # opposite mapping, from index numbers to strings. We perform the
+        # flip here at the sending end.
+        stringToIndex = self.obj
+        indexToString = dict([(stringToIndex[s],s) for s in stringToIndex])
+        assert len(stringToIndex) == len(indexToString) # catch duplicates
+        indices = indexToString.keys()
+        indices.sort()
+        for index in indices:
+            string = indexToString[index]
+            yield index
+            yield string
+        self.finish(banana)
+
+    def start(self, banana):
+        # this marks the transition point between the old vocabulary dict and
+        # the new one, so now is the time we should empty the dict.
+        banana.outgoingVocabTableWasReplaced({})
+
+    def finish(self, banana):
+        # now we replace the vocab dict
+        banana.outgoingVocabTableWasReplaced(self.obj)
+
+
+class AddVocabSlicer(BaseSlicer):
+    opentype = ('add-vocab',)
+    trackReferences = False
+
+    def __init__(self, value):
+        assert isinstance(value, str)
+        self.value = value
+
+    def slice(self, streamable, banana):
+        # we need to implement slice() (instead of merely sliceBody) so we
+        # can get control at the beginning and end of serialization. It also
+        # gives us access to the Banana protocol object, so we can manipulate
+        # their outgoingVocabulary table.
+        self.streamable = streamable
+        self.start(banana)
+        for o in self.opentype:
+            yield o
+        yield self.index
+        yield self.value
+        self.finish(banana)
+
+    def start(self, banana):
+        # this marks the transition point between the old vocabulary dict and
+        # the new one, so now is the time we should decide upon the key. It
+        # is important that we *do not* add it to the dict yet, otherwise
+        # we'll send (add-vocab NN [VOCAB#NN]), which is kind of pointless.
+        index = banana.allocateEntryInOutgoingVocabTable(self.value)
+        self.index = index
+
+    def finish(self, banana):
+        banana.outgoingVocabTableWasAmended(self.index, self.value)
 
 
 # Extended types, not generally safe. The UnsafeRootSlicer checks for these
@@ -390,6 +455,7 @@ class RootSlicer:
 
 UnslicerRegistry = {}
 UnsafeUnslicerRegistry = {}
+BananaUnslicerRegistry = {}
 
 def registerUnslicer(opentype, factory, registry=None):
     if registry is None:
@@ -853,25 +919,40 @@ class DictUnslicer(BaseUnslicer):
         else:
             return "{}[%s]" % self.key
 
-class NewVocabulary:
-    def __init__(self, newvocab):
-        self.nv = newvocab
+class ReplaceVocabularyTable:
+    pass
 
-class VocabUnslicer(LeafUnslicer):
-    """Much like DictUnslicer, but keys must be numbers, and values must
-    be strings"""
+class ReplaceVocabUnslicer(LeafUnslicer):
+    """Much like DictUnslicer, but keys must be numbers, and values must be
+    strings. This is used to set the entire vocab table at once. To add
+    individual tokens, use AddVocabUnslicer by sending an (add-vocab num
+    string) sequence."""
+    opentype = ('set-vocab',)
+    unslicerRegistry = BananaUnslicerRegistry
+    maxKeys = None
+    valueConstraint = schema.StringConstraint(100)
+
+    def setConstraint(self, constraint):
+        if isinstance(constraint, schema.Any):
+            return
+        assert isinstance(constraint, schema.StringConstraint)
+        self.valueConstraint = constraint
 
     def start(self, count):
         self.d = {}
         self.key = None
 
     def checkToken(self, typebyte, size):
+        if self.maxKeys is not None and len(self.d) >= self.maxKeys:
+            raise Violation("the table is full")
         if self.key is None:
             if typebyte != tokens.INT:
                 raise BananaError("VocabUnslicer only accepts INT keys")
         else:
             if typebyte != tokens.STRING:
                 raise BananaError("VocabUnslicer only accepts STRING values")
+            if self.valueConstraint:
+                self.valueConstraint.checkToken(typebyte, size)
 
     def receiveChild(self, token, ready_deferred=None):
         assert not isinstance(token, Deferred)
@@ -885,7 +966,11 @@ class VocabUnslicer(LeafUnslicer):
             self.key = None
 
     def receiveClose(self):
-        return NewVocabulary(self.d), None
+        if self.key is not None:
+            raise BananaError("sequence ended early: got key but not value")
+        # now is the time we replace our protocol's vocab table
+        self.protocol.replaceIncomingVocabulary(self.d)
+        return ReplaceVocabularyTable, None
 
     def describe(self):
         if self.key is not None:
@@ -893,6 +978,53 @@ class VocabUnslicer(LeafUnslicer):
         else:
             return "<vocabdict>"
 
+class AddToVocabularyTable:
+    pass
+
+class AddVocabUnslicer(BaseUnslicer):
+    # (add-vocab num string): self.vocab[num] = string
+    opentype = ('add-vocab',)
+    unslicerRegistry = BananaUnslicerRegistry
+    index = None
+    value = None
+    valueConstraint = schema.StringConstraint(100)
+
+    def setConstraint(self, constraint):
+        if isinstance(constraint, schema.Any):
+            return
+        assert isinstance(constraint, schema.StringConstraint)
+        self.valueConstraint = constraint
+
+    def checkToken(self, typebyte, size):
+        if self.index is None:
+            if typebyte != tokens.INT:
+                raise BananaError("Vocab key must be an INT")
+        elif self.value is None:
+            if typebyte != tokens.STRING:
+                raise BananaError("Vocab value must be a STRING")
+            if self.valueConstraint:
+                self.valueConstraint.checkToken(typebyte, size)
+        else:
+            raise Violation("add-vocab only accepts two values")
+
+    def receiveChild(self, obj, ready_deferred=None):
+        assert not isinstance(obj, Deferred)
+        assert ready_deferred is None
+        if self.index is None:
+            self.index = obj
+        else:
+            self.value = obj
+
+    def receiveClose(self):
+        if self.index is None or self.value is None:
+            raise BananaError("sequence ended too early")
+        self.protocol.addIncomingVocabulary(self.index, self.value)
+        return AddToVocabularyTable, None
+
+    def describe(self):
+        if self.index is not None:
+            return "<add-vocab>[%d]" % self.index
+        return "<add-vocab>"
 
 
 class Dummy:
@@ -1199,10 +1331,9 @@ class BooleanUnslicer(LeafUnslicer):
     def describe(self):
         return "<bool>"
 
-
 class RootUnslicer(BaseUnslicer):
     # topRegistries is used for top-level objects
-    topRegistries = [UnslicerRegistry]
+    topRegistries = [UnslicerRegistry, BananaUnslicerRegistry]
     # openRegistries is used for everything at lower levels
     openRegistries = [UnslicerRegistry]
     constraint = None
@@ -1261,9 +1392,6 @@ class RootUnslicer(BaseUnslicer):
         assert len(self.protocol.receiveStack) == 1
         if self.constraint:
             self.constraint.checkOpentype(opentype)
-        if opentype == ("vocab",):
-            # only legal at top-level
-            return VocabUnslicer()
         for reg in self.topRegistries:
             opener = reg.get(opentype)
             if opener is not None:
@@ -1282,8 +1410,8 @@ class RootUnslicer(BaseUnslicer):
         if self.protocol.debugReceive:
             print "RootUnslicer.receiveChild(%s)" % (obj,)
         self.objects = {}
-        if isinstance(obj, NewVocabulary):
-            self.protocol.setIncomingVocabulary(obj.nv)
+        if obj in (ReplaceVocabularyTable, AddToVocabularyTable):
+            # the unslicer has already changed the vocab table
             return
         if self.protocol.exploded:
             print "protocol exploded, can't deliver object"
