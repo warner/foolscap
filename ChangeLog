@@ -1,5 +1,8 @@
 2006-10-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/slicer.py: rearrange the internals, putting the
+	corresponding Slicer and Unslicer for each type next to each other
+
 	* foolscap/slicer.py: move all "unsafe" Slicers and Unslicers out to
 	storage.py where it belongs
 	* foolscap/storage.py: same

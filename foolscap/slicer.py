@@ -13,7 +13,7 @@ from tokens import Violation, BananaError
 import schema
 
 
-########################## Slicers
+########################## base classes
 
 
 class SlicerClass(type):
@@ -125,271 +125,6 @@ class ScopedSlicer(BaseSlicer):
             return ReferenceSlicer(obj_refid[1])
         # otherwise go upstream so we can serialize the object completely
         return self.parent.slicerForObject(obj)
-
-
-class UnicodeSlicer(BaseSlicer):
-    opentype = ("unicode",)
-    slices = unicode
-    def sliceBody(self, streamable, banana):
-        yield self.obj.encode("UTF-8")
-
-class ListSlicer(BaseSlicer):
-    opentype = ("list",)
-    trackReferences = True
-    slices = list
-
-    def sliceBody(self, streamable, banana):
-        for i in self.obj:
-            yield i
-
-class TupleSlicer(ListSlicer):
-    opentype = ("tuple",)
-    slices = tuple
-
-class SetSlicer(ListSlicer):
-    opentype = ("set",)
-    trackReferences = True
-    slices = sets.Set
-
-    def sliceBody(self, streamable, banana):
-        for i in self.obj:
-            yield i
-
-try:
-    set
-    # python2.4 has a builtin 'set' type, which is mutable
-    class BuiltinSetSlicer(SetSlicer):
-        slices = set
-except NameError:
-    # oh well, I guess we don't have 'set'
-    pass
-
-class ImmutableSetSlicer(SetSlicer):
-    opentype = ("immutable-set",)
-    trackReferences = False
-    slices = sets.ImmutableSet
-
-class DictSlicer(BaseSlicer):
-    opentype = ('dict',)
-    trackReferences = True
-    slices = None
-    def sliceBody(self, streamable, banana):
-        for key,value in self.obj.items():
-            yield key
-            yield value
-
-
-class OrderedDictSlicer(DictSlicer):
-    slices = dict
-    def sliceBody(self, streamable, banana):
-        keys = self.obj.keys()
-        keys.sort()
-        for key in keys:
-            value = self.obj[key]
-            yield key
-            yield value
-
-class NoneSlicer(BaseSlicer):
-    opentype = ('none',)
-    trackReferences = False
-    slices = type(None)
-    def sliceBody(self, streamable, banana):
-        # hmm, we need an empty generator. I think a sequence is the only way
-        # to accomplish this, other than 'if 0: yield' or something silly
-        return []
-
-class BooleanSlicer(BaseSlicer):
-    opentype = ('boolean',)
-    trackReferences = False
-    def sliceBody(self, streamable, banana):
-        if self.obj:
-            yield 1
-        else:
-            yield 0
-registerAdapter(BooleanSlicer, bool, tokens.ISlicer)
-
-
-class ReferenceSlicer(BaseSlicer):
-    # this is created explicitly, not as an adapter
-    opentype = ('reference',)
-    trackReferences = False
-
-    def __init__(self, refid):
-        assert type(refid) is int
-        self.refid = refid
-    def sliceBody(self, streamable, banana):
-        yield self.refid
-
-class ReplaceVocabSlicer(BaseSlicer):
-    # this works somewhat like a dictionary
-    opentype = ('set-vocab',)
-    trackReferences = False
-
-    def slice(self, streamable, banana):
-        # we need to implement slice() (instead of merely sliceBody) so we
-        # can get control at the beginning and end of serialization. It also
-        # gives us access to the Banana protocol object, so we can manipulate
-        # their outgoingVocabulary table.
-        self.streamable = streamable
-        self.start(banana)
-        for o in self.opentype:
-            yield o
-        # the vocabDict maps strings to index numbers. The far end needs the
-        # opposite mapping, from index numbers to strings. We perform the
-        # flip here at the sending end.
-        stringToIndex = self.obj
-        indexToString = dict([(stringToIndex[s],s) for s in stringToIndex])
-        assert len(stringToIndex) == len(indexToString) # catch duplicates
-        indices = indexToString.keys()
-        indices.sort()
-        for index in indices:
-            string = indexToString[index]
-            yield index
-            yield string
-        self.finish(banana)
-
-    def start(self, banana):
-        # this marks the transition point between the old vocabulary dict and
-        # the new one, so now is the time we should empty the dict.
-        banana.outgoingVocabTableWasReplaced({})
-
-    def finish(self, banana):
-        # now we replace the vocab dict
-        banana.outgoingVocabTableWasReplaced(self.obj)
-
-
-class AddVocabSlicer(BaseSlicer):
-    opentype = ('add-vocab',)
-    trackReferences = False
-
-    def __init__(self, value):
-        assert isinstance(value, str)
-        self.value = value
-
-    def slice(self, streamable, banana):
-        # we need to implement slice() (instead of merely sliceBody) so we
-        # can get control at the beginning and end of serialization. It also
-        # gives us access to the Banana protocol object, so we can manipulate
-        # their outgoingVocabulary table.
-        self.streamable = streamable
-        self.start(banana)
-        for o in self.opentype:
-            yield o
-        yield self.index
-        yield self.value
-        self.finish(banana)
-
-    def start(self, banana):
-        # this marks the transition point between the old vocabulary dict and
-        # the new one, so now is the time we should decide upon the key. It
-        # is important that we *do not* add it to the dict yet, otherwise
-        # we'll send (add-vocab NN [VOCAB#NN]), which is kind of pointless.
-        index = banana.allocateEntryInOutgoingVocabTable(self.value)
-        self.index = index
-
-    def finish(self, banana):
-        banana.outgoingVocabTableWasAmended(self.index, self.value)
-
-
-
-class RootSlicer:
-    implements(tokens.ISlicer, tokens.IRootSlicer)
-
-    streamableInGeneral = True
-    producingDeferred = None
-    objectSentDeferred = None
-    slicerTable = {}
-    debug = False
-
-    def __init__(self, protocol):
-        self.protocol = protocol
-        self.sendQueue = []
-
-    def allowStreaming(self, streamable):
-        self.streamableInGeneral = streamable
-
-    def registerReference(self, refid, obj):
-        pass
-
-    def slicerForObject(self, obj):
-        # could use a table here if you think it'd be faster than an
-        # adapter lookup
-        if self.debug: print "slicerForObject(%s)" % type(obj)
-        # do the adapter lookup first, so that registered adapters override
-        # UnsafeSlicerTable's InstanceSlicer
-        slicer = tokens.ISlicer(obj, None)
-        if slicer:
-            if self.debug: print "got ISlicer", slicer
-            return slicer
-        slicerFactory = self.slicerTable.get(type(obj))
-        if slicerFactory:
-            if self.debug: print " got slicerFactory", slicerFactory
-            return slicerFactory(obj)
-        if issubclass(type(obj), types.InstanceType):
-            name = str(obj.__class__)
-        else:
-            name = str(type(obj))
-        if self.debug: print "cannot serialize %s (%s)" % (obj, name)
-        raise Violation("cannot serialize %s (%s)" % (obj, name))
-
-    def slice(self):
-        return self
-    def __iter__(self):
-        return self # we are our own iterator
-    def next(self):
-        if self.objectSentDeferred:
-            self.objectSentDeferred.callback(None)
-            self.objectSentDeferred = None
-        if self.sendQueue:
-            (obj, self.objectSentDeferred) = self.sendQueue.pop()
-            self.streamable = self.streamableInGeneral
-            return obj
-        if self.protocol.debugSend:
-            print "LAST BAG"
-        self.producingDeferred = Deferred()
-        self.streamable = True
-        return self.producingDeferred
-
-    def childAborted(self, f):
-        assert self.objectSentDeferred
-        self.objectSentDeferred.errback(f)
-        self.objectSentDeferred = None
-        return None
-
-    def send(self, obj):
-        # obj can also be a Slicer, say, a CallSlicer. We return a Deferred
-        # which fires when the object has been fully serialized.
-        idle = (len(self.protocol.slicerStack) == 1) and not self.sendQueue
-        objectSentDeferred = Deferred()
-        self.sendQueue.append((obj, objectSentDeferred))
-        if idle:
-            # wake up
-            if self.protocol.debugSend:
-                print " waking up to send"
-            if self.producingDeferred:
-                d = self.producingDeferred
-                self.producingDeferred = None
-                # TODO: consider reactor.callLater(0, d.callback, None)
-                # I'm not sure it's actually necessary, though
-                d.callback(None)
-        return objectSentDeferred
-
-    def describe(self):
-        return "<RootSlicer>"
-
-    def connectionLost(self, why):
-        # abandon everything we wanted to send
-        if self.objectSentDeferred:
-            self.objectSentDeferred.errback(why)
-            self.objectSentDeferred = None
-        for obj, d in self.sendQueue:
-            d.errback(why)
-        self.sendQueue = []
-
-
-
-########################## Unslicers
-
 
 UnslicerRegistry = {}
 BananaUnslicerRegistry = {}
@@ -535,6 +270,81 @@ class LeafUnslicer(BaseUnslicer):
     def doOpen(self, opentype):
         raise Violation("'%s' does not accept sub-objects" % self)
 
+
+######################## Slicers+Unslicers, in order of complexity
+# note that Slicing is always easier than Unslicing, because Unslicing
+# is the side where you are dealing with the danger
+
+class NoneSlicer(BaseSlicer):
+    opentype = ('none',)
+    trackReferences = False
+    slices = type(None)
+    def sliceBody(self, streamable, banana):
+        # hmm, we need an empty generator. I think a sequence is the only way
+        # to accomplish this, other than 'if 0: yield' or something silly
+        return []
+
+class NoneUnslicer(LeafUnslicer):
+    opentype = ('none',)
+
+    def checkToken(self, typebyte, size):
+        raise BananaError("NoneUnslicer does not accept any tokens")
+    def receiveClose(self):
+        return None, None
+
+
+class BooleanSlicer(BaseSlicer):
+    opentype = ('boolean',)
+    trackReferences = False
+    def sliceBody(self, streamable, banana):
+        if self.obj:
+            yield 1
+        else:
+            yield 0
+registerAdapter(BooleanSlicer, bool, tokens.ISlicer)
+
+class BooleanUnslicer(LeafUnslicer):
+    opentype = ('boolean',)
+
+    value = None
+    constraint = None
+
+    def setConstraint(self, constraint):
+        if isinstance(constraint, schema.Any):
+            return
+        assert isinstance(constraint, schema.BooleanConstraint)
+        self.constraint = constraint
+
+    def checkToken(self, typebyte, size):
+        if typebyte != tokens.INT:
+            raise BananaError("BooleanUnslicer only accepts an INT token")
+        if self.value != None:
+            raise BananaError("BooleanUnslicer only accepts one token")
+
+    def receiveChild(self, obj, ready_deferred=None):
+        assert not isinstance(obj, Deferred)
+        assert ready_deferred is None
+        assert type(obj) == int
+        if self.constraint:
+            if self.constraint.value != None:
+                if bool(obj) != self.constraint.value:
+                    raise Violation("This boolean can only be %s" % \
+                                    self.constraint.value)
+        self.value = bool(obj)
+
+    def receiveClose(self):
+        return self.value, None
+
+    def describe(self):
+        return "<bool>"
+
+
+class UnicodeSlicer(BaseSlicer):
+    opentype = ("unicode",)
+    slices = unicode
+    def sliceBody(self, streamable, banana):
+        yield self.obj.encode("UTF-8")
+
 class UnicodeUnslicer(LeafUnslicer):
     # accept a UTF-8 encoded string
     opentype = ("unicode",)
@@ -564,6 +374,16 @@ class UnicodeUnslicer(LeafUnslicer):
         return self.string, None
     def describe(self):
         return "<unicode>"
+
+
+class ListSlicer(BaseSlicer):
+    opentype = ("list",)
+    trackReferences = True
+    slices = list
+
+    def sliceBody(self, streamable, banana):
+        for i in self.obj:
+            yield i
 
 class ListUnslicer(BaseUnslicer):
     opentype = ("list",)
@@ -653,6 +473,12 @@ class ListUnslicer(BaseUnslicer):
     def describe(self):
         return "[%d]" % len(self.list)
 
+
+
+class TupleSlicer(ListSlicer):
+    opentype = ("tuple",)
+    slices = tuple
+
 class TupleUnslicer(BaseUnslicer):
     opentype = ("tuple",)
 
@@ -741,16 +567,52 @@ class TupleUnslicer(BaseUnslicer):
     def describe(self):
         return "[%d]" % len(self.list)
 
+
+
+
+class SetSlicer(ListSlicer):
+    opentype = ("set",)
+    trackReferences = True
+    slices = sets.Set
+
+    def sliceBody(self, streamable, banana):
+        for i in self.obj:
+            yield i
+
+try:
+    set
+    # python2.4 has a builtin 'set' type, which is mutable
+    class BuiltinSetSlicer(SetSlicer):
+        slices = set
+except NameError:
+    # oh well, I guess we don't have 'set'
+    pass
+
 class SetUnslicer(ListUnslicer):
     opentype = ("set",)
     def receiveClose(self):
         return sets.Set(self.list), None
+
     
 class ImmutableSetUnslicer(ListUnslicer):
     opentype = ("immutable-set",)
     def receiveClose(self):
         return sets.ImmutableSet(self.list), None
 
+class ImmutableSetSlicer(SetSlicer):
+    opentype = ("immutable-set",)
+    trackReferences = False
+    slices = sets.ImmutableSet
+
+
+class DictSlicer(BaseSlicer):
+    opentype = ('dict',)
+    trackReferences = True
+    slices = None
+    def sliceBody(self, streamable, banana):
+        for key,value in self.obj.items():
+            yield key
+            yield value
 
 class DictUnslicer(BaseUnslicer):
     opentype = ('dict',)
@@ -847,6 +709,99 @@ class DictUnslicer(BaseUnslicer):
         else:
             return "{}[%s]" % self.key
 
+
+class OrderedDictSlicer(DictSlicer):
+    slices = dict
+    def sliceBody(self, streamable, banana):
+        keys = self.obj.keys()
+        keys.sort()
+        for key in keys:
+            value = self.obj[key]
+            yield key
+            yield value
+
+
+
+class ReferenceSlicer(BaseSlicer):
+    # this is created explicitly, not as an adapter
+    opentype = ('reference',)
+    trackReferences = False
+
+    def __init__(self, refid):
+        assert type(refid) is int
+        self.refid = refid
+    def sliceBody(self, streamable, banana):
+        yield self.refid
+
+class ReferenceUnslicer(LeafUnslicer):
+    opentype = ('reference',)
+
+    constraint = None
+    finished = False
+
+    def setConstraint(self, constraint):
+        self.constraint = constraint
+
+    def checkToken(self, typebyte,size):
+        if typebyte != tokens.INT:
+            raise BananaError("ReferenceUnslicer only accepts INTs")
+
+    def receiveChild(self, obj, ready_deferred=None):
+        assert not isinstance(obj, Deferred)
+        assert ready_deferred is None
+        if self.finished:
+            raise BananaError("ReferenceUnslicer only accepts one int")
+        self.obj = self.protocol.getObject(obj)
+        self.finished = True
+        # assert that this conforms to the constraint
+        if self.constraint:
+            self.constraint.checkObject(self.obj)
+        # TODO: it might be a Deferred, but we should know enough about the
+        # incoming value to check the constraint. This requires a subclass
+        # of Deferred which can give us the metadata.
+
+    def receiveClose(self):
+        return self.obj, None
+
+
+
+class ReplaceVocabSlicer(BaseSlicer):
+    # this works somewhat like a dictionary
+    opentype = ('set-vocab',)
+    trackReferences = False
+
+    def slice(self, streamable, banana):
+        # we need to implement slice() (instead of merely sliceBody) so we
+        # can get control at the beginning and end of serialization. It also
+        # gives us access to the Banana protocol object, so we can manipulate
+        # their outgoingVocabulary table.
+        self.streamable = streamable
+        self.start(banana)
+        for o in self.opentype:
+            yield o
+        # the vocabDict maps strings to index numbers. The far end needs the
+        # opposite mapping, from index numbers to strings. We perform the
+        # flip here at the sending end.
+        stringToIndex = self.obj
+        indexToString = dict([(stringToIndex[s],s) for s in stringToIndex])
+        assert len(stringToIndex) == len(indexToString) # catch duplicates
+        indices = indexToString.keys()
+        indices.sort()
+        for index in indices:
+            string = indexToString[index]
+            yield index
+            yield string
+        self.finish(banana)
+
+    def start(self, banana):
+        # this marks the transition point between the old vocabulary dict and
+        # the new one, so now is the time we should empty the dict.
+        banana.outgoingVocabTableWasReplaced({})
+
+    def finish(self, banana):
+        # now we replace the vocab dict
+        banana.outgoingVocabTableWasReplaced(self.obj)
+
 class ReplaceVocabularyTable:
     pass
 
@@ -906,6 +861,39 @@ class ReplaceVocabUnslicer(LeafUnslicer):
         else:
             return "<vocabdict>"
 
+
+class AddVocabSlicer(BaseSlicer):
+    opentype = ('add-vocab',)
+    trackReferences = False
+
+    def __init__(self, value):
+        assert isinstance(value, str)
+        self.value = value
+
+    def slice(self, streamable, banana):
+        # we need to implement slice() (instead of merely sliceBody) so we
+        # can get control at the beginning and end of serialization. It also
+        # gives us access to the Banana protocol object, so we can manipulate
+        # their outgoingVocabulary table.
+        self.streamable = streamable
+        self.start(banana)
+        for o in self.opentype:
+            yield o
+        yield self.index
+        yield self.value
+        self.finish(banana)
+
+    def start(self, banana):
+        # this marks the transition point between the old vocabulary dict and
+        # the new one, so now is the time we should decide upon the key. It
+        # is important that we *do not* add it to the dict yet, otherwise
+        # we'll send (add-vocab NN [VOCAB#NN]), which is kind of pointless.
+        index = banana.allocateEntryInOutgoingVocabTable(self.value)
+        self.index = index
+
+    def finish(self, banana):
+        banana.outgoingVocabTableWasAmended(self.index, self.value)
+
 class AddToVocabularyTable:
     pass
 
@@ -954,6 +942,103 @@ class AddVocabUnslicer(BaseUnslicer):
             return "<add-vocab>[%d]" % self.index
         return "<add-vocab>"
 
+############################# Root Slicer/Unslicers
+
+
+class RootSlicer:
+    implements(tokens.ISlicer, tokens.IRootSlicer)
+
+    streamableInGeneral = True
+    producingDeferred = None
+    objectSentDeferred = None
+    slicerTable = {}
+    debug = False
+
+    def __init__(self, protocol):
+        self.protocol = protocol
+        self.sendQueue = []
+
+    def allowStreaming(self, streamable):
+        self.streamableInGeneral = streamable
+
+    def registerReference(self, refid, obj):
+        pass
+
+    def slicerForObject(self, obj):
+        # could use a table here if you think it'd be faster than an
+        # adapter lookup
+        if self.debug: print "slicerForObject(%s)" % type(obj)
+        # do the adapter lookup first, so that registered adapters override
+        # UnsafeSlicerTable's InstanceSlicer
+        slicer = tokens.ISlicer(obj, None)
+        if slicer:
+            if self.debug: print "got ISlicer", slicer
+            return slicer
+        slicerFactory = self.slicerTable.get(type(obj))
+        if slicerFactory:
+            if self.debug: print " got slicerFactory", slicerFactory
+            return slicerFactory(obj)
+        if issubclass(type(obj), types.InstanceType):
+            name = str(obj.__class__)
+        else:
+            name = str(type(obj))
+        if self.debug: print "cannot serialize %s (%s)" % (obj, name)
+        raise Violation("cannot serialize %s (%s)" % (obj, name))
+
+    def slice(self):
+        return self
+    def __iter__(self):
+        return self # we are our own iterator
+    def next(self):
+        if self.objectSentDeferred:
+            self.objectSentDeferred.callback(None)
+            self.objectSentDeferred = None
+        if self.sendQueue:
+            (obj, self.objectSentDeferred) = self.sendQueue.pop()
+            self.streamable = self.streamableInGeneral
+            return obj
+        if self.protocol.debugSend:
+            print "LAST BAG"
+        self.producingDeferred = Deferred()
+        self.streamable = True
+        return self.producingDeferred
+
+    def childAborted(self, f):
+        assert self.objectSentDeferred
+        self.objectSentDeferred.errback(f)
+        self.objectSentDeferred = None
+        return None
+
+    def send(self, obj):
+        # obj can also be a Slicer, say, a CallSlicer. We return a Deferred
+        # which fires when the object has been fully serialized.
+        idle = (len(self.protocol.slicerStack) == 1) and not self.sendQueue
+        objectSentDeferred = Deferred()
+        self.sendQueue.append((obj, objectSentDeferred))
+        if idle:
+            # wake up
+            if self.protocol.debugSend:
+                print " waking up to send"
+            if self.producingDeferred:
+                d = self.producingDeferred
+                self.producingDeferred = None
+                # TODO: consider reactor.callLater(0, d.callback, None)
+                # I'm not sure it's actually necessary, though
+                d.callback(None)
+        return objectSentDeferred
+
+    def describe(self):
+        return "<RootSlicer>"
+
+    def connectionLost(self, why):
+        # abandon everything we wanted to send
+        if self.objectSentDeferred:
+            self.objectSentDeferred.errback(why)
+            self.objectSentDeferred = None
+        for obj, d in self.sendQueue:
+            d.errback(why)
+        self.sendQueue = []
+
 
 class Dummy:
     def __repr__(self):
@@ -963,79 +1048,6 @@ class Dummy:
             return -1
         return cmp(self.__dict__, other.__dict__)
 
-
-class ReferenceUnslicer(LeafUnslicer):
-    opentype = ('reference',)
-
-    constraint = None
-    finished = False
-
-    def setConstraint(self, constraint):
-        self.constraint = constraint
-
-    def checkToken(self, typebyte,size):
-        if typebyte != tokens.INT:
-            raise BananaError("ReferenceUnslicer only accepts INTs")
-
-    def receiveChild(self, obj, ready_deferred=None):
-        assert not isinstance(obj, Deferred)
-        assert ready_deferred is None
-        if self.finished:
-            raise BananaError("ReferenceUnslicer only accepts one int")
-        self.obj = self.protocol.getObject(obj)
-        self.finished = True
-        # assert that this conforms to the constraint
-        if self.constraint:
-            self.constraint.checkObject(self.obj)
-        # TODO: it might be a Deferred, but we should know enough about the
-        # incoming value to check the constraint. This requires a subclass
-        # of Deferred which can give us the metadata.
-
-    def receiveClose(self):
-        return self.obj, None
-
-class NoneUnslicer(LeafUnslicer):
-    opentype = ('none',)
-
-    def checkToken(self, typebyte, size):
-        raise BananaError("NoneUnslicer does not accept any tokens")
-    def receiveClose(self):
-        return None, None
-
-class BooleanUnslicer(LeafUnslicer):
-    opentype = ('boolean',)
-
-    value = None
-    constraint = None
-
-    def setConstraint(self, constraint):
-        if isinstance(constraint, schema.Any):
-            return
-        assert isinstance(constraint, schema.BooleanConstraint)
-        self.constraint = constraint
-
-    def checkToken(self, typebyte, size):
-        if typebyte != tokens.INT:
-            raise BananaError("BooleanUnslicer only accepts an INT token")
-        if self.value != None:
-            raise BananaError("BooleanUnslicer only accepts one token")
-
-    def receiveChild(self, obj, ready_deferred=None):
-        assert not isinstance(obj, Deferred)
-        assert ready_deferred is None
-        assert type(obj) == int
-        if self.constraint:
-            if self.constraint.value != None:
-                if bool(obj) != self.constraint.value:
-                    raise Violation("This boolean can only be %s" % \
-                                    self.constraint.value)
-        self.value = bool(obj)
-
-    def receiveClose(self):
-        return self.value, None
-
-    def describe(self):
-        return "<bool>"
 
 class RootUnslicer(BaseUnslicer):
     # topRegistries is used for top-level objects
