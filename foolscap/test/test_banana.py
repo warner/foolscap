@@ -5,8 +5,8 @@ from twisted.python.components import registerAdapter
 from twisted.internet import reactor, defer, protocol
 
 from foolscap.tokens import ISlicer, Violation, BananaError, NegotiationError
+from foolscap.tokens import BananaFailure
 from foolscap import banana, slicer, schema, tokens, debug, storage
-from foolscap.slicer import BananaFailure
 from foolscap.eventual import fireEventually, flushEventualQueue
 
 import StringIO, sys

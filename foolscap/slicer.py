@@ -1,27 +1,20 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
 import types
-from pickle import whichmodule  # used by FunctionSlicer
-from new import instance, instancemethod
 import sets
 
 from twisted.python.components import registerAdapter
 from zope.interface import implements
 from twisted.internet.defer import Deferred
-from twisted.python import log, reflect
+from twisted.python import log
 
 import tokens
-from tokens import Violation, BananaError, BananaFailure, tokenNames
+from tokens import Violation, BananaError
 import schema
 
-def getInstanceState(inst):
-    """Utility function to default to 'normal' state rules in serialization.
-    """
-    if hasattr(inst, "__getstate__"):
-        state = inst.__getstate__()
-    else:
-        state = inst.__dict__
-    return state
+
+########################## Slicers
+
 
 class SlicerClass(type):
     # auto-register Slicers
@@ -298,63 +291,6 @@ class AddVocabSlicer(BaseSlicer):
         banana.outgoingVocabTableWasAmended(self.index, self.value)
 
 
-# Extended types, not generally safe. The UnsafeRootSlicer checks for these
-# with a separate table.
-
-class InstanceSlicer(OrderedDictSlicer):
-    opentype = ('instance',)
-    trackReferences = True
-
-    def sliceBody(self, streamable, banana):
-        yield reflect.qual(self.obj.__class__) # really a second index token
-        self.obj = getInstanceState(self.obj)
-        for t in OrderedDictSlicer.sliceBody(self, streamable, banana):
-            yield t
-
-class ModuleSlicer(BaseSlicer):
-    opentype = ('module',)
-    trackReferences = True
-
-    def sliceBody(self, streamable, banana):
-        yield self.obj.__name__
-
-class ClassSlicer(BaseSlicer):
-    opentype = ('class',)
-    trackReferences = True
-
-    def sliceBody(self, streamable, banana):
-        yield reflect.qual(self.obj)
-
-class MethodSlicer(BaseSlicer):
-    opentype = ('method',)
-    trackReferences = True
-
-    def sliceBody(self, streamable, banana):
-        yield self.obj.im_func.__name__
-        yield self.obj.im_self
-        yield self.obj.im_class
-
-class FunctionSlicer(BaseSlicer):
-    opentype = ('function',)
-    trackReferences = True
-
-    def sliceBody(self, streamable, banana):
-        name = self.obj.__name__
-        fullname = str(whichmodule(self.obj, self.obj.__name__)) + '.' + name
-        yield fullname
-
-UnsafeSlicerTable = {}
-UnsafeSlicerTable.update({
-    types.InstanceType: InstanceSlicer,
-    types.ModuleType: ModuleSlicer,
-    types.ClassType: ClassSlicer,
-    types.MethodType: MethodSlicer,
-    types.FunctionType: FunctionSlicer,
-    #types.TypeType: NewstyleClassSlicer,
-    # ???: NewstyleInstanceSlicer,  # pickle uses obj.__reduce__ to help
-    # http://docs.python.org/lib/node68.html
-    })
-
 
 class RootSlicer:
     implements(tokens.ISlicer, tokens.IRootSlicer)
@@ -449,12 +385,13 @@ class RootSlicer:
         for obj, d in self.sendQueue:
             d.errback(why)
         self.sendQueue = []
-            
 
+
+
+########################## Unslicers
 
 
 UnslicerRegistry = {}
-UnsafeUnslicerRegistry = {}
 BananaUnslicerRegistry = {}
 
 def registerUnslicer(opentype, factory, registry=None):
@@ -462,15 +399,6 @@ def registerUnslicer(opentype, factory, registry=None):
         registry = UnslicerRegistry
     assert not registry.has_key(opentype)
     registry[opentype] = factory
-
-def setInstanceState(inst, state):
-    """Utility function to default to 'normal' state rules in unserialization.
-    """
-    if hasattr(inst, "__setstate__"):
-        inst.__setstate__(state)
-    else:
-        inst.__dict__ = state
-    return inst
 
 class UnslicerClass(type):
     # auto-register Unslicers
@@ -1036,83 +964,6 @@ class Dummy:
         return cmp(self.__dict__, other.__dict__)
 
 
-class InstanceUnslicer(BaseUnslicer):
-    # this is an unsafe unslicer: an attacker could induce you to create
-    # instances of arbitrary classes with arbitrary attributes: VERY
-    # DANGEROUS!
-    opentype = ('instance',)
-    unslicerRegistry = UnsafeUnslicerRegistry
-    
-    # danger: instances are mutable containers. If an attribute value is not
-    # yet available, __dict__ will hold a Deferred until it is. Other
-    # objects might be created and use our object before this is fixed.
-    # TODO: address this. Note that InstanceUnslicers aren't used in PB
-    # (where we have pb.Referenceable and pb.Copyable which have schema
-    # constraints and could have different restrictions like not being
-    # allowed to participate in reference loops).
-
-    def start(self, count):
-        self.d = {}
-        self.count = count
-        self.classname = None
-        self.attrname = None
-        self.deferred = Deferred()
-        self.protocol.setObject(count, self.deferred)
-
-    def checkToken(self, typebyte, size):
-        if self.classname is None:
-            if typebyte not in (tokens.STRING, tokens.VOCAB):
-                raise BananaError("InstanceUnslicer classname must be string")
-        elif self.attrname is None:
-            if typebyte not in (tokens.STRING, tokens.VOCAB):
-                raise BananaError("InstanceUnslicer keys must be STRINGs")
-
-    def receiveChild(self, obj, ready_deferred=None):
-        assert ready_deferred is None
-        if self.classname is None:
-            self.classname = obj
-            self.attrname = None
-        elif self.attrname is None:
-            self.attrname = obj
-        else:
-            if isinstance(obj, Deferred):
-                # TODO: this is an artificial restriction, and it might
-                # be possible to remove it, but I need to think through
-                # it carefully first
-                raise BananaError("unreferenceable object in attribute")
-            if self.d.has_key(self.attrname):
-                raise BananaError("duplicate attribute name '%s'" %
-                                  self.attrname)
-            self.setAttribute(self.attrname, obj)
-            self.attrname = None
-
-    def setAttribute(self, name, value):
-        self.d[name] = value
-
-    def receiveClose(self):
-        # you could attempt to do some value-checking here, but there would
-        # probably still be holes
-
-        #obj = Dummy()
-        klass = reflect.namedObject(self.classname)
-        assert type(klass) == types.ClassType # TODO: new-style classes
-        obj = instance(klass, {})
-
-        setInstanceState(obj, self.d)
-
-        self.protocol.setObject(self.count, obj)
-        self.deferred.callback(obj)
-        return obj, None
-
-    def describe(self):
-        if self.classname is None:
-            return "<??>"
-        me = "<%s>" % self.classname
-        if self.attrname is None:
-            return "%s.attrname??" % me
-        else:
-            return "%s.%s" % (me, self.attrname)
-
 class ReferenceUnslicer(LeafUnslicer):
     opentype = ('reference',)
 
@@ -1142,151 +993,6 @@ class ReferenceUnslicer(LeafUnslicer):
 
     def receiveClose(self):
         return self.obj, None
-
-class ModuleUnslicer(LeafUnslicer):
-    opentype = ('module',)
-    unslicerRegistry = UnsafeUnslicerRegistry
-
-    finished = False
-
-    def checkToken(self, typebyte, size):
-        if typebyte not in (tokens.STRING, tokens.VOCAB):
-            raise BananaError("ModuleUnslicer only accepts strings")
-
-    def receiveChild(self, obj, ready_deferred=None):
-        assert not isinstance(obj, Deferred)
-        assert ready_deferred is None
-        if self.finished:
-            raise BananaError("ModuleUnslicer only accepts one string")
-        self.finished = True
-        # TODO: taste here!
-        mod = __import__(obj, {}, {}, "x")
-        self.mod = mod
-
-    def receiveClose(self):
-        if not self.finished:
-            raise BananaError("ModuleUnslicer requires a string")
-        return self.mod, None
-
-class ClassUnslicer(LeafUnslicer):
-    opentype = ('class',)
-    unslicerRegistry = UnsafeUnslicerRegistry
-
-    finished = False
-
-    def checkToken(self, typebyte, size):
-        if typebyte not in (tokens.STRING, tokens.VOCAB):
-            raise BananaError("ClassUnslicer only accepts strings")
-
-    def receiveChild(self, obj, ready_deferred=None):
-        assert not isinstance(obj, Deferred)
-        assert ready_deferred is None
-        if self.finished:
-            raise BananaError("ClassUnslicer only accepts one string")
-        self.finished = True
-        # TODO: taste here!
-        self.klass = reflect.namedObject(obj)
-
-    def receiveClose(self):
-        if not self.finished:
-            raise BananaError("ClassUnslicer requires a string")
-        return self.klass, None
-
-class MethodUnslicer(BaseUnslicer):
-    opentype = ('method',)
-    unslicerRegistry = UnsafeUnslicerRegistry
-
-    state = 0
-    im_func = None
-    im_self = None
-    im_class = None
-
-    # self.state:
-    # 0: expecting a string with the method name
-    # 1: expecting an instance (or None for unbound methods)
-    # 2: expecting a class
-
-    def checkToken(self, typebyte, size):
-        if self.state == 0:
-            if typebyte not in (tokens.STRING, tokens.VOCAB):
-                raise BananaError("MethodUnslicer methodname must be a string")
-        elif self.state == 1:
-            if typebyte != tokens.OPEN:
-                raise BananaError("MethodUnslicer instance must be OPEN")
-        elif self.state == 2:
-            if typebyte != tokens.OPEN:
-                raise BananaError("MethodUnslicer class must be an OPEN")
-
-    def doOpen(self, opentype):
-        # check the opentype
-        if self.state == 1:
-            if opentype[0] not in ("instance", "none"):
-                raise BananaError("MethodUnslicer instance must be " +
-                                  "instance or None")
-        elif self.state == 2:
-            if opentype[0] != "class":
-                raise BananaError("MethodUnslicer class must be a class")
-        unslicer = self.open(opentype)
-        # TODO: apply constraint
-        return unslicer
-
-    def receiveChild(self, obj, ready_deferred=None):
-        assert not isinstance(obj, Deferred)
-        assert ready_deferred is None
-        if self.state == 0:
-            self.im_func = obj
-            self.state = 1
-        elif self.state == 1:
-            assert type(obj) in (types.InstanceType, types.NoneType)
-            self.im_self = obj
-            self.state = 2
-        elif self.state == 2:
-            assert type(obj) == types.ClassType # TODO: new-style classes?
-            self.im_class = obj
-            self.state = 3
-        else:
-            raise BananaError("MethodUnslicer only accepts three objects")
-
-    def receiveClose(self):
-        if self.state != 3:
-            raise BananaError("MethodUnslicer requires three objects")
-        if self.im_self is None:
-            meth = getattr(self.im_class, self.im_func)
-            # getattr gives us an unbound method
-            return meth, None
-        # TODO: late-available instances
-        #if isinstance(self.im_self, NotKnown):
-        #    im = _InstanceMethod(self.im_name, self.im_self, self.im_class)
-        #    return im
-        meth = self.im_class.__dict__[self.im_func]
-        # whereas __dict__ gives us a function
-        im = instancemethod(meth, self.im_self, self.im_class)
-        return im, None
-        
-
-class FunctionUnslicer(LeafUnslicer):
-    opentype = ('function',)
-    unslicerRegistry = UnsafeUnslicerRegistry
-
-    finished = False
-
-    def checkToken(self, typebyte, size):
-        if typebyte not in (tokens.STRING, tokens.VOCAB):
-            raise BananaError("FunctionUnslicer only accepts strings")
-
-    def receiveChild(self, obj, ready_deferred=None):
-        assert not isinstance(obj, Deferred)
-        assert ready_deferred is None
-        if self.finished:
-            raise BananaError("FunctionUnslicer only accepts one string")
-        self.finished = True
-        # TODO: taste here!
-        self.func = reflect.namedObject(obj)
-
-    def receiveClose(self):
-        if not self.finished:
-            raise BananaError("FunctionUnslicer requires a string")
-        return self.func, None
 
 class NoneUnslicer(LeafUnslicer):
     opentype = ('none',)

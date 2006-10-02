@@ -16,7 +16,7 @@ from foolscap import schema, tokens, remoteinterface, referenceable
 from foolscap import Referenceable, RemoteInterface, Tub
 from foolscap import getRemoteURL_TCP
 from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
-from foolscap.slicer import BananaFailure
+from foolscap.tokens import BananaFailure
 from foolscap import copyable, broker, call
 from foolscap.remoteinterface import getRemoteInterface
 from foolscap.remoteinterface import RemoteInterfaceRegistry

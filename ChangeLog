@@ -1,5 +1,11 @@
 2006-10-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/slicer.py: move all "unsafe" Slicers and Unslicers out to
+	storage.py where it belongs
+	* foolscap/storage.py: same
+	* foolscap/test/test_banana.py: fix some imports to match
+	* foolscap/test/test_pb.py: same
+
 	* foolscap/slicer.py (ReplaceVocabSlicer): clean up VOCAB
 	handling: add the ('add-vocab') sequence to incrementally add to
 	the receiving end's incomingVocabulary table, fix the race
