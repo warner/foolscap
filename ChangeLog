@@ -1,3 +1,9 @@
+2006-10-01  Brian Warner  <warner@lothar.com>
+
+	* foolscap/slicer.py (BuiltinSetSlicer): use a different test to
+	look for python < 2.4, one which doesn't make pyflakes complain
+	about using __builtins__
+
 2006-09-30  Brian Warner  <warner@lothar.com>
 
 	* foolscap/promise.py (Promise): implement a simpler syntax, at

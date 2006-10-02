@@ -162,10 +162,14 @@ class SetSlicer(ListSlicer):
         for i in self.obj:
             yield i
 
-if __builtins__.has_key("set"):
+try:
+    set
     # python2.4 has a builtin 'set' type, which is mutable
     class BuiltinSetSlicer(SetSlicer):
         slices = set
+except NameError:
+    # oh well, I guess we don't have 'set'
+    pass
 
 class ImmutableSetSlicer(SetSlicer):
     opentype = ("immutable-set",)
