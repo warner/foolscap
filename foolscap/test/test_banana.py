@@ -1679,7 +1679,7 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
     def testIdentity(self):
         # test to make sure that objects retain identity properly
         x = []
-        y = (x)
+        y = (x,)
         x.append(y)
         x.append(y)
         self.assertIdentical(x[0], x[1])

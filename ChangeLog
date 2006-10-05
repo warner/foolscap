@@ -1,3 +1,9 @@
+2006-10-04  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_banana.py (ThereAndBackAgain.testIdentity):
+	use an actual tuple. Obviously I wasn't thinking when I first
+	wrote this and tried to use "(x)" to construct a one-item tuple.
+
 2006-10-02  Brian Warner  <warner@lothar.com>
 
 	* everything: fix most of the pyflakes warnings. Some of the
