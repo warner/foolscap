@@ -1,5 +1,9 @@
 2006-10-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (TheirReferenceUnslicer.receiveClose):
+	don't bother returning ready_deferred, since we're returning an
+	unreferenceable Deferred anyway.
+
 	* foolscap/test/test_pb.py (Test3Way): put off the check that
 	Alice's gift table is empty until we're sure she's received the
 	'decgift' message. Add a note about a race condition that we have

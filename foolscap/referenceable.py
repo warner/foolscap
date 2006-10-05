@@ -559,7 +559,10 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
             raise BananaError("sequence ended too early")
         d = self.broker.tub.getReference(self.url)
         d.addBoth(self.ackGift)
-        return d,d
+        # we return a Deferred that will fire with the RemoteReference when
+        # it becomes available. The RemoteReference is not even referenceable
+        # until then.
+        return d,None
 
     def ackGift(self, rref):
         d = self.broker.remote_broker.callRemote("decgift",
