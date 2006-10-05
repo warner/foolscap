@@ -1042,6 +1042,8 @@ class Test3Way(unittest.TestCase):
     # including it as the argument to a method she invokes on her
     # Bob-reference.
 
+    debug = False
+
     def setUp(self):
         self.services = [Tub(), Tub(), Tub()]
         self.tubA, self.tubB, self.tubC = self.services
@@ -1055,12 +1057,14 @@ class Test3Way(unittest.TestCase):
 
     def testGift(self):
         # we must start by giving Alice a reference to both Bob and Carol.
-
+        #defer.setDebugging(True)
+        self.alice = HelperTarget("alice")
         self.bob = HelperTarget("bob")
         self.bob_url = self.tubB.registerReference(self.bob)
         self.carol = HelperTarget("carol")
         self.carol_url = self.tubC.registerReference(self.carol)
 
+        if self.debug: print "Alice gets Bob"
         # now, from Alice's point of view:
         d = self.tubA.getReference(self.bob_url)
         d.addCallback(self._aliceGotBob)
@@ -1068,15 +1072,20 @@ class Test3Way(unittest.TestCase):
     testGift.timeout = 2
 
     def _aliceGotBob(self, abob):
+        if self.debug: print "Alice got bob"
         self.abob = abob # Alice's reference to Bob
+        if self.debug: print "Alice gets carol"
         d = self.tubA.getReference(self.carol_url)
         d.addCallback(self._aliceGotCarol)
         return d
 
     def _aliceGotCarol(self, acarol):
+        if self.debug: print "Alice got carol"
         self.acarol = acarol # Alice's reference to Carol
         d2 = self.bob.waitfor()
-        d = self.abob.callRemote("set", obj=self.acarol) # send the gift
+        if self.debug: print "Alice introduces Carol to Bob"
+        # send the gift
+        d = self.abob.callRemote("set", obj=(self.alice, self.acarol))
         # TODO: at this point, 'del self.acarol' should not lose alice's
         # reference to carol, because it will still be in the gift table. The
         # trick is how to test that, we would need a way to stall the gift
@@ -1085,21 +1094,42 @@ class Test3Way(unittest.TestCase):
         d.addCallback(self._bobGotCarol)
         return d
 
-    def _bobGotCarol(self, bcarol):
+    def _bobGotCarol(self, (balice,bcarol)):
+        if self.debug: print "Bob got Carol"
         # Bob has received the gift
         self.bcarol = bcarol
-        #  alice's gift table should be empty
-        brokerAB = self.abob.tracker.broker
-        self.failIf(brokerAB.myGifts)
-        self.failIf(brokerAB.myGiftsByGiftID)
 
+        # wait for alice to receive bob's 'decgift' sequence, which was sent
+        # by now (it is sent after bob receives the gift but before the
+        # gift-bearing message is delivered). To make sure alice has received
+        # it, send a message back along the same path.
+        def _check_alice(res):
+            if self.debug: print "Alice should have the decgift"
+            # alice's gift table should be empty
+            brokerAB = self.abob.tracker.broker
+            self.failUnlessEqual(brokerAB.myGifts, {})
+            self.failUnlessEqual(brokerAB.myGiftsByGiftID, {})
+        d1 = self.alice.waitfor()
+        d1.addCallback(_check_alice)
+        # the ack from this message doesn't always make it back by the time
+        # we end the test and hang up the connection. That connectionLost
+        # causes the deferred that this returns to errback, triggering an
+        # error, so we must be sure to discard any error from it. TODO: turn
+        # this into balice.callRemoteOnly("set", 39), which will have the
+        # same semantics from our point of view (but in addition it will tell
+        # the recipient to not bother sending a response).
+        balice.callRemote("set", 39).addErrback(lambda ignored: None)
+
+        if self.debug: print "Bob says something to Carol"
         d2 = self.carol.waitfor()
         d = self.bcarol.callRemote("set", obj=12)
         d.addCallback(lambda res: d2)
         d.addCallback(self._carolCalled)
+        d.addCallback(lambda res: d1)
         return d
 
     def _carolCalled(self, res):
+        if self.debug: print "Carol heard from Bob"
         self.failUnlessEqual(res, 12)
 
 
