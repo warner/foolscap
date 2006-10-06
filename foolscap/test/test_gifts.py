@@ -93,10 +93,11 @@ class Gifts(unittest.TestCase):
         def _introduce(res):
             # we send three messages to Bob. The second one contains the
             # reference to Carol.
-            self.abob.callRemote("append", obj=1)
-            self.abob.callRemote("append", obj=self.acarol)
-            d2 = self.abob.callRemote("append", obj=3)
-            return d2
+            dl = []
+            dl.append(self.abob.callRemote("append", obj=1))
+            dl.append(self.abob.callRemote("append", obj=self.acarol))
+            dl.append(self.abob.callRemote("append", obj=3))
+            return defer.DeferredList(dl)
         d.addCallback(_introduce)
         def _checkBob(res):
             # this runs after all three messages have been acked by Bob
