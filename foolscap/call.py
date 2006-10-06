@@ -75,6 +75,39 @@ class CallSlicer(slicer.ScopedSlicer):
     def describe(self):
         return "<call-%s-%s-%s>" % (self.reqID, self.clid, self.methodname)
 
+class InboundDelivery:
+    """An inbound message that has not yet been delivered.
+
+    This is created when a 'call' sequence has finished being received. The
+    Broker will add it to a queue. The delivery at the head of the queue is
+    serviced when all of its arguments have been resolved.
+
+    The only way that the arguments might not all be available is if one of
+    the Unslicers which created them has provided a 'ready_deferred' along
+    with the prospective object. The only standard Unslicer which does this
+    is the TheirReferenceUnslicer, which handles introductions. (custom
+    Unslicers might also provide a ready_deferred, for example a URL
+    slicer/unslicer pair for which the receiving end fetches the target of
+    the URL as its value, or a UnixFD slicer/unslicer that had to wait for a
+    side-channel unix-domain socket to finish transferring control over the
+    FD to the recipient before being ready).
+
+    Most Unslicers refuse to accept unready objects as their children (most
+    implementations of receiveChild() do 'assert ready_deferred is None').
+    The CallUnslicer is fairly unique in not rejecting such objects.
+
+    We do require, however, that all of the arguments be at least
+    referenceable. This is not generally a problem: the only time an
+    unslicer's receiveChild() can get a non-referenceable object (represented
+    by a Deferred) is if that unslicer is participating in a reference cycle
+    that has not yet completed, and CallUnslicers only live at the top level,
+    above any cycles.
+    """
+
+    def __init__(self, unslicer):
+        # the unslicer holds all the state we need, so just remember it
+        self.unslicer = unslicer
+
 class CallUnslicer(slicer.ScopedUnslicer):
     # 0:reqID, 1:objID, 2:methodname, 3: [(argname/value)]..
     stage = 0
@@ -91,6 +124,7 @@ class CallUnslicer(slicer.ScopedUnslicer):
         self.deferred = defer.Deferred()
         self.num_unreferenceable_children = 0
         self.num_unready_children = 0
+        self.runnable = False # becomes True when all args are ready
 
     def checkToken(self, typebyte, size):
         # TODO: limit strings by returning a number instead of None
@@ -240,6 +274,12 @@ class CallUnslicer(slicer.ScopedUnslicer):
                     ready_deferred.addCallback(self.ready)
 
     def update(self, obj, argname):
+        # one of our arguments has just now become referenceable. Normal
+        # types can't trigger this (since the arguments to a method form a
+        # top-level serialization domain), but special Unslicers might. For
+        # example, the Gift unslicer will eventually provide us with a
+        # RemoteReference, but for now all we get is a Deferred as a
+        # placeholder.
         self.args[argname] = obj
         self.num_unreferenceable_children -= 1
         self.checkComplete()
@@ -253,45 +293,54 @@ class CallUnslicer(slicer.ScopedUnslicer):
     def receiveClose(self):
         if self.stage != 3 or self.argname != None:
             raise BananaError("'call' sequence ended too early")
-        self.stage = 4
-        return self.checkComplete()
+        self.stage = 4 # waiting for all children to be ready
+        if (self.num_unreferenceable_children == 0 and
+            self.num_unready_children == 0):
+            # we're ready to go
+            self.stage = 5
+            self.runnable = True
+            self.deferred.callback(None)
+        else:
+            # there are no more tokens to receive, and all our arguments are
+            # referenceable, however some of our arguments are not yet ready.
+            # At some point in the future, update() or ready() will call
+            # checkComplete() which will fire this Deferred.
+            pass
+        delivery = InboundDelivery(self)
+        return delivery, self.deferred
 
     def checkComplete(self):
         if self.stage != 4:
             return
-        if self.num_unreferenceable_children or self.num_unready_children:
-            # not finished yet
-            return self.deferred, None
-        # all our args are available
-        if self.methodSchema:
-            # ask them again so they can look for missing arguments
-            self.methodSchema.checkArgs(self.args)
-        # this is where we actually call the method. doCall must now take
-        # responsibility for the request (specifically for catching any
-        # exceptions and doing callFailed)
-        self.broker.doCall(self.reqID, self.obj, self.methodname,
-                           self.args, self.methodSchema)
+        if self.num_unreferenceable_children:
+            return
+        if self.num_unready_children:
+            return
+        self.stage = 5
+        self.runnable = True
         self.deferred.callback(None)
-        return None, None
-        
+
     def describe(self):
         s = "<methodcall"
         if self.stage == 0:
             pass
-        if self.stage == 1:
+        if self.stage >= 1:
             s += " reqID=%d" % self.reqID
-        if self.stage == 2:
+        if self.stage >= 2:
             s += " obj=%s" % (self.obj,)
             ifacename = "[none]"
             if self.interface:
                 ifacename = self.interface.__remote_name__
             s += " iface=%s" % ifacename
-        if self.stage == 3:
+        if self.stage >= 3:
             s += " .%s" % self.methodname
             if self.argname != None:
                 s += " arg[%s]" % self.argname
         if self.stage == 4:
-            s += " .close"
+            s += " waiting"
+        if self.stage == 5:
+            # waiting to be delivered
+            s += " ready"
         s += ">"
         return s
 

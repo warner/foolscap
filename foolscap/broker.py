@@ -14,6 +14,7 @@ from foolscap import call, slicer, referenceable, copyable, remoteinterface
 from foolscap.tokens import Violation, BananaError
 from foolscap.ipb import DeadReferenceError
 from foolscap.slicers.root import RootSlicer, RootUnslicer
+from foolscap.eventual import eventually
 
 try:
     from foolscap import crypto
@@ -111,8 +112,11 @@ class PBRootUnslicer(RootUnslicer):
             print "hey, something failed:", f
         return None # absorb the failure
 
-    def receiveChild(self, token, ready_deferred=None):
-        pass
+    def receiveChild(self, token, ready_deferred):
+        if isinstance(token, call.InboundDelivery):
+            self.broker.scheduleCall(token, ready_deferred)
+
+
 
 class PBRootSlicer(RootSlicer):
     slicerTable = {types.MethodType: referenceable.CallableSlicer,
@@ -204,6 +208,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.waitingForAnswers = {} # we wait for the other side to answer
         self.disconnectWatchers = []
         # receiving side uses these
+        self.inboundDeliveryQueue = []
         self.activeLocalCalls = {} # the other side wants an answer from us
 
     def setTub(self, tub):
@@ -223,6 +228,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.disconnected = True
         self.remote_broker = None
         self.abandonAllRequests(why)
+        # TODO: why reset all the tables to something useable? There may be
+        # outstanding RemoteReferences that point to us, but I don't see why
+        # that requires all these empty dictionaries.
         self.myReferenceByPUID = {}
         self.myReferenceByCLID = {}
         self.yourReferenceByCLID = {}
@@ -438,21 +446,50 @@ class Broker(banana.Banana, referenceable.Referenceable):
                 return m
         return None
 
-    def doCall(self, reqID, obj, methodname, kwargs, methodSchema):
-        if methodname is None:
-            assert callable(obj)
-            d = defer.maybeDeferred(obj, **kwargs)
-        else:
-            obj = ipb.IRemotelyCallable(obj)
-            d = defer.maybeDeferred(obj.doRemoteCall, methodname, kwargs)
+    def scheduleCall(self, delivery, ready_deferred):
+        self.inboundDeliveryQueue.append(delivery)
+        ready_deferred.addCallback(self._callIsReady)
+
+    def _callIsReady(self, res):
+        eventually(self.doNextCall)
+
+    def doNextCall(self):
+        if not self.inboundDeliveryQueue:
+            return
+        if not self.inboundDeliveryQueue[0].unslicer.runnable:
+            return
+        delivery = self.inboundDeliveryQueue.pop(0)
+        if self.inboundDeliveryQueue:
+            eventually(self.doNextCall)
+        reqID = delivery.unslicer.reqID
+        methodSchema = delivery.unslicer.methodSchema
+        d = defer.maybeDeferred(self._doCall, delivery)
+        d.addCallback(self._callFinished, reqID, methodSchema)
+        d.addErrback(self.callFailed, reqID)
+
+    def _doCall(self, delivery):
+        obj = delivery.unslicer.obj
+        methodname = delivery.unslicer.methodname
+        kwargs = delivery.unslicer.args
+        methodSchema = delivery.unslicer.methodSchema
+        if methodSchema:
+            # we asked about each argument on the way in, but ask again so
+            # they can look for missing arguments
+            methodSchema.checkArgs(kwargs)
+
         # interesting case: if the method completes successfully, but
         # our schema prohibits us from sending the result (perhaps the
         # method returned an int but the schema insists upon a string).
-        d.addCallback(self._callFinished, reqID, methodSchema)
         # TODO: move the return-value schema check into
         # Referenceable.doRemoteCall, so the exception's traceback will be
         # attached to the object that caused it
-        d.addErrback(self.callFailed, reqID)
+        if methodname is None:
+            assert callable(obj)
+            return obj(**kwargs)
+        else:
+            obj = ipb.IRemotelyCallable(obj)
+            return obj.doRemoteCall(methodname, kwargs)
+
 
     def _callFinished(self, res, reqID, methodSchema):
         assert self.activeLocalCalls[reqID]

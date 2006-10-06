@@ -518,8 +518,8 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failUnless(f.check(Violation))
         self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
                                  f.value)
-        self.failUnlessSubstring("at <RootUnslicer>.<methodcall .add arg[b]>",
-                                 f.value)
+        self.failUnlessSubstring("at <RootUnslicer>.<methodcall", f.value)
+        self.failUnlessSubstring(".add arg[b]>", f.value)
 
     def testFailWrongReturnRemote(self):
         rr, target = self.setupTarget(BrokenTarget(), True)

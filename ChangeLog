@@ -1,5 +1,19 @@
 2006-10-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/call.py (CallUnslicer): fix ordering of message
+	delivery in the face of Gifts. Each inbound method call gets
+	unserialized into an InboundDelivery/CallUnslicer pair, which gets
+	put on a queue. Messages get pulled off the queue in order, but
+	only when the head of the queue is ready (i.e. all of its
+	arguments are available, which means any pending Gifts have been
+	retrieved).
+	(InboundDelivery): same
+	(CallUnslicer.describe): stop losing useful information
+	* foolscap/broker.py (Broker.doNextCall): add inboundDeliveryQueue
+	to implement all this
+	* foolscap/test/test_pb.py (TestCall.testFailWrongArgsRemote1):
+	match the change to CallUnslicer.describe
+
 	* foolscap/referenceable.py (TheirReferenceUnslicer.receiveClose):
 	don't bother returning ready_deferred, since we're returning an
 	unreferenceable Deferred anyway.
