@@ -1,8 +1,87 @@
-Releases of pb2
+User visible changes in pb2/newpb/Foolscap.
+
+* Release 0.0.3 (05 Oct 2006)
+
+** API Changes
+
+The primary entry point for Foolscap is now the "Tub":
+
+    import foolscap
+    t = foolscap.Tub()
+    d = t.getReference(pburl)
+    d.addCallback(self.gotReference)
+    ...
+
+The old "PBService" name is gone, use "Tub" instead. There are now separate
+classes for "Tub" and "UnauthenticatedTub", rather than using an "encrypted="
+argument. Tubs always use encryption if available: the difference between the
+two classes is whether this Tub should use a public key for its identity or
+not. Note that you always need encryption to connect to an authenticated Tub.
+So install pyopenssl, really.
+
+** eventual send operators
+
+Foolscap now provides 'eventually' and 'fireEventually', to implement the
+"eventual send" operator advocated by Mark Miller's "Concurrency Among
+Strangers" paper (http://www.erights.org/talks/promises/index.html).
+eventually(cb, *args, **kwargs) runs the given call in a later reactor turn.
+fireEventually(value=None) returns a Deferred that will be fired (with
+'value') in a later turn. These behave a lot like reactor.callLater(0,..),
+except that Twisted doesn't actually promise that a pair of callLater(0)s
+will be fired in the right order (they usually do under unix, but they
+frequently don't under windows). Foolscap's eventually() *does* make this
+guarantee. In addition, there is a flushEventualQueue() that is useful for
+unit tests, it returns a Deferred that will only fire when the entire queue
+is empty. As long as your code only uses eventually() (and not callLater(0)),
+putting the following in your trial test cases should keep everything nice
+and clean:
+
+ def tearDown(self):
+     return foolscap.flushEventualQueue()
+
+** Promises
+
+An initial implementation of Promises is in foolscap.promise for
+experimentation. Only "Near" Promises are implemented to far (promises which
+resolve to a local object). Eventually Foolscap will offer "Far" Promises as
+well, and you will be able to invoke remote method calls through Promises as
+well as RemoteReferences. See foolscap/test/test_promise.py for some hints.
+
+** Bug Fixes
+
+Messages containing "Gifts" (third-party references) are now delivered in the
+correct order. In previous versions, the presence of these references could
+delay delivery of the containing message, causing methods to be executed out
+of order.
+
+The VOCAB-manipulating code used to have nasty race conditions, which should
+be all fixed now. This would be more important if we actually used the
+VOCAB-manipulating code yet, but we don't.
+
+Lots of internal reorganization (put all slicers in a subpackage), not really
+user-visible.
+
+Updated to work with recent Twisted HEAD, specifically changes to sslverify.
+This release of Foolscap ought to work with the upcoming Twisted-2.5 .
+
+** Incompatible protocol changes
+
+There are now separate add-vocab and set-vocab sequences, which add a single
+new VOCAB token and replace the entire table, respectively. These replace the
+previous 'vocab' sequence which behaved like set-vocab does now. This would
+be an incompatible protocol change, except that previous versions never sent
+the vocab sequence anyways. This version doesn't send either vocab-changing
+sequence either, but when we finally do start using it, it'll be ready.
+
+* Release 0.0.2 (14 Sep 2006)
+
+Renamed to "Foolscap", extracted from underneat the Twisted packaged,
+consolidated API to allow a simple 'import foolscap'. No new features or bug
+fixes relative to pb2-0.0.1 .
+
 
 * Release 0.0.1 (29 Apr 2006)
 
 First release! All basic features are in place. The wire protocol will almost
 certainly change at some point, so compatibility with future versions is not
 guaranteed.
-

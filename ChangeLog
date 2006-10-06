@@ -1,5 +1,10 @@
 2006-10-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release Foolscap-0.0.3
+	* NEWS: update for 0.0.3 release
+
+2006-10-05  Brian Warner  <warner@lothar.com>
+
 	* foolscap/test/test_gifts.py (Gifts): split out the Introduction
 	tests from test_pb.py
 	(Gifts.testOrdering): test the ordering of messages around a gift.
