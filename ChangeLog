@@ -1,5 +1,9 @@
 2006-10-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: bump to 0.0.3+ while between releases
+
+2006-10-05  Brian Warner  <warner@lothar.com>
+
 	* foolscap/__init__.py: release Foolscap-0.0.3
 	* NEWS: update for 0.0.3 release
 
