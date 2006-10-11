@@ -1,3 +1,10 @@
+2006-10-10  Brian Warner  <warner@lothar.com>
+
+	* misc/debs: add some debian packaging, separate directories for
+	sid and dapper because sid has pycentral and dapper is still in
+	the versioned-python-package era
+	* Makefile: simple Makefile to remind me how to create .debs
+
 2006-10-05  Brian Warner  <warner@lothar.com>
 
 	* foolscap/__init__.py: bump to 0.0.3+ while between releases
