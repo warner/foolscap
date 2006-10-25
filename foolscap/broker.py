@@ -350,7 +350,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         """
 
         obj = None
-        assert type(clid) is int
+        assert isinstance(clid, (int, long))
         if clid == 0:
             return self
         return self.myReferenceByCLID[clid].obj
@@ -360,7 +360,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def remote_decref(self, clid, count):
         # invoked when the other side sends us a decref message
-        assert type(clid) is int
+        assert isinstance(clid, (int, long))
         assert clid != 0
         tracker = self.myReferenceByCLID[clid]
         done = tracker.decref(count)

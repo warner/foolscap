@@ -1,3 +1,10 @@
+2006-10-25  Brian Warner  <warner@lothar.com>
+
+	* foolscap/broker.py (Broker.getMyReferenceByCLID): relax the
+	assertion to (int,long), since eventually clids will overrun a
+	31-bit integer. Thanks to Rob Kinninmont for the catch.
+	(Broker.remote_decref): same
+
 2006-10-10  Brian Warner  <warner@lothar.com>
 
 	* misc/debs: add some debian packaging, separate directories for
