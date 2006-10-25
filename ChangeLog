@@ -1,5 +1,21 @@
 2006-10-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.connectTo): provide a new method, sets up a
+	repeating connection to a given url (with randomized exponential
+	backoff) that will keep firing a callback each time a new
+	connection is made. This is the foolscap equivalent of
+	ReconnectingClientFactory, and is the repeating form of
+	getReference().
+	* foolscap/reconnector.py (Reconnector): implement it here
+	* foolscap/test/test_reconnector.py: test it
+
+	* doc/using-pb.xhtml: update to reflect that we now have secure
+	PBURLs and TubIDs, and that methods are delivered in-order (at
+	least within a Tub-to-Tub connection) even in the face of gifts.
+
+	* misc/debs/dapper/debian/rules (binary-indep): remove obsolete
+	reference to the old python-twisted-pb2 package
+
 	* foolscap/referenceable.py (YourReferenceSlicer.slice): assert
 	that we actually have a URL to give out, since otherwise the error
 	will confusingly show up on the far end (as a Violation). This
