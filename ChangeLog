@@ -5,7 +5,7 @@
 	backoff) that will keep firing a callback each time a new
 	connection is made. This is the foolscap equivalent of
 	ReconnectingClientFactory, and is the repeating form of
-	getReference().
+	getReference(). Thanks to AllMyData.com for sponsoring this work.
 	* foolscap/reconnector.py (Reconnector): implement it here
 	* foolscap/test/test_reconnector.py: test it
 
