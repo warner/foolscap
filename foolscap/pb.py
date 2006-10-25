@@ -11,6 +11,7 @@ urlparse.uses_netloc.append("pb")
 from foolscap import ipb, base32, negotiate
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError
+from foolscap.reconnector import Reconnector
 try:
     from foolscap import crypto
 except ImportError:
@@ -212,6 +213,7 @@ class Tub(service.MultiService):
         self.waitingForBrokers = {} # maps TubRef to list of Deferreds
         self.brokers = {} # maps TubRef to a Broker that connects to them
         self.unauthenticatedBrokers = [] # inbound Brokers without TubRefs
+        self.reconnectors = []
 
     def createCertificate(self):
         # this is copied from test_sslverify.py
@@ -300,7 +302,13 @@ class Tub(service.MultiService):
         return t
 
     def stopService(self):
+        # note that once you stopService a Tub, I cannot be restarted. (at
+        # least this code is not designed to make that possible.. it might be
+        # doable in the future).
         dl = []
+        for rc in self.reconnectors:
+            rc.stopConnecting()
+        del self.reconnectors
         for l in self.listeners:
             # TODO: rethink this, what I want is for stopService to cause all
             # Listeners to shut down, but I'm not sure this is the right way
@@ -417,6 +425,50 @@ class Tub(service.MultiService):
         d = self.getBrokerForTubRef(sturdy.getTubRef())
         d.addCallback(lambda b: b.getYourReferenceByName(name))
         return d
+
+    def connectTo(self, sturdyOrURL, cb, *args, **kwargs):
+        """Establish (and maintain) a connection to a given PBURL.
+
+        I establish a connection to the PBURL and run a callback to inform
+        the caller about the newly-available RemoteReference. If the
+        connection is lost, I schedule a reconnection attempt for the near
+        future. If that one fails, I keep trying at longer and longer
+        intervals (exponential backoff).
+
+        I accept a callback which will be fired each time a connection
+        attempt succeeds. This callback is run with the new RemoteReference
+        and any additional args/kwargs provided to me. The callback should
+        then use rref.notifyOnDisconnect() to get a message when the
+        connection goes away. At some point after it goes away, the
+        Reconnector will reconnect.
+
+        I return a Reconnector object. When you no longer want to maintain
+        this connection, call the stopConnecting() method on the Reconnector.
+        I promise to not invoke your callback after you've called
+        stopConnecting(), even if there was already a connection attempt in
+        progress. If you had an active connection before calling
+        stopConnecting(), you will still have access to it, until it breaks
+        on its own. (I will not attempt to break existing connections, I will
+        merely stop trying to create new ones). All my Reconnector objects
+        will be shut down when the Tub is stopped.
+
+        Usage::
+
+         def _got_ref(rref, arg1, arg2):
+             rref.callRemote('hello again')
+             # etc
+         rc = tub.connectTo(_got_ref, 'arg1', 'arg2')
+         ...
+         rc.stopConnecting() # later
+        """
+
+        rc = Reconnector(self, sturdyOrURL, cb, *args, **kwargs)
+        self.reconnectors.append(rc)
+        return rc
+
+    # _removeReconnector is called by the Reconnector
+    def _removeReconnector(self, rc):
+        self.reconnectors.remove(rc)
 
     def getBrokerForTubRef(self, tubref):
         if tubref in self.brokers:

@@ -1,12 +1,5 @@
 2006-10-25  Brian Warner  <warner@lothar.com>
 
-	* doc/using-pb.xhtml: update to reflect that we now have secure
-	PBURLs and TubIDs, and that methods are delivered in-order (at
-	least within a Tub-to-Tub connection) even in the face of gifts.
-
-	* misc/debs/dapper/debian/rules (binary-indep): remove obsolete
-	reference to the old python-twisted-pb2 package
-
 	* foolscap/referenceable.py (YourReferenceSlicer.slice): assert
 	that we actually have a URL to give out, since otherwise the error
 	will confusingly show up on the far end (as a Violation). This
