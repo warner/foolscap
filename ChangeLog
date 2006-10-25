@@ -1,5 +1,12 @@
 2006-10-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (YourReferenceSlicer.slice): assert
+	that we actually have a URL to give out, since otherwise the error
+	will confusingly show up on the far end (as a Violation). This
+	occurs when we (as Alice) try to introduce Carol to a Bob that was
+	not explicitly registered in Bob's Tub, such that Bob does not
+	have a URL to give out.
+
 	* foolscap/pb.py (Tub): tubID is no longer a parameter to Tub,
 	since it is always computed from the certificate
 	(UnauthenticatedTub): but it *is* a parameter here, since there

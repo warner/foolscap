@@ -485,6 +485,7 @@ class YourReferenceSlicer(slicer.BaseSlicer):
             yield tracker.clid
         else:
             # sending somewhere else
+            assert isinstance(tracker.url, str)
             giftID = broker.makeGift(self.obj)
             yield 'their-reference'
             yield giftID
