@@ -123,7 +123,9 @@ the same way: once you've created one, you attach it to a parent Service or
 Application object. Once the top-level Application object has been started,
 the Tub will start listening on any network ports you've requested. When the
 Tub is shut down, it will stop listening and drop any connections it had
-established since last startup.</p>
+established since last startup. If you have no parent to attach it to, you
+can use <code>startService</code> and <code>stopService</code> on the Tub
+directly.</p>
 
 <h3>Making your Tub remotely accessible</h3>
 
@@ -851,12 +853,11 @@ bobref.callRemote("foo", intro=carolref)
 <p>When Bob receives this message (i.e. when his <code>remote_foo</code>
 method is invoked), he will discover that he's holding a fully-functional
 <code>RemoteReference</code> to the object named Carol<span
-class="footnote">PB does not yet guarantee, in the cryptographic sense, that
-Bob winds up with a reference to the same object that Alice intended. We need
-to add public key hashes to the PB URLs, and transport-layer authentication,
-before we can make this guarantee. Without them, a compromised DNS server or
-man-in-the-middle attack could cause Bob to end up speaking to the wrong
-object</span>. He can start using this RemoteReference right away:</p>
+class="footnote">and if everyone involved is using authenticated Tubs, then
+PB offers a guarantee, in the cryptographic sense, that Bob will wind up with
+a reference to the same object that Alice intended. The authenticated PBURLs
+prevent DNS-spoofing and man-in-the-middle attacks.</span>. He can start
+using this RemoteReference right away:</p>
 
 <pre class="python">
 class Bob(pb.Referenceable):
@@ -897,10 +898,7 @@ the <a
 href="http://www.erights.org/elib/equality/grant-matcher/index.html">Grant
 Matcher Puzzle</a>, when a Referenceable is sent to the same destination
 through multiple paths, the recipient will receive the same
-<code>RemoteReference</code> object from both sides<span
-class="footnote">Although the same enhancements need to be made before PB can
-formally guarantee that the references do indeed point to the same
-object</span>.</p>
+<code>RemoteReference</code> object from both sides.</p>
 
 <p>For a <code>RemoteReference</code> to be transferrable to third-parties in
 this fashion, the original <code>Referenceable</code> must live in a Tub
@@ -914,17 +912,14 @@ resulting URL, enabling it to be sent to third parties.</p>
 <p>When this introduction is made, the receiving system must establish a
 connection with the Tub that holds the original Referenceable, and acquire
 its own RemoteReference. These steps must take place before the remote method
-can be invoked, and other method calls might arrive before they do. For this
-reason, the target system may observe methods being invoked <q>out of
-order</q>, relative to the temporal sequence of <code>callRemote</code> calls
-on the other end of the wire. This situation is unusual, and a future version
-of PB will provide a flag to let you disable this sort of thing altogether,
-or to mark certain methods as <q>barriers</q> of some sort around which
-methods may not be invoked out-of-order. There might also be a flag to
-indicate that all method calls should be queued until the RemoteReference has
-been resolved. If you are depending upon some method to be completed on the
-far end of the wire before performing some other action, you should
-explicitly wait for an ack from that method before proceeding.</p>
+can be invoked, and other method calls might arrive before they do. All
+subsequent method calls are queued until the one that involved the
+introduction is performed. Foolscap guarantees (by default) that the messages
+sent to a given Referenceable will be delivered in the same order. In the
+future there may be options to relax this guarantee, in exchange for higher
+performance, reduced memory consumption, multiple priority queues, limited
+latency, or other features. There might even be an option to turn off
+introductions altogether.</p>
 
 <p>Also note that enabling this capability means any of your communication
 peers can make you create TCP connections to hosts and port numbers of their
