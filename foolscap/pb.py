@@ -161,10 +161,6 @@ class Tub(service.MultiService):
                      - debug_slow: if True, wait half a second between
                                    each negotiation response
 
-    @type tubID: string
-    @ivar tubID: a global identifier for this Tub, possibly including
-                 authentication information, hash of SSL certificate
-
     @ivar brokers: maps TubIDs to L{Broker} instances
 
     @ivar listeners: maps strport to TCPServer service
@@ -502,6 +498,12 @@ class Tub(service.MultiService):
 
 class UnauthenticatedTub(Tub):
     encrypted = False
+
+    """
+    @type tubID: string
+    @ivar tubID: a global identifier for this Tub, possibly including
+                 authentication information, hash of SSL certificate
+    """
 
     def __init__(self, tubID=None, options={}):
         service.MultiService.__init__(self)

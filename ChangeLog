@@ -1,5 +1,10 @@
 2006-10-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub): tubID is no longer a parameter to Tub,
+	since it is always computed from the certificate
+	(UnauthenticatedTub): but it *is* a parameter here, since there
+	is no certificate
+
 	* foolscap/broker.py (Broker.getMyReferenceByCLID): relax the
 	assertion to (int,long), since eventually clids will overrun a
 	31-bit integer. Thanks to Rob Kinninmont for the catch.
