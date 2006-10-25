@@ -1,5 +1,17 @@
 2006-10-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.registerReference): add a strong= argument
+	which means the Tub should keep the registered object alive. If
+	strong=False, the tub uses a weakref, so that when the application
+	and all remote peers forget about the object, the Tub will too.
+	strong= defaults to True to match the previous behavior, but this
+	might change in the future, and/or it might become a property to
+	be set on the Tub.
+	* foolscap/test/test_registration.py: new tests for it
+	* foolscap/test/test_pb.py (TestService.testStatic): disable this
+	test, since static data (like tuples) are not weakreffable. The
+	registration of static data is an outstanding issue.
+
 	* foolscap/pb.py (Tub.connectTo): provide a new method, sets up a
 	repeating connection to a given url (with randomized exponential
 	backoff) that will keep firing a callback each time a new

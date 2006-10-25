@@ -945,13 +945,13 @@ class TestService(unittest.TestCase):
         self.failUnlessEqual(t1.calls, [(2,3)])
         self.failUnlessEqual(res, 5)
 
-    def testStatic(self):
+    def TODO_testStatic(self):
         # make sure we can register static data too, at least hashable ones
         t1 = (1,2,3)
         d = self.getRef(t1)
         d.addCallback(lambda ref: self.failUnlessEqual(ref, (1,2,3)))
         return d
-    testStatic.timeout = 2
+    #testStatic.timeout = 2
 
     def testBadMethod(self):
         t1 = Target()

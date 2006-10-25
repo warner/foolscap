@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
+import weakref
 from zope.interface import implements
 from twisted.python import log
 from twisted.internet import defer, protocol
@@ -205,8 +206,9 @@ class Tub(service.MultiService):
         self.locationHints = []
 
         # local Referenceables
-        self.nameToReference = {}
-        self.referenceToName = {}
+        self.nameToReference = weakref.WeakValueDictionary()
+        self.referenceToName = weakref.WeakKeyDictionary()
+        self.strongReferences = []
         # remote stuff. Most of these use a TubRef (or NoAuthTubRef) as a
         # dictionary key
         self.tubConnectors = {} # maps TubRef to a TubConnector
@@ -339,7 +341,7 @@ class Tub(service.MultiService):
             return "pb://" + self.tubID + "@" + hints + "/" + name
         return "pbu://" + self.locationHints[0] + "/" + name
 
-    def registerReference(self, ref, name=None):
+    def registerReference(self, ref, name=None, strong=True):
         """Make a Referenceable available to the outside world. A URL is
         returned which can be used to access this object. This registration
         will remain in effect until explicitly unregistered.
@@ -348,6 +350,15 @@ class Tub(service.MultiService):
         @param name: if provided, the object will be registered with this
                      name. If not, a random (unguessable) string will be
                      used.
+
+        @type  strong: bool
+        @param strong: If True (the default), the Tub retains a strong
+                       reference to this Referenceable, keeping it alive even
+                       if the caller forgets about it. If False, the Tub uses
+                       a weakref instead, which means that as soon as the
+                       caller forgets about it, the Tub will forget about it
+                       too.
+
         @rtype: string
         @return: the URL which points to this object. This URL can be passed
         to Tub.getReference() in any Tub on any host which can reach this
@@ -358,11 +369,15 @@ class Tub(service.MultiService):
             raise RuntimeError("you must setLocation() before "
                                "you can registerReference()")
         if self.referenceToName.has_key(ref):
+            if strong and ref not in self.strongReferences:
+                self.strongReferences.append(ref)
             return self.buildURL(self.referenceToName[ref])
         if name is None:
             name = self.generateSwissnumber(self.NAMEBITS)
         self.referenceToName[ref] = name
         self.nameToReference[name] = ref
+        if strong:
+            self.strongReferences.append(ref)
         return self.buildURL(name)
 
     def getReferenceForName(self, name):
@@ -401,6 +416,8 @@ class Tub(service.MultiService):
         name = sturdy.name
         del self.nameToReference[name]
         del self.referenceToName[ref]
+        if ref in self.strongReferences:
+            self.strongReferences.remove(ref)
         self.revokeReference(ref)
 
     def getReference(self, sturdyOrURL):
