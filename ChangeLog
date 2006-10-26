@@ -1,5 +1,9 @@
 2006-10-26  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release Foolscap-0.0.4
+
+2006-10-26  Brian Warner  <warner@lothar.com>
+
 	* setup.py: fix project URL
 
 	* MANIFEST.in: include misc/debs/* in the source tarball
