@@ -31,7 +31,7 @@ if crypto and not crypto.available:
 
 from foolscap.test.common import HelperTarget, RIHelper, TargetMixin
 from foolscap.test.common import getRemoteInterfaceName
-from foolscap.eventual import fireEventually
+from foolscap.eventual import fireEventually, flushEventualQueue
 
 
 class TestRequest(call.PendingRequest):
@@ -571,26 +571,43 @@ class TestCall(TargetMixin, unittest.TestCase):
         return d
     testDisconnect1.timeout = 2
 
-    def disconnected(self):
+    def disconnected(self, *args, **kwargs):
         self.lost = 1
+        self.lost_args = (args, kwargs)
 
     def testDisconnect2(self):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
         rr.notifyOnDisconnect(self.disconnected)
         rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
-        d = fireEventually()
-        d.addCallback(lambda res: self.failUnless(self.lost))
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnless(self.lost)
+            self.failUnlessEqual(self.lost_args, ((),{}))
+        d.addCallback(_check)
         return d
 
     def testDisconnect3(self):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
-        rr.notifyOnDisconnect(self.disconnected)
-        rr.dontNotifyOnDisconnect(self.disconnected)
+        m = rr.notifyOnDisconnect(self.disconnected)
+        rr.dontNotifyOnDisconnect(m)
         rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
-        d = fireEventually()
+        d = flushEventualQueue()
         d.addCallback(lambda res: self.failIf(self.lost))
+        return d
+
+    def testDisconnect4(self):
+        rr, target = self.setupTarget(HelperTarget())
+        self.lost = 0
+        rr.notifyOnDisconnect(self.disconnected, "arg", foo="kwarg")
+        rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnless(self.lost)
+            self.failUnlessEqual(self.lost_args, (("arg",),
+                                                  {"foo": "kwarg"}))
+        d.addCallback(_check)
         return d
 
     def testUnsendable(self):

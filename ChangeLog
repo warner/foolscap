@@ -1,5 +1,16 @@
 2006-10-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py
+	(RemoteReferenceOnly.notifyOnDisconnect): accept args/kwargs to
+	pass to the callback. Return a marker that can be passed to
+	dontNotifyOnDisconnect() to de-register the callback.
+	* foolscap/broker.py (Broker.notifyOnDisconnect): same
+	(Broker.connectionLost): fire notifyOnDisconnect callbacks in a
+	separate turn, using eventually(), so that problems or
+	side-effects in one call cannot affect other calls or the
+	connectionLost process
+	* foolscap/test/test_pb.py (TestCall.testDisconnect4): test it
+
 	* foolscap/pb.py (Tub.registerReference): undo that, make
 	registerReference *always* create a strongref to the target, but
 	split some of the work out to an internal function which makes the
@@ -17,6 +28,7 @@
 	be shareable as gifts (assuming the Tub is reachable and has a
 	location, of course).
 	* foolscap/referenceable.py (ReferenceableTracker.getURL): update
+
 	* foolscap/test/test_registration.py (Registration.testWeak): use
 	_assignName instead of registerReference
 	* foolscap/test/test_gifts.py (Gifts.testOrdering): test it

@@ -238,18 +238,20 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.myGifts = {}
         self.myGiftsByGiftID = {}
         dw, self.disconnectWatchers = self.disconnectWatchers, []
-        for d in dw:
-            d()
+        for (cb,args,kwargs) in dw:
+            eventually(cb, *args, **kwargs)
         banana.Banana.connectionLost(self, why)
         if self.tub:
             # TODO: remove the conditional. It is only here to accomodate
             # some tests: test_pb.TestCall.testDisconnect[123]
             self.tub.brokerDetached(self, why)
 
-    def notifyOnDisconnect(self, callback):
-        self.disconnectWatchers.append(callback)
-    def dontNotifyOnDisconnect(self, callback):
-        self.disconnectWatchers.remove(callback)
+    def notifyOnDisconnect(self, callback, *args, **kwargs):
+        marker = (callback, args, kwargs)
+        self.disconnectWatchers.append(marker)
+        return marker
+    def dontNotifyOnDisconnect(self, marker):
+        self.disconnectWatchers.remove(marker)
 
     # methods to handle RemoteInterfaces
     def getRemoteInterfaceByName(self, name):

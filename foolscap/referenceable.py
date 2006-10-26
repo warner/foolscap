@@ -298,10 +298,14 @@ class RemoteReferenceOnly(object):
     def getSturdyRef(self):
         return self.tracker.sturdy
 
-    def notifyOnDisconnect(self, callback):
-        self.tracker.broker.notifyOnDisconnect(callback)
-    def dontNotifyOnDisconnect(self, callback):
-        self.tracker.broker.dontNotifyOnDisconnect(callback)
+    def notifyOnDisconnect(self, callback, *args, **kwargs):
+        # return a cookie (really the (cb,args,kwargs) tuple) that they must
+        # use to deregister
+        marker = self.tracker.broker.notifyOnDisconnect(callback,
+                                                        *args, **kwargs)
+        return marker
+    def dontNotifyOnDisconnect(self, marker):
+        self.tracker.broker.dontNotifyOnDisconnect(marker)
 
     def __repr__(self):
         r = "<%s at 0x%x" % (self.__class__.__name__, abs(id(self)))
