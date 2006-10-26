@@ -23,6 +23,7 @@ class Reconnector(unittest.TestCase):
 
     def test1(self):
         self.count = 0
+        self.attached = False
         self.done = defer.Deferred()
         target = HelperTarget("bob")
         url = self.tubB.registerReference(target)
@@ -33,15 +34,23 @@ class Reconnector(unittest.TestCase):
         return self.done
 
     def _got_ref(self, rref, arg, kw):
+        self.failUnlessEqual(self.attached, False)
+        self.attached = True
         self.failUnlessEqual(arg, "arg")
         self.failUnlessEqual(kw, "kwarg")
         self.count += 1
+        rref.notifyOnDisconnect(self._disconnected, self.count)
         if self.count < 2:
             # forcibly disconnect it
             eventually(rref.tracker.broker.transport.loseConnection,
                        CONNECTION_LOST)
         else:
             self.done.callback("done")
+
+    def _disconnected(self, count):
+        self.failUnlessEqual(self.attached, True)
+        self.failUnlessEqual(count, self.count)
+        self.attached = False
 
 # TODO: construct the URL somehow, but don't start the new tub yet. Start the
 # reconnector, let it fail once, then start the new tub. This will
