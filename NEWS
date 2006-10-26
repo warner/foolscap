@@ -1,4 +1,109 @@
-User visible changes in pb2/newpb/Foolscap.
+User visible changes in Foolscap (aka newpb/pb2).
+
+* Release 0.0.4 (25 Oct 2006)
+
+** API Changes
+
+*** notifyOnDisconnect() takes args/kwargs
+
+RemoteReference.notifyOnDisconnect(), which registers a callback to be fired
+when the connection to this RemoteReference is lost, now accepts args and
+kwargs to be passed to the callback function. Without this, application code
+needed to use inner functions or bound methods to close over any additional
+state you wanted to get into the disconnect handler.
+
+notifyOnDisconnect() returns a "marker", an opaque values that should be
+passed into the corresponding dontNotifyOnDisconnect() function to deregister
+the callback. (previously dontNotifyOnDisconnect just took the same argument
+as notifyOnDisconnect).
+
+For example:
+
+class Foo:
+    def _disconnect(self, who, reason):
+        print "%s left us, because of %s" % (who, reason)
+    def connect(self, url, why):
+        d = self.tub.getReference(url)
+        def _connected(rref):
+            self.rref = rref
+            m = rref.notifyOnDisconnect(self._disconnect, who, reason=why)
+            self.marker = m
+        d.addCallback(_connected)
+    def stop_caring(self):
+        self.rref.dontNotifyOnDisconnect(self.marker)
+
+*** Reconnector / Tub.connectTo()
+
+There is a new connection API for applications that want to connect to a
+target and to reconnect to it if/when that connection is lost. This is like
+ReconnectingClientFactory, but at a higher layer. You give it a URL to
+connect to, and a callback (plus args/kwargs) that should be called each time
+a connection is established. Your callback should use notifyOnDisconnect() to
+find out when it is disconnected. Reconnection attempts use exponential
+backoff to limit the retry rate, and you can shut off reconnection attempts
+when you no longer want to maintain a connection.
+
+Use it something like this:
+
+class Foo:
+    def __init__(self, tub, url):
+        self.tub = tub
+        self.reconnector = tub.connectTo(url, self._connected, "arg")
+    def _connected(self, rref, arg):
+        print "connected"
+        assert arg == "arg"
+        self.rref = rref
+        self.rref.callRemote("hello")
+        self.rref.notifyOnDisconnect(self._disconnected, "blag")
+    def _disconnected(self, blag):
+        print "disconnected"
+        assert blag == "blag"
+        self.rref = None
+    def shutdown(self):
+        self.reconnector.stopConnecting()
+
+Code which uses this pattern will see "connected" events strictly interleaved
+with "disconnected" events (i.e. it will never see two "connected" events in
+a row, nor two "disconnected" events).
+
+The basic idea is that each time your _connected() method is called, it
+should re-initialize all your state by making method calls to the remote
+side. When the connection is lost, all that state goes away (since you have
+no way to know what is happening until you reconnect).
+
+** Behavioral Changes
+
+*** All Referenceable object are now implicitly "giftable"
+
+In 0.0.3, for a Referenceable to be "giftable" (i.e. useable as the payload
+of an introduction), two conditions had to be satisfied. #1: the object must
+be published through a Tub with Tub.registerReference(obj). #2: that Tub must
+have a location set (with Tub.setLocation). Once those conditions were met,
+if the object was sent over a wire from this Tub to another one, the
+recipient of the corresponding RemoteReference could pass it on to a third
+party. Another side effect of calling registerReference() is that the Tub
+retains a strongref to the object, keeping it alive (with respect to gc)
+until either the Tub is shut down or the object is explicitly de-registered
+with unregisterReference().
+
+Starting in 0.0.4, the first condition has been removed. All objects which
+pass through a setLocation'ed Tub will be usable as gifts. This makes it much
+more convenient to use third-party references.
+
+Note that the Tub will *not* retain a strongref to these objects (merely a
+weakref), so such objects might disappear before the recipient has had a
+chance to claim it. The lifecycle of gifts is a subject of much research. The
+hope is that, for reasonably punctual recipients, the gift will be kept alive
+until they claim it. The whole gift/introduction mechanism is likely to
+change in the near future, so this lifetime issue will be revisited in a
+later release.
+
+** Build Changes
+
+The source tree now has some support for making debian-style packages (for
+both sid and dapper). 'make debian-sid' and 'make debian-dapper' ought to
+create a .deb package.
+
 
 * Release 0.0.3 (05 Oct 2006)
 

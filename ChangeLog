@@ -1,5 +1,7 @@
 2006-10-26  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for 0.0.4
+
 	* foolscap/test/test_reconnector.py: verify that the Reconnector's
 	callbacks are properly interleaved with any notifyOnDisconnect
 	callbacks the user might have registered. A Reconnector cb that
