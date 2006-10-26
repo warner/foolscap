@@ -1,6 +1,8 @@
 2006-10-26  Brian Warner  <warner@lothar.com>
 
 	* foolscap/__init__.py: release Foolscap-0.0.4
+	* misc/debs/sid/debian/changelog: same
+	* misc/debs/dapper/debian/changelog: same
 
 2006-10-26  Brian Warner  <warner@lothar.com>
 
