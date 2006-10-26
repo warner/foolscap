@@ -2,3 +2,6 @@ include ChangeLog MANIFEST.in NEWS
 include doc/*.txt doc/*.xhtml
 include doc/listings/*.py
 include doc/specifications/*.xhtml
+include Makefile
+include misc/debs/dapper/debian/*
+include misc/debs/sid/debian/*
