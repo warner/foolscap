@@ -11,7 +11,7 @@ if __name__ == '__main__':
         description="Foolscap contains an RPC protocol for Twisted.",
         author="Brian Warner",
         author_email="warner@twistedmatrix.com",
-        url="http://twistedmatrix.com/trac/wiki/NewPB",
+        url="http://twistedmatrix.com/trac/wiki/FoolsCap",
         license="MIT",
         long_description="""\
 Foolscap (aka newpb) is a new version of Twisted's native RPC protocol, known

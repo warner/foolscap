@@ -1,5 +1,7 @@
 2006-10-26  Brian Warner  <warner@lothar.com>
 
+	* setup.py: fix project URL
+
 	* MANIFEST.in: include misc/debs/* in the source tarball
 
 	* NEWS: update for 0.0.4
