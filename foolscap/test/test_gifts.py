@@ -36,6 +36,9 @@ class Gifts(unittest.TestCase):
         self.bob_url = self.tubB.registerReference(self.bob)
         self.carol = HelperTarget("carol")
         self.carol_url = self.tubC.registerReference(self.carol)
+        self.cindy = HelperTarget("cindy")
+        # cindy is Carol's little sister. She doesn't have a phone, but
+        # Carol might talk about her anyway.
 
     def createInitialReferences(self):
         # we must start by giving Alice a reference to both Bob and Carol.
@@ -83,6 +86,68 @@ class Gifts(unittest.TestCase):
             if self.debug: print "Carol heard from Bob"
             self.failUnlessEqual(res, 12)
         d.addCallback(_carolCalled)
+        return d
+
+
+    def testImplicitGift(self):
+        # in this test, Carol was registered in her Tub (using
+        # registerReference), but Cindy was not. Alice is given a reference
+        # to Carol, then uses that to get a reference to Cindy. Then Alice
+        # sends a message to Bob and includes a reference to Cindy. The test
+        # here is that we can make gifts out of references that were not
+        # passed to registerReference explicitly.
+
+        #defer.setDebugging(True)
+        self.createCharacters()
+        # the message from Alice to Bob will include a reference to Cindy
+        d = self.createInitialReferences()
+        def _tell_alice_about_cindy(res):
+            self.carol.obj = self.cindy
+            cindy_d = self.acarol.callRemote("get")
+            return cindy_d
+        d.addCallback(_tell_alice_about_cindy)
+        def _introduce(a_cindy):
+            # alice now has references to carol (self.acarol) and cindy
+            # (a_cindy). She sends both of them (plus a reference to herself)
+            # to bob.
+            d2 = self.bob.waitfor()
+            if self.debug: print "Alice introduces Carol to Bob"
+            # send the gift. This might not get acked by the time the test is
+            # done and everything is torn down, so explicitly silence any
+            # ConnectionDone error that might result. When we get
+            # callRemoteOnly(), use that instead.
+            d3 = self.abob.callRemote("set", obj=(self.alice,
+                                                  self.acarol,
+                                                  a_cindy))
+            d3.addErrback(ignoreConnectionDone)
+            return d2 # this fires with the gift that bob got
+        d.addCallback(_introduce)
+        def _bobGotCarol((b_alice,b_carol,b_cindy)):
+            if self.debug: print "Bob got Carol"
+            self.failUnless(b_alice)
+            self.failUnless(b_carol)
+            self.failUnless(b_cindy)
+            self.bcarol = b_carol
+            if self.debug: print "Bob says something to Carol"
+            d2 = self.carol.waitfor()
+            if self.debug: print "Bob says something to Cindy"
+            d3 = self.cindy.waitfor()
+
+            # handle ConnectionDone as described before
+            d4 = b_carol.callRemote("set", obj=4)
+            d4.addErrback(ignoreConnectionDone)
+            d5 = b_cindy.callRemote("set", obj=5)
+            d5.addErrback(ignoreConnectionDone)
+            return defer.DeferredList([d2,d3])
+        d.addCallback(_bobGotCarol)
+        def _carolAndCindyCalled(res):
+            if self.debug: print "Carol heard from Bob"
+            ((carol_s, carol_result), (cindy_s, cindy_result)) = res
+            self.failUnless(carol_s)
+            self.failUnless(cindy_s)
+            self.failUnlessEqual(carol_result, 4)
+            self.failUnlessEqual(cindy_result, 5)
+        d.addCallback(_carolAndCindyCalled)
         return d
 
 

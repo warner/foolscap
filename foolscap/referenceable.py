@@ -88,7 +88,7 @@ class ReferenceableTracker:
 
     def getURL(self):
         if self.tub:
-            return self.tub.getURLForReference(self.obj)
+            return self.tub.getOrCreateURLForReference(self.obj)
         return None
 
     def decref(self, count):

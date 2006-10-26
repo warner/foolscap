@@ -341,23 +341,17 @@ class Tub(service.MultiService):
             return "pb://" + self.tubID + "@" + hints + "/" + name
         return "pbu://" + self.locationHints[0] + "/" + name
 
-    def registerReference(self, ref, name=None, strong=True):
+    def registerReference(self, ref, name=None):
         """Make a Referenceable available to the outside world. A URL is
         returned which can be used to access this object. This registration
-        will remain in effect until explicitly unregistered.
+        will remain in effect (and the Tub will retain a reference to the
+        object to keep it meaningful) until explicitly unregistered, or the
+        Tub is shut down.
 
         @type  name: string (optional)
         @param name: if provided, the object will be registered with this
                      name. If not, a random (unguessable) string will be
                      used.
-
-        @type  strong: bool
-        @param strong: If True (the default), the Tub retains a strong
-                       reference to this Referenceable, keeping it alive even
-                       if the caller forgets about it. If False, the Tub uses
-                       a weakref instead, which means that as soon as the
-                       caller forgets about it, the Tub will forget about it
-                       too.
 
         @rtype: string
         @return: the URL which points to this object. This URL can be passed
@@ -368,17 +362,30 @@ class Tub(service.MultiService):
         if not self.locationHints:
             raise RuntimeError("you must setLocation() before "
                                "you can registerReference()")
+        name = self._assignName(ref, name)
+        assert name
+        if ref not in self.strongReferences:
+            self.strongReferences.append(ref)
+        return self.buildURL(name)
+
+    # this is called by either registerReference or by
+    # getOrCreateURLForReference
+    def _assignName(self, ref, preferred_name=None):
+        """Make a Referenceable available to the outside world, but do not
+        retain a strong reference to it. If we must create a new name, use
+        preferred_name. If that is None, use a random unguessable name.
+        """
+        if not self.locationHints:
+            # without a location, there is no point in giving it a name
+            return None
         if self.referenceToName.has_key(ref):
-            if strong and ref not in self.strongReferences:
-                self.strongReferences.append(ref)
-            return self.buildURL(self.referenceToName[ref])
-        if name is None:
+            return self.referenceToName[ref]
+        name = preferred_name
+        if not name:
             name = self.generateSwissnumber(self.NAMEBITS)
         self.referenceToName[ref] = name
         self.nameToReference[name] = ref
-        if strong:
-            self.strongReferences.append(ref)
-        return self.buildURL(name)
+        return name
 
     def getReferenceForName(self, name):
         return self.nameToReference[name]
@@ -389,10 +396,10 @@ class Tub(service.MultiService):
         assert sturdy.tubID == self.tubID
         return self.getReferenceForName(sturdy.name)
 
-    def getURLForReference(self, ref):
+    def getOrCreateURLForReference(self, ref):
         """Return the global URL for the reference, if there is one, or None
         if there is not."""
-        name = self.referenceToName.get(ref)
+        name = self._assignName(ref)
         if name:
             return self.buildURL(name)
         return None

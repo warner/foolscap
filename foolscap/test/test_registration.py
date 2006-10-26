@@ -11,7 +11,7 @@ class Registration(unittest.TestCase):
         t1 = HelperTarget()
         tub = UnauthenticatedTub()
         tub.setLocation("bogus:1234567")
-        u1 = tub.registerReference(t1, strong=True)
+        u1 = tub.registerReference(t1)
         results = []
         w1 = weakref.ref(t1, results.append)
         del t1
@@ -29,7 +29,8 @@ class Registration(unittest.TestCase):
         t1 = HelperTarget()
         tub = UnauthenticatedTub()
         tub.setLocation("bogus:1234567")
-        u1 = tub.registerReference(t1, strong=False)
+        name = tub._assignName(t1)
+        url = tub.buildURL(name)
         results = []
         w1 = weakref.ref(t1, results.append)
         del t1
@@ -47,5 +48,5 @@ class Registration(unittest.TestCase):
         target = []
         tub = UnauthenticatedTub()
         tub.setLocation("bogus:1234567")
-        url = tub.registerReference(target, strong=False)
+        url = tub.registerReference(target)
 

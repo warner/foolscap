@@ -1,5 +1,28 @@
 2006-10-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.registerReference): undo that, make
+	registerReference *always* create a strongref to the target, but
+	split some of the work out to an internal function which makes the
+	weakrefs. Tub.registerReference() is the API that application code
+	uses to publish an object (make it reachable) *and* have the Tub
+	keep it alive for you. I'm not sure I can think of a use case for
+	making it reachable but *not* wanting the Tub to keep it alive. If
+	you want to make it reachable but still ephemeral, just pass it
+	over the wire.
+	(Tub._assignName): new method to make weakrefs and assign names.
+	(Tub.getOrCreateURLForReference): renamed from getURLForReference.
+	Changed to assign a name if possible and one didn't already exist.
+	BEHAVIOR CHANGE: This causes *all* objects passed over the wire,
+	whether explicitly registered or just implicitly passed along, to
+	be shareable as gifts (assuming the Tub is reachable and has a
+	location, of course).
+	* foolscap/referenceable.py (ReferenceableTracker.getURL): update
+	* foolscap/test/test_registration.py (Registration.testWeak): use
+	_assignName instead of registerReference
+	* foolscap/test/test_gifts.py (Gifts.testOrdering): test it
+
+2006-10-25  Brian Warner  <warner@lothar.com>
+
 	* foolscap/pb.py (Tub.registerReference): add a strong= argument
 	which means the Tub should keep the registered object alive. If
 	strong=False, the tub uses a weakref, so that when the application
