@@ -9,10 +9,12 @@ test:
 
 debian-sid:
 	rm -f debian
-	ln -s misc/debs/sid/debian debian
+	ln -s misc/sid/debian debian
+	chmod a+x debian/rules
 	debuild -uc -us
 
 debian-dapper:
 	rm -f debian
-	ln -s misc/debs/dapper/debian debian
+	ln -s misc/dapper/debian debian
+	chmod a+x debian/rules
 	debuild -uc -us

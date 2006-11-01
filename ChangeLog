@@ -1,5 +1,9 @@
 2006-10-31  Brian Warner  <warner@lothar.com>
 
+	* misc/dapper/debian: move debian packaging up a level
+	* misc/sid/debian: same
+	* Makefile: same
+
 	* foolscap/__init__.py (__version__): bump to 0.0.4+ while between
 	releases
 	* misc/debs/sid/debian/changelog: same
