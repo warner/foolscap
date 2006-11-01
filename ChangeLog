@@ -1,3 +1,8 @@
+2006-11-01  Brian Warner  <warner@lothar.com>
+
+	* foolscap/reconnector.py: oops, add missing import that would break
+	any actual reconnection attempts
+
 2006-10-31  Brian Warner  <warner@lothar.com>
 
 	* misc/sarge/debian/control: add sarge packaging
