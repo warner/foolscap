@@ -458,26 +458,21 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def doNextCall(self):
         if not self.inboundDeliveryQueue:
             return
-        if not self.inboundDeliveryQueue[0].unslicer.runnable:
+        if not self.inboundDeliveryQueue[0].runnable:
             return
         delivery = self.inboundDeliveryQueue.pop(0)
         if self.inboundDeliveryQueue:
             eventually(self.doNextCall)
-        reqID = delivery.unslicer.reqID
-        methodSchema = delivery.unslicer.methodSchema
         d = defer.maybeDeferred(self._doCall, delivery)
-        d.addCallback(self._callFinished, reqID, methodSchema)
-        d.addErrback(self.callFailed, reqID)
+        d.addCallback(self._callFinished, delivery)
+        d.addErrback(self.callFailed, delivery.reqID, delivery)
 
     def _doCall(self, delivery):
-        obj = delivery.unslicer.obj
-        methodname = delivery.unslicer.methodname
-        kwargs = delivery.unslicer.args
-        methodSchema = delivery.unslicer.methodSchema
-        if methodSchema:
+        obj = delivery.obj
+        if delivery.methodSchema:
             # we asked about each argument on the way in, but ask again so
             # they can look for missing arguments
-            methodSchema.checkArgs(kwargs)
+            delivery.methodSchema.checkArgs(delivery.kwargs)
 
         # interesting case: if the method completes successfully, but
         # our schema prohibits us from sending the result (perhaps the
@@ -485,15 +480,17 @@ class Broker(banana.Banana, referenceable.Referenceable):
         # TODO: move the return-value schema check into
         # Referenceable.doRemoteCall, so the exception's traceback will be
         # attached to the object that caused it
-        if methodname is None:
+        if delivery.methodname is None:
             assert callable(obj)
-            return obj(**kwargs)
+            return obj(**delivery.kwargs)
         else:
             obj = ipb.IRemotelyCallable(obj)
-            return obj.doRemoteCall(methodname, kwargs)
+            return obj.doRemoteCall(delivery.methodname, delivery.kwargs)
 
 
-    def _callFinished(self, res, reqID, methodSchema):
+    def _callFinished(self, res, delivery):
+        reqID = delivery.reqID
+        methodSchema = delivery.methodSchema
         assert self.activeLocalCalls[reqID]
         if methodSchema:
             methodSchema.checkResults(res) # may raise Violation
@@ -508,9 +505,14 @@ class Broker(banana.Banana, referenceable.Referenceable):
             log.err()
         del self.activeLocalCalls[reqID]
 
-    def callFailed(self, f, reqID):
+    def callFailed(self, f, reqID, delivery=None):
         # this may be called either when an inbound schema is violated, or
-        # when the method is run and raises an exception
+        # when the method is run and raises an exception. If a Violation is
+        # raised after we receive the reqID but before we've actually invoked
+        # the method, we are called by CallUnslicer.reportViolation and don't
+        # get a delivery= argument.
+        if delivery and self.tub and self.tub.logLocalFailures:
+            delivery.logFailure(f)
         assert self.activeLocalCalls[reqID]
         self.send(call.ErrorSlicer(reqID, f))
         del self.activeLocalCalls[reqID]

@@ -174,6 +174,8 @@ class Tub(service.MultiService):
     implements(ipb.ITub)
 
     unsafeTracebacks = True # TODO: better way to enable this
+    logLocalFailures = False
+    logRemoteFailures = False
     debugBanana = False
     NAMEBITS = 160 # length of swissnumber for each reference
     TUBIDBITS = 16 # length of non-crypto tubID
@@ -216,6 +218,30 @@ class Tub(service.MultiService):
         self.brokers = {} # maps TubRef to a Broker that connects to them
         self.unauthenticatedBrokers = [] # inbound Brokers without TubRefs
         self.reconnectors = []
+
+    def setOption(self, name, value):
+        if name == "logLocalFailures":
+            # log (with log.err) any exceptions that occur during the
+            # execution of a local Referenceable's method, which is invoked
+            # on behalf of a remote caller. These exceptions are reported to
+            # the remote caller through their callRemote's Deferred as usual:
+            # this option enables logging on the callee's side (i.e. our
+            # side) as well.
+            #
+            # TODO: This does not yet include Violations which were raised
+            # because the inbound callRemote had arguments that didn't meet
+            # our specifications. But it should.
+            self.logLocalFailures = value
+        elif name == "logRemoteFailures":
+            # log (with log.err) any exceptions that occur during the
+            # execution of a remote Referenceabe's method, invoked on behalf
+            # of a local RemoteReference.callRemote(). These exceptions are
+            # reported to our local caller through the usual Deferred.errback
+            # mechanism: this enables logging on the caller's side (i.e. our
+            # side) as well.
+            self.logRemoteFailures = value
+        else:
+            raise KeyError("unknown option name '%s'" % name)
 
     def createCertificate(self):
         # this is copied from test_sslverify.py

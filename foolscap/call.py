@@ -12,6 +12,8 @@ from tokens import BananaError, Violation
 
 
 class PendingRequest(object):
+    # this object is a local representation of a message we have sent to
+    # someone else, that will be executed on their end.
     active = True
     methodName = None # for debugging
 
@@ -40,10 +42,19 @@ class PendingRequest(object):
                 self.broker.removeRequest(self)
             self.active = False
             self.failure = why
-            # TODO: this is a bit verbose, only enable it when debugging
-            log.msg("a callRemote(reqID=%d, rref=%s, methname=%s) failed" \
-                    % (self.reqID, self.rref, self.methodName))
-            log.msg(" the failure is: %s" % (why,))
+            if (self.broker and
+                self.broker.tub and
+                self.broker.tub.logRemoteFailures):
+                log.msg("an outbound callRemote (that we sent to someone "
+                        "else) failed on the far end")
+                log.msg(" reqID=%d, rref=%s, methname=%s"
+                        % (self.reqID, self.rref, self.methodName))
+                stack = why.getTraceback()
+                # TODO: include the first few letters of the remote tubID in
+                # this REMOTE tag
+                stack = "REMOTE: " + stack.replace("\n", "\nREMOTE: ")
+                log.msg(" the failure was:")
+                log.msg(stack)
             self.deferred.errback(why)
         else:
             log.msg("multiple failures")
@@ -104,9 +115,29 @@ class InboundDelivery:
     above any cycles.
     """
 
-    def __init__(self, unslicer):
-        # the unslicer holds all the state we need, so just remember it
-        self.unslicer = unslicer
+    def __init__(self, reqID, obj,
+                 interface, methodname, methodSchema,
+                 kwargs):
+        self.reqID = reqID
+        self.obj = obj
+        self.interface = interface
+        self.methodname = methodname
+        self.methodSchema = methodSchema
+        self.kwargs = kwargs
+        self.runnable = False
+
+    def logFailure(self, f):
+        # called if tub.logLocalFailures is True
+        log.msg("an inbound callRemote that we executed (on behalf of "
+                "someone else) failed")
+        log.msg(" reqID=%d, rref=%s, methname=%s" %
+                (self.reqID, self.obj, self.methodname))
+        log.msg(" kwargs=%s" % (self.kwargs,))
+        stack = f.getTraceback()
+        # TODO: trim stack to everything below Broker._doCall
+        stack = "LOCAL: " + stack.replace("\n", "\nLOCAL: ")
+        log.msg(" the failure was:")
+        log.msg(stack)
 
 class CallUnslicer(slicer.ScopedUnslicer):
     # 0:reqID, 1:objID, 2:methodname, 3: [(argname/value)]..
@@ -294,11 +325,17 @@ class CallUnslicer(slicer.ScopedUnslicer):
         if self.stage != 3 or self.argname != None:
             raise BananaError("'call' sequence ended too early")
         self.stage = 4 # waiting for all children to be ready
+        # time to create the InboundDelivery object so we can queue it
+        delivery = InboundDelivery(self.reqID, self.obj,
+                                   self.interface, self.methodname,
+                                   self.methodSchema,
+                                   self.args)
+        self.delivery = delivery
         if (self.num_unreferenceable_children == 0 and
             self.num_unready_children == 0):
             # we're ready to go
             self.stage = 5
-            self.runnable = True
+            self.delivery.runnable = True
             self.deferred.callback(None)
         else:
             # there are no more tokens to receive, and all our arguments are
@@ -306,7 +343,6 @@ class CallUnslicer(slicer.ScopedUnslicer):
             # At some point in the future, update() or ready() will call
             # checkComplete() which will fire this Deferred.
             pass
-        delivery = InboundDelivery(self)
         return delivery, self.deferred
 
     def checkComplete(self):
@@ -317,7 +353,7 @@ class CallUnslicer(slicer.ScopedUnslicer):
         if self.num_unready_children:
             return
         self.stage = 5
-        self.runnable = True
+        self.delivery.runnable = True
         self.deferred.callback(None)
 
     def describe(self):

@@ -1,5 +1,42 @@
 2006-11-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.setOption): new API to set options. Added
+	logRemoteFailures and logLocalFailures, which cause failed
+	callRemotes to be sent to the twisted log via log.msg . The
+	defaults are False, which means that failures are only reported
+	through the caller's Deferred.errback .
+
+	Setting logRemoteFailures to True means that the client's log will
+	contain a record of every callRemote that it sent to someone else
+	that failed on the far side. This can be implemented on a
+	per-callRemote basis by just doing d.addErrback(log.err)
+	everywhere, but often there are reasons (like debugging) for
+	logging failures that are completely independent of the desired
+	error-handling path. These log messages have a REMOTE: prefix to
+	make it very clear that the stack trace being shown is *not*
+	occurring on the local system, but rather on some remote one.
+
+	Setting logLocalFailures to True means that the server's log will
+	contain a record of every callRemote that someone sent to it which
+	failed on that server. This cannot be implemented with
+	addErrbacks, since normally the server does not care about the
+	methods it is running for other people's benefit. This option is
+	purely for debugging purposes. These log messages have a LOCAL:
+	prefix to make it clear that the stack trace is happening locally,
+	but on behalf of some remote caller.
+
+	* foolscap/call.py (PendingRequest.fail): improve the logging,
+	make it conditional on logRemoteFailures, add the REMOTE: prefix
+	(InboundDelivery): put more information into the InboundDelivery,
+	move logLocalFailures logging into it
+	(CallUnslicer.receiveClose): put the .runnable flag on the
+	InboundDelivery object instead of on the CallUnslicer
+
+	* foolscap/broker.py (Broker): pass the InboundDelivery around
+	instead of the CallUnslicer that it points to.
+	(Broker.callFailed): Add logLocalFailures checking here.
+
+
 	* foolscap/reconnector.py: oops, add missing import that would break
 	any actual reconnection attempts
 
