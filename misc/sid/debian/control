@@ -10,7 +10,7 @@ Standards-Version: 3.7.2
 Package: python-foolscap
 Architecture: all
 Depends: ${python:Depends}, python-twisted-core
-Recommends: python-twisted-names
+Recommends: python-twisted-names, python-pyopenssl
 XB-Python-Version: ${python:Versions}
 Description: An object-capability -based RPC system for Twisted Python
  Foolscap (aka "newpb") contains a new RPC system for Twisted Python, combining

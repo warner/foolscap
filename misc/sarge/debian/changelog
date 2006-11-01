@@ -1,0 +1,23 @@
+foolscap (0.0.4+) unstable; urgency=low
+
+  * bump revision while between releases
+
+ -- Brian Warner <warner@lothar.com>  Tue, 31 Oct 2006 23:38:34 -0800
+
+foolscap (0.0.4) unstable; urgency=low
+
+  * new release
+
+ -- Brian Warner <warner@lothar.com>  Thu, 26 Oct 2006 00:46:11 -0700
+
+foolscap (0.0.3+) unstable; urgency=low
+
+  * new upstream release, put debian packaging in the tree
+
+ -- Brian Warner <warner@lothar.com>  Tue, 10 Oct 2006 19:16:13 -0700
+
+foolscap (0.0.2) unstable; urgency=low
+
+  * New upstream release of an experimental package
+
+ -- Brian Warner <warner@lothar.com>  Thu, 27 Jul 2006 17:40:15 -0700

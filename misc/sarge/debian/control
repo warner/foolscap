@@ -13,8 +13,8 @@ Description: An object-capability -based RPC system for Twisted Python
 
 Package: python2.4-foolscap
 Architecture: all
-Depends: python2.4, python2.4-twisted-core
-Recommends: python2.4-twisted-names, python2.4-pyopenssl
+Depends: python2.4, python2.4-twisted
+Recommends: python2.4-pyopenssl
 Description: An object-capability -based RPC system for Twisted Python
  Foolscap (aka "newpb") contains a new RPC system for Twisted Python, combining
  capability-based security, secure references, flexible serialization, and

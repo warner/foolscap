@@ -18,3 +18,9 @@ debian-dapper:
 	ln -s misc/dapper/debian debian
 	chmod a+x debian/rules
 	debuild -uc -us
+
+debian-sarge:
+	rm -f debian
+	ln -s misc/sarge/debian debian
+	chmod a+x debian/rules
+	debuild -uc -us
