@@ -3,5 +3,6 @@ include doc/*.txt doc/*.xhtml
 include doc/listings/*.py
 include doc/specifications/*.xhtml
 include Makefile
-include misc/debs/dapper/debian/*
-include misc/debs/sid/debian/*
+include misc/dapper/debian/*
+include misc/sid/debian/*
+include misc/sarge/debian/*

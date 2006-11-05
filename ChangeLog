@@ -3,6 +3,7 @@
 	* NEWS: update for 0.0.5
 	* foolscap/__init__.py: release Foolscap-0.0.5
 	* misc/{sid|sarge|dapper}/debian/changelog: same
+	* MANIFEST.in: add debian packaging files to source tarball
 
 2006-11-01  Brian Warner  <warner@lothar.com>
 
