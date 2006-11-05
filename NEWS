@@ -1,5 +1,21 @@
 User visible changes in Foolscap (aka newpb/pb2).
 
+* Release 0.0.5 (04 Nov 2006)
+
+** add Tub.setOption, add logRemoteFailures and logLocalFailures
+
+These options control whether we log exceptions (to the standard twisted log)
+that occur on other systems in response to messages that we've sent, and that
+occur on our system in response to messages that we've received
+(respectively). These may be useful while developing a distributed
+application. All such log messages have each line of the stack trace prefixed
+by REMOTE: or LOCAL: to make it clear where the exception is happening.
+
+** add sarge packaging, improve dependencies for sid and dapper .debs
+
+** fix typo that prevented Reconnector from actually reconnecting
+
+
 * Release 0.0.4 (26 Oct 2006)
 
 ** API Changes
