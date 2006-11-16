@@ -352,7 +352,9 @@ class Negotiation(protocol.Protocol):
                 else:
                     errmsg = "internal server error, see logs"
                 if self.phase == PLAINTEXT:
-                    resp = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
+                    errmsg = errmsg.replace("\n", " ") # probably not needed
+                    resp = ("HTTP/1.1 500 Internal Server Error: %s\r\n\r\n"
+                            % errmsg)
                     self.transport.write(resp)
                 elif self.phase in (ENCRYPTED, DECIDING):
                     block = {'error': errmsg}
@@ -478,7 +480,7 @@ class Negotiation(protocol.Protocol):
         if tokens[1] != "101":
             raise BananaError("not right, got '%s', "
                               "expected 101 Switching Protocols"
-                              % tokens[1])
+                              % lines[0])
         isEncrypted = isSubstring("Upgrade: TLS/1.0", header)
         if not isEncrypted:
             # the connection is not encrypted, so don't claim a TubID
