@@ -1,3 +1,26 @@
+2006-11-17  Brian Warner  <warner@lothar.com>
+
+	* foolscap/__init__.py: export registerCopier and
+	registerRemoteCopyFactory
+
+	* foolscap/copyable.py (Copyable): The new preferred Copyable
+	usage is to have a class-level attribute named "typeToCopy" which
+	holds the unique string. This must match the class-level
+	"copytype" attribute of the corresponding RemoteCopy class.
+	Copyable subclasses (or ICopyable adapters) may still implement
+	getTypeToCopy(), but the default just returns self.typeToCopy .
+	Most significantly, we no longer automatically use the
+	fully-qualified classname: instead we *require* that the class
+	definition include "typeToCopy". Feel free to use any stable and
+	globally-unique string here.
+	(RemoteCopyClass): Require that RemoteCopy subclasses set their
+	"copytype" attribute, and use it for auto-registration. These
+	subclasses can still use "copytype=None" to inhibit
+	auto-registration. They no longer auto-register with the
+	fully-qualified classname.
+	* foolscap/referenceable.py (SturdyRef): match this change
+	* foolscap/test/test_copyable.py: same
+
 2006-11-16  Brian Warner  <warner@lothar.com>
 
 	* foolscap/negotiate.py (Negotiation.dataReceived): include the

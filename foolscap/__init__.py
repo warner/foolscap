@@ -9,6 +9,7 @@ from foolscap.pb import Tub, UnauthenticatedTub, getRemoteURL_TCP
 from foolscap.remoteinterface import RemoteInterface
 from foolscap.referenceable import Referenceable, SturdyRef
 from foolscap.copyable import Copyable, RemoteCopy, registerRemoteCopy
+from foolscap.copyable import registerCopier, registerRemoteCopyFactory
 from foolscap.ipb import DeadReferenceError
 from foolscap.tokens import BananaError
 
@@ -18,7 +19,8 @@ _unused = [
     RemoteInterface,
     Referenceable, SturdyRef,
     Copyable, RemoteCopy, registerRemoteCopy,
+    registerCopier, registerRemoteCopyFactory,
     DeadReferenceError,
     BananaError,
     ]
-
+del _unused

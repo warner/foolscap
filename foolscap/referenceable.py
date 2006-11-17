@@ -596,6 +596,8 @@ class SturdyRef(Copyable, RemoteCopy):
     SturdyRefs are serialized by copying their URL, and create an identical
     SturdyRef on the receiving side."""
 
+    typeToCopy = copytype = "foolscap.SturdyRef"
+
     encrypted = False
     tubID = None
     location = None

@@ -7,18 +7,15 @@ from foolscap import copyable, tokens, schema
 from foolscap import Copyable, RemoteCopy, registerRemoteCopy
 from foolscap.tokens import Violation
 
-# MyCopyable1 is the basic Copyable/RemoteCopy pair. This one does not
-# use auto-registration. (well, it does, but the RemoteCopy's name is
-# different, so the auto-registration is useless, so we explicitly register
-# the correct name)
+# MyCopyable1 is the basic Copyable/RemoteCopy pair, using auto-registration.
 
 class MyCopyable1(Copyable):
-    # the getTypeToCopy name will be the fully-qualified class name, which
-    # will depend upon how you first import this
+    typeToCopy = "foolscap.test_copyable.MyCopyable1"
     pass
 class MyRemoteCopy1(RemoteCopy):
+    copytype = MyCopyable1.typeToCopy
     pass
-registerRemoteCopy(reflect.qual(MyCopyable1), MyRemoteCopy1)
+#registerRemoteCopy(MyCopyable1.typeToCopy, MyRemoteCopy1)
 
 # MyCopyable2 overrides the various Copyable/RemoteCopy methods. It
 # also sets 'copytype' to auto-register with a matching name
@@ -36,29 +33,27 @@ class MyRemoteCopy2(RemoteCopy):
 
 # MyCopyable3 uses a custom Slicer and a custom Unslicer
 
-class MyCopyable3(MyCopyable2):
-    def getTypeToCopy(self):
-        return "MyCopyable3name"
+class MyCopyable3:
     def getAlternateCopyableState(self):
         return {"e": 2}
 
 class MyCopyable3Slicer(copyable.CopyableSlicer):
     def slice(self, streamable, banana):
         yield 'copyable'
-        yield self.obj.getTypeToCopy()
+        yield "MyCopyable3name"
         state = self.obj.getAlternateCopyableState()
         for k,v in state.iteritems():
             yield k
             yield v
 
-class MyRemoteCopy3(RemoteCopy):
+class MyRemoteCopy3:
     pass
 class MyRemoteCopy3Unslicer(copyable.RemoteCopyUnslicer):
     def __init__(self):
         self.schema = None
     def factory(self, state):
         obj = MyRemoteCopy3()
-        obj.setCopyableState(state)
+        obj.__dict__ = state
         return obj
     def receiveClose(self):
         obj,d = copyable.RemoteCopyUnslicer.receiveClose(self)
@@ -76,9 +71,10 @@ copyable.registerRemoteCopyUnslicerFactory("MyCopyable3name",
 # MyCopyable4 uses auto-registration, and adds a stateSchema
 
 class MyCopyable4(Copyable):
+    typeToCopy = "foolscap.test_copyable.MyCopyable4"
     pass
 class MyRemoteCopy4(RemoteCopy):
-    copytype = reflect.qual(MyCopyable4)
+    copytype = MyCopyable4.typeToCopy
     stateSchema = schema.AttributeDictConstraint(('foo', int),
                                                  ('bar', str))
     pass

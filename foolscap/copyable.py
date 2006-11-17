@@ -20,8 +20,9 @@ class ICopyable(Interface):
     """
 
     def getTypeToCopy():
-        """Return a string which names the class. This string must match
-        the one that gets registered at the receiving end."""
+        """Return a string which names the class. This string must match the
+        one that gets registered at the receiving end. This is typically a
+        URL of some sort, in a namespace which you control."""
     def getStateToCopy():
         """Return a state dictionary (with plain-string keys) which will be
         serialized and sent to the remote end. This state object will be
@@ -29,9 +30,14 @@ class ICopyable(Interface):
 
 class Copyable(object):
     implements(ICopyable)
+    # you *must* set 'typeToCopy'
 
     def getTypeToCopy(self):
-        return reflect.qual(self.__class__)
+        try:
+            copytype = self.typeToCopy
+        except AttributeError:
+            raise RuntimeError("Copyable subclasses must specify 'typeToCopy'")
+        return copytype
     def getStateToCopy(self):
         return self.__dict__
 
@@ -39,7 +45,9 @@ class CopyableSlicer(slicer.BaseSlicer):
     """I handle ICopyable objects (things which are copied by value)."""
     def slice(self, streamable, banana):
         yield 'copyable'
-        yield self.obj.getTypeToCopy()
+        copytype = self.obj.getTypeToCopy()
+        assert isinstance(copytype, str)
+        yield copytype
         state = self.obj.getStateToCopy()
         for k,v in state.iteritems():
             yield k
@@ -295,20 +303,22 @@ def registerRemoteCopy(typename, remote_copy_class, registry=None):
                               not remote_copy_class.nonCyclic,
                               registry)
 
-
-class _AutoRegister:
-    pass
-
 class RemoteCopyClass(type):
     # auto-register RemoteCopy classes
     def __init__(self, name, bases, dict):
         type.__init__(self, name, bases, dict)
-        copytype = dict.get('copytype', _AutoRegister)
-        if copytype is _AutoRegister:
-            copytype = dict['__module__'] + "." + name
-        reg = dict.get('copyableRegistry')
+        # don't try to register RemoteCopy itself
+        if name == "RemoteCopy" and _RemoteCopyBase in bases:
+            #print "not auto-registering %s %s" % (name, bases)
+            return
+        if "copytype" not in dict:
+            # TODO: provide a file/line-number for the class
+            raise RuntimeError("RemoteCopy subclass %s must specify 'copytype'"
+                               % name)
+        copytype = dict['copytype']
         if copytype:
-            registerRemoteCopy(copytype, self, reg)
+            registry = dict.get('copyableRegistry', None)
+            registerRemoteCopy(copytype, self, registry)
 
 class _RemoteCopyBase:
 
@@ -330,15 +340,10 @@ class RemoteCopyOldStyle(_RemoteCopyBase):
     copytype = None
 
 class RemoteCopy(_RemoteCopyBase, object):
-    # leave copytype at the default to auto-register with the fully-qualified
-    # class name, which is the same behavior as Copyable. Set copytype to a
-    # string to override this name. Set it to None to disable
-    # auto-registration.
+    # Set 'copytype' to a unique string that is shared between the
+    # sender-side Copyable and the receiver-side RemoteCopy. This RemoteCopy
+    # subclass will be auto-registered using the 'copytype' name. Set
+    # copytype to None to disable auto-registration.
 
-    # TODO: N.B. auto-registration with the default name is only actually
-    # useful if you use the same class for both ends (i.e. your class
-    # inherits from both pb.Copyable and pb.RemoteCopy). Otherwise the
-    # default name for the receiver's pb.RemoteCopy class will be different
-    # than the sender's pb.Copyable class.
     __metaclass__ = RemoteCopyClass
     pass
