@@ -786,52 +786,44 @@ which parameter is which).</p>
 d = remote.callRemote(RIMath["add"], 1, 2)
 </pre>
 
+<h2>Pass-By-Copy</h2>
 
-<h2>Copyable</h2><a name="copyable" />
+<p>You can pass (nearly) arbitrary instances over the wire. Foolscap knows
+how to serialize all of Python's native data types already: numbers, strings,
+unicode strings, booleans, lists, tuples, dictionaries, sets, and the None
+object. You can teach it how to serialize instances of other types too.
+Foolscap will not serialize (or deserialize) any class that you haven't
+taught it about, both for security and because it refuses the temptation to
+guess your intentions about how these unknown classes ought to be
+serialized.</p>
 
-<p>Subclasses of <code class="API" base="foolscap">pb.Copyable</code> are
-serialized using copy-by-value semantics. Each such object is serialized as a
-(type, state) pair of values. To use it, you can override <code class="API"
-base="foolscap.copyable.ICopyable">getTypeToCopy</code> and <code
-class="API" base="foolscap.copyable.ICopyable">getStateToCopy</code> to
-provide this pair. The default implementations return the object's
-fully-qualified class name, and <code>self.__dict__</code>, respectively. You
-will want to override <code>getStateToCopy</code> in particular if there is
-any portion of the object's state that should <b>not</b> be sent over the
-wire: references to objects that can not or should not be serialized, or
-things that are private to the application. It is common practice to create
-an empty dictionary in this method and then copy items into it.</p>
+<p>The simplest possible way to pass things by copy is demonstrated in the
+following code fragment:</p>
 
-<p>If you want to avoid subclassing (or wish to serialize instances of
-third-party classes that are out of your control), you can also register an
-<code class="API" base="foolscap.copyable">ICopyable</code> adapter to
-provide these methods for those instances.</p>
+<pre class="python">
+from foolscap import Copyable, RemoteCopy
 
-<p>The receiving end needs a way to convert this (type, state) pair back into
-an instance of some sort. The normal way of doing this is to create a <code
-class="API" base="foolscap">pb.RemoteCopy</code> subclass. On your
-subclass, you will need to set the <code>copytype</code> attribute to the
-string returned by <code>getTypeToCopy</code>, and you will override the
-<code class="API" base="foolscap.pb.RemoteCopy">setCopyableState</code>
-method to accept and use the state dictionary returned by
-<code>getStateToCopy</code>. There is a registry that maps the <q>type</q>
-values into the matching <code>RemoteCopy</code> subclass: defining a
-<code>pb.RemoteCopy</code> subclass uses metaclass magic to auto-register
-your new class for you. You can also register the mapping separately, by
-calling <code class="API" base="foolscap">pb.registerRemoteCopy</code>.</p>
+class MyPassByCopy(Copyable, RemoteCopy):
+    typeToCopy = copytype = "MyPassByCopy"
+    def __init__(self):
+        # RemoteCopy subclasses may not accept any __init__ arguments
+        pass
+    def setCopyableState(self, state):
+        self.__dict__ = state
+</pre>
 
-<p>Copyable instances are copy-by-value instead of copy-by-reference, which
-means that their remote representation does not retain any reference to the
-original object. Sending the same Copyable twice will result in two
-independent copies. Sending a RemoteCopy back to the broker it came from will
-generally fail, unless your RemoteCopy subclass also inherits from
-<code>Copyable</code>. If you want an object which is copied by value the
-first time it traverses the wire, and then copied by reference all later
-times, you will need to write a Slicer/Unslicer pair to implement this
-functionality. Likewise the oldpb <code>Cacheable</code> class would need to
-be implemented with a custom Slicer/Unslicer pair.</p>
+<p>If the code on both sides of the wire import this class, then any
+instances of <code>MyPassByCopy</code> that are present in the arguments of a
+remote method call (or returned as the result of a remote method call) will
+be serialized and reconstituted into an equivalent instance on the other
+side.</p>
 
-<p>TODO: example</p>
+<p>For more complicated things to do with pass-by-copy, see the documentation
+on <a href="copyable.html">Copyable</a>. This explains the difference between
+<code>Copyable</code> and <code>RemoteCopy</code>, how to control the
+serialization and deserialization process, and how to arrange for
+serialization of third-party classes that are not subclasses of
+<code>Copyable</code>.</p>
 
 
 <h2>Third-party References</h2><a name="introductions" />

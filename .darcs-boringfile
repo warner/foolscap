@@ -35,4 +35,5 @@
 (^|/)autom4te\.cache($|/)
 
 ^_trial_temp($|/)
+^doc/.*\.html$
 

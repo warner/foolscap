@@ -24,3 +24,8 @@ debian-sarge:
 	ln -s misc/sarge/debian debian
 	chmod a+x debian/rules
 	debuild -uc -us
+
+DOC_TEMPLATE=doc/template.tpl
+docs:
+	lore -p --config template=$(DOC_TEMPLATE) --config ext=.html \
+	`find doc -name '*.xhtml'`

@@ -1,5 +1,14 @@
 2006-11-17  Brian Warner  <warner@lothar.com>
 
+	* doc/using-pb.xhtml: move and expand the section on Copyable and
+	other pass-by-copy things into a new file
+	* doc/copyable.xhtml: new document. Thanks to Ricky Iacovou for
+	the registerCopier examples.
+	* doc/listings/copyable-{receive|send}.py: new examples
+	* doc/stylesheet.css, doc/stylesheet-unprocessed.css
+	* doc/template.tpl: docs utilities
+	* Makefile: add 'make docs' target
+
 	* foolscap/__init__.py: export registerCopier and
 	registerRemoteCopyFactory
 
