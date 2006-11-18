@@ -6,9 +6,6 @@ from twisted.python import log
 from twisted.internet import defer, protocol
 from twisted.application import service, strports
 
-import urlparse
-urlparse.uses_netloc.append("pb")
-
 from foolscap import ipb, base32, negotiate
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError

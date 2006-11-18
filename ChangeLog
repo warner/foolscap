@@ -1,5 +1,7 @@
 2006-11-17  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py: remove unused and dodgy urlparse stuff
+
 	* doc/using-pb.xhtml: move and expand the section on Copyable and
 	other pass-by-copy things into a new file
 	* doc/copyable.xhtml: new document. Thanks to Ricky Iacovou for
