@@ -125,13 +125,22 @@ class Negotiation(protocol.Protocol):
     debugNegotiation = False
     forceNegotiation = None
 
+    minVersion = 1
+    maxVersion = 1
+
     SERVER_TIMEOUT = 60 # you have 60 seconds to complete negotiation, or else
     negotiationTimer = None
 
     def __init__(self):
-        self.negotiationOffer = {"banana-negotiation-version": "1"}
+        for i in range(self.minVersion, self.maxVersion+1):
+            assert hasattr(self, "evaluateNegotiationVersion%d" % i)
+            assert hasattr(self, "acceptDecisionVersion%d" % i)
+        self.negotiationOffer = {
+            "banana-negotiation-min-version": str(self.minVersion),
+            "banana-negotiation-max-version": str(self.maxVersion),
+            }
         # TODO: for testing purposes, it might be useful to be able to add
-        # some kes to this offer
+        # some keys to this offer
         if self.forceNegotiation is not None:
             # TODO: decide how forcing should work. Maybe forceNegotiation
             # should be a dict of keys or something. distinguish between
@@ -570,12 +579,28 @@ class Negotiation(protocol.Protocol):
         if self.debugNegotiation:
             log.msg("evaluateHello(isClient=%s): offer=%s" % (self.isClient,
                                                               offer,))
-        version = offer.get('banana-negotiation-version')
-        if version != '1':
-            raise NegotiationError("Unrecognized version number, "
-                                   "'%s' not '1', in %s"
-                                   % (version, offer))
+        myMinVer = self.minVersion
+        myMaxVer = self.maxVersion
+        theirMinVer = offer.get('banana-negotiation-min-version')
+        theirMaxVer = offer.get('banana-negotiation-max-version')
+        if not theirMinVer or not theirMaxVer:
+            raise NegotiationError("No valid banana-negotiation sequence seen")
+        theirMinVer = int(theirMinVer)
+        theirMaxVer = int(theirMaxVer)
+        best = min(myMaxVer, theirMaxVer)
+        if best < myMinVer:
+            raise NegotiationError("I can't handle banana version %d" % best)
+        if best < theirMinVer:
+            raise NegotiationError("You can't handle banana version %d" % best)
 
+        negfunc = getattr(self, "evaluateNegotiationVersion%d" % best)
+        return negfunc(offer)
+
+    def evaluateNegotiationVersion1(self, offer):
+        self.decision_version = 1
+        return self._evaluateNegotiationVersion1(offer)
+
+    def _evaluateNegotiationVersion1(self, offer):
         forced = False
         f = offer.get('negotiation-forced', None)
         if f and f.lower() == "true":
@@ -672,9 +697,10 @@ class Negotiation(protocol.Protocol):
             # up with a 'decision' to be sent back to the other end, and the
             # 'params' to be used on our connection
             decision = {}
-            decision['banana-decision-version'] = "1"
+            decision['banana-decision-version'] = str(self.decision_version)
 
-            ignoredKeys = ["my-tub-id"]
+            ignoredKeys = ["my-tub-id", "banana-negotiation-min-version",
+                           "banana-negotiation-max-version"]
 
             us = dict([(k, self.negotiationOffer[k])
                        for k in self.negotiationOffer.keys()
@@ -686,7 +712,7 @@ class Negotiation(protocol.Protocol):
             if them != us:
                 raise NegotiationError("our negotiation offers are different")
 
-            params = {}
+            params = { 'banana-decision-version': self.decision_version }
 
         else:
             # otherwise, the other side gets to decide
@@ -740,20 +766,24 @@ class Negotiation(protocol.Protocol):
             log.msg("Banana.acceptDecision: got %s" % decision)
 
         version = decision.get('banana-decision-version')
-        if version != '1':
-            raise NegotiationError("Unrecognized version number, "
-                                   "'%s' not '1', in %s"
-                                   % (version, decision))
+        if not version:
+            raise NegotiationError("No banana-decision-version value")
+        acceptfunc = getattr(self, "acceptDecisionVersion%d" % int(version))
+        if not acceptfunc:
+            raise NegotiationError("I cannot handle banana-decision-version "
+                                   "value of %d" % int(version))
+        return acceptfunc(decision)
 
+    def acceptDecisionVersion1(self, decision):
         if decision.has_key("error"):
             error = decision["error"]
             raise RemoteNegotiationError("Banana negotiation failed: %s"
                                          % error)
 
         # parse the decision here, create the connection parameters dict
-        params = {}
+        ver = int(decision['banana-decision-version'])
+        params = { 'banana-decision-version': ver }
         return params
-
 
     def startTLS(self, cert):
         # the TLS connection (according to glyph) is "ready" immediately, but
@@ -846,7 +876,7 @@ class TubConnectorClientFactory(protocol.ClientFactory):
         self.connector.disconnect()
 
     def buildProtocol(self, addr):
-        proto = Negotiation()
+        proto = self.tc.tub.negotiationClass() # this is usually Negotiation
         proto.initClient(self.tc, self.host)
         proto.factory = self
         return proto

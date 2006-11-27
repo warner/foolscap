@@ -182,6 +182,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def __init__(self, params={}):
         banana.Banana.__init__(self, params)
+        self._banana_decision_version = params.get("banana-decision-version")
         self.initBroker()
 
     def initBroker(self):

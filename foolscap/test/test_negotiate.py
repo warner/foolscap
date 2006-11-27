@@ -12,6 +12,66 @@ except ImportError:
 if crypto and not crypto.available:
     crypto = None
 
+# this is tubID 3hemthez7rvgvyhjx2n5kdj7mcyar3yt
+certData_low = \
+"""-----BEGIN CERTIFICATE-----
+MIIBnjCCAQcCAgCEMA0GCSqGSIb3DQEBBAUAMBcxFTATBgNVBAMUDG5ld3BiX3Ro
+aW5neTAeFw0wNjExMjYxODUxMTBaFw0wNzExMjYxODUxMTBaMBcxFTATBgNVBAMU
+DG5ld3BiX3RoaW5neTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEA1DuK9NoF
+fiSreA8rVqYPAjNiUqFelAAYPgnJR92Jry1J/dPA3ieNcCazbjVeKUFjd6+C30XR
+APhajsAJFiJdnmgrtVILNrpZDC/vISKQoAmoT9hP/cMqFm8vmUG/+AXO76q63vfH
+UmabBVDNTlM8FJpbm9M26cFMrH45G840gA0CAwEAATANBgkqhkiG9w0BAQQFAAOB
+gQBCtjgBbF/s4w/16Y15lkTAO0xt8ZbtrvcsFPGTXeporonejnNaJ/aDbJt8Y6nY
+ypJ4+LTT3UQwwvqX5xEuJmFhmXGsghRGypbU7Zxw6QZRppBRqz8xMS+y82mMZRQp
+ezP+BiTvnoWXzDEP1233oYuELVgOVnHsj+rC017Ykfd7fw==
+-----END CERTIFICATE-----
+-----BEGIN RSA PRIVATE KEY-----
+MIICXQIBAAKBgQDUO4r02gV+JKt4DytWpg8CM2JSoV6UABg+CclH3YmvLUn908De
+J41wJrNuNV4pQWN3r4LfRdEA+FqOwAkWIl2eaCu1Ugs2ulkML+8hIpCgCahP2E/9
+wyoWby+ZQb/4Bc7vqrre98dSZpsFUM1OUzwUmlub0zbpwUysfjkbzjSADQIDAQAB
+AoGBAIvxTykw8dpBt8cMyZjzGoZq93Rg74pLnbCap1x52iXmiRmUHWLfVcYT3tDW
+4+X0NfBfjL5IvQ4UtTHXsqYjtvJfXWazYYa4INv5wKDBCd5a7s1YQ8R7mnhlBbRd
+nqZ6RpGuQbd3gTGZCkUdbHPSqdCPAjryH9mtWoQZIepcIcoJAkEA77gjO+MPID6v
+K6lf8SuFXHDOpaNOAiMlxVnmyQYQoF0PRVSpKOQf83An7R0S/jN3C7eZ6fPbZcyK
+SFVktHhYwwJBAOKlgndbSkVzkQCMcuErGZT1AxHNNHSaDo8X3C47UbP3nf60SkxI
+boqmpuPvEPUB9iPQdiNZGDU04+FUhe5Vtu8CQHDQHXS/hIzOMy2/BfG/Y4F/bSCy
+W7HRzKK1jlCoVAbEBL3B++HMieTMsV17Q0bx/WI8Q2jAZE3iFmm4Fi6APHUCQCMi
+5Yb7cBg0QlaDb4vY0q51DXTFC0zIVVl5qXjBWXk8+hFygdIxqHF2RIkxlr9k/nOu
+7aGtPkOBX5KfN+QrBaECQQCltPE9YjFoqPezfyvGZoWAKb8bWzo958U3uVBnCw2f
+Fs8AQDgI/9gOUXxXno51xQSdCnJLQJ8lThRUa6M7/F1B
+-----END RSA PRIVATE KEY-----
+"""
+
+# this is tubID 6cxxohyb5ysw6ftpwprbzffxrghbfopm
+certData_high = \
+"""-----BEGIN CERTIFICATE-----
+MIIBnjCCAQcCAgCEMA0GCSqGSIb3DQEBBAUAMBcxFTATBgNVBAMUDG5ld3BiX3Ro
+aW5neTAeFw0wNjExMjYxODUxNDFaFw0wNzExMjYxODUxNDFaMBcxFTATBgNVBAMU
+DG5ld3BiX3RoaW5neTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEArfrebvt3
+8FE3kKoscY2J/8A4J6CUUUiM7/gl00UvGvvjfdaWbsj4w0o8W2tE0X8Zce3dScSl
+D6qVXy6AEc4Flqs0q02w9uNzcdDY6LF3NiK0Lq+JP4OjJeImUBe8wUU0RQxqf/oA
+GhgHEZhTp6aAdxBXZFOVDloiW6iqrKH/thcCAwEAATANBgkqhkiG9w0BAQQFAAOB
+gQBXi+edp3iz07wxcRztvXtTAjY/9gUwlfa6qSTg/cGqbF0OPa+sISBOFRnnC8qM
+ENexlkpiiD4Oyj+UtO5g2CMz0E62cTJTqz6PfexnmKIGwYjq5wZ2tzOrB9AmAzLv
+TQQ9CdcKBXLd2GCToh8hBvjyyFwj+yTSbq+VKLMFkBY8Rg==
+-----END CERTIFICATE-----
+-----BEGIN RSA PRIVATE KEY-----
+MIICXgIBAAKBgQCt+t5u+3fwUTeQqixxjYn/wDgnoJRRSIzv+CXTRS8a++N91pZu
+yPjDSjxba0TRfxlx7d1JxKUPqpVfLoARzgWWqzSrTbD243Nx0NjosXc2IrQur4k/
+g6Ml4iZQF7zBRTRFDGp/+gAaGAcRmFOnpoB3EFdkU5UOWiJbqKqsof+2FwIDAQAB
+AoGBAKrU3Vp+Y2u+Y+ARqKgrQai1tq36eAhEQ9dRgtqrYTCOyvcCIR5RCirAFvnx
+H1bSBUsgNBw+EZGLfzZBs5FICaUjBOQYBYzfxux6+jlGvdl7idfHs7zogyEYBqye
+0VkwzZ0mVXM2ujOD/z/ANkdEn2fGj/VwAYDlfvlyNZMckHp5AkEA5sc1VG3snWmG
+lz4967MMzJ7XNpZcTvLEspjpH7hFbnXUHIQ4wPYOP7dhnVvKX1FiOQ8+zXVYDDGB
+SK1ABzpc+wJBAMD+imwAhHNBbOb3cPYzOz6XRZaetvep3GfE2wKr1HXP8wchNXWj
+Ijq6fJinwPlDugHaeNnfb+Dydd+YEiDTSJUCQDGCk2Jlotmyhfl0lPw4EYrkmO9R
+GsSlOKXIQFtZwSuNg9AKXdKn9y6cPQjxZF1GrHfpWWPixNz40e+xm4bxcnkCQQCs
++zkspqYQ/CJVPpHkSnUem83GvAl5IKmp5Nr8oPD0i+fjixN0ljyW8RG+bhXcFaVC
+BgTuG4QW1ptqRs5w14+lAkEAuAisTPUDsoUczywyoBbcFo3SVpFPNeumEXrj4MD/
+uP+TxgBi/hNYaR18mTbKD4mzVSjqyEeRC/emV3xUpUrdqg==
+-----END RSA PRIVATE KEY-----
+"""
+
 class Target(Referenceable):
     def __init__(self):
         self.calls = 0
@@ -74,6 +134,17 @@ class BaseMixin:
         tub.startService()
         self.services.append(tub)
         l = tub.listenOn("tcp:0", listenerOptions)
+        tub.setLocation("localhost:%d" % l.getPortnum())
+        self.target = Target()
+        return tub.registerReference(self.target), l.getPortnum()
+
+    def makeSpecificServer(self, certData,
+                           negotiationClass=negotiate.Negotiation):
+        self.tub = tub = Tub(certData=certData)
+        tub.negotiationClass = negotiationClass
+        tub.startService()
+        self.services.append(tub)
+        l = tub.listenOn("tcp:0")
         tub.setLocation("localhost:%d" % l.getPortnum())
         self.target = Target()
         return tub.registerReference(self.target), l.getPortnum()
@@ -665,6 +736,161 @@ class Existing(CrossfireMixin, unittest.TestCase):
         d = self.tub1.getReference(self.url2)
         d.addCallback(self.checkNumBrokers, 2, (r21,))
         return d
+
+# this test will have to change when the regular Negotiation moves to v2
+assert negotiate.Negotiation.maxVersion == 1
+class NegotiationV2(negotiate.Negotiation):
+    maxVersion = 2
+    def evaluateNegotiationVersion2(self, offer):
+        # just like v1, but with version=2
+        self.decision_version = 2
+        return self._evaluateNegotiationVersion1(offer)
+    def acceptDecisionVersion2(self, decision):
+        return self.acceptDecisionVersion1(decision)
+
+class NegotiationV2Only(NegotiationV2):
+    minVersion = 2
+
+class Future(BaseMixin, unittest.TestCase):
+    def testFuture1(self):
+        # when a peer that understands version=[1] that connects to a peer
+        # that understands version=[1,2], they should pick version=1
+
+        # the listening Tub will have the higher tubID, and thus make the
+        # negotiation decision
+        url, portnum = self.makeSpecificServer(certData_high)
+        # the client 
+        client = Tub(certData=certData_low)
+        client.negotiationClass = NegotiationV2
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        def _check_version(rref):
+            ver = rref.tracker.broker._banana_decision_version
+            self.failUnlessEqual(ver, 1)
+        d.addCallback(_check_version)
+        return d
+    testFuture1.timeout = 10
+
+    def testFuture2(self):
+        # same as before, but the connecting Tub will have the higher tubID,
+        # and thus make the negotiation decision
+        url, portnum = self.makeSpecificServer(certData_low)
+        # the client 
+        client = Tub(certData=certData_high)
+        client.negotiationClass = NegotiationV2
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        def _check_version(rref):
+            ver = rref.tracker.broker._banana_decision_version
+            self.failUnlessEqual(ver, 1)
+        d.addCallback(_check_version)
+        return d
+    testFuture2.timeout = 10
+
+    def testFuture3(self):
+        # same as testFuture1, but it is the listening server that
+        # understands [1,2]
+        url, portnum = self.makeSpecificServer(certData_high, NegotiationV2)
+        client = Tub(certData=certData_low)
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        def _check_version(rref):
+            ver = rref.tracker.broker._banana_decision_version
+            self.failUnlessEqual(ver, 1)
+        d.addCallback(_check_version)
+        return d
+    testFuture3.timeout = 10
+
+    def testFuture4(self):
+        # same as testFuture2, but it is the listening server that
+        # understands [1,2]
+        url, portnum = self.makeSpecificServer(certData_low, NegotiationV2)
+        # the client 
+        client = Tub(certData=certData_high)
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        def _check_version(rref):
+            ver = rref.tracker.broker._banana_decision_version
+            self.failUnlessEqual(ver, 1)
+        d.addCallback(_check_version)
+        return d
+    testFuture4.timeout = 10
+
+    def testTooFarInFuture1(self):
+        # when a peer that understands version=[1] that connects to a peer
+        # that only understands version=[2], they should fail to negotiate
+
+        # the listening Tub will have the higher tubID, and thus make the
+        # negotiation decision
+        url, portnum = self.makeSpecificServer(certData_high)
+        # the client 
+        client = Tub(certData=certData_low)
+        client.negotiationClass = NegotiationV2Only
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        def _oops_succeeded(rref):
+            self.fail("hey! this is supposed to fail")
+        def _check_failure(f):
+            f.trap(tokens.NegotiationError)
+        d.addCallbacks(_oops_succeeded, _check_failure)
+        return d
+    testTooFarInFuture1.timeout = 10
+
+    def testTooFarInFuture2(self):
+        # same as before, but the connecting Tub will have the higher tubID,
+        # and thus make the negotiation decision
+        url, portnum = self.makeSpecificServer(certData_low)
+        client = Tub(certData=certData_high)
+        client.negotiationClass = NegotiationV2Only
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        def _oops_succeeded(rref):
+            self.fail("hey! this is supposed to fail")
+        def _check_failure(f):
+            f.trap(tokens.NegotiationError)
+        d.addCallbacks(_oops_succeeded, _check_failure)
+        return d
+    testTooFarInFuture1.timeout = 10
+
+    def testTooFarInFuture3(self):
+        # same as testTooFarInFuture1, but it is the listening server which
+        # only understands [2]
+        url, portnum = self.makeSpecificServer(certData_high,
+                                               NegotiationV2Only)
+        client = Tub(certData=certData_low)
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        def _oops_succeeded(rref):
+            self.fail("hey! this is supposed to fail")
+        def _check_failure(f):
+            f.trap(tokens.NegotiationError)
+        d.addCallbacks(_oops_succeeded, _check_failure)
+        return d
+    testTooFarInFuture3.timeout = 10
+
+    def testTooFarInFuture4(self):
+        # same as testTooFarInFuture2, but it is the listening server which
+        # only understands [2]
+        url, portnum = self.makeSpecificServer(certData_low,
+                                               NegotiationV2Only)
+        client = Tub(certData=certData_high)
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        def _oops_succeeded(rref):
+            self.fail("hey! this is supposed to fail")
+        def _check_failure(f):
+            f.trap(tokens.NegotiationError)
+        d.addCallbacks(_oops_succeeded, _check_failure)
+        return d
+    testTooFarInFuture4.timeout = 10
 
 # disable all tests unless NEWPB_TEST_NEGOTIATION is set in the environment.
 # The negotiation tests are sensitive to system load, and the intermittent

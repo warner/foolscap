@@ -1,3 +1,26 @@
+2006-11-26  Brian Warner  <warner@lothar.com>
+
+	* foolscap/negotiate.py (Negotiation): change negotiation
+	protocol: now each end sends a minVersion/maxVersion pair, using
+	banana-negotiation-min-version and banana-negotiation-max-version,
+	indicating that they can handle all versions between those
+	numbers, inclusive. The deciding end finds the highest version
+	number that fits in the ranges of both ends, and includes it in
+	the banana-decision-version key of the decision block. This is an
+	incompatible protocol change, but should make it easier (i.e.
+	possible) to have compatible protocol changes in the future.
+	Thanks to Zooko for suggesting this approach.
+	(Negotiation.evaluateNegotiationVersion1): each negotiation
+	version gets is own methods
+	(Negotiation.acceptDecisionVersion1): same
+	(TubConnectorClientFactory.buildProtocol): allow the Tub to make
+	us use other Negotiation classes, for testing
+	* foolscap/pb.py (Listener.__init__): same, use the class from the
+	Tub that first caused the Listener to be created
+	* foolscap/broker.py (Broker.__init__): record the
+	banana-decision-version value, so tests can check it
+	* foolscap/test/test_negotiate.py (Future): test it
+
 2006-11-17  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py: remove unused and dodgy urlparse stuff

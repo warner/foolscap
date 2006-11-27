@@ -41,7 +41,8 @@ class Listener(protocol.ServerFactory):
 
     # this also serves as the ServerFactory
 
-    def __init__(self, port, options={}):
+    def __init__(self, port, options={},
+                 negotiationClass=negotiate.Negotiation):
         """
         @type port: string
         @param port: a L{twisted.application.strports} -style description.
@@ -50,6 +51,7 @@ class Listener(protocol.ServerFactory):
         assert name in ("TCP", "UNIX") # TODO: IPv6
         self.port = port
         self.options = options
+        self.negotiationClass = negotiationClass
         self.parentTub = None
         self.tubs = {}
         self.redirects = {}
@@ -94,6 +96,7 @@ class Listener(protocol.ServerFactory):
         if self.parentTub is None:
             self.parentTub = tub
             self.s.setServiceParent(self.parentTub)
+
     def removeTub(self, tub):
         # this returns a Deferred, since the removal might cause the Listener
         # to shut down
@@ -127,7 +130,7 @@ class Listener(protocol.ServerFactory):
     def buildProtocol(self, addr):
         """Return a Broker attached to me (as the service provider).
         """
-        proto = negotiate.Negotiation()
+        proto = self.negotiationClass()
         proto.initServer(self)
         proto.factory = self
         return proto
@@ -181,6 +184,7 @@ class Tub(service.MultiService):
     else:
         randpool = None
     encrypted = True
+    negotiationClass = negotiate.Negotiation
 
     def __init__(self, certData=None, options={}):
         service.MultiService.__init__(self)
@@ -296,7 +300,7 @@ class Tub(service.MultiService):
         specification of'tcp:0'. """
 
         if type(what) is str:
-            l = Listener(what, options)
+            l = Listener(what, options, self.negotiationClass)
         else:
             assert not options
             l = what
