@@ -1,3 +1,11 @@
+2006-11-27  Brian Warner  <warner@lothar.com>
+
+	* foolscap/negotiate.py (Negotiation._evaluateNegotiationVersion1):
+	ignore extra keys in the offer, since a real v2 (and beyond) offer
+	will have all sorts of extra keys.
+	* foolscap/test/test_negotiate.py (NegotiationV2): test it by
+	putting extra keys in the offer
+
 2006-11-26  Brian Warner  <warner@lothar.com>
 
 	* foolscap/negotiate.py (Negotiation): change negotiation

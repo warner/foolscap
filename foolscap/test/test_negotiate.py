@@ -741,6 +741,9 @@ class Existing(CrossfireMixin, unittest.TestCase):
 assert negotiate.Negotiation.maxVersion == 1
 class NegotiationV2(negotiate.Negotiation):
     maxVersion = 2
+    def __init__(self):
+        negotiate.Negotiation.__init__(self)
+        self.negotiationOffer["extra"] = "new value"
     def evaluateNegotiationVersion2(self, offer):
         # just like v1, but with version=2
         self.decision_version = 2

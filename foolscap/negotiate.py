@@ -699,19 +699,8 @@ class Negotiation(protocol.Protocol):
             decision = {}
             decision['banana-decision-version'] = str(self.decision_version)
 
-            ignoredKeys = ["my-tub-id", "banana-negotiation-min-version",
-                           "banana-negotiation-max-version"]
-
-            us = dict([(k, self.negotiationOffer[k])
-                       for k in self.negotiationOffer.keys()
-                       if k not in ignoredKeys])
-            them = dict([(k, offer[k])
-                         for k in offer.keys()
-                         if k not in ignoredKeys])
-
-            if them != us:
-                raise NegotiationError("our negotiation offers are different")
-
+            # v1: ignore everything else from their offer, put nothing else
+            # in our decision
             params = { 'banana-decision-version': self.decision_version }
 
         else:
