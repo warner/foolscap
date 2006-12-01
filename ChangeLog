@@ -1,3 +1,10 @@
+2006-11-30  Brian Warner  <warner@lothar.com>
+
+	* foolscap/negotiate.py (Negotiation.dataReceived): when sending
+	an error block, set banana-decision-version to '1' so the
+	recipient knows that it's safe to interpret the 'error' key.
+	Thanks to Rob Kinninmont for the catch.
+
 2006-11-27  Brian Warner  <warner@lothar.com>
 
 	* foolscap/negotiate.py (Negotiation._evaluateNegotiationVersion1):

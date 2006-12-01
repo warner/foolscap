@@ -366,7 +366,9 @@ class Negotiation(protocol.Protocol):
                             % errmsg)
                     self.transport.write(resp)
                 elif self.phase in (ENCRYPTED, DECIDING):
-                    block = {'error': errmsg}
+                    block = {'banana-decision-version': 1,
+                             'error': errmsg,
+                             }
                     self.sendBlock(block)
                 elif self.phase == BANANA:
                     pass # TODO
