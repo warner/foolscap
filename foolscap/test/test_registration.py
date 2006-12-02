@@ -3,7 +3,7 @@
 from twisted.trial import unittest
 
 import weakref, gc
-from foolscap import Tub, UnauthenticatedTub
+from foolscap import UnauthenticatedTub
 from foolscap.test.common import HelperTarget
 
 class Registration(unittest.TestCase):

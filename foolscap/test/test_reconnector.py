@@ -1,7 +1,7 @@
 # -*- test-case-name: foolscap.test.test_reconnector -*-
 
 from twisted.trial import unittest
-from foolscap import Tub, UnauthenticatedTub
+from foolscap import UnauthenticatedTub
 from foolscap.test.common import HelperTarget
 from twisted.internet.main import CONNECTION_LOST
 from twisted.internet import defer

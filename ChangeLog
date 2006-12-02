@@ -1,5 +1,10 @@
 2006-12-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_copyable.py: remove unused imports, from pyflakes
+	* foolscap/test/test_pb.py: same
+	* foolscap/test/test_reconnector.py: same
+	* foolscap/test/test_registration.py: same
+
 	* foolscap/test/test_interfaces.py: split the RemoteInterface
 	tests out to a separate file
 	* foolscap/test/test_pb.py: split them from here

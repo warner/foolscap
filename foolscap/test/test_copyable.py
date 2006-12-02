@@ -1,10 +1,10 @@
 
 from twisted.trial import unittest
-from twisted.python import reflect, components, failure
+from twisted.python import components, failure
 from foolscap.test.common import TargetMixin, HelperTarget
 
 from foolscap import copyable, tokens, schema
-from foolscap import Copyable, RemoteCopy, registerRemoteCopy
+from foolscap import Copyable, RemoteCopy
 from foolscap.tokens import Violation
 
 # MyCopyable1 is the basic Copyable/RemoteCopy pair, using auto-registration.
