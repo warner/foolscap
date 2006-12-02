@@ -124,3 +124,26 @@ class TestInterface(TargetMixin, unittest.TestCase):
         d.addCallbacks(lambda res: self.fail("hey, this was supposed to fail"),
                        lambda f: f.trap(ValueError) or None)
         return d
+
+    def testStack(self):
+        # when you violate your outbound schema, the Failure you get should
+        # have a stack trace that includes the actual callRemote invocation
+        self.setupBrokers()
+        rr, target = self.setupTarget(Target(), True)
+        d = rr.callRemote('add', "not a number", "oops")
+        def _check_failure(f):
+            s = f.getTraceback().split("\n")
+            for i in range(len(s)):
+                line = s[i]
+                #print line
+                if ("test/test_interfaces.py" in line
+                    and i+1 < len(s)
+                    and "rr.callRemote" in s[i+1]):
+                    return # all good
+            print "failure looked like this:"
+            print f
+            self.fail("didn't see invocation of callRemote in stacktrace")
+        d.addCallbacks(lambda res: self.fail("hey, this was supposed to fail"),
+                       _check_failure)
+        return d
+

@@ -1,5 +1,9 @@
 2006-12-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_interfaces.py (TestInterface.testStack): new
+	test to verify that the Failure you get when you violate outbound
+	method arguments actually includes the call to callRemote.
+
 	* foolscap/schema.py (StringConstraint.checkObject): make the Violation
 	message more useful
 	(InterfaceConstraint.checkObject): same, by printing the repr() of the
