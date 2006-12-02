@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-from zope.interface import implements
+from zope.interface import implements, implementsOnly, implementedBy
 from twisted.python import log
 from twisted.internet import defer
 from foolscap import schema, broker
@@ -148,3 +148,70 @@ class TargetMixin:
         rtracker = self.callingBroker.getTrackerForYourReference(clid, iname)
         rr = rtracker.getRef()
         return rr, target
+
+
+class RIMyTarget(RemoteInterface):
+    # method constraints can be declared directly:
+    add1 = schema.RemoteMethodSchema(_response=int, a=int, b=int)
+
+    # or through their function definitions:
+    def add(a=int, b=int): return int
+    #add = schema.callable(add) # the metaclass makes this unnecessary
+    # but it could be used for adding options or something
+    def join(a=str, b=str, c=int): return str
+    def getName(): return str
+    disputed = schema.RemoteMethodSchema(_response=int, a=int)
+
+class RIMyTarget2(RemoteInterface):
+    __remote_name__ = "RIMyTargetInterface2"
+    sub = schema.RemoteMethodSchema(_response=int, a=int, b=int)
+
+# For some tests, we want the two sides of the connection to disagree about
+# the contents of the RemoteInterface they are using. This is remarkably
+# difficult to accomplish within a single process. We do it by creating
+# something that behaves just barely enough like a RemoteInterface to work.
+class FakeTarget(dict):
+    pass
+RIMyTarget3 = FakeTarget()
+RIMyTarget3.__remote_name__ = RIMyTarget.__remote_name__
+
+RIMyTarget3['disputed'] = schema.RemoteMethodSchema(_response=int, a=str)
+RIMyTarget3['disputed'].name = "disputed"
+RIMyTarget3['disputed'].interface = RIMyTarget3
+
+RIMyTarget3['disputed2'] = schema.RemoteMethodSchema(_response=str, a=int)
+RIMyTarget3['disputed2'].name = "disputed"
+RIMyTarget3['disputed2'].interface = RIMyTarget3
+
+RIMyTarget3['sub'] = schema.RemoteMethodSchema(_response=int, a=int, b=int)
+RIMyTarget3['sub'].name = "sub"
+RIMyTarget3['sub'].interface = RIMyTarget3
+
+class Target(Referenceable):
+    implements(RIMyTarget)
+
+    def __init__(self, name=None):
+        self.calls = []
+        self.name = name
+    def getMethodSchema(self, methodname):
+        return None
+    def remote_add(self, a, b):
+        self.calls.append((a,b))
+        return a+b
+    remote_add1 = remote_add
+    def remote_getName(self):
+        return self.name
+    def remote_disputed(self, a):
+        return 24
+    def remote_fail(self):
+        raise ValueError("you asked me to fail")
+
+class TargetWithoutInterfaces(Target):
+    # undeclare the RIMyTarget interface
+    implementsOnly(implementedBy(Referenceable))
+
+class BrokenTarget(Referenceable):
+    implements(RIMyTarget)
+
+    def remote_add(self, a, b):
+        return "error"
