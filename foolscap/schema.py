@@ -752,7 +752,7 @@ class RemoteMethodSchema:
                 constraint.checkObject(argvalue)
             except Violation, v:
                 v.setLocation("%s=" % argname)
-                raise v
+                raise
         self.checkArgs(argdict)
 
     def checkResults(self, results):
@@ -766,7 +766,7 @@ class RemoteMethodSchema:
                     v.args = tuple(args)
                 else:
                     v.args = ("in outbound method results",)
-                raise v
+                raise
 
     def maxSize(self, seen=None):
         if self.acceptUnknown:

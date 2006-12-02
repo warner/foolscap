@@ -367,7 +367,7 @@ class RemoteReference(RemoteReferenceOnly):
                 except Violation, v:
                     v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
                                                  v.getLocation()))
-                    raise v
+                    raise
 
                 # the Interface gets to constraint the return value too, so
                 # make a note of it to use later

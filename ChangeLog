@@ -1,5 +1,13 @@
 2006-12-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/call.py (AnswerUnslicer.checkToken): when re-raising an
+	exception, use bareword 'raise' rather than explicitly re-raising
+	the same exception instance with 'raise v'. Both forms get the
+	right instance, but the latter loses the earlier stack trace.
+	* foolscap/schema.py (RemoteMethodSchema.checkResults): same
+	(RemoteMethodSchema.checkAllArgs): same
+	* foolscap/referenceable.py (RemoteReference.callRemote): same
+
 	* foolscap/test/test_interfaces.py (TestInterface.testStack): new
 	test to verify that the Failure you get when you violate outbound
 	method arguments actually includes the call to callRemote.

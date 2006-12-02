@@ -419,7 +419,7 @@ class AnswerUnslicer(slicer.ScopedUnslicer):
                         v.args = why,
                     else:
                         v.args = ("in inbound method results",)
-                    raise v # this will errback the request
+                    raise # this will errback the request
         else:
             raise BananaError("stop sending me stuff!")
 
