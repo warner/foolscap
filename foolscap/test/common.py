@@ -161,6 +161,7 @@ class RIMyTarget(RemoteInterface):
     def join(a=str, b=str, c=int): return str
     def getName(): return str
     disputed = schema.RemoteMethodSchema(_response=int, a=int)
+    def fail(): return str  # actually raises an exception
 
 class RIMyTarget2(RemoteInterface):
     __remote_name__ = "RIMyTargetInterface2"

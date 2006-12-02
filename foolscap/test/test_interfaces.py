@@ -109,3 +109,18 @@ class TestInterface(TargetMixin, unittest.TestCase):
         iface = getRemoteInterface(t)
         self.failIf(iface)
 
+    def testCall(self):
+        self.setupBrokers()
+        rr, target = self.setupTarget(Target(), True)
+        d = rr.callRemote('add', 3, 4) # enforces schemas
+        d.addCallback(lambda res: self.failUnlessEqual(res, 7))
+        return d
+
+    def testFail(self):
+        # make sure exceptions (and thus CopiedFailures) pass a schema check
+        self.setupBrokers()
+        rr, target = self.setupTarget(Target(), True)
+        d = rr.callRemote('fail')
+        d.addCallbacks(lambda res: self.fail("hey, this was supposed to fail"),
+                       lambda f: f.trap(ValueError) or None)
+        return d
