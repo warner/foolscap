@@ -317,7 +317,9 @@ class RemoteReferenceOnly(object):
 class RemoteReference(RemoteReferenceOnly):
     def callRemote(self, _name, *args, **kwargs):
         # Note: for consistency, *all* failures are reported asynchronously.
+        return defer.maybeDeferred(self._callRemote, _name, *args, **kwargs)
 
+    def _callRemote(self, _name, *args, **kwargs):
         req = None
         broker = self.tracker.broker
 
@@ -336,96 +338,102 @@ class RemoteReference(RemoteReferenceOnly):
         if "_useSchema" in kwargs:
             del kwargs["_useSchema"]
 
-        try:
-            # newRequestID() could fail with a DeadReferenceError
-            reqID = broker.newRequestID()
-        except:
-            return defer.fail()
+        # newRequestID() could fail with a DeadReferenceError
+        reqID = broker.newRequestID()
+
+        # in this clause, we validate the outbound arguments against our
+        # notion of what the other end will accept (the RemoteInterface)
+        req = call.PendingRequest(reqID, self)
+
+        # first, figure out which method they want to invoke
+        (interfaceName,
+         methodName,
+         methodSchema) = self._getMethodInfo(_name)
+
+        req.methodName = methodName # for debugging
+        if methodConstraintOverride != "none":
+            methodSchema = methodConstraintOverride
+        if useSchema and methodSchema:
+            # turn positional arguments into kwargs. mapArguments() could
+            # fail for bad argument names or missing required parameters
+            argsdict = methodSchema.mapArguments(args, kwargs)
+
+            # check args against the arg constraint. This could fail if
+            # any arguments are of the wrong type
+            try:
+                methodSchema.checkAllArgs(kwargs)
+            except Violation, v:
+                v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
+                                             v.getLocation()))
+                raise
+
+            # the Interface gets to constraint the return value too, so
+            # make a note of it to use later
+            req.setConstraint(methodSchema.getResponseConstraint())
+        else:
+            if args:
+                why = "positional arguments require a RemoteInterface"
+                why += " for %s.%s()" % (self, methodName)
+                raise tokens.BananaError(why)
+            argsdict = kwargs
+
+        # if the caller specified a _resultConstraint, that overrides
+        # the schema's one
+        if resultConstraint != "none":
+            # overrides schema
+            req.setConstraint(schema.makeConstraint(resultConstraint))
+
+        clid = self.tracker.clid
+        slicer = call.CallSlicer(reqID, clid, methodName, argsdict)
+
+        # up to this point, we are not committed to sending anything to the
+        # far end. The various phases of commitment are:
+
+        #  1: once we tell our broker about the PendingRequest, we must
+        #  promise to retire it eventually. Specifically, if we encounter an
+        #  error before we give responsibility to the connection, we must
+        #  retire it ourselves.
+
+        #  2: once we start sending the CallSlicer to the other end (in
+        #  particular, once they receive the reqID), they might send us a
+        #  response, so we must be prepared to handle that. Giving the
+        #  PendingRequest to the broker arranges for this to happen.
+
+        # So all failures which occur before these commitment events are
+        # entirely local: stale broker, bad method name, bad arguments. If
+        # anything raises an exception before this point, the PendingRequest
+        # is abandoned, and our maybeDeferred wrapper returns a failing
+        # Deferred.
+
+        # commitment point 1. We assume that if this call raises an
+        # exception, the broker will be sure to not track the dead
+        # PendingRequest
+        broker.addRequest(req)
+
+        # TODO: there is a decidability problem here: if the reqID made
+        # it through, the other end will send us an answer (possibly an
+        # error if the remaining slices were aborted). If not, we will
+        # not get an answer. To decide whether we should remove our
+        # broker.waitingForAnswers[] entry, we need to know how far the
+        # slicing process made it.
 
         try:
-            # in this clause, we validate the outbound arguments against our
-            # notion of what the other end will accept (the RemoteInterface)
-            req = call.PendingRequest(reqID, self)
-
-            # first, figure out which method they want to invoke
-            (interfaceName,
-             methodName,
-             methodSchema) = self._getMethodInfo(_name)
-
-            req.methodName = methodName # for debugging
-            if methodConstraintOverride != "none":
-                methodSchema = methodConstraintOverride
-            if useSchema and methodSchema:
-                # turn positional arguments into kwargs. mapArguments() could
-                # fail for bad argument names or missing required parameters
-                argsdict = methodSchema.mapArguments(args, kwargs)
-
-                # check args against the arg constraint. This could fail if
-                # any arguments are of the wrong type
-                try:
-                    methodSchema.checkAllArgs(kwargs)
-                except Violation, v:
-                    v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
-                                                 v.getLocation()))
-                    raise
-
-                # the Interface gets to constraint the return value too, so
-                # make a note of it to use later
-                req.setConstraint(methodSchema.getResponseConstraint())
-            else:
-                if args:
-                    why = "positional arguments require a RemoteInterface"
-                    why += " for %s.%s()" % (self, methodName)
-                    raise tokens.BananaError(why)
-                argsdict = kwargs
-
-            # if the caller specified a _resultConstraint, that overrides
-            # the schema's one
-            if resultConstraint != "none":
-                # overrides schema
-                req.setConstraint(schema.makeConstraint(resultConstraint))
-
-        except: # TODO: merge this with the next try/except clause
-            # we have not yet sent anything to the far end. A failure here
-            # is entirely local: stale broker, bad method name, bad
-            # arguments. We abandon the PendingRequest, but errback the
-            # Deferred it was going to use
-            req.fail(failure.Failure())
-            return req.deferred
-
-        try:
-            # once we start sending the CallSlicer, we could get either a
-            # local or a remote failure, so we must be prepared to accept an
-            # answer. After this point, we assign all responsibility to the
-            # PendingRequest structure.
-            self.tracker.broker.addRequest(req)
-
-            # TODO: there is a decidability problem here: if the reqID made
-            # it through, the other end will send us an answer (possibly an
-            # error if the remaining slices were aborted). If not, we will
-            # not get an answer. To decide whether we should remove our
-            # broker.waitingForAnswers[] entry, we need to know how far the
-            # slicing process made it.
-
-            slicer = call.CallSlicer(reqID, self.tracker.clid,
-                                     methodName, argsdict)
-
-            # this could fail if any of the arguments (or their children)
-            # are unsliceable
+            # commitment point 2
             d = broker.send(slicer)
-            # d will fire when the last argument has been serialized. It
-            # will errback if the arguments could not be serialized. We need
-            # to catch this case and errback the caller.
+            # d will fire when the last argument has been serialized. It will
+            # errback if the arguments (or any of their children) could not
+            # be serialized. We need to catch this case and errback the
+            # caller.
+
+            # if we got here, we have been able to start serializing the
+            # arguments. If serialization fails, the PendingRequest needs to
+            # be flunked (because we aren't guaranteed that the far end will
+            # do it).
+
+            d.addErrback(req.fail)
 
         except:
             req.fail(failure.Failure())
-            return req.deferred
-
-        # if we got here, we have been able to start serializing the
-        # arguments. If serialization fails, the PendingRequest needs to be
-        # flunked (because we aren't guaranteed that the far end will do it).
-
-        d.addErrback(req.fail)
 
         # the remote end could send back an error response for many reasons:
         #  bad method name

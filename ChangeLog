@@ -1,5 +1,9 @@
 2006-12-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReference.callRemote): use
+	defer.maybeDeferred to rearrange and simplify. Clarify the
+	comments about the various phases of commitment.
+
 	* foolscap/call.py (AnswerUnslicer.checkToken): when re-raising an
 	exception, use bareword 'raise' rather than explicitly re-raising
 	the same exception instance with 'raise v'. Both forms get the
