@@ -348,8 +348,10 @@ class RemoteReference(RemoteReferenceOnly):
             req = call.PendingRequest(reqID, self)
 
             # first, figure out which method they want to invoke
+            (interfaceName,
+             methodName,
+             methodSchema) = self._getMethodInfo(_name)
 
-            (methodName, methodSchema) = self._getMethodInfo(_name)
             req.methodName = methodName # for debugging
             if methodConstraintOverride != "none":
                 methodSchema = methodConstraintOverride
@@ -360,7 +362,12 @@ class RemoteReference(RemoteReferenceOnly):
 
                 # check args against the arg constraint. This could fail if
                 # any arguments are of the wrong type
-                methodSchema.checkAllArgs(kwargs)
+                try:
+                    methodSchema.checkAllArgs(kwargs)
+                except Violation, v:
+                    v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
+                                                 v.getLocation()))
+                    raise v
 
                 # the Interface gets to constraint the return value too, so
                 # make a note of it to use later
@@ -436,6 +443,7 @@ class RemoteReference(RemoteReferenceOnly):
 
     def _getMethodInfo(self, name):
         assert type(name) is str
+        interfaceName = None
         methodName = name
         methodSchema = None
 
@@ -447,7 +455,7 @@ class RemoteReference(RemoteReferenceOnly):
             except KeyError:
                 raise Violation("%s(%s) does not offer %s" % \
                                 (interfaceName, self, name))
-        return methodName, methodSchema
+        return interfaceName, methodName, methodSchema
 
 
 class RemoteMethodReferenceTracker(RemoteReferenceTracker):
@@ -470,9 +478,10 @@ class RemoteMethodReference(RemoteReference):
         return RemoteReference.callRemote(self, "", *args, **kwargs)
 
     def _getMethodInfo(self, name):
+        interfaceName = None
         methodName = ""
         methodSchema = None
-        return methodName, methodSchema
+        return interfaceName, methodName, methodSchema
 
 
 class YourReferenceSlicer(slicer.BaseSlicer):

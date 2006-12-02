@@ -53,11 +53,12 @@ class Violation(Exception):
 
     """.where: this string describes which node of the object graph was
     being handled when the exception took place."""
-    where = None
+    where = ""
 
     def setLocation(self, where):
-        if self.where is None:
-            self.where = where
+        self.where = where
+    def getLocation(self):
+        return self.where
 
     def __str__(self):
         if self.where:

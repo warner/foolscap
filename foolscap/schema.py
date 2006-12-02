@@ -228,7 +228,8 @@ class StringConstraint(Constraint):
         if not isinstance(obj, types.StringTypes):
             raise Violation("not a String")
         if self.maxLength != None and len(obj) > self.maxLength:
-            raise Violation("string too long")
+            raise Violation("string too long (%d > %d)" %
+                            (len(obj), self.maxLength))
     def maxSize(self, seen=None):
         if self.maxLength == None:
             raise UnboundedSchema
@@ -356,7 +357,9 @@ class InterfaceConstraint(Constraint):
     def checkObject(self, obj):
         # TODO: maybe try to get an adapter instead?
         if not self.interface.providedBy(obj):
-            raise Violation("does not provide interface %s" % self.interface)
+            # TODO: is this a security leak to show a remote object's repr?
+            raise Violation("%s does not provide interface %s"
+                            % (obj, self.interface))
 
 class ClassConstraint(Constraint):
     taster = openTaster
@@ -367,7 +370,9 @@ class ClassConstraint(Constraint):
         self.klass = klass
     def checkObject(self, obj):
         if not isinstance(obj, self.klass):
-            raise Violation("is not an instance of %s" % self.klass)
+            # TODO: is this a security leak to show a remote object's repr?
+            raise Violation("%s is not an instance of %s" %
+                            (obj, self.klass))
 
 class PolyConstraint(Constraint):
     name = "PolyConstraint"
@@ -743,7 +748,11 @@ class RemoteMethodSchema:
                 # this argument will be ignored by the far end. TODO: emit a
                 # warning
                 pass
-            constraint.checkObject(argvalue)
+            try:
+                constraint.checkObject(argvalue)
+            except Violation, v:
+                v.setLocation("%s=" % argname)
+                raise v
         self.checkArgs(argdict)
 
     def checkResults(self, results):
@@ -854,6 +863,10 @@ def makeConstraint(t):
     except NameError:
         pass # if t is not a class, issubclass raises an exception
     if isinstance(t, types.ClassType):
+        # TODO: this can be confusing, I had a schema of foo=Any (when I
+        # should have said foo=Any() ) and got weird error messages because
+        # my object was not an instance of the Any class. Maybe replace this
+        # case with ClassOf(Thing) instead?
         return ClassConstraint(t)
 
     # alternatives
