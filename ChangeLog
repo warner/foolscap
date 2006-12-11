@@ -1,3 +1,12 @@
+2006-12-10  Brian Warner  <warner@lothar.com>
+
+	* foolscap/negotiate.py (TubConnectorClientFactory.__repr__):
+	annotate the string form to include which Tub we're connecting to.
+	This makes the default factory's "BlahFactory Starting" log
+	messages more interesting to look at.
+	* foolscap/referenceable.py (TubRef.getTubID): support method
+	(NoAuthTubRef.getTubID): same
+
 2006-12-01  Brian Warner  <warner@lothar.com>
 
 	* foolscap/referenceable.py (RemoteReference.callRemote): use

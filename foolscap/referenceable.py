@@ -717,6 +717,9 @@ class TubRef:
     def getLocations(self):
         return self.locationHints
 
+    def getTubID(self):
+        return self.tubID
+
     def __str__(self):
         return "pb://" + self.tubID
 
@@ -740,6 +743,9 @@ class NoAuthTubRef(TubRef):
 
     def getLocations(self):
         return [self.location]
+
+    def getTubID(self):
+        return "<unauth>"
 
     def __str__(self):
         return "pbu://" + self.location

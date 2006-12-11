@@ -852,13 +852,24 @@ class Negotiation(protocol.Protocol):
 
 # TODO: make sure code that examines self.phase handles ABANDONED
 
-class TubConnectorClientFactory(protocol.ClientFactory):
+class TubConnectorClientFactory(protocol.ClientFactory, object):
     # this is for internal use only. Application code should use
     # Tub.getReference(url)
 
     def __init__(self, tc, host):
         self.tc = tc # the TubConnector
         self.host = host
+
+    def __repr__(self):
+        # make it clear which remote Tub we're trying to connect to
+        base = object.__repr__(self)
+        at = base.find(" at ")
+        if at == -1:
+            # our annotation isn't really important, so don't fail just
+            # because we guessed the default __repr__ incorrectly
+            return base
+        target = self.tc.target.getTubID()[:8]
+        return base[:at] + " [to %s]" % target + base[at:]
 
     def startedConnecting(self, connector):
         self.connector = connector
