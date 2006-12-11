@@ -586,6 +586,11 @@ class Negotiation(protocol.Protocol):
         theirMinVer = offer.get('banana-negotiation-min-version')
         theirMaxVer = offer.get('banana-negotiation-max-version')
         if not theirMinVer or not theirMaxVer:
+            if offer.has_key('banana-negotiation-version'):
+                msg = ("Peer is speaking foolscap-0.0.5 or earlier, "
+                       "which is not compatible with this version. "
+                       "Please upgrade the peer.")
+                raise NegotiationError(msg)
             raise NegotiationError("No valid banana-negotiation sequence seen")
         theirMinVer = int(theirMinVer)
         theirMaxVer = int(theirMaxVer)
