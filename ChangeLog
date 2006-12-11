@@ -1,5 +1,11 @@
 2006-12-11  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py
+	(RemoteReferenceOnly.notifyOnDisconnect): document this method.
+	* foolscap/broker.py (Broker.shutdown): cancel all disconnect
+	watchers upon shutdown
+	* foolscap/pb.py (Tub.stopService): same
+
 	* foolscap/negotiate.py (Negotiation.evaluateHello): if we spot an
 	<=0.0.5 peer, mention that fact in our error message, to
 	distinguish this case from some completely non-Foolscapish

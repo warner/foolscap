@@ -225,6 +225,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
                                                        "RIBroker")
         self.remote_broker = referenceable.RemoteReference(tracker)
 
+    def shutdown(self):
+        self.disconnectWatchers = []
+
     def connectionLost(self, why):
         self.disconnected = True
         self.remote_broker = None

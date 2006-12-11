@@ -299,6 +299,24 @@ class RemoteReferenceOnly(object):
         return self.tracker.sturdy
 
     def notifyOnDisconnect(self, callback, *args, **kwargs):
+        """Register a callback to run when we lose this connection.
+
+        The callback will be invoked with whatever extra arguments you
+        provide to this function. For example::
+
+         def my_callback(name, number):
+             print name, number+4
+         cookie = rref.notifyOnDisconnect(my_callback, 'bob', number=3)
+
+        This function returns an opaque cookie. If you want to cancel the
+        notification, pass this same cookie back to dontNotifyOnDisconnect::
+
+         rref.dontNotifyOnDisconnect(cookie)
+
+        Note that if the Tub is shutdown (via stopService), all
+        notifyOnDisconnect handlers are cancelled.
+        """
+
         # return a cookie (really the (cb,args,kwargs) tuple) that they must
         # use to deregister
         marker = self.tracker.broker.notifyOnDisconnect(callback,

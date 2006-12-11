@@ -345,6 +345,7 @@ class Tub(service.MultiService):
             dl.append(l.removeTub(self))
         dl.append(service.MultiService.stopService(self))
         for b in self.brokers.values():
+            b.shutdown()
             d = defer.maybeDeferred(b.transport.loseConnection)
             dl.append(d)
         for b in self.unauthenticatedBrokers:
