@@ -4,7 +4,7 @@ from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor
 
-from foolscap import broker, referenceable
+from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
 from foolscap.tokens import BananaError, \
      NegotiationError, RemoteNegotiationError
@@ -18,6 +18,21 @@ if crypto and not crypto.available:
 def isSubstring(small, big):
     assert type(small) is str and type(big) is str
     return small in big
+
+def best_overlap(my_min, my_max, your_min, your_max, name):
+    """Find the highest integer which is in both ranges (inclusive).
+    Raise NegotiationError (using 'name' in the error message) if there
+    is no overlap."""
+    best = min(my_max, your_max)
+    if best < my_min:
+        raise NegotiationError("I can't handle %s %d" % (name, best))
+    if best < your_min:
+        raise NegotiationError("You can't handle %s %d" % (name, best))
+    return best
+
+def check_inrange(my_min, my_max, decision, name):
+    if decision < my_min or decision > my_max:
+        raise NegotiationError("I can't handle %s %d" % (name, decision))
 
 # negotiation phases
 PLAINTEXT, ENCRYPTED, DECIDING, BANANA, ABANDONED = range(5)
@@ -128,6 +143,8 @@ class Negotiation(protocol.Protocol):
     minVersion = 1
     maxVersion = 1
 
+    initialVocabTableRange = vocab.getVocabRange()
+
     SERVER_TIMEOUT = 60 # you have 60 seconds to complete negotiation, or else
     negotiationTimer = None
 
@@ -138,6 +155,8 @@ class Negotiation(protocol.Protocol):
         self.negotiationOffer = {
             "banana-negotiation-min-version": str(self.minVersion),
             "banana-negotiation-max-version": str(self.maxVersion),
+            "initial-vocab-table-min": str(self.initialVocabTableRange[0]),
+            "initial-vocab-table-max": str(self.initialVocabTableRange[1]),
             }
         # TODO: for testing purposes, it might be useful to be able to add
         # some keys to this offer
@@ -594,11 +613,10 @@ class Negotiation(protocol.Protocol):
             raise NegotiationError("No valid banana-negotiation sequence seen")
         theirMinVer = int(theirMinVer)
         theirMaxVer = int(theirMaxVer)
-        best = min(myMaxVer, theirMaxVer)
-        if best < myMinVer:
-            raise NegotiationError("I can't handle banana version %d" % best)
-        if best < theirMinVer:
-            raise NegotiationError("You can't handle banana version %d" % best)
+        # best_overlap() might raise a NegotiationError
+        best = best_overlap(self.minVersion, self.maxVersion,
+                            theirMinVer, theirMaxVer,
+                            "banana version")
 
         negfunc = getattr(self, "evaluateNegotiationVersion%d" % best)
         return negfunc(offer)
@@ -691,6 +709,9 @@ class Negotiation(protocol.Protocol):
         if iAmTheMaster:
             # we get to decide everything
             decision = {}
+            # combine their 'offer' and our own self.negotiationOffer to come
+            # up with a 'decision' to be sent back to the other end, and the
+            # 'params' to be used on our connection
 
             # first, do we continue with this connection? we might
             # have an existing connection for this particular tub
@@ -700,15 +721,22 @@ class Negotiation(protocol.Protocol):
                     log.msg(" abandoning the connection: we already have one")
                 raise NegotiationError("Duplicate connection")
 
-            # combine their 'offer' and our own self.negotiationOffer to come
-            # up with a 'decision' to be sent back to the other end, and the
-            # 'params' to be used on our connection
-            decision = {}
+            # what initial vocab set should we use?
+            vocab_index = best_overlap(
+                self.initialVocabTableRange[0],
+                self.initialVocabTableRange[1],
+                int(offer.get("initial-vocab-table-min", 0)),
+                int(offer.get("initial-vocab-table-max", 0)),
+                "initial vocab set")
+            vocab_hash = vocab.hashVocabTable(vocab_index)
+            decision['initial-vocab-table-index'] = "%d %s" % (vocab_index,
+                                                               vocab_hash)
             decision['banana-decision-version'] = str(self.decision_version)
 
-            # v1: ignore everything else from their offer, put nothing else
-            # in our decision
-            params = { 'banana-decision-version': self.decision_version }
+            # v1: handle vocab table index
+            params = { 'banana-decision-version': self.decision_version,
+                       'initial-vocab-table-index': vocab_index,
+                       }
 
         else:
             # otherwise, the other side gets to decide
@@ -778,7 +806,23 @@ class Negotiation(protocol.Protocol):
 
         # parse the decision here, create the connection parameters dict
         ver = int(decision['banana-decision-version'])
-        params = { 'banana-decision-version': ver }
+        vocab_index_string = decision.get('initial-vocab-table-index')
+        if vocab_index_string:
+            vocab_index, vocab_hash = vocab_index_string.split()
+            vocab_index = int(vocab_index)
+        else:
+            vocab_index = 0
+        check_inrange(self.initialVocabTableRange[0],
+                      self.initialVocabTableRange[1],
+                      vocab_index, "initial vocab table index")
+        our_hash = vocab.hashVocabTable(vocab_index)
+        if vocab_index > 0 and our_hash != vocab_hash:
+            msg = ("Our hash for vocab-table-index %d (%s) does not match "
+                   "your hash (%s)" % (vocab_index, our_hash, vocab_hash))
+            raise NegotiationError(msg)
+        params = { 'banana-decision-version': ver,
+                   'initial-vocab-table-index': vocab_index,
+                   }
         return params
 
     def startTLS(self, cert):
@@ -811,6 +855,7 @@ class Negotiation(protocol.Protocol):
 
         if self.debugNegotiation:
             log.msg("Negotiate.switchToBanana(isClient=%s)" % self.isClient)
+            log.msg(" params: %s" % (params,))
 
         self.stopNegotiationTimer()
 

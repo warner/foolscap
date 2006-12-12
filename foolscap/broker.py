@@ -9,7 +9,7 @@ from zope.interface import implements
 from twisted.python import log
 from twisted.internet import defer, error
 
-from foolscap import schema, banana, tokens, ipb
+from foolscap import schema, banana, tokens, ipb, vocab
 from foolscap import call, slicer, referenceable, copyable, remoteinterface
 from foolscap.tokens import Violation, BananaError
 from foolscap.ipb import DeadReferenceError
@@ -183,6 +183,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def __init__(self, params={}):
         banana.Banana.__init__(self, params)
         self._banana_decision_version = params.get("banana-decision-version")
+        vocab_table_index = params.get('initial-vocab-table-index')
+        if vocab_table_index:
+            table = vocab.INITIAL_VOCAB_TABLES[vocab_table_index]
+            self.populateVocabTable(table)
         self.initBroker()
 
     def initBroker(self):

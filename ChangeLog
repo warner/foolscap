@@ -1,5 +1,19 @@
 2006-12-11  Brian Warner  <warner@lothar.com>
 
+	* foolscap/vocab.py: add code to negotiate an initial set of words
+	with which to pre-fill the VOCAB token list. Each side proposes a
+	range and they use the highest common index (and they exchange a
+	short hash of the list itself to guard against disagreements).
+	This serve to compress the protocol traffic by maybe 50% over the
+	longer run.
+	* foolscap/negotiate.py: send the 'initial-vocab-table-min' and
+	'-max' keys in the offer, and 'initial-vocab-table-index' in the
+	decision (and in the Banana params)
+	* foolscap/broker.py (Broker.__init__): populate the table
+	* foolscap/banana.py (Banana.populateVocabTable): new method
+
+	* foolscap/test/test_banana.py (Sliceable.testAdapter): todo items
+
 	* foolscap/referenceable.py
 	(RemoteReferenceOnly.notifyOnDisconnect): document this method.
 	* foolscap/broker.py (Broker.shutdown): cancel all disconnect

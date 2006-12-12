@@ -101,6 +101,24 @@ class Banana(protocol.Protocol):
         self.initSend()
         self.initReceive()
 
+    def populateVocabTable(self, vocabStrings):
+        """
+        I expect a list of strings. I will populate my initial vocab
+        table (both inbound and outbound) with this list.
+
+        It is not safe to use this method once anything has been serialized
+        onto the wire. This method can only be used to set up the initial
+        vocab table based upon a negotiated set of common words. The
+        'initial-vocab-table-index' parameter is used to decide upon the
+        contents of this table.
+        """
+
+        out_vocabDict = dict(zip(vocabStrings, range(len(vocabStrings))))
+        self.outgoingVocabTableWasReplaced(out_vocabDict)
+
+        in_vocabDict = dict(zip(range(len(vocabStrings)), vocabStrings))
+        self.replaceIncomingVocabulary(in_vocabDict)
+
     ### connection setup
 
     def connectionMade(self):

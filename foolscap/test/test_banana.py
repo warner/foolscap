@@ -1833,3 +1833,11 @@ class Sliceable(unittest.TestCase):
         return d
 
 
+
+# TODO: vocab test:
+#  send a bunch of strings
+#  send an object that stalls
+#  send some more strings
+#  set the Vocab table to tokenize some of those strings
+#  send yet more strings
+#  unstall serialization, let everything flow through, verify
