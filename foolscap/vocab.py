@@ -10,7 +10,7 @@ vocab_v1 = [ # all opentypes used in 0.0.6
     "none", "boolean", "reference",
     "dict", "list", "tuple", "set", "immutable-set",
     "unicode", "set-vocab", "add-vocab",
-    "call", "answer", "error",
+    "call", "arguments", "answer", "error",
     "my-reference", "your-reference", "their-reference", "copyable",
     # these are only used by storage.py
     "instance", "module", "class", "method", "function",

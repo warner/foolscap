@@ -70,7 +70,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
         # 'add' is defined with 'def'
         s1 = RIMyTarget['add']
         self.failUnless(isinstance(s1, schema.RemoteMethodSchema))
-        ok, s2 = s1.getArgConstraint("a")
+        ok, s2 = s1.getKeywordArgConstraint("a")
         self.failUnless(ok)
         self.failUnless(isinstance(s2, schema.IntegerConstraint))
         self.failUnless(s2.checkObject(12) == None)
@@ -81,7 +81,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
         # 'add1' is defined as a class attribute
         s1 = RIMyTarget['add1']
         self.failUnless(isinstance(s1, schema.RemoteMethodSchema))
-        ok, s2 = s1.getArgConstraint("a")
+        ok, s2 = s1.getKeywordArgConstraint("a")
         self.failUnless(ok)
         self.failUnless(isinstance(s2, schema.IntegerConstraint))
         self.failUnless(s2.checkObject(12) == None)
@@ -90,15 +90,15 @@ class TestInterface(TargetMixin, unittest.TestCase):
         self.failUnless(isinstance(s3, schema.IntegerConstraint))
 
         s1 = RIMyTarget['join']
-        self.failUnless(isinstance(s1.getArgConstraint("a")[1],
+        self.failUnless(isinstance(s1.getKeywordArgConstraint("a")[1],
                                    schema.StringConstraint))
-        self.failUnless(isinstance(s1.getArgConstraint("c")[1],
+        self.failUnless(isinstance(s1.getKeywordArgConstraint("c")[1],
                                    schema.IntegerConstraint))
         s3 = RIMyTarget['join'].getResponseConstraint()
         self.failUnless(isinstance(s3, schema.StringConstraint))
 
         s1 = RIMyTarget['disputed']
-        self.failUnless(isinstance(s1.getArgConstraint("a")[1],
+        self.failUnless(isinstance(s1.getKeywordArgConstraint("a")[1],
                                    schema.IntegerConstraint))
         s3 = s1.getResponseConstraint()
         self.failUnless(isinstance(s3, schema.IntegerConstraint))

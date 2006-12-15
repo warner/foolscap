@@ -196,6 +196,24 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failIf(self.callingBroker.yourReferenceByCLID.has_key(1))
         self.failIf(self.targetBroker.myReferenceByCLID.has_key(1))
 
+    def testCall1a(self):
+        # no interfaces, but use positional args
+        rr, target = self.setupTarget(TargetWithoutInterfaces())
+        d = rr.callRemote("add", 1, 2)
+        d.addCallback(lambda res: self.failUnlessEqual(res, 3))
+        d.addCallback(lambda res: self.failUnlessEqual(target.calls, [(1,2)]))
+        return d
+    testCall1a.timeout = 2
+
+    def testCall1b(self):
+        # no interfaces, use both positional and keyword args
+        rr, target = self.setupTarget(TargetWithoutInterfaces())
+        d = rr.callRemote("add", 1, b=2)
+        d.addCallback(lambda res: self.failUnlessEqual(res, 3))
+        d.addCallback(lambda res: self.failUnlessEqual(target.calls, [(1,2)]))
+        return d
+    testCall1b.timeout = 2
+
     def testFail1(self):
         # this is done without interfaces
         rr, target = self.setupTarget(TargetWithoutInterfaces())
@@ -357,7 +375,8 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
                                  f.value)
         self.failUnlessSubstring("at <RootUnslicer>.<methodcall", f.value)
-        self.failUnlessSubstring(".add arg[b]>", f.value)
+        self.failUnlessSubstring(" methodname=add", f.value)
+        self.failUnlessSubstring("<arguments arg[b]>", f.value)
 
     def testFailWrongReturnRemote(self):
         rr, target = self.setupTarget(BrokenTarget(), True)
@@ -723,7 +742,9 @@ class TestService(unittest.TestCase):
         self.services[0].startService()
 
     def tearDown(self):
-        return defer.DeferredList([s.stopService() for s in self.services])
+        d = defer.DeferredList([s.stopService() for s in self.services])
+        d.addBoth(flushEventualQueue)
+        return d
 
     def testRegister(self):
         s = self.services[0]

@@ -51,9 +51,9 @@ class Referenceable(OnlyReferenceable):
         self.getInterface()
         return self._interfaceName
 
-    def doRemoteCall(self, methodname, kwargs):
+    def doRemoteCall(self, methodname, args, kwargs):
         meth = getattr(self, "remote_%s" % methodname)
-        res = meth(**kwargs)
+        res = meth(*args, **kwargs)
         return res
 
 class ReferenceableTracker:
@@ -371,15 +371,12 @@ class RemoteReference(RemoteReferenceOnly):
         req.methodName = methodName # for debugging
         if methodConstraintOverride != "none":
             methodSchema = methodConstraintOverride
-        if useSchema and methodSchema:
-            # turn positional arguments into kwargs. mapArguments() could
-            # fail for bad argument names or missing required parameters
-            argsdict = methodSchema.mapArguments(args, kwargs)
 
+        if useSchema and methodSchema:
             # check args against the arg constraint. This could fail if
             # any arguments are of the wrong type
             try:
-                methodSchema.checkAllArgs(kwargs)
+                methodSchema.checkAllArgs(args, kwargs)
             except Violation, v:
                 v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
                                              v.getLocation()))
@@ -388,12 +385,6 @@ class RemoteReference(RemoteReferenceOnly):
             # the Interface gets to constraint the return value too, so
             # make a note of it to use later
             req.setConstraint(methodSchema.getResponseConstraint())
-        else:
-            if args:
-                why = "positional arguments require a RemoteInterface"
-                why += " for %s.%s()" % (self, methodName)
-                raise tokens.BananaError(why)
-            argsdict = kwargs
 
         # if the caller specified a _resultConstraint, that overrides
         # the schema's one
@@ -402,7 +393,7 @@ class RemoteReference(RemoteReferenceOnly):
             req.setConstraint(schema.makeConstraint(resultConstraint))
 
         clid = self.tracker.clid
-        slicer = call.CallSlicer(reqID, clid, methodName, argsdict)
+        slicer = call.CallSlicer(reqID, clid, methodName, args, kwargs)
 
         # up to this point, we are not committed to sending anything to the
         # far end. The various phases of commitment are:

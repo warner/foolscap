@@ -250,3 +250,52 @@ class CreateTest(unittest.TestCase):
         self.check(c.alternatives[0], schema.IntegerConstraint)
         self.check(c.alternatives[1], schema.StringConstraint)
 
+
+class Arguments(unittest.TestCase):
+    def test_arguments(self):
+        def foo(a=int, b=bool, c=int): return str
+        r = schema.RemoteMethodSchema(method=foo)
+        getpos = r.getPositionalArgConstraint
+        getkw = r.getKeywordArgConstraint
+        self.failUnless(isinstance(getpos(0)[1], schema.IntegerConstraint))
+        self.failUnless(isinstance(getpos(1)[1], schema.BooleanConstraint))
+        self.failUnless(isinstance(getpos(2)[1], schema.IntegerConstraint))
+
+        self.failUnless(isinstance(getkw("a")[1], schema.IntegerConstraint))
+        self.failUnless(isinstance(getkw("b")[1], schema.BooleanConstraint))
+        self.failUnless(isinstance(getkw("c")[1], schema.IntegerConstraint))
+
+        self.failUnless(isinstance(r.getResponseConstraint(),
+                                   schema.StringConstraint))
+
+        self.failUnless(isinstance(getkw("c", 1, [])[1],
+                                   schema.IntegerConstraint))
+        self.failUnlessRaises(schema.Violation, getkw, "a", 1, [])
+        self.failUnlessRaises(schema.Violation, getkw, "b", 1, ["b"])
+        self.failUnlessRaises(schema.Violation, getkw, "a", 2, [])
+        self.failUnless(isinstance(getkw("c", 2, [])[1],
+                                   schema.IntegerConstraint))
+        self.failUnless(isinstance(getkw("c", 0, ["a", "b"])[1],
+                                   schema.IntegerConstraint))
+
+        try:
+            r.checkAllArgs((1,True,2), {})
+            r.checkAllArgs((), {"a":1, "b":False, "c":2})
+            r.checkAllArgs((1,), {"b":False, "c":2})
+            r.checkAllArgs((1,True), {"c":3})
+            r.checkResults("good")
+        except schema.Violation:
+            self.fail("that shouldn't have raised a Violation")
+        self.failUnlessRaises(schema.Violation,
+                              r.checkAllArgs, (1,2,3), {}) # 2 is not bool
+        self.failUnlessRaises(schema.Violation,
+                              r.checkAllArgs, (1,True,3,4), {}) # too many
+        self.failUnlessRaises(schema.Violation, # double "a"
+                              r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3})
+        self.failUnlessRaises(schema.Violation, # missing required "b"
+                              r.checkAllArgs, (1,), {"c": 3})
+        self.failUnlessRaises(schema.Violation, # missing required "a"
+                              r.checkAllArgs, (), {"b":True, "c": 3})
+        self.failUnlessRaises(schema.Violation,
+                              r.checkResults, 12)
+

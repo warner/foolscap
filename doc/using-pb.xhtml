@@ -94,7 +94,7 @@ def gotAnswer(result):
     print "result is", result
 def gotError(err):
     print "error:", err
-d = remote.callRemote("add", a=1, b=2)
+d = remote.callRemote("add", 1, 2)
 d.addCallbacks(gotAnswer, gotError)
 </pre>
 
@@ -491,13 +491,10 @@ overriding <code>Referenceable</code> (or, perhaps more usefully,
 implementing an <code class="API"
 base="foolscap.ipb">IRemotelyCallable</code> adapter).</p>
 
-<p>In general, the arguments of a remote method must be passed as keyword
-args (<code>foo(a=1,b=2)</code>), instead of positional ones
-(<code>foo(1,2)</code>). This is enforced to minimize unexpected behavior, in
-case the argument list gets changed. It also makes it easier to reliably
-interoperate with other languages. If you want to use positional parameters,
-use a <code>RemoteInterface</code> (described <a
-href="#constraints">below</a>).</p>
+<p>The arguments of a remote method may be passed as either positional
+parameters (<code>foo(1,2)</code>), or as keyword args
+(<code>foo(a=1,b=2)</code>), or a mixture of both. The usual python rules
+about not duplicating parameters apply.</p>
 
 <p>You can pass all sorts of normal objects to a remote method: strings,
 numbers, tuples, lists, and dictionaries. The serialization of these objects
@@ -767,7 +764,7 @@ different version of the RemoteInterface by mistake, and a malicious attacker
 actively trying to confuse your code. The only promise that PB can make is
 that the constraints you provide in the RemoteInterface will be faithfully
 applied to the incoming data stream, so that you don't need to do the type
-checking yourself.</p>
+checking yourself inside the method.</p>
 
 <p>When making a remote method call, you use the <code>RemoteInterface</code>
 to identify the method instead of a string. This scopes the method name to
@@ -775,14 +772,7 @@ the RemoteInterface:</p>
 
 <pre class="python">
 d = remote.callRemote(RIMath["add"], a=1, b=2)
-</pre>
-
-<p>Another benefit of using the <code>RemoteInterface</code> to specify the
-method is that you can use positional parameters again (the
-<code>RemoteInterface</code> provides enough information to safely figure out
-which parameter is which).</p>
-
-<pre class="python">
+# or
 d = remote.callRemote(RIMath["add"], 1, 2)
 </pre>
 

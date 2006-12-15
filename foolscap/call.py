@@ -8,6 +8,7 @@ from twisted.python import failure, log, reflect
 from twisted.internet import defer
 
 from foolscap import copyable, slicer, schema, tokens
+from foolscap.eventual import eventually
 from tokens import BananaError, Violation
 
 
@@ -62,26 +63,47 @@ class PendingRequest(object):
             log.msg("this one was:", why)
             log.err("multiple failures indicate a problem")
 
+class ArgumentSlicer(slicer.ScopedSlicer):
+    opentype = ('arguments',)
+
+    def __init__(self, args, kwargs):
+        slicer.ScopedSlicer.__init__(self, None)
+        self.args = args
+        self.kwargs = kwargs
+        self.which = ""
+
+    def sliceBody(self, streamable, banana):
+        yield len(self.args)
+        for i,arg in enumerate(self.args):
+            self.which = "arg[%d]" % i
+            yield arg
+        keys = self.kwargs.keys()
+        keys.sort()
+        for argname in keys:
+            self.which = "arg[%s]" % argname
+            yield argname
+            yield self.kwargs[argname]
+
+    def describe(self):
+        return "<%s>" % self.which
+
 
 class CallSlicer(slicer.ScopedSlicer):
     opentype = ('call',)
 
-    def __init__(self, reqID, clid, methodname, args):
+    def __init__(self, reqID, clid, methodname, args, kwargs):
         slicer.ScopedSlicer.__init__(self, None)
         self.reqID = reqID
         self.clid = clid
         self.methodname = methodname
         self.args = args
+        self.kwargs = kwargs
 
     def sliceBody(self, streamable, banana):
         yield self.reqID
         yield self.clid
         yield self.methodname
-        keys = self.args.keys()
-        keys.sort()
-        for argname in keys:
-            yield argname
-            yield self.args[argname]
+        yield ArgumentSlicer(self.args, self.kwargs)
 
     def describe(self):
         return "<call-%s-%s-%s>" % (self.reqID, self.clid, self.methodname)
@@ -117,14 +139,28 @@ class InboundDelivery:
 
     def __init__(self, reqID, obj,
                  interface, methodname, methodSchema,
-                 kwargs):
+                 allargs):
         self.reqID = reqID
         self.obj = obj
         self.interface = interface
         self.methodname = methodname
         self.methodSchema = methodSchema
-        self.kwargs = kwargs
+        self.allargs = allargs
+        if allargs.isReady():
+            self.runnable = True
         self.runnable = False
+
+    def isRunnable(self):
+        if self.allargs.isReady():
+            return True
+        return False
+
+    def whenRunnable(self):
+        if self.allargs.isReady():
+            return defer.succeed(self)
+        d = self.allargs.whenReady()
+        d.addCallback(lambda res: self)
+        return d
 
     def logFailure(self, f):
         # called if tub.logLocalFailures is True
@@ -132,6 +168,7 @@ class InboundDelivery:
                 "someone else) failed")
         log.msg(" reqID=%d, rref=%s, methname=%s" %
                 (self.reqID, self.obj, self.methodname))
+        log.msg(" args=%s" % (self.args,))
         log.msg(" kwargs=%s" % (self.kwargs,))
         stack = f.getTraceback()
         # TODO: trim stack to everything below Broker._doCall
@@ -139,23 +176,204 @@ class InboundDelivery:
         log.msg(" the failure was:")
         log.msg(stack)
 
-class CallUnslicer(slicer.ScopedUnslicer):
-    # 0:reqID, 1:objID, 2:methodname, 3: [(argname/value)]..
-    stage = 0
-    reqID = None
-    obj = None
-    interface = None
-    methodname = None
-    methodSchema = None # will be a MethodArgumentsConstraint
-    argname = None
-    argConstraint = None
+class ArgumentUnslicer(slicer.ScopedUnslicer):
+    methodSchema = None
+
+    def setConstraint(self, methodSchema):
+        self.methodSchema = methodSchema
 
     def start(self, count):
-        self.args = {}
-        self.deferred = defer.Deferred()
+        self.numargs = None
+        self.args = []
+        self.kwargs = {}
+        self.argname = None
+        self.argConstraint = None
         self.num_unreferenceable_children = 0
         self.num_unready_children = 0
-        self.runnable = False # becomes True when all args are ready
+        self.closed = False
+
+    def checkToken(self, typebyte, size):
+        if self.numargs is None:
+            # waiting for positional-arg count
+            if typebyte != tokens.INT:
+                raise BananaError("posarg count must be an INT")
+            return
+        if len(self.args) < self.numargs:
+            # waiting for a positional arg
+            if self.argConstraint:
+                self.argConstraint.checkToken(typebyte, size)
+            return
+        if self.argname is None:
+            # waiting for the name of a keyword arg
+            if typebyte not in (tokens.STRING, tokens.VOCAB):
+                raise BananaError("kwarg name must be a STRING")
+            # TODO: limit to longest argument name of the method?
+            return
+        # waiting for the value of a kwarg
+        if self.argConstraint:
+            self.argConstraint.checkToken(typebyte, size)
+
+    def doOpen(self, opentype):
+        if self.argConstraint:
+            self.argConstraint.checkOpentype(opentype)
+        unslicer = self.open(opentype)
+        if unslicer:
+            if self.argConstraint:
+                unslicer.setConstraint(self.argConstraint)
+        return unslicer
+
+    def receiveChild(self, token, ready_deferred=None):
+        if self.numargs is None:
+            # this token is the number of positional arguments
+            assert isinstance(token, int)
+            assert ready_deferred is None
+            self.numargs = token
+            if self.numargs:
+                ms = self.methodSchema
+                if ms:
+                    accept, self.argConstraint = \
+                            ms.getPositionalArgConstraint(0)
+                    assert accept
+            return
+
+        if len(self.args) < self.numargs:
+            # this token is a positional argument
+            argvalue = token
+            argpos = len(self.args)
+            self.args.append(argvalue)
+            if isinstance(argvalue, defer.Deferred):
+                self.num_unreferenceable_children += 1
+                argvalue.addCallback(self.updateChild, argpos)
+                argvalue.addErrback(self.explode)
+            if ready_deferred:
+                self.num_unready_children += 1
+                ready_deferred.addCallback(self.childReady)
+            if len(self.args) < self.numargs:
+                # more to come
+                ms = self.methodSchema
+                if ms:
+                    nextargnum = len(self.args)
+                    accept, self.argConstraint = \
+                            ms.getPositionalArgConstraint(nextargnum)
+                    assert accept
+            return
+
+        if self.argname is None:
+            # this token is the name of a keyword argument
+            self.argname = token
+            # if the argname is invalid, this may raise Violation
+            ms = self.methodSchema
+            if ms:
+                accept, self.argConstraint = \
+                        ms.getKeywordArgConstraint(self.argname,
+                                                   self.numargs,
+                                                   self.kwargs.keys())
+                assert accept
+            return
+
+        # this token is the value of a keyword argument
+        argvalue = token
+        self.kwargs[self.argname] = argvalue
+        if isinstance(argvalue, defer.Deferred):
+            self.num_unreferenceable_children += 1
+            argvalue.addCallback(self.updateChild, self.argname)
+            argvalue.addErrback(self.explode)
+        if ready_deferred:
+            self.num_unready_children += 1
+            ready_deferred.addCallback(self.childReady)
+        self.argname = None
+        return
+        
+    def updateChild(self, obj, which):
+        # one of our arguments has just now become referenceable. Normal
+        # types can't trigger this (since the arguments to a method form a
+        # top-level serialization domain), but special Unslicers might. For
+        # example, the Gift unslicer will eventually provide us with a
+        # RemoteReference, but for now all we get is a Deferred as a
+        # placeholder.
+
+        if isinstance(which, int):
+            self.args[which] = obj
+        else:
+            self.kwargs[which] = obj
+        self.num_unreferenceable_children -= 1
+        self.checkComplete()
+        return obj
+
+    def childReady(self, obj):
+        self.num_unready_children -= 1
+        self.checkComplete()
+        return obj
+
+    def checkComplete(self):
+        # this is called each time one of our children gets updated or
+        # becomes ready (like when a Gift is finally resolved)
+        if not self.closed:
+            return
+        if self.num_unreferenceable_children:
+            return
+        if self.num_unready_children:
+            return
+        # yup, we're done. Notify anyone who is still waiting
+        for d in self.watchers:
+            eventually(d.callback, self)
+        del self.watchers
+
+    def receiveClose(self):
+        if (self.numargs is None or
+            len(self.args) < self.numargs or
+            self.argname is not None):
+            raise BananaError("'arguments' sequence ended too early")
+        self.closed = True
+        self.watchers = []
+        return self, None
+
+    def isReady(self):
+        assert self.closed
+        if self.num_unreferenceable_children:
+            return False
+        if self.num_unready_children:
+            return False
+        return True
+
+    def whenReady(self):
+        assert self.closed
+        if self.isReady():
+            return defer.succeed(self)
+        d = defer.Deferred()
+        self.watchers.append(d)
+        return d
+
+    def describe(self):
+        s = "<arguments"
+        if self.numargs is not None:
+            if len(self.args) < self.numargs:
+                s += " arg[%d]" % len(self.args)
+            else:
+                if self.argname is not None:
+                    s += " arg[%s]" % self.argname
+                else:
+                    s += " arg[?]"
+        if self.closed:
+            if self.isReady():
+                # waiting to be delivered
+                s += " ready"
+            else:
+                s += " waiting"
+        s += ">"
+        return s
+
+
+class CallUnslicer(slicer.ScopedUnslicer):
+
+    def start(self, count):
+        # start=0:reqID, 1:objID, 2:methodname, 3: arguments
+        self.stage = 0
+        self.reqID = None
+        self.obj = None
+        self.interface = None
+        self.methodname = None
+        self.methodSchema = None # will be a MethodArgumentsConstraint
 
     def checkToken(self, typebyte, size):
         # TODO: limit strings by returning a number instead of None
@@ -170,24 +388,18 @@ class CallUnslicer(slicer.ScopedUnslicer):
                 raise BananaError("method name must be a STRING")
             # TODO: limit to longest method name of self.obj in the interface
         elif self.stage == 3:
-            if self.argname == None:
-                if typebyte not in (tokens.STRING, tokens.VOCAB):
-                    raise BananaError("argument name must be a STRING")
-                # TODO: limit to the longest argname in the method
-            else:
-                if self.argConstraint:
-                    self.argConstraint.checkToken(typebyte, size)
+            if typebyte != tokens.OPEN:
+                raise BananaError("arguments must be an 'arguments' sequence")
+        else:
+            raise BananaError("too many objects given to CallUnslicer")
 
     def doOpen(self, opentype):
         # checkToken insures that this can only happen when we're receiving
-        # an argument value, so we don't have to bother checking self.stage
-        # or self.argname
-        if self.argConstraint:
-            self.argConstraint.checkOpentype(opentype)
+        # an arguments object, so we don't have to bother checking self.stage
+        assert self.stage == 3
         unslicer = self.open(opentype)
-        if unslicer:
-            if self.argConstraint:
-                unslicer.setConstraint(self.argConstraint)
+        if self.methodSchema:
+            unslicer.setConstraint(self.methodSchema)
         return unslicer
 
     def reportViolation(self, f):
@@ -203,17 +415,15 @@ class CallUnslicer(slicer.ScopedUnslicer):
         return f # give up our sequence
 
     def receiveChild(self, token, ready_deferred=None):
-        if self.stage < 3:
-            assert not isinstance(token, defer.Deferred)
-            assert ready_deferred is None
+        assert not isinstance(token, defer.Deferred)
+        assert ready_deferred is None
         #print "CallUnslicer.receiveChild [s%d]" % self.stage, repr(token)
-        # TODO: if possible, return an error to the other side
 
         if self.stage == 0: # reqID
             # we don't yet know which reqID to send any failure to
             self.reqID = token
-            self.stage += 1
-            assert not self.broker.activeLocalCalls.get(self.reqID)
+            self.stage = 1
+            assert self.reqID not in self.broker.activeLocalCalls
             self.broker.activeLocalCalls[self.reqID] = self
             return
 
@@ -232,18 +442,7 @@ class CallUnslicer(slicer.ScopedUnslicer):
         if self.stage == 2: # methodname
             # validate the methodname, get the schema. This may raise an
             # exception for unknown methods
-            if self.objID < 0:
-                # the target is a bound method
-                self.methodSchema = getattr(self.obj, "methodSchema", None)
-                self.methodname = None # TODO: give it something useful
-                if self.broker.requireSchema and not self.methodSchema:
-                    why = "This broker does not accept unconstrained " + \
-                          "method calls"
-                    raise Violation(why)
-                self.stage = 3
-                return
 
-            methodname = token
             # must find the schema, using the interfaces
             
             # TODO: getSchema should probably be in an adapter instead of in
@@ -259,102 +458,49 @@ class CallUnslicer(slicer.ScopedUnslicer):
             # class). If this expectation were to go away, a quick
             # obj.__class__ -> RemoteReferenceSchema cache could be built.
 
-            ms = None
+            self.stage = 3
+
+            if self.objID < 0:
+                # the target is a bound method, ignore the methodname
+                self.methodSchema = getattr(self.obj, "methodSchema", None)
+                self.methodname = None # TODO: give it something useful
+                if self.broker.requireSchema and not self.methodSchema:
+                    why = "This broker does not accept unconstrained " + \
+                          "method calls"
+                    raise Violation(why)
+                return
+
+            self.methodname = token
 
             if self.interface:
                 # they are calling an interface+method pair
-                ms = self.interface.get(methodname)
+                ms = self.interface.get(self.methodname)
                 if not ms:
                     why = "method '%s' not defined in %s" % \
-                          (methodname, self.interface.__remote_name__)
+                          (self.methodname, self.interface.__remote_name__)
                     raise Violation(why)
+                self.methodSchema = ms
 
-            self.methodSchema = ms
-            self.methodname = methodname
-
-            if self.broker.requireSchema and not self.methodSchema:
-                why = "This broker does not accept unconstrained method calls"
-                raise Violation(why)
-
-            self.stage = 3
             return
 
-        if self.stage == 3: # argname/value pairs
-            if self.argname == None:
-                assert not isinstance(token, defer.Deferred)
-                assert ready_deferred is None
-                argname = token
-                if self.args.has_key(argname):
-                    raise BananaError("duplicate argument '%s'" % argname)
-                ms = self.methodSchema
-                if ms:
-                    # if the argname is invalid, this may raise Violation
-                    accept, self.argConstraint = ms.getArgConstraint(argname)
-                    assert accept # TODO: discard if not
-                self.argname = argname
-            else:
-                argvalue = token
-                if isinstance(argvalue, defer.Deferred):
-                    self.num_unreferenceable_children += 1
-                    argvalue.addCallback(self.update, self.argname)
-                    argvalue.addErrback(self.explode)
-                self.args[self.argname] = argvalue
-                self.argname = None
-                if ready_deferred:
-                    self.num_unready_children += 1
-                    ready_deferred.addCallback(self.ready)
-
-    def update(self, obj, argname):
-        # one of our arguments has just now become referenceable. Normal
-        # types can't trigger this (since the arguments to a method form a
-        # top-level serialization domain), but special Unslicers might. For
-        # example, the Gift unslicer will eventually provide us with a
-        # RemoteReference, but for now all we get is a Deferred as a
-        # placeholder.
-        self.args[argname] = obj
-        self.num_unreferenceable_children -= 1
-        self.checkComplete()
-        return obj
-
-    def ready(self, obj):
-        self.num_unready_children -= 1
-        self.checkComplete()
-        return obj
+        if self.stage == 3: # arguments
+            assert isinstance(token, ArgumentUnslicer)
+            self.allargs = token
+            # queue the message. It will not be executed until all the
+            # arguments are ready. The .args list and .kwargs dict may change
+            # before then.
+            self.stage = 4
+            return
 
     def receiveClose(self):
-        if self.stage != 3 or self.argname != None:
+        if self.stage != 4:
             raise BananaError("'call' sequence ended too early")
-        self.stage = 4 # waiting for all children to be ready
         # time to create the InboundDelivery object so we can queue it
         delivery = InboundDelivery(self.reqID, self.obj,
                                    self.interface, self.methodname,
                                    self.methodSchema,
-                                   self.args)
-        self.delivery = delivery
-        if (self.num_unreferenceable_children == 0 and
-            self.num_unready_children == 0):
-            # we're ready to go
-            self.stage = 5
-            self.delivery.runnable = True
-            self.deferred.callback(None)
-        else:
-            # there are no more tokens to receive, and all our arguments are
-            # referenceable, however some of our arguments are not yet ready.
-            # At some point in the future, update() or ready() will call
-            # checkComplete() which will fire this Deferred.
-            pass
-        return delivery, self.deferred
-
-    def checkComplete(self):
-        if self.stage != 4:
-            return
-        if self.num_unreferenceable_children:
-            return
-        if self.num_unready_children:
-            return
-        self.stage = 5
-        self.delivery.runnable = True
-        self.deferred.callback(None)
+                                   self.allargs)
+        return delivery, None
 
     def describe(self):
         s = "<methodcall"
@@ -369,14 +515,7 @@ class CallUnslicer(slicer.ScopedUnslicer):
                 ifacename = self.interface.__remote_name__
             s += " iface=%s" % ifacename
         if self.stage >= 3:
-            s += " .%s" % self.methodname
-            if self.argname != None:
-                s += " arg[%s]" % self.argname
-        if self.stage == 4:
-            s += " waiting"
-        if self.stage == 5:
-            # waiting to be delivered
-            s += " ready"
+            s += " methodname=%s" % self.methodname
         s += ">"
         return s
 

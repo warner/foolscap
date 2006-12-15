@@ -31,6 +31,7 @@ PBTopRegistry = {
     }
 
 PBOpenRegistry = {
+    ('arguments',): call.ArgumentUnslicer,
     ('my-reference',): referenceable.ReferenceUnslicer,
     ('your-reference',): referenceable.YourReferenceUnslicer,
     ('their-reference',): referenceable.TheirReferenceUnslicer,
@@ -114,7 +115,8 @@ class PBRootUnslicer(RootUnslicer):
 
     def receiveChild(self, token, ready_deferred):
         if isinstance(token, call.InboundDelivery):
-            self.broker.scheduleCall(token, ready_deferred)
+            assert ready_deferred is None
+            self.broker.scheduleCall(token)
 
 
 
@@ -456,31 +458,43 @@ class Broker(banana.Banana, referenceable.Referenceable):
                 return m
         return None
 
-    def scheduleCall(self, delivery, ready_deferred):
+    def scheduleCall(self, delivery):
         self.inboundDeliveryQueue.append(delivery)
-        ready_deferred.addCallback(self._callIsReady)
-
-    def _callIsReady(self, res):
         eventually(self.doNextCall)
 
-    def doNextCall(self):
+    def doNextCall(self, ignored=None):
         if not self.inboundDeliveryQueue:
             return
-        if not self.inboundDeliveryQueue[0].runnable:
+        nextCall = self.inboundDeliveryQueue[0]
+        if nextCall.isRunnable():
+            # remove it and arrange to run again soon
+            self.inboundDeliveryQueue.pop(0)
+            delivery = nextCall
+            if self.inboundDeliveryQueue:
+                eventually(self.doNextCall)
+
+            # now perform the actual delivery
+            d = defer.maybeDeferred(self._doCall, delivery)
+            d.addCallback(self._callFinished, delivery)
+            d.addErrback(self.callFailed, delivery.reqID, delivery)
             return
-        delivery = self.inboundDeliveryQueue.pop(0)
-        if self.inboundDeliveryQueue:
-            eventually(self.doNextCall)
-        d = defer.maybeDeferred(self._doCall, delivery)
-        d.addCallback(self._callFinished, delivery)
-        d.addErrback(self.callFailed, delivery.reqID, delivery)
+        # arrange to wake up when the next call becomes runnable
+        d = nextCall.whenRunnable()
+        d.addCallback(self.doNextCall)
 
     def _doCall(self, delivery):
         obj = delivery.obj
+        assert delivery.allargs.isReady()
+        args = delivery.allargs.args
+        kwargs = delivery.allargs.kwargs
+        for i in args + kwargs.values():
+            assert not isinstance(i, defer.Deferred)
+
         if delivery.methodSchema:
             # we asked about each argument on the way in, but ask again so
-            # they can look for missing arguments
-            delivery.methodSchema.checkArgs(delivery.kwargs)
+            # they can look for missing arguments. TODO: see if we can remove
+            # the redundant per-argument checks.
+            delivery.methodSchema.checkAllArgs(args, kwargs)
 
         # interesting case: if the method completes successfully, but
         # our schema prohibits us from sending the result (perhaps the
@@ -490,10 +504,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
         # attached to the object that caused it
         if delivery.methodname is None:
             assert callable(obj)
-            return obj(**delivery.kwargs)
+            return obj(*args, **kwargs)
         else:
             obj = ipb.IRemotelyCallable(obj)
-            return obj.doRemoteCall(delivery.methodname, delivery.kwargs)
+            return obj.doRemoteCall(delivery.methodname, args, kwargs)
 
 
     def _callFinished(self, res, delivery):

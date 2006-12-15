@@ -1,5 +1,42 @@
 2006-12-15  Brian Warner  <warner@lothar.com>
 
+	* doc/using-pb.xhtml: document positional arguments
+
+	* foolscap/call.py: pass both positional and keyword arguments to
+	remote methods. Previously only keyword arguments were accepted.
+	This is a pretty far-reaching change, and introduces a
+	compatibility barrier.
+	(ArgumentSlicer): send both positional args and kwargs in a
+	separate container
+	(CallSlicer): move arg-sending out of CallSlicer
+	(InboundDelivery.isRunnable): make InboundDelivery itself
+	responsible for determining when it is runnable, instead of
+	leaving that up to the CallUnslicer. The InboundDelivery is always
+	referenceable, making the resulting object delivery simpler.
+	(ArgumentUnslicer): move arg-receiving out of CallUnslicer. All of
+	the schema-checking takes place here. Simplify the are-we-ready
+	tests.
+	(CallUnslicer): most of the code has moved out. The (call)
+	sequence is now ('call', reqID, objID, methname, (args)).
+	* foolscap/broker.py (Broker.scheduleCall): simplify, allow posargs
+	* foolscap/referenceable.py (Referenceable.doRemoteCall): deliver
+	posargs to the target method as well as kwargs
+	(RemoteReference): same, stop trying to pre-map posargs into kwargs,
+	no longer require a RemoteInterface to use posargs
+	* foolscap/vocab.py (vocab_v1): add 'arguments' to the v1 vocab
+	list. This is a compatibilty barriers, and changes like this are
+	only allowed between releases. Once 0.0.6 is out we should leave
+	the v1 list alone and make any additions to v2 instead.
+	* foolscap/schema.py (RemoteMethodSchema): allow posargs, deal
+	correctly with a mixture of posargs and kwargs
+	* foolscap/test/test_schema.py (Arguments): test the
+	RemoteMethodSchema class
+	* foolscap/test/test_pb.py (TestCall.testCall1a): new tests of
+	posargs and mixed posargs/kwargs
+	(TestService.tearDown): use flushEventualQueue for cleanup
+	* foolscap/test/test_interfaces.py (TestInterface): change a few
+	things to match RemoteMethodSchema's new interfaces
+
 	* foolscap/eventual.py (flushEventualQueue): allow this method to
 	accept a single argument, which it ignores. This enables it to be
 	used easily as a Deferred callback/errback, such as in a Trial

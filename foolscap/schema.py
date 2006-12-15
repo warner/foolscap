@@ -679,7 +679,12 @@ class RemoteMethodSchema:
         if not names:
             typeList = []
         if len(names) != len(typeList):
-            why = "RemoteInterface methods must have default values for all theirarguments"
+            # TODO: relax this, use schema=Any for the args that don't have
+            # default values. This would make:
+            #  def foo(a, b=int): return None
+            # equivalent to:
+            #  def foo(a=Any, b=int): return None
+            why = "RemoteInterface methods must have default values for all their arguments"
             raise InvalidRemoteInterface(why)
         self.argumentNames = names
         self.argConstraints = {}
@@ -696,26 +701,26 @@ class RemoteMethodSchema:
         self.options = {} # return, wait, reliable, etc
 
 
-    def mapArguments(self, args, kwargs):
-        """Create a dictionary of arguments. All positional arguments must
-        be turned into keyword ones. All default arguments should be filled
-        in (?).
-        """
-        # python probably provides a utility function for this
+    def getPositionalArgConstraint(self, argnum):
+        if argnum >= len(self.argumentNames):
+            raise Violation("too many positional arguments: %d >= %d" %
+                            (argnum, len(self.argumentNames)))
+        argname = self.argumentNames[argnum]
+        c = self.argConstraints.get(argname)
+        assert c
+        if isinstance(c, Optional):
+            c = c.constraint
+        return (True, c)
 
-        # TODO: this does not really work. Fix it.
-
-        # TODO: this would also be a good place to implement the
-        # schema-driven Copyable vs Referenceable decisions
-        for i in range(len(args)):
-            name = self.argumentNames[i]
-            if kwargs.has_key(name):
-                raise TypeError(
-                    "got multiple values for keyword argument '%s'" % name)
-            kwargs[name] = args[i]
-        return kwargs
-
-    def getArgConstraint(self, argname):
+    def getKeywordArgConstraint(self, argname,
+                                num_posargs=0, previous_kwargs=[]):
+        previous_args = self.argumentNames[:num_posargs]
+        for pkw in previous_kwargs:
+            assert pkw not in previous_args
+            previous_args.append(pkw)
+        if argname in previous_args:
+            raise Violation("got multiple values for keyword argument '%s'"
+                            % (argname,))
         c = self.argConstraints.get(argname)
         if c:
             if isinstance(c, Optional):
@@ -731,19 +736,22 @@ class RemoteMethodSchema:
     def getResponseConstraint(self):
         return self.responseConstraint
 
-    def checkArgs(self, argdict):
-        # this is called on the inbound side. Each argument has already been
-        # checked individually, so all we have to do is verify global things
-        # like all required arguments have been provided.
-        for argname in self.required:
-            if not argdict.has_key(argname):
-                raise Violation("missing required argument '%s'" % argname)
+    def checkAllArgs(self, args, kwargs):
+        # first we map the positional arguments
+        allargs = {}
+        if len(args) > len(self.argumentNames):
+            raise Violation("method takes %d positional arguments (%d given)"
+                            % (len(self.argumentNames), len(args)))
+        for i,argvalue in enumerate(args):
+            allargs[self.argumentNames[i]] = argvalue
+        for argname,argvalue in kwargs.items():
+            if argname in allargs:
+                raise Violation("got multiple values for keyword argument '%s'"
+                                % (argname,))
+            allargs[argname] = argvalue
 
-    # outbound side
-
-    def checkAllArgs(self, argdict):
-        for argname, argvalue in argdict.items():
-            accept, constraint = self.getArgConstraint(argname)
+        for argname, argvalue in allargs.items():
+            accept, constraint = self.getKeywordArgConstraint(argname)
             if not accept:
                 # this argument will be ignored by the far end. TODO: emit a
                 # warning
@@ -753,7 +761,10 @@ class RemoteMethodSchema:
             except Violation, v:
                 v.setLocation("%s=" % argname)
                 raise
-        self.checkArgs(argdict)
+
+        for argname in self.required:
+            if argname not in allargs:
+                raise Violation("missing required argument '%s'" % argname)
 
     def checkResults(self, results):
         if self.responseConstraint:
