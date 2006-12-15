@@ -754,10 +754,8 @@ class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
     pickled = 1
     def printTraceback(self, file=None, elideFrameworkCode=0,
                        detail='default'):
-        if not file: file = log.logfile
+        if file is None: file = log.logerr
         file.write("Traceback from remote host -- ")
         file.write(self.traceback)
 
-    printBriefTraceback = printTraceback
-    printDetailedTraceback = printTraceback
 copyable.registerRemoteCopy(FailureSlicer.classname, CopiedFailure)
