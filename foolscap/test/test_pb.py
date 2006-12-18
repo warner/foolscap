@@ -387,7 +387,9 @@ class TestCall(TargetMixin, unittest.TestCase):
     testFailWrongReturnRemote.timeout = 2
     def _testFailWrongReturnRemote_1(self, f):
         self.failUnless(f.check(Violation))
-        self.failUnlessSubstring("in outbound method results", f.value)
+        self.failUnlessSubstring("in return value of <foolscap.test.common.BrokenTarget object at ", f.value)
+        self.failUnlessSubstring(">.add", f.value)
+        self.failUnlessSubstring("not a number", f.value)
 
     def testFailWrongReturnLocal(self):
         # the target returns a value which violates our _resultConstraint

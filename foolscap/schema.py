@@ -768,16 +768,9 @@ class RemoteMethodSchema:
 
     def checkResults(self, results):
         if self.responseConstraint:
-            try:
-                self.responseConstraint.checkObject(results)
-            except Violation, v:
-                if v.args:
-                    args = list(v.args)
-                    args[0] += " in outbound method results"
-                    v.args = tuple(args)
-                else:
-                    v.args = ("in outbound method results",)
-                raise
+            # this might raise a Violation. The caller will annotate its
+            # location appropriately: they have more information than we do.
+            self.responseConstraint.checkObject(results)
 
     def maxSize(self, seen=None):
         if self.acceptUnknown:

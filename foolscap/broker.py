@@ -518,8 +518,8 @@ class Broker(banana.Banana, referenceable.Referenceable):
             try:
                 methodSchema.checkResults(res) # may raise Violation
             except Violation, v:
-                v.setLocation("in return value of %s.%s" %
-                              (delivery.obj, methodSchema.name))
+                v.prependLocation("in return value of %s.%s" %
+                                  (delivery.obj, methodSchema.name))
                 raise
 
         answer = call.AnswerSlicer(reqID, res)
