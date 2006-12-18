@@ -152,11 +152,11 @@ class Negotiation(protocol.Protocol):
         for i in range(self.minVersion, self.maxVersion+1):
             assert hasattr(self, "evaluateNegotiationVersion%d" % i)
             assert hasattr(self, "acceptDecisionVersion%d" % i)
+        assert isinstance(self.initialVocabTableRange, tuple)
         self.negotiationOffer = {
-            "banana-negotiation-min-version": str(self.minVersion),
-            "banana-negotiation-max-version": str(self.maxVersion),
-            "initial-vocab-table-min": str(self.initialVocabTableRange[0]),
-            "initial-vocab-table-max": str(self.initialVocabTableRange[1]),
+            "banana-negotiation-range": "%d %d" % (self.minVersion,
+                                                   self.maxVersion),
+            "initial-vocab-table-range": "%d %d" % self.initialVocabTableRange,
             }
         # TODO: for testing purposes, it might be useful to be able to add
         # some keys to this offer
@@ -600,19 +600,16 @@ class Negotiation(protocol.Protocol):
         if self.debugNegotiation:
             log.msg("evaluateHello(isClient=%s): offer=%s" % (self.isClient,
                                                               offer,))
-        myMinVer = self.minVersion
-        myMaxVer = self.maxVersion
-        theirMinVer = offer.get('banana-negotiation-min-version')
-        theirMaxVer = offer.get('banana-negotiation-max-version')
-        if not theirMinVer or not theirMaxVer:
+        if not offer.has_key('banana-negotiation-range'):
             if offer.has_key('banana-negotiation-version'):
                 msg = ("Peer is speaking foolscap-0.0.5 or earlier, "
                        "which is not compatible with this version. "
                        "Please upgrade the peer.")
                 raise NegotiationError(msg)
             raise NegotiationError("No valid banana-negotiation sequence seen")
-        theirMinVer = int(theirMinVer)
-        theirMaxVer = int(theirMaxVer)
+        min_s, max_s = offer['banana-negotiation-range'].split()
+        theirMinVer = int(min_s)
+        theirMaxVer = int(max_s)
         # best_overlap() might raise a NegotiationError
         best = best_overlap(self.minVersion, self.maxVersion,
                             theirMinVer, theirMaxVer,
@@ -722,11 +719,14 @@ class Negotiation(protocol.Protocol):
                 raise NegotiationError("Duplicate connection")
 
             # what initial vocab set should we use?
+            theirVocabRange_s = offer.get("initial-vocab-table-range", "0 0")
+            theirVocabRange = theirVocabRange_s.split()
+            theirVocabMin = int(theirVocabRange[0])
+            theirVocabMax = int(theirVocabRange[1])
             vocab_index = best_overlap(
                 self.initialVocabTableRange[0],
                 self.initialVocabTableRange[1],
-                int(offer.get("initial-vocab-table-min", 0)),
-                int(offer.get("initial-vocab-table-max", 0)),
+                theirVocabMin, theirVocabMax,
                 "initial vocab set")
             vocab_hash = vocab.hashVocabTable(vocab_index)
             decision['initial-vocab-table-index'] = "%d %s" % (vocab_index,

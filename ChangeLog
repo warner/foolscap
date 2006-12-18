@@ -1,5 +1,13 @@
 2006-12-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation): Send less data. When
+	sending a range (both for the fundamental banana negotiation
+	version and for the initial vocab table index), send it in a
+	single line with "0 1" rather than two separate min and max lines.
+	This brings the hello message down to about 105 bytes and improves
+	the benefit of using a negotiated initial-vocab-table-range rather
+	than an early (but post-negotiation) SET-VOCAB banana sequence.
+
 	* foolscap/schema.py: add RemoteInterfaceConstraints. This works
 	by declaring an argument as, e.g., RIFoo, which means that this
 	argument must be passed a RemoteReference that is connected to a
