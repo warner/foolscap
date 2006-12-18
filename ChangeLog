@@ -1,5 +1,11 @@
 2006-12-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/tokens.py (Violation.prependLocation): add new methods
+	to Violations for easier annotation of where they occurred
+	(Violation.appendLocation): same
+	(Violation.__str__): remove the "at" from the location text
+	* foolscap/test/test_pb.py: update to match
+
 	* foolscap/broker.py (Broker._callFinished): if the outbound
 	return value violates the schema, annotate the Violation to
 	indicate the object and method that was responsible.

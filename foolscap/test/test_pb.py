@@ -374,7 +374,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failUnless(f.check(Violation))
         self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
                                  f.value)
-        self.failUnlessSubstring("at <RootUnslicer>.<methodcall", f.value)
+        self.failUnlessSubstring("<RootUnslicer>.<methodcall", f.value)
         self.failUnlessSubstring(" methodname=add", f.value)
         self.failUnlessSubstring("<arguments arg[b]>", f.value)
 
@@ -407,7 +407,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failUnlessSubstring("INT token rejected by StringConstraint",
                                  str(f))
         self.failUnlessSubstring("in inbound method results", str(f))
-        self.failUnlessSubstring("at <RootUnslicer>.Answer(req=0)", str(f))
+        self.failUnlessSubstring("<RootUnslicer>.Answer(req=0)", str(f))
 
 
 

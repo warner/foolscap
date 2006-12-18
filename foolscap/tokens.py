@@ -59,10 +59,20 @@ class Violation(Exception):
         self.where = where
     def getLocation(self):
         return self.where
+    def prependLocation(self, prefix):
+        if self.where:
+            self.where = prefix + " " + self.where
+        else:
+            self.where = prefix
+    def appendLocation(self, suffix):
+        if self.where:
+            self.where = self.where + " " + suffix
+        else:
+            self.where = suffix
 
     def __str__(self):
         if self.where:
-            return "Violation (at %s): %s" % (self.where, self.args)
+            return "Violation (%s): %s" % (self.where, self.args)
         else:
             return "Violation: %s" % (self.args,)
 
