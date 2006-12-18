@@ -857,6 +857,7 @@ def makeConstraint(t):
         types.IntType: IntegerConstraint(),
         types.LongType: IntegerConstraint(maxBytes=1024),
         types.FloatType: NumberConstraint(),
+        None: Nothing(),
         }
     c = map.get(t, None)
     if c:

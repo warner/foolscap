@@ -1,5 +1,9 @@
 2006-12-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/schema.py (makeConstraint): map None to Nothing(),
+	which only accepts None. This is pretty handy for methods which
+	are always supposed to return None.
+
 	* foolscap/schema.py (RemoteMethodSchema.checkResults): don't
 	annotate any Violations here.. leave that up to the caller
 	* foolscap/broker.py (Broker._callFinished): update the annotation
