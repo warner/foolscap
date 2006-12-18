@@ -1,5 +1,7 @@
 2006-12-18  Brian Warner  <warner@lothar.com>
 
+	* misc/{sid|sarge|dapper}/debian/rules: include copyable.xhtml
+
 	* NEWS: update for 0.0.6
 
 	* foolscap/negotiate.py (Negotiation): Send less data. When
