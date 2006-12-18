@@ -1,21 +1,20 @@
 # -*- test-case-name: foolscap.test.test_interfaces -*-
 
-from zope.interface import implementsOnly, Interface
+from zope.interface import implementsOnly
 from twisted.trial import unittest
 
 from foolscap import schema, remoteinterface
 from foolscap import RemoteInterface
 from foolscap.remoteinterface import getRemoteInterface
 from foolscap.remoteinterface import RemoteInterfaceRegistry
+from foolscap.tokens import Violation
+from foolscap.referenceable import RemoteReference
 
 from foolscap.test.common import TargetMixin
 from foolscap.test.common import getRemoteInterfaceName, Target, RIMyTarget, \
-     RIMyTarget2, TargetWithoutInterfaces
+     RIMyTarget2, TargetWithoutInterfaces, IFoo, Foo, TypesTarget, RIDummy, \
+     DummyTarget
 
-
-class IFoo(Interface):
-    # non-remote Interface
-    pass
 
 class Target2(Target):
     implementsOnly(IFoo, RIMyTarget2)
@@ -73,8 +72,9 @@ class TestInterface(TargetMixin, unittest.TestCase):
         ok, s2 = s1.getKeywordArgConstraint("a")
         self.failUnless(ok)
         self.failUnless(isinstance(s2, schema.IntegerConstraint))
-        self.failUnless(s2.checkObject(12) == None)
-        self.failUnlessRaises(schema.Violation, s2.checkObject, "string")
+        self.failUnless(s2.checkObject(12, False) == None)
+        self.failUnlessRaises(schema.Violation,
+                              s2.checkObject, "string", False)
         s3 = s1.getResponseConstraint()
         self.failUnless(isinstance(s3, schema.IntegerConstraint))
 
@@ -84,8 +84,9 @@ class TestInterface(TargetMixin, unittest.TestCase):
         ok, s2 = s1.getKeywordArgConstraint("a")
         self.failUnless(ok)
         self.failUnless(isinstance(s2, schema.IntegerConstraint))
-        self.failUnless(s2.checkObject(12) == None)
-        self.failUnlessRaises(schema.Violation, s2.checkObject, "string")
+        self.failUnless(s2.checkObject(12, False) == None)
+        self.failUnlessRaises(schema.Violation,
+                              s2.checkObject, "string", False)
         s3 = s1.getResponseConstraint()
         self.failUnless(isinstance(s3, schema.IntegerConstraint))
 
@@ -109,22 +110,6 @@ class TestInterface(TargetMixin, unittest.TestCase):
         iface = getRemoteInterface(t)
         self.failIf(iface)
 
-    def testCall(self):
-        self.setupBrokers()
-        rr, target = self.setupTarget(Target(), True)
-        d = rr.callRemote('add', 3, 4) # enforces schemas
-        d.addCallback(lambda res: self.failUnlessEqual(res, 7))
-        return d
-
-    def testFail(self):
-        # make sure exceptions (and thus CopiedFailures) pass a schema check
-        self.setupBrokers()
-        rr, target = self.setupTarget(Target(), True)
-        d = rr.callRemote('fail')
-        d.addCallbacks(lambda res: self.fail("hey, this was supposed to fail"),
-                       lambda f: f.trap(ValueError) or None)
-        return d
-
     def testStack(self):
         # when you violate your outbound schema, the Failure you get should
         # have a stack trace that includes the actual callRemote invocation
@@ -147,3 +132,138 @@ class TestInterface(TargetMixin, unittest.TestCase):
                        _check_failure)
         return d
 
+class Types(TargetMixin, unittest.TestCase):
+    def setUp(self):
+        TargetMixin.setUp(self)
+        self.setupBrokers()
+
+    def deferredShouldFail(self, d, ftype=None, checker=None):
+        if not ftype and not checker:
+            d.addCallbacks(lambda res:
+                           self.fail("hey, this was supposed to fail"),
+                           lambda f: None)
+        elif ftype and not checker:
+            d.addCallbacks(lambda res:
+                           self.fail("hey, this was supposed to fail"),
+                           lambda f: f.trap(ftype) or None)
+        else:
+            d.addCallbacks(lambda res:
+                           self.fail("hey, this was supposed to fail"),
+                           checker)
+
+    def testCall(self):
+        rr, target = self.setupTarget(Target(), True)
+        d = rr.callRemote('add', 3, 4) # enforces schemas
+        d.addCallback(lambda res: self.failUnlessEqual(res, 7))
+        return d
+
+    def testFail(self):
+        # make sure exceptions (and thus CopiedFailures) pass a schema check
+        rr, target = self.setupTarget(Target(), True)
+        d = rr.callRemote('fail')
+        self.deferredShouldFail(d, ftype=ValueError)
+        return d
+
+    def testNoneGood(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('returns_none', True)
+        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        return d
+
+    def testNoneBad(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('returns_none', False)
+        def _check_failure(f):
+            f.trap(Violation)
+            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object", str(f))
+            self.failUnlessIn(">.returns_none", str(f))
+            self.failUnlessIn("'not None' is not None", str(f))
+        self.deferredShouldFail(d, checker=_check_failure)
+        return d
+
+    def testTakesRemoteInterfaceGood(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('takes_remoteinterface', DummyTarget())
+        d.addCallback(lambda res: self.failUnlessEqual(res, "good"))
+        return d
+
+    def testTakesRemoteInterfaceBad(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('takes_remoteinterface', 12)
+        def _check_failure(f):
+            f.trap(Violation)
+            self.failUnlessIn("RITypes.takes_remoteinterface(a=))", str(f))
+            self.failUnlessIn("'12' does not provide RemoteInterface ", str(f))
+        self.deferredShouldFail(d, checker=_check_failure)
+        return d
+
+    def failUnlessRemoteProvides(self, obj, riface):
+        # TODO: really, I want to just be able to say:
+        #   self.failUnless(RIDummy.providedBy(res))
+        iface = obj.tracker.interface
+        # TODO: this test probably doesn't handle subclasses of
+        # RemoteInterface, which might be useful (if it even works)
+        if not iface or iface != riface:
+            self.fail("%s does not provide RemoteInterface %s" % (obj, riface))
+
+    def testReturnsRemoteInterfaceGood(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('returns_remoteinterface', True)
+        def _check(res):
+            self.failUnless(isinstance(res, RemoteReference))
+            #self.failUnless(RIDummy.providedBy(res))
+            self.failUnlessRemoteProvides(res, RIDummy)
+        d.addCallback(_check)
+        return d
+
+    def testReturnsRemoteInterfaceBad(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('returns_remoteinterface', False)
+        def _check_failure(f):
+            f.trap(Violation)
+            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
+            self.failUnlessIn(">.returns_remoteinterface)", str(f))
+            self.failUnlessIn("'15' does not provide RemoteInterface ", str(f))
+            self.failUnlessIn("RIDummy", str(f))
+        self.deferredShouldFail(d, checker=_check_failure)
+        return d
+
+class LocalTypes(TargetMixin, unittest.TestCase):
+    def setUp(self):
+        TargetMixin.setUp(self)
+        self.setupBrokers()
+
+    def testTakesInterfaceGood(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('takes_interface', DummyTarget())
+        d.addCallback(lambda res: self.failUnlessEqual(res, "good"))
+        return d
+
+    def testTakesInterfaceBad(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('takes_interface', Foo())
+        def _check_failure(f):
+            f.trap(Violation)
+            print f
+        self.deferredShouldFail(d, checker=_check_failure)
+        return d
+
+    def testReturnsInterfaceGood(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('returns_interface', True)
+        def _check(res):
+            #self.failUnless(isinstance(res, RemoteReference))
+            self.failUnless(IFoo.providedBy(res))
+        d.addCallback(_check)
+        return d
+
+    def testReturnsInterfaceBad(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        d = rr.callRemote('returns_interface', False)
+        def _check_failure(f):
+            f.trap(Violation)
+            print f
+        self.deferredShouldFail(d, checker=_check_failure)
+        return d
+
+del LocalTypes # TODO: how could these tests possibly work? we need Guards.

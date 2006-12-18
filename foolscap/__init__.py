@@ -12,6 +12,7 @@ from foolscap.copyable import Copyable, RemoteCopy, registerRemoteCopy
 from foolscap.copyable import registerCopier, registerRemoteCopyFactory
 from foolscap.ipb import DeadReferenceError
 from foolscap.tokens import BananaError
+# TODO: Violation?
 
 # hush pyflakes
 _unused = [

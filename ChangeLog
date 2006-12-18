@@ -1,5 +1,37 @@
 2006-12-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/schema.py: add RemoteInterfaceConstraints. This works
+	by declaring an argument as, e.g., RIFoo, which means that this
+	argument must be passed a RemoteReference that is connected to a
+	remote Referenceable which implements RIFoo. This works as a
+	return value constraint too.
+	(Constraint.checkObject): add inbound=
+	argument to this method, so RemoteInterfaceConstraint can work
+	properly
+	(InterfaceConstraint): split this into local and remote forms
+	(LocalInterfaceConstraint): only check real local objects, not
+	RemoteReferences. This isn't really useful yet, but eventually
+	schemas will turn into proper local Guards and then it will be.
+	(RemoteInterfaceConstraint): only check RemoteReferences. The
+	check performed must be different on inbound and outbound (since
+	we'll see a RemoteReference when inbound=True, and a Referenceable
+	when inbound=False).
+	(makeConstraint): distinguish between Interfaces and
+	RemoteInterfaces, so we can figure out whether to use
+	LocalInterfaceConstraint or RemoteInterfaceConstraint
+	(callable): get rid of this, the functionality has been absorbed
+	into RemoteMethodSchema.initFromMethod
+	* foolscap/broker.py (Broker._doCall): use inbound= argument
+	(Broker._callFinished): same
+	* foolscap/referenceable.py (RemoteReference._callRemote): same
+	* foolscap/slicer.py (ReferenceUnslicer.receiveChild): same
+	* foolscap/test/test_schema.py: same
+	* foolscap/test/test_interfaces.py: rearrange, add tests for
+	RemoteInterfaces.
+	(LocalTypes): there are tests for Interfaces too, but without local
+	Guards they're disabled for now.
+	* foolscap/test/common.py: refactoring
+
 	* foolscap/schema.py (makeConstraint): map None to Nothing(),
 	which only accepts None. This is pretty handy for methods which
 	are always supposed to return None.

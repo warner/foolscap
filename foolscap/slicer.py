@@ -297,7 +297,7 @@ class ReferenceUnslicer(LeafUnslicer):
         self.finished = True
         # assert that this conforms to the constraint
         if self.constraint:
-            self.constraint.checkObject(self.obj)
+            self.constraint.checkObject(self.obj, True)
         # TODO: it might be a Deferred, but we should know enough about the
         # incoming value to check the constraint. This requires a subclass
         # of Deferred which can give us the metadata.

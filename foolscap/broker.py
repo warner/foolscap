@@ -494,7 +494,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             # we asked about each argument on the way in, but ask again so
             # they can look for missing arguments. TODO: see if we can remove
             # the redundant per-argument checks.
-            delivery.methodSchema.checkAllArgs(args, kwargs)
+            delivery.methodSchema.checkAllArgs(args, kwargs, True)
 
         # interesting case: if the method completes successfully, but
         # our schema prohibits us from sending the result (perhaps the
@@ -516,7 +516,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         assert self.activeLocalCalls[reqID]
         if methodSchema:
             try:
-                methodSchema.checkResults(res) # may raise Violation
+                methodSchema.checkResults(res, False) # may raise Violation
             except Violation, v:
                 v.prependLocation("in return value of %s.%s" %
                                   (delivery.obj, methodSchema.name))

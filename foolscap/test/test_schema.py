@@ -15,9 +15,9 @@ class ConformTest(unittest.TestCase):
     test_banana.InboundByteStream in the various testConstrainedFoo methods.
     """
     def conforms(self, c, obj):
-        c.checkObject(obj)
+        c.checkObject(obj, False)
     def violates(self, c, obj):
-        self.assertRaises(schema.Violation, c.checkObject, obj)
+        self.assertRaises(schema.Violation, c.checkObject, obj, False)
     def assertSize(self, c, maxsize):
         return
         self.assertEquals(c.maxSize(), maxsize)
@@ -279,23 +279,24 @@ class Arguments(unittest.TestCase):
                                    schema.IntegerConstraint))
 
         try:
-            r.checkAllArgs((1,True,2), {})
-            r.checkAllArgs((), {"a":1, "b":False, "c":2})
-            r.checkAllArgs((1,), {"b":False, "c":2})
-            r.checkAllArgs((1,True), {"c":3})
-            r.checkResults("good")
+            r.checkAllArgs((1,True,2), {}, False)
+            r.checkAllArgs((), {"a":1, "b":False, "c":2}, False)
+            r.checkAllArgs((1,), {"b":False, "c":2}, False)
+            r.checkAllArgs((1,True), {"c":3}, False)
+            r.checkResults("good", False)
         except schema.Violation:
             self.fail("that shouldn't have raised a Violation")
-        self.failUnlessRaises(schema.Violation,
-                              r.checkAllArgs, (1,2,3), {}) # 2 is not bool
-        self.failUnlessRaises(schema.Violation,
-                              r.checkAllArgs, (1,True,3,4), {}) # too many
+        self.failUnlessRaises(schema.Violation, # 2 is not bool
+                              r.checkAllArgs, (1,2,3), {}, False)
+        self.failUnlessRaises(schema.Violation, # too many
+                              r.checkAllArgs, (1,True,3,4), {}, False)
         self.failUnlessRaises(schema.Violation, # double "a"
-                              r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3})
+                              r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3},
+                              False)
         self.failUnlessRaises(schema.Violation, # missing required "b"
-                              r.checkAllArgs, (1,), {"c": 3})
+                              r.checkAllArgs, (1,), {"c": 3}, False)
         self.failUnlessRaises(schema.Violation, # missing required "a"
-                              r.checkAllArgs, (), {"b":True, "c": 3})
+                              r.checkAllArgs, (), {"b":True, "c": 3}, False)
         self.failUnlessRaises(schema.Violation,
-                              r.checkResults, 12)
+                              r.checkResults, 12, False)
 

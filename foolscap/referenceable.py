@@ -376,7 +376,7 @@ class RemoteReference(RemoteReferenceOnly):
             # check args against the arg constraint. This could fail if
             # any arguments are of the wrong type
             try:
-                methodSchema.checkAllArgs(args, kwargs)
+                methodSchema.checkAllArgs(args, kwargs, False)
             except Violation, v:
                 v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
                                              v.getLocation()))

@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-from zope.interface import implements, implementsOnly, implementedBy
+from zope.interface import implements, implementsOnly, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer
 from foolscap import schema, broker
@@ -216,3 +216,56 @@ class BrokenTarget(Referenceable):
 
     def remote_add(self, a, b):
         return "error"
+
+
+class IFoo(Interface):
+    # non-remote Interface
+    pass
+
+class Foo(Referenceable):
+    implements(IFoo)
+
+class RIDummy(RemoteInterface):
+    pass
+
+class RITypes(RemoteInterface):
+    def returns_none(work=bool): return None
+    def takes_remoteinterface(a=RIDummy): return str
+    def returns_remoteinterface(work=bool): return RIDummy
+    def takes_interface(a=IFoo): return str
+    def returns_interface(work=bool): return IFoo
+
+class DummyTarget(Referenceable):
+    implements(RIDummy)
+
+class TypesTarget(Referenceable):
+    implements(RITypes)
+
+    def remote_returns_none(self, work):
+        if work:
+            return None
+        return "not None"
+
+    def remote_takes_remoteinterface(self, a):
+        # TODO: really, I want to just be able to say:
+        #   if RIDummy.providedBy(a):
+        iface = a.tracker.interface
+        if iface and iface == RIDummy:
+            return "good"
+        raise RuntimeError("my argument (%s) should provide RIDummy, "
+                           "but doesn't" % a)
+
+    def remote_returns_remoteinterface(self, work):
+        if work:
+            return DummyTarget()
+        return 15
+
+    def remote_takes_interface(self, a):
+        if IFoo.providedBy(a):
+            return "good"
+        raise RuntimeError("my argument (%s) should provide IFoo, but doesn't" % a)
+
+    def remote_returns_interface(self, work):
+        if work:
+            return Foo()
+        return "not implementor of IFoo"

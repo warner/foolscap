@@ -42,9 +42,10 @@ modifiers:
 
 import types, inspect
 from zope.interface import implements, Interface
+from zope.interface.interface import InterfaceClass
 from twisted.python import failure
 
-from tokens import Violation, BananaError, SIZE_LIMIT, \
+from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
      STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, \
      tokenNames, UnknownSchemaType, InvalidRemoteInterface
 
@@ -63,6 +64,7 @@ everythingTaster = {
 openTaster = {
     OPEN: None,
     }
+nothingTaster = {}
 
 class UnboundedSchema(Exception):
     pass
@@ -142,7 +144,7 @@ class Constraint:
         print "opentype %s, self.opentypes %s" % (opentype, self.opentypes)
         raise Violation, "unacceptable OPEN type '%s'" % (opentype,)
 
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         """Validate an existing object. Usually objects are validated as
         their tokens come off the wire, but pre-existing objects may be
         added to containers if a REFERENCE token arrives which points to
@@ -155,8 +157,15 @@ class Constraint:
         validation is too late: it is vulnerable to both DoS and
         made-you-run-code attacks.
 
-        This method is also used to validate outbound objects.
+        If inbound=True, this object is arriving over the wire. If
+        inbound=False, this is being called to validate an existing object
+        before it is sent over the wire. This is done as a courtesy to the
+        remote end, and to improve debuggability.
+
+        Most constraints can use the same checker for both inbound and
+        outbound objects.
         """
+        # this default form passes everything
         return
 
     def maxSize(self, seen=None):
@@ -200,9 +209,9 @@ class Nothing(Constraint):
     opentypes = [("none",)]
     name = "Nothing"
 
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if obj is not None:
-            raise Violation("not None")
+            raise Violation("'%s' is not None" % (obj,))
     def maxSize(self, seen=None):
         if not seen: seen = []
         return OPENBYTES("none")
@@ -224,7 +233,7 @@ class StringConstraint(Constraint):
         self.maxLength = maxLength
         self.taster = {STRING: self.maxLength,
                        VOCAB: None}
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if not isinstance(obj, types.StringTypes):
             raise Violation("not a String")
         if self.maxLength != None and len(obj) > self.maxLength:
@@ -252,7 +261,7 @@ class IntegerConstraint(Constraint):
             self.taster[LONGINT] = maxBytes
             self.taster[LONGNEG] = maxBytes
 
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if not isinstance(obj, (types.IntType, types.LongType)):
             raise Violation("not a number")
         if self.maxBytes == -1:
@@ -279,10 +288,10 @@ class NumberConstraint(IntegerConstraint):
         IntegerConstraint.__init__(self, maxBytes)
         self.taster[FLOAT] = None
 
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if isinstance(obj, types.FloatType):
             return
-        IntegerConstraint.checkObject(self, obj)
+        IntegerConstraint.checkObject(self, obj, inbound)
 
     def maxSize(self, seen=None):
         # floats are packed into 8 bytes, so the shortest FLOAT token is
@@ -325,7 +334,7 @@ class BooleanConstraint(Constraint):
         # imagine a possible use for this, but it made me laugh.
         self.value = value
 
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if type(obj) != types.BooleanType:
             raise Violation("not a bool")
         if self.value != None:
@@ -339,27 +348,60 @@ class BooleanConstraint(Constraint):
         if not seen: seen = []
         return 1+self._myint.maxDepth(seen)
 
-class InterfaceConstraint(Constraint):
-    """This constraint accepts any instance which implements the given
-    Interface. The object may be a RemoteCopy if the classname they provide
-    maps to a local class which implements the given interface, or it may be
-    a RemoteReference if they claim the backing object implements the
-    interface.
+class LocalInterfaceConstraint(Constraint):
+    """This constraint accepts any (local) instance which implements the
+    given local Interface.
     """
+
+    # TODO: maybe accept RemoteCopy instances
+    # TODO: accept inbound your-references, if the local object they map to
+    #       implements the interface
+
     # TODO: do we need an string-to-Interface map just like we have a
     # classname-to-class/factory map?
-    taster = openTaster
-    opentypes = [("instance",)]
-    name = "InterfaceConstraint"
+    taster = nothingTaster
+    opentypes = []
+    name = "LocalInterfaceConstraint"
 
     def __init__(self, interface):
         self.interface = interface
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         # TODO: maybe try to get an adapter instead?
         if not self.interface.providedBy(obj):
-            # TODO: is this a security leak to show a remote object's repr?
-            raise Violation("%s does not provide interface %s"
+            raise Violation("'%s' does not provide interface %s"
                             % (obj, self.interface))
+
+class RemoteInterfaceConstraint(Constraint):
+    """This constraint accepts any RemoteReference that claims to be
+    associated with a remote Referenceable that implements the given
+    RemoteInterface.
+    """
+    taster = openTaster
+    opentypes = [("my-reference",)]
+    # TODO: accept their-references too
+    name = "RemoteInterfaceConstraint"
+
+    def __init__(self, interface):
+        self.interface = interface
+    def checkObject(self, obj, inbound):
+        if inbound:
+            # TODO: the late import is to deal with an import cycle.. find a
+            # better way to fix this.
+            from foolscap.referenceable import RemoteReference
+            if not isinstance(obj, RemoteReference):
+                raise Violation("'%s' does not provide RemoteInterface %s, "
+                                " and isn't even a RemoteReference"
+                                % (obj, self.interface))
+            iface = obj.tracker.interface
+            # TODO: this test probably doesn't handle subclasses of
+            # RemoteInterface, which might be useful (if it even works)
+            if not iface or iface != self.interface:
+                raise Violation("'%s' does not provide RemoteInterface %s"
+                                % (obj, self.interface))
+        else:
+            if not self.interface.providedBy(obj):
+                raise Violation("'%s' does not provide RemoteInterface %s"
+                                % (obj, self.interface))
 
 class ClassConstraint(Constraint):
     taster = openTaster
@@ -368,7 +410,7 @@ class ClassConstraint(Constraint):
 
     def __init__(self, klass):
         self.klass = klass
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if not isinstance(obj, self.klass):
             # TODO: is this a security leak to show a remote object's repr?
             raise Violation("%s is not an instance of %s" %
@@ -382,11 +424,11 @@ class PolyConstraint(Constraint):
         self.alternatives = tuple(self.alternatives)
         # TODO: taster/opentypes should be a union of the alternatives'
 
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         ok = False
         for c in self.alternatives:
             try:
-                c.checkObject(obj)
+                c.checkObject(obj, inbound)
                 ok = True
             except Violation:
                 pass
@@ -421,13 +463,13 @@ class TupleConstraint(Constraint):
 
     def __init__(self, *elemConstraints):
         self.constraints = [makeConstraint(e) for e in elemConstraints]
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if type(obj) != types.TupleType:
             raise Violation("not a tuple")
         if len(obj) != len(self.constraints):
             raise Violation("wrong size tuple")
         for i in range(len(self.constraints)):
-            self.constraints[i].checkObject(obj[i])
+            self.constraints[i].checkObject(obj[i], inbound)
     def maxSize(self, seen=None):
         if not seen: seen = []
         if self in seen:
@@ -461,13 +503,13 @@ class ListConstraint(Constraint):
     def __init__(self, constraint, maxLength=30):
         self.constraint = makeConstraint(constraint)
         self.maxLength = maxLength
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if type(obj) != types.ListType:
             raise Violation("not a list")
         if len(obj) > self.maxLength:
             raise Violation("list too long")
         for o in obj:
-            self.constraint.checkObject(o)
+            self.constraint.checkObject(o, inbound)
     def maxSize(self, seen=None):
         if not seen: seen = []
         if self in seen:
@@ -495,7 +537,7 @@ class DictConstraint(Constraint):
         self.keyConstraint = makeConstraint(keyConstraint)
         self.valueConstraint = makeConstraint(valueConstraint)
         self.maxKeys = maxKeys
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if type(obj) != types.DictType:
             raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
                                                                 type(obj))
@@ -503,8 +545,8 @@ class DictConstraint(Constraint):
             raise Violation, "Dict keys=%d > maxKeys=%d" % (len(obj),
                                                             self.maxKeys)
         for key, value in obj.iteritems():
-            self.keyConstraint.checkObject(key)
-            self.valueConstraint.checkObject(value)
+            self.keyConstraint.checkObject(key, inbound)
+            self.valueConstraint.checkObject(value, inbound)
     def maxSize(self, seen=None):
         if not seen: seen = []
         if self in seen:
@@ -582,7 +624,7 @@ class AttributeDictConstraint(Constraint):
             return (True, None)
         raise Violation("unknown attribute '%s'" % attrname)
 
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if type(obj) != type({}):
             raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
                                                                 type(obj))
@@ -598,7 +640,7 @@ class AttributeDictConstraint(Constraint):
                     # hmm. kind of a soft violation. allow it for now.
                     pass
             else:
-                constraint.checkObject(obj[k])
+                constraint.checkObject(obj[k], inbound)
 
         for k in allkeys[:]:
             if isinstance(self.keys[k], Optional):
@@ -736,7 +778,7 @@ class RemoteMethodSchema:
     def getResponseConstraint(self):
         return self.responseConstraint
 
-    def checkAllArgs(self, args, kwargs):
+    def checkAllArgs(self, args, kwargs, inbound):
         # first we map the positional arguments
         allargs = {}
         if len(args) > len(self.argumentNames):
@@ -757,7 +799,7 @@ class RemoteMethodSchema:
                 # warning
                 pass
             try:
-                constraint.checkObject(argvalue)
+                constraint.checkObject(argvalue, inbound)
             except Violation, v:
                 v.setLocation("%s=" % argname)
                 raise
@@ -766,11 +808,11 @@ class RemoteMethodSchema:
             if argname not in allargs:
                 raise Violation("missing required argument '%s'" % argname)
 
-    def checkResults(self, results):
+    def checkResults(self, results, inbound):
         if self.responseConstraint:
             # this might raise a Violation. The caller will annotate its
             # location appropriately: they have more information than we do.
-            self.responseConstraint.checkObject(results)
+            self.responseConstraint.checkObject(results, inbound)
 
     def maxSize(self, seen=None):
         if self.acceptUnknown:
@@ -842,7 +884,7 @@ class FailureConstraint(AttributeDictConstraint):
                  ]
         AttributeDictConstraint.__init__(self, *attrs)
 
-    def checkObject(self, obj):
+    def checkObject(self, obj, inbound):
         if not isinstance(obj, self.klass):
             raise Violation("is not an instance of %s" % self.klass)
 
@@ -862,11 +904,17 @@ def makeConstraint(t):
     c = map.get(t, None)
     if c:
         return c
-    try:
-        if isinstance(t, type) and issubclass(t, Interface):
-            return InterfaceConstraint(t)
-    except NameError:
-        pass # if t is not a class, issubclass raises an exception
+
+    if isinstance(t, InterfaceClass):
+        # this matches both local interfaces (IFoo) and remote interfaces
+        # (RIFoo), so we have to distinguish between them. The late import is
+        # to deal with a circular reference between this module and
+        # remoteinterface.py
+        from foolscap.remoteinterface import RemoteInterfaceClass
+        if isinstance(t, RemoteInterfaceClass):
+            return RemoteInterfaceConstraint(t)
+        return LocalInterfaceConstraint(t)
+
     if isinstance(t, types.ClassType):
         # TODO: this can be confusing, I had a schema of foo=Any (when I
         # should have said foo=Any() ) and got weird error messages because
@@ -878,24 +926,8 @@ def makeConstraint(t):
     if type(t) == types.TupleType:
         return PolyConstraint(*t)
 
-    raise UnknownSchemaType("can't make constraint from '%s'" % t)
+    raise UnknownSchemaType("can't make constraint from '%s' (%s)" % (t, type(t)))
 
-
-# TODO: can we get rid of this?
-def callable(method, **kw):
-    names, _, _, typeList = inspect.getargspec(method)
-    assert names[0] == "self"
-    names.pop(0)
-    assert len(names) == len(typeList)
-    s = RemoteMethodSchema()
-    s.argumentNames = names
-    d = {}
-    for i in range(len(names)):
-        d[names[i]] = typeList[i]
-    s.argsConstraint = MethodArgumentsConstraint(**d)
-    # call the method, its 'return' value is the return constraint
-    s.responseConstraint = makeConstraint(method(None))
-    return s
 
 
 
