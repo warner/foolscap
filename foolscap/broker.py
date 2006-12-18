@@ -515,7 +515,13 @@ class Broker(banana.Banana, referenceable.Referenceable):
         methodSchema = delivery.methodSchema
         assert self.activeLocalCalls[reqID]
         if methodSchema:
-            methodSchema.checkResults(res) # may raise Violation
+            try:
+                methodSchema.checkResults(res) # may raise Violation
+            except Violation, v:
+                v.setLocation("in return value of %s.%s" %
+                              (delivery.obj, methodSchema.name))
+                raise
+
         answer = call.AnswerSlicer(reqID, res)
         # once the answer has started transmitting, any exceptions must be
         # logged and dropped, and not turned into an Error to be sent.

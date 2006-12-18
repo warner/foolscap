@@ -1,3 +1,9 @@
+2006-12-18  Brian Warner  <warner@lothar.com>
+
+	* foolscap/broker.py (Broker._callFinished): if the outbound
+	return value violates the schema, annotate the Violation to
+	indicate the object and method that was responsible.
+
 2006-12-15  Brian Warner  <warner@lothar.com>
 
 	* foolscap/call.py (CopiedFailure): clean up a bit, make it match
