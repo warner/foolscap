@@ -1,5 +1,10 @@
 2006-12-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release Foolscap-0.0.6
+	* misc/{sid|sarge|dapper}/debian/changelog: same
+
+2006-12-18  Brian Warner  <warner@lothar.com>
+
 	* misc/{sid|sarge|dapper}/debian/rules: include copyable.xhtml
 
 	* NEWS: update for 0.0.6

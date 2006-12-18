@@ -1,6 +1,6 @@
 """Foolscap"""
 
-__version__ = "0.0.5+"
+__version__ = "0.0.6"
 
 # here are the primary entry points
 from foolscap.pb import Tub, UnauthenticatedTub, getRemoteURL_TCP
