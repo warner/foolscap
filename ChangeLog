@@ -1,5 +1,7 @@
 2006-12-18  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for 0.0.6
+
 	* foolscap/negotiate.py (Negotiation): Send less data. When
 	sending a range (both for the fundamental banana negotiation
 	version and for the initial vocab table index), send it in a

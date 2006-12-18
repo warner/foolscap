@@ -1,4 +1,85 @@
-User visible changes in Foolscap (aka newpb/pb2).
+User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
+
+* Release 0.0.6 (18 Dec 2006)
+
+** INCOMPATIBLE PROTOCOL CHANGES
+
+Version 0.0.6 will not interoperate with versions 0.0.5 or earlier, because
+of changes to the negotiation process and the method-calling portion of the
+main wire protocol. (you were warned :-). There are still more incompatible
+changes to come in future versions as the feature set and protocol
+stabilizes. Make sure you can upgrade both ends of the wire until a protocol
+freeze has been declared.
+
+*** Negotiation versions now specify a range, instead of a single number
+
+The two ends of a connection will agree to use the highest mutually-supported
+version. This approach should make it much easier to maintain backwards
+compatibility in the future.
+
+*** Negotiation now includes an initial VOCAB table
+
+One of the outputs of connection negotiation is the initial table of VOCAB
+tokens to use for abbreviating commonly-used strings into short tokens
+(usually just 2 bytes). Both ends have the ability to modify this table at any
+time, but by setting the initial table during negotiation we same some
+protocol traffic. VOCAB-izing common strings (like 'list' and 'dict') have
+the potential to compress wire traffic by maybe 50%.
+
+*** remote methods now accept both positional and keyword arguments
+
+Previously you had to use a RemoteInterface specification to be able to pass
+positional arguments into callRemote(). (the RemoteInterface schema was used
+to convert the positional arguments into keyword arguments before sending
+them over the wire). In 0.0.6 you can pass both posargs and kwargs over the
+wire, and the remote end will pass them directly to the target method. When
+schemas are in effect, the arguments you send will be mapped to the method's
+named parameters in the same left-to-right way that python does it. This
+should make it easier to port oldpb code to use Foolscap, since you don't
+have to rewrite everything to use kwargs exclusively.
+
+** Schemas now allow =None and =RIFoo
+
+You can use 'None' in a method schema to indicate that the argument or return
+value must be None. This is useful for methods that always return None. You
+can also require that the argument be a RemoteReference that provides a
+particular RemoteInterface. For example:
+
+class RIUser(RemoteInterface):
+    def get_age():
+        return int
+    def delete():
+        return None
+
+class RIUserDatabase(RemoteInterface):
+    def get_user(username=str):
+        return RIUser
+
+Note that these remote interface specifications are parsed at import time, so
+any names they refer to must be defined before they get used (hence placing
+RIUserDatabase before RIUser would fail). Hopefully we'll figure out a way to
+fix this in the future.
+
+** Violations are now annotated better, might keep more stack-trace information
+
+** Copyable improvements
+
+The Copyable documentation has been split out to docs/copyable.xhtml and
+somewhat expanded.
+
+The new preferred Copyable usage is to have a class-level attribute named
+"typeToCopy" which holds the unique string. This must match the class-level
+"copytype" attribute of the corresponding RemoteCopy class. Copyable
+subclasses (or ICopyable adapters) may still implement getTypeToCopy(), but
+the default just returns self.typeToCopy . Most significantly, we no longer
+automatically use the fully-qualified classname: instead we *require* that
+the class definition include "typeToCopy". Feel free to use any stable and
+globally-unique string here, like a URI in a namespace that you control, or
+the fully-qualified package/module/classname of the Copyable subclass.
+
+The RemoteCopy subclass must set the 'copytype' attribute, as it is used for
+auto-registration. These can set copytype=None to inhibit auto-registration.
+
 
 * Release 0.0.5 (04 Nov 2006)
 
