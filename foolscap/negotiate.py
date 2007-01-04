@@ -35,7 +35,7 @@ def check_inrange(my_min, my_max, decision, name):
         raise NegotiationError("I can't handle %s %d" % (name, decision))
 
 # negotiation phases
-PLAINTEXT, ENCRYPTED, DECIDING, BANANA, ABANDONED = range(5)
+PLAINTEXT, ENCRYPTED, DECIDING, ABANDONED = range(4)
 
 
 class Negotiation(protocol.Protocol):
@@ -379,8 +379,8 @@ class Negotiation(protocol.Protocol):
                     errmsg = str(e)
                 else:
                     errmsg = "internal server error, see logs"
+                errmsg = errmsg.replace("\n", " ").replace("\r", " ")
                 if self.phase == PLAINTEXT:
-                    errmsg = errmsg.replace("\n", " ") # probably not needed
                     resp = ("HTTP/1.1 500 Internal Server Error: %s\r\n\r\n"
                             % errmsg)
                     self.transport.write(resp)
@@ -389,8 +389,6 @@ class Negotiation(protocol.Protocol):
                              'error': errmsg,
                              }
                     self.sendBlock(block)
-                elif self.phase == BANANA:
-                    pass # TODO
             self.negotiationFailed(why)
             self.transport.loseConnection(why)
             return

@@ -1,3 +1,11 @@
+2007-01-04  Brian Warner  <warner@lothar.com.com>
+
+	* foolscap/negotiate.py (Negotiation.dataReceived): when sending
+	an error message to the far end inside the decision block, make
+	sure the error text itself has no newlines, since that would break
+	the format of the block, and probably cause all sorts of
+	confusion.
+
 2007-01-04  Brian Warner  <warner@lothar.com>
 
 	* foolscap/__init__.py: bump revision to 0.0.6+ while between
