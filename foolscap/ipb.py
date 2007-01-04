@@ -33,7 +33,7 @@ class IRemotelyCallable(Interface):
         """Return a list of RemoteInterface names to which this object knows
         how to respond."""
 
-    def doRemoteCall(methodname, kwargs):
+    def doRemoteCall(methodname, args, kwargs):
         """Invoke the given remote method. This method may raise an
         exception, return normally, or return a Deferred."""
 

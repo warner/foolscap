@@ -5,6 +5,8 @@
 	sure the error text itself has no newlines, since that would break
 	the format of the block, and probably cause all sorts of
 	confusion.
+	* foolscap/ipb.py (IRemotelyCallable.doRemoteCall): remote calls now
+	accept positional args
 
 2007-01-04  Brian Warner  <warner@lothar.com>
 
