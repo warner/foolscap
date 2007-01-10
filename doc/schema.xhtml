@@ -1,11 +1,11 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>NewPB Schemas</title>
+<title>Foolscap Schemas</title>
 <link href="stylesheet-unprocessed.css" type="text/css" rel="style" />
 </head>
 
 <body>
-<h1>NewPB Schemas</h1>
+<h1>Foolscap Schemas</h1>
 
 <em>NOTE! This is all preliminary and is more an exercise in semiconscious
 protocol design than anything else. Do not believe this document. This
@@ -168,8 +168,8 @@ sentence is lying. So there.</em>
 """
 
 RemoteReference objects should all be tagged with interfaces that they
-implement, which point to representations of the method schemas.  When a
-remote method is called, PB should look up the appropriate method and
+implement, which point to representations of the method schemas. When a
+remote method is called, Foolscap should look up the appropriate method and
 serialize the argument list accordingly.
 
 We plan to eliminate positional arguments, so local RemoteReferences use

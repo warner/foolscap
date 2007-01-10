@@ -28,10 +28,10 @@ like HTTP, or implementing yet another RPC mechanism.</p>
   
   <li><em>remote method calls</em>: doing something to a local proxy and
   causing a method to get run on a distant object. The local proxy is called
-  a <code class="API" base="twisted.spread.pb">RemoteReference</code>, and
-  you <q>do something</q> by running its <code>.callRemote</code> method. The
-  distant object is called a <code class="API"
-  base="twisted.spread.pb">Referenceable</code>, and it has methods like
+  a <code class="API" base="foolscap.referenceable">RemoteReference</code>,
+  and you <q>do something</q> by running its <code>.callRemote</code> method.
+  The distant object is called a <code class="API"
+  base="foolscap.referenceable">Referenceable</code>, and it has methods like
   <code>remote_foo</code> that will be invoked.</li>
 
 </ul>
@@ -56,13 +56,14 @@ Later, we'll add more features like RemoteInterface declarations, and
 transferring object references.</p>
 
 <p>The most common way to make an object with remotely-callable methods is to
-subclass <code class="API" base="foolscap">pb.Referenceable</code>. Let's
-create a simple server which does basic arithmetic. You might use such a
-service to perform difficult mathematical operations, like addition, on a
-remote machine which is faster and more capable than your own<span
-class="footnote">although really, if your client machine is too slow to
-perform this kind of math, it is probably too slow to run python or use a
-network, so you should seriously consider a hardware upgrade</span>.</p>
+subclass <code class="API"
+base="foolscap.referenceable">Referenceable</code>. Let's create a simple
+server which does basic arithmetic. You might use such a service to perform
+difficult mathematical operations, like addition, on a remote machine which
+is faster and more capable than your own<span class="footnote">although
+really, if your client machine is too slow to perform this kind of math, it
+is probably too slow to run python or use a network, so you should seriously
+consider a hardware upgrade</span>.</p>
 
 <pre class="python">
 from foolscap import Referenceable
@@ -164,9 +165,9 @@ provides many other possibilities.</p>
 <p>The Tub needs to be told how it can be reached, so it knows what host and
 port to put into the URLs it creates. This location is simply a string in the
 format <q>host:port</q>, using the host name by which that TCP port you've
-just opened can be reached. PB cannot, in general, guess what this name is,
-especially if there are NAT boxes or port-forwarding devices in the way. If
-your machine is reachable directly over the internet as
+just opened can be reached. Foolscap cannot, in general, guess what this name
+is, especially if there are NAT boxes or port-forwarding devices in the way.
+If your machine is reachable directly over the internet as
 <q>myhost.example.com</q>, then you could use something like this:</p>
 
 <pre class="python">
@@ -217,11 +218,12 @@ url = tub.registerReference(myserver, "math-service")
 <p>In this case, the URL would be
 <code>"pbu://myhost.example.com:12345/math-service"</code>. The deterministic
 nature of this form makes it slightly easier to throw together
-quick-and-dirty PB applications, since you only need to hard-code the target
-host and port into the client side program. However any serious application
-should just used the default authenticated form and use a full URL as their
-starting point. Note that the URL can come from anywhere: typed in by the
-user, retrieved from a web page, or hardcoded into the application.</p>
+quick-and-dirty Foolscap applications, since you only need to hard-code the
+target host and port into the client side program. However any serious
+application should just used the default authenticated form and use a full
+URL as their starting point. Note that the URL can come from anywhere: typed
+in by the user, retrieved from a web page, or hardcoded into the
+application.</p>
 
 <h3>Retrieving a RemoteReference</h3>
 
@@ -268,12 +270,12 @@ skipLines="2">pb1server.py</a>
 skipLines="2">pb1client.py</a>
 
 <pre class="shell">
-% doc/pb/listings/pb1server.py 
+% doc/listings/pb1server.py
 the object is available at: pbu://localhost:12345/math-service
 </pre>
 
 <pre class="shell">
-% doc/pb/listings/pb1client.py 
+% doc/listings/pb1client.py
 got a RemoteReference
 asking it to add 1+2
 the answer is 3
@@ -291,12 +293,12 @@ skipLines="2">pb2server.py</a>
 skipLines="2">pb2client.py</a>
 
 <pre class="shell">
-% doc/pb/listings/pb2server.py 
+% doc/listings/pb2server.py
 the object is available at: pb://abcd123@localhost:12345/math-service
 </pre>
 
 <pre class="shell">
-% doc/pb/listings/pb2client.py pb://abcd123@localhost:12345/math-service
+% doc/listings/pb2client.py pb://abcd123@localhost:12345/math-service
 got a RemoteReference
 asking it to add 1+2
 the answer is 3
@@ -306,9 +308,9 @@ the answer is 3
 
 <h3>PB URLs</h3>
 
-<p>In PB, each world-accessible Referenceable has one or more URLs which are
-<q>secure</q>, where we use the capability-security definition of the term,
-meaning those URLs have the following properties:</p>
+<p>In Foolscap, each world-accessible Referenceable has one or more URLs
+which are <q>secure</q>, where we use the capability-security definition of
+the term, meaning those URLs have the following properties:</p>
 
 <ul>
   <li>The only way to acquire the URL is either to get it from someone else
@@ -386,20 +388,20 @@ follows:</p>
 
 <h2>Clients vs Servers, Names and Capabilities</h2>
 
-<p>It is worthwhile to point out that PB is a symmetric protocol.
+<p>It is worthwhile to point out that Foolscap is a symmetric protocol.
 <code>Referenceable</code> instances can live on either side of a wire, and
 the only difference between <q>client</q> and <q>server</q> is who publishes
 the object and who initiates the network connection.</p>
 
-<p>In any PB-using system, the very first object exchanged must be acquired
-with a <code>tub.getReference(url)</code> call<span class="footnote">in fact,
-the very <em>very</em> first object exchanged is a special implicit
-RemoteReference to the remote Tub itself, which implements an internal
-protocol that includes a method named <code>remote_getReference</code>. The
-<code>tub.getReference(url)</code> call is turned into one step that connects
-to the remote Tub, and a second step which invokes
-remotetub.callRemote("getReference", refname) on the result</span>, which
-means it must have been published with a call to
+<p>In any Foolscap-using system, the very first object exchanged must be
+acquired with a <code>tub.getReference(url)</code> call<span
+class="footnote">in fact, the very <em>very</em> first object exchanged is a
+special implicit RemoteReference to the remote Tub itself, which implements
+an internal protocol that includes a method named
+<code>remote_getReference</code>. The <code>tub.getReference(url)</code> call
+is turned into one step that connects to the remote Tub, and a second step
+which invokes remotetub.callRemote("getReference", refname) on the
+result</span>, which means it must have been published with a call to
 <code>tub.registerReference(ref, name)</code>. After that, other objects can
 be passed as an argument to (or a return value from) a remotely-invoked
 method of that first object. Any suitable <code>Referenceable</code> object
@@ -415,8 +417,8 @@ else will be able to get access to that <code>Referenceable</code>. This
 property means the <code>Referenceable</code> is a <q>capability</q>, as
 holding a corresponding <code>RemoteReference</code> gives someone a power
 that they cannot acquire in any other way<span class="footnote">of course,
-the PB connections must be secured with SSL (otherwise an eavesdropper or
-man-in-the-middle could get access), and the registered name must be
+the Foolscap connections must be secured with SSL (otherwise an eavesdropper
+or man-in-the-middle could get access), and the registered name must be
 unguessable (or someone else could acquire a reference), but both of these
 are the default.</span></p>
 
@@ -470,7 +472,7 @@ skipLines="2">pb3user.py</a>
 </pre>
 
 <pre class="shell">
-% doc/pb/listings/pb3user.py \
+% doc/listings/pb3user.py \
    pb://5ojw4cv4u4d5cenxxekjukrogzytnhop@localhost:12345/calculator
 event: push(2)
 event: push(3)
@@ -509,15 +511,15 @@ base="foolscap.schema">Shared</code> constraint will let you express this,
 and is described in the <a href="#constraints">Constraints</a> section of
 this document</span>.</p>
 
-<p>Passing instances is handled specially. PB will not send anything over the
-wire that it does not know how to serialize, and (unlike the standard
-<code>pickle</code> module) it will not make assumptions about how to handle
-classes that that have not been explicitly marked as serializable. This is
-for security, both for the sender (making you you don't pass anything over
-the wire that you didn't intend to let out of your security perimeter), and
-for the recipient (making sure outsiders aren't allowed to create arbitrary
-instances inside your memory space, and therefore letting them run somewhat
-arbitrary code inside <em>your</em> perimeter).</p>
+<p>Passing instances is handled specially. Foolscap will not send anything
+over the wire that it does not know how to serialize, and (unlike the
+standard <code>pickle</code> module) it will not make assumptions about how
+to handle classes that that have not been explicitly marked as serializable.
+This is for security, both for the sender (making you you don't pass anything
+over the wire that you didn't intend to let out of your security perimeter),
+and for the recipient (making sure outsiders aren't allowed to create
+arbitrary instances inside your memory space, and therefore letting them run
+somewhat arbitrary code inside <em>your</em> perimeter).</p>
 
 <p>Sending <code>Referenceable</code>s is straightforward: they always appear
 as a corresponding <code>RemoteReference</code> on the other side. You can
@@ -539,15 +541,15 @@ section of this document for details.</p>
 should be serialized. <code>Referenceable</code> is good for
 copy-by-reference semantics<span class="footnote">In fact, if all you want is
 referenceability (and not callability), you can use <code class="API"
-base="foolscap">pb.OnlyReferenceable</code>. Strictly speaking,
-<code>pb.Referenceable</code> is both <q>Referenceable</q> (meaning it is
-sent over the wire using pass-by-reference semantics, and it survives a round
+base="foolscap.referenceable">OnlyReferenceable</code>. Strictly speaking,
+<code>Referenceable</code> is both <q>Referenceable</q> (meaning it is sent
+over the wire using pass-by-reference semantics, and it survives a round
 trip) and <q>Callable</q> (meaning you can invoke remote methods on it).
-<code>pb.Referenceable</code> should really be named
-<code>pb.Callable</code>, but the existing name has a lot of historical
-weight behind it.</span>. For copy-by-value semantics, the easiest route is
-to subclass <code class="API" base="foolscap">pb.Copyable</code>. See the
-<a href="#copyable">Copyable</a> section for details. Note that you can also
+<code>Referenceable</code> should really be named <code>Callable</code>, but
+the existing name has a lot of historical weight behind it.</span>. For
+copy-by-value semantics, the easiest route is to subclass <code class="API"
+base="foolscap.copyable">Copyable</code>. See the <a
+href="#copyable">Copyable</a> section for details. Note that you can also
 register an <code class="API" base="foolscap.copyable">ICopyable</code>
 adapter on third-party classes to avoid subclassing. You will need to
 register the <code>Copyable</code>'s name on the receiving end too, otherwise
@@ -579,17 +581,17 @@ errbacked with a <code>CopiedFailure</code>.</p>
 
 <h2>Constraints and RemoteInterfaces</h2><a name="constraints" />
 
-<p>One major feature introduced by newpb is the serialization <code
-class="API" base="foolscap.schema">Constraint</code>. This lets you place
-limits on what kind of data you are willing to accept, which enables safer
-distributed programming. Typically python uses <q>duck typing</q>, wherein
-you usually just throw some arguments at the method and see what happens.
-When you are less sure of the origin of those arguments, you may want to be
-more circumspect. Enforcing type checking at the boundary between your code
-and the outside world may make it safer to use duck typing inside those
-boundaries. The type specifications also form a convenient remote API
-reference you can publish for prospective clients of your remotely-invokable
-service.</p>
+<p>One major feature introduced by Foolscap (relative to oldpb) is the
+serialization <code class="API" base="foolscap.schema">Constraint</code>.
+This lets you place limits on what kind of data you are willing to accept,
+which enables safer distributed programming. Typically python uses <q>duck
+typing</q>, wherein you usually just throw some arguments at the method and
+see what happens. When you are less sure of the origin of those arguments,
+you may want to be more circumspect. Enforcing type checking at the boundary
+between your code and the outside world may make it safer to use duck typing
+inside those boundaries. The type specifications also form a convenient
+remote API reference you can publish for prospective clients of your
+remotely-invokable service.</p>
 
 <p>In addition, these Constraints are enforced on each token as it arrives
 over the wire. This means that you can calculate a (small) upper bound on how
@@ -651,7 +653,7 @@ like <code>RIFoo</code>.</p>
 
 <p><code>RemoteInterfaces</code> are created and used a lot like the usual
 <code>zope.interface</code>-style <code>Interface</code>. They look like
-class definitions, inheriting from <code>pb.RemoteInterface</code>. For each
+class definitions, inheriting from <code>RemoteInterface</code>. For each
 method, the default value of each argument is used to create a
 <code>Constraint</code> for that argument. Basic types (<code>int</code>,
 <code>str</code>, <code>bool</code>) are converted into a
@@ -686,7 +688,7 @@ of a remote client, the argument constraints will be enforced to protect
 courtesy.</p>
 
 <p>Attempting to send a value that does not satisfy the Constraint will
-result in a <code class="API" base="foolscap">pb.Violation</code> exception
+result in a <code class="API" base="foolscap">Violation</code> exception
 being raised.</p>
 
 <p>You can also specify methods by defining attributes of the same name in
@@ -738,7 +740,7 @@ class RIMath(RemoteInterface):
 annotation:</p>
 
 <pre class="python">
-class MathServer(pb.Referenceable):
+class MathServer(foolscap.Referenceable):
     implements(RIMath)
 
     def remote_add(self, a, b):
@@ -755,14 +757,14 @@ class MathServer(pb.Referenceable):
 <code>RemoteInterface</code>, and both must know it by the same name. It is a
 good idea to put the <code>RemoteInterface</code> in a common file that is
 imported into the programs running on both sides. It is up to you to make
-sure that both sides agree on the interface. Future versions of PB may
+sure that both sides agree on the interface. Future versions of Foolscap may
 implement some sort of checksum-verification or Interface-serialization as a
 failsafe, but fundamentally the <code>RemoteInterface</code> that
 <em>you</em> are using defines what <em>your</em> program is prepared to
 handle. There is no difference between an old client accidentaly using a
 different version of the RemoteInterface by mistake, and a malicious attacker
-actively trying to confuse your code. The only promise that PB can make is
-that the constraints you provide in the RemoteInterface will be faithfully
+actively trying to confuse your code. The only promise that Foolscap can make
+is that the constraints you provide in the RemoteInterface will be faithfully
 applied to the incoming data stream, so that you don't need to do the type
 checking yourself inside the method.</p>
 
@@ -818,15 +820,15 @@ serialization of third-party classes that are not subclasses of
 
 <h2>Third-party References</h2><a name="introductions" />
 
-<p>Another new feature of newpb is the ability to send
+<p>Another new feature of Foolscap is the ability to send
 <code>RemoteReference</code>s to third parties. The classic scenario for this
 is illustrated by the <a
 href="http://www.erights.org/elib/capability/overview.html">three-party
 Granovetter diagram</a>. One party (Alice) has RemoteReferences to two other
 objects named Bob and Carol. She wants to share her reference to Carol with
 Bob, by including it in a message she sends to Bob (i.e. by using it as an
-argument when she invokes one of Bob's remote methods). The PB code for doing
-this would look like:</p>
+argument when she invokes one of Bob's remote methods). The Foolscap code for
+doing this would look like:</p>
 
 <pre class="python">
 bobref.callRemote("foo", intro=carolref)
@@ -836,13 +838,13 @@ bobref.callRemote("foo", intro=carolref)
 method is invoked), he will discover that he's holding a fully-functional
 <code>RemoteReference</code> to the object named Carol<span
 class="footnote">and if everyone involved is using authenticated Tubs, then
-PB offers a guarantee, in the cryptographic sense, that Bob will wind up with
-a reference to the same object that Alice intended. The authenticated PBURLs
-prevent DNS-spoofing and man-in-the-middle attacks.</span>. He can start
-using this RemoteReference right away:</p>
+Foolscap offers a guarantee, in the cryptographic sense, that Bob will wind
+up with a reference to the same object that Alice intended. The authenticated
+PBURLs prevent DNS-spoofing and man-in-the-middle attacks.</span>. He can
+start using this RemoteReference right away:</p>
 
 <pre class="python">
-class Bob(pb.Referenceable):
+class Bob(foolscap.Referenceable):
     def remote_foo(self, intro):
         self.carol = intro
         carol.callRemote("howdy", msg="Pleased to meet you", you=intro)
@@ -856,7 +858,7 @@ example, Bob sends the reference by returning it from the original
 a separate method call.</p>
 
 <pre class="python">
-class Alice(pb.Referenceable):
+class Alice(foolscap.Referenceable):
     def start(self, carol):
         self.carol = carol
         d = self.bob.callRemote("foo", intro=carol)
@@ -870,7 +872,7 @@ three-party round trip), Carol will see it as her original
 <code>Referenceable</code>.</p>
 
 <pre class="python">
-class Carol(pb.Referenceable):
+class Carol(foolscap.Referenceable):
     def remote_howdy(self, msg, you):
         assert you is self  # this will be true
 </pre>
@@ -905,9 +907,9 @@ introductions altogether.</p>
 
 <p>Also note that enabling this capability means any of your communication
 peers can make you create TCP connections to hosts and port numbers of their
-choosing. The fact that those connections can only speak the PB protocol may
-reduce the security risk presented, but it still lets other people be
-annoying.</p>
+choosing. The fact that those connections can only speak the Foolscap
+protocol may reduce the security risk presented, but it still lets other
+people be annoying.</p>
 
 
 </body></html>

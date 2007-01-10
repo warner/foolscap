@@ -1,3 +1,9 @@
+2007-01-10  Brian Warner  <warner@lothar.com>
+
+	* doc/using-pb.xhtml: fix some "pb" references to mention
+	"Foolscap" instead
+	* doc/schema.xhtml: same
+
 2007-01-09  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py (Listener.removeTub): disownServiceParent is not
