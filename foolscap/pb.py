@@ -98,8 +98,8 @@ class Listener(protocol.ServerFactory):
             self.s.setServiceParent(self.parentTub)
 
     def removeTub(self, tub):
-        # this returns a Deferred, since the removal might cause the Listener
-        # to shut down
+        # this might return a Deferred, since the removal might cause the
+        # Listener to shut down. It might also return None.
         del self.tubs[tub.tubID]
         if self.parentTub is tub:
             # we need to switch to a new one
@@ -116,7 +116,7 @@ class Listener(protocol.ServerFactory):
                 d = self.s.disownServiceParent()
                 Listeners.remove(self)
                 return d
-        return defer.succeed(None)
+        return None
 
     def getService(self):
         return self.s
@@ -310,8 +310,9 @@ class Tub(service.MultiService):
         return l
 
     def stopListeningOn(self, l):
+        # this returns a Deferred when the port is shut down
         self.listeners.remove(l)
-        d = l.removeTub(self)
+        d = defer.maybeDeferred(l.removeTub, self)
         return d
 
     def getListeners(self):
@@ -342,7 +343,9 @@ class Tub(service.MultiService):
             # TODO: rethink this, what I want is for stopService to cause all
             # Listeners to shut down, but I'm not sure this is the right way
             # to do it.
-            dl.append(l.removeTub(self))
+            d = l.removeTub(self)
+            if isinstance(d, defer.Deferred):
+                dl.append(d)
         dl.append(service.MultiService.stopService(self))
         for b in self.brokers.values():
             b.shutdown()

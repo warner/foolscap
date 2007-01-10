@@ -1,4 +1,13 @@
-2007-01-04  Brian Warner  <warner@lothar.com.com>
+2007-01-09  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Listener.removeTub): disownServiceParent is not
+	guaranteed to return a Deferred, so don't try to make removeTub do
+	so either. I saw a failure related to this, but was unable to
+	analzye it well enough to reproduce it or write a test case.
+	(Tub.stopListeningOn): tolerate removeTub returning synchronously
+	(Tub.stopService): same
+
+2007-01-04  Brian Warner  <warner@lothar.com>
 
 	* foolscap/negotiate.py (Negotiation.dataReceived): when sending
 	an error message to the far end inside the decision block, make
