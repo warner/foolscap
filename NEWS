@@ -1,5 +1,48 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.0.7 (16 Jan 2007)
+
+** bug fixes
+
+*** Tubs can now connect to themselves
+
+In previous releases, Tubs were unable to connect to themselves: the
+following code would fail (the negotiation would never complete, so the
+connection attempt would eventually time out after about 30 seconds):
+
+ url = mytub.registerReference(target)
+ d = mytub.getReference(url)
+
+In release 0.0.7, this has been fixed by catching this case and making it use
+a special loopback transport (which serializes all messages but does not send
+them over a wire). There may be still be problems with this code, in
+particular connection shutdown is not completely tested and producer/consumer
+code is completely untested.
+
+*** Tubs can now getReference() the same URL multiple times
+
+A bug was present in the RemoteReference-unslicing code which caused the
+following code to fail:
+
+ d = mytub.getReference(url)
+ d.addCallback(lambda ref: mytub.getReference(url))
+
+In particular, the second call to getReference() would return None rather
+than the RemoteReference it was supposed to.
+
+This bug has been fixed. If the previous RemoteReference is still alive, it
+will be returned by the subsequent getReference() call. If it has been
+garbage-collected, a new one will be created.
+
+*** minor fixes
+
+Negotiation errors (such as having incompatible versions of Foolscap on
+either end of the wire) may be reported more usefully.
+
+In certain circumstances, disconnecting the Tub service from a parent service
+might have caused an exception before. It might behave better now.
+
+
 * Release 0.0.6 (18 Dec 2006)
 
 ** INCOMPATIBLE PROTOCOL CHANGES

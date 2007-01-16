@@ -1,5 +1,12 @@
 2007-01-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release Foolscap-0.0.7
+	* misc/{sid|sarge|dapper}/debian/changelog: same
+
+	* NEWS: update for 0.0.7
+
+2007-01-16  Brian Warner  <warner@lothar.com>
+
 	* foolscap/pb.py (Tub.getBrokerForTubRef): special-case an attempt
 	to connect to a tub with an ID equal to our own, by attaching a
 	Broker to a special LoopbackTransport that delivers serialized
