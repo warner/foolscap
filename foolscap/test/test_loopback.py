@@ -31,12 +31,19 @@ class ConnectToSelf(unittest.TestCase):
         def _check(res):
             self.failUnlessEqual(target.obj, 12)
         d.addCallback(_check)
+
+        def _connect_again(res):
+            target.obj = None
+            return tub.getReference(url)
+        d.addCallback(_connect_again)
+        d.addCallback(_connected)
+        d.addCallback(_check)
+
         return d
 
     def testConnectAuthenticated(self):
         tub = foolscap.Tub()
         self.startTub(tub)
-        raise unittest.SkipTest("doesn't work yet")
         target = HelperTarget("bob")
         target.obj = "unset"
         url = tub.registerReference(target)
@@ -47,5 +54,11 @@ class ConnectToSelf(unittest.TestCase):
         d.addCallback(_connected)
         def _check(res):
             self.failUnlessEqual(target.obj, 12)
+        d.addCallback(_check)
+        def _connect_again(res):
+            target.obj = None
+            return tub.getReference(url)
+        d.addCallback(_connect_again)
+        d.addCallback(_connected)
         d.addCallback(_check)
         return d

@@ -823,6 +823,15 @@ class Negotiation(protocol.Protocol):
                    }
         return params
 
+    def loopbackDecision(self):
+        # if we were talking to ourselves, what negotiation decision would we
+        # reach? This is used for loopback connections
+        max_vocab = self.initialVocabTableRange[1]
+        params = { 'banana-decision-version': 1,
+                   'initial-vocab-table-index': max_vocab,
+                   }
+        return params
+
     def startTLS(self, cert):
         # the TLS connection (according to glyph) is "ready" immediately, but
         # really the negotiation is going on behind the scenes (OpenSSL is
@@ -860,10 +869,6 @@ class Negotiation(protocol.Protocol):
         b = broker.Broker(params)
         b.factory = self.factory # not used for PB code
         b.setTub(self.tub)
-        b.unsafeTracebacks = self.tub.unsafeTracebacks
-        if self.tub and self.tub.debugBanana:
-            b.debugSend = True
-            b.debugReceive = True
         self.transport.protocol = b
         b.makeConnection(self.transport)
         b.dataReceived(self.buffer)

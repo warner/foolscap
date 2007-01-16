@@ -8,6 +8,8 @@ from itertools import count
 from zope.interface import implements
 from twisted.python import log
 from twisted.internet import defer, error
+from twisted.internet import interfaces as twinterfaces
+from twisted.internet.protocol import connectionDone
 
 from foolscap import schema, banana, tokens, ipb, vocab
 from foolscap import call, slicer, referenceable, copyable, remoteinterface
@@ -221,6 +223,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def setTub(self, tub):
         assert ipb.ITub.providedBy(tub)
         self.tub = tub
+        self.unsafeTracebacks = tub.unsafeTracebacks
+        if tub.debugBanana:
+            self.debugSend = True
+            self.debugReceive = True
 
     def connectionMade(self):
         banana.Banana.connectionMade(self)
@@ -544,7 +550,66 @@ class Broker(banana.Banana, referenceable.Referenceable):
         assert self.activeLocalCalls[reqID]
         self.send(call.ErrorSlicer(reqID, f))
         del self.activeLocalCalls[reqID]
-        
+
+# this loopback stuff is based upon twisted.protocols.loopback, except that
+# we use it for real, not just for testing. The IConsumer stuff hasn't been
+# tested at all.
+
+class _LoopbackAddress(object):
+    implements(twinterfaces.IAddress)
+
+class LoopbackTransport(object):
+    # we always create these in pairs, with .peer pointing at each other
+    implements(twinterfaces.ITransport, twinterfaces.IConsumer)
+
+    producer = None
+
+    def __init__(self):
+        self.connected = True
+    def setPeer(self, peer):
+        self.peer = peer
+
+    def write(self, bytes):
+        eventually(self.peer.dataReceived, bytes)
+    def writeSequence(self, iovec):
+        self.write(''.join(iovec))
+
+    def dataReceived(self, data):
+        if self.connected:
+            self.protocol.dataReceived(data)
+
+    def loseConnection(self, _connDone=connectionDone):
+        if not self.connected:
+            return
+        self.connected = False
+        eventually(self.peer.connectionLost, _connDone)
+        eventually(self.protocol.connectionLost, _connDone)
+    def connectionLost(self, reason):
+        if not self.connected:
+            return
+        self.connected = False
+        self.protocol.connectionLost(reason)
+
+    def getPeer(self):
+        return _LoopbackAddress()
+    def getHost(self):
+        return _LoopbackAddress()
+
+    # IConsumer
+    def registerProducer(self, producer, streaming):
+        assert self.producer is None
+        self.producer = producer
+        self.streamingProducer = streaming
+        self._pollProducer()
+
+    def unregisterProducer(self):
+        assert self.producer is not None
+        self.producer = None
+
+    def _pollProducer(self):
+        if self.producer is not None and not self.streamingProducer:
+            self.producer.resumeProducing()
+
 
 import debug
 class LoggingBroker(debug.LoggingBananaMixin, Broker):

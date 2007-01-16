@@ -6,7 +6,7 @@ from twisted.python import log
 from twisted.internet import defer, protocol
 from twisted.application import service, strports
 
-from foolscap import ipb, base32, negotiate
+from foolscap import ipb, base32, negotiate, broker
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError
 from foolscap.reconnector import Reconnector
@@ -528,6 +528,11 @@ class Tub(service.MultiService):
     def getBrokerForTubRef(self, tubref):
         if tubref in self.brokers:
             return defer.succeed(self.brokers[tubref])
+        if tubref.getTubID() == self.tubID:
+            b = self._createLoopbackBroker(tubref)
+            # _createLoopbackBroker will call brokerAttached, which will add
+            # it to self.brokers
+            return defer.succeed(b)
 
         d = defer.Deferred()
         if tubref not in self.waitingForBrokers:
@@ -542,6 +547,22 @@ class Tub(service.MultiService):
             c.connect()
 
         return d
+
+    def _createLoopbackBroker(self, tubref):
+        t1,t2 = broker.LoopbackTransport(), broker.LoopbackTransport()
+        t1.setPeer(t2); t2.setPeer(t1)
+        n = negotiate.Negotiation()
+        params = n.loopbackDecision()
+        b1,b2 = broker.Broker(params), broker.Broker(params)
+        # we treat b1 as "our" broker, and b2 as "theirs", and we pretend
+        # that b2 has just connected to us. We keep track of b1, and b2 keeps
+        # track of us.
+        b1.setTub(self)
+        b2.setTub(self)
+        t1.protocol = b1; t2.protocol = b2
+        b1.makeConnection(t1); b2.makeConnection(t2)
+        self.brokerAttached(tubref, b1, False)
+        return b1
 
     def connectionFailed(self, tubref, why):
         # we previously initiated an outbound TubConnector to this tubref, but
