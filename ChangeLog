@@ -1,3 +1,13 @@
+2007-01-15  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_loopback.py (ConnectToSelf): Add tests to
+	validate that we can connect to our own Tub properly. This test
+	does not yet pass for authenticated Tubs: the negotiation hangs
+	until the 30 second timeout is reached. To fix this requires
+	special-casing such connections to use a different kind of Broker,
+	one that wires transport.write to eventual(rcvr.dataReceived) and
+	skips negotiation completely.
+
 2007-01-10  Brian Warner  <warner@lothar.com>
 
 	* doc/using-pb.xhtml: fix some "pb" references to mention
