@@ -786,6 +786,7 @@ class TestService(unittest.TestCase):
         l = s1.listenOn("tcp:0:interface=127.0.0.1")
         s1.setLocation("localhost:%d" % l.getPortnum())
         public_url = s1.registerReference(target, "target")
+        self.public_url = public_url
         d = s2.getReference(public_url)
         return d
 
@@ -813,15 +814,24 @@ class TestService(unittest.TestCase):
 
 
     def testConnect3(self):
+        # test that we can get the reference multiple times
         t1 = Target()
         d = self.getRef(t1)
         d.addCallback(lambda ref: ref.callRemote('add', a=2, b=3))
-        d.addCallback(self._testConnect3, t1)
+        def _check(res):
+            self.failUnlessEqual(t1.calls, [(2,3)])
+            self.failUnlessEqual(res, 5)
+            t1.calls = []
+        d.addCallback(_check)
+        d.addCallback(lambda res:
+                      self.services[1].getReference(self.public_url))
+        d.addCallback(lambda ref: ref.callRemote('add', a=5, b=6))
+        def _check2(res):
+            self.failUnlessEqual(t1.calls, [(5,6)])
+            self.failUnlessEqual(res, 11)
+        d.addCallback(_check2)
         return d
     testConnect3.timeout = 5
-    def _testConnect3(self, res, t1):
-        self.failUnlessEqual(t1.calls, [(2,3)])
-        self.failUnlessEqual(res, 5)
 
     def TODO_testStatic(self):
         # make sure we can register static data too, at least hashable ones

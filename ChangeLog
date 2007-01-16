@@ -1,3 +1,16 @@
+2007-01-16  Brian Warner  <warner@lothar.com>
+
+	* foolscap/referenceable.py (RemoteReferenceTracker.getRef): the
+	weakref this holds may have become stale, so check that we both
+	have self.ref *and* that self.ref() is not None to decide whether
+	we must re-create the RemoteReference. This fixes a bug in which
+	two calls to Tub.getReference() for the same URL would result in
+	the second call getting None.
+	(RemoteReferenceTracker._handleRefLost): only send a decref
+	message if we haven't already re-created the RemoteReference
+	* foolscap/test/test_pb.py (TestService.testConnect3): modify this
+	test to validate the 'call Tub.getReference() twice' bug is fixed
+
 2007-01-15  Brian Warner  <warner@lothar.com>
 
 	* foolscap/test/test_loopback.py (ConnectToSelf): Add tests to

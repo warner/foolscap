@@ -270,8 +270,13 @@ class RemoteReferenceTracker:
 
     def getRef(self):
         """Return the actual RemoteReference that we hold, creating it if
-        necessary."""
-        if self.ref is None:
+        necessary. This is called when we receive a my-reference sequence
+        from the remote end, so we must increment our received_count."""
+        # self.ref might be None (if we haven't created it yet), or it might
+        # be a dead weakref (if it has been released but our _handleRefLost
+        # hasn't fired yet). In either case we need to make a new
+        # RemoteReference.
+        if self.ref is None or self.ref() is None:
             ref = RemoteReference(self)
             self.ref = weakref.ref(ref, self._refLost)
         self.received_count += 1
@@ -286,8 +291,12 @@ class RemoteReferenceTracker:
         eventually(self._handleRefLost)
 
     def _handleRefLost(self):
-        count, self.received_count = self.received_count, 0
-        self.broker.freeYourReference(self, count)
+        if self.ref() is None:
+            count, self.received_count = self.received_count, 0
+            self.broker.freeYourReference(self, count)
+        # otherwise our RemoteReference is actually still alive, resurrected
+        # between the call to _refLost and the eventual call to
+        # _handleRefLost. In this case, don't decref anything.
 
 
 class RemoteReferenceOnly(object):
