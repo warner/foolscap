@@ -37,3 +37,11 @@
 ^_trial_temp($|/)
 ^doc/.*\.html$
 
+# debian/distutils things
+^build($|/)
+^dist($|/)
+^MANIFEST$
+^python-build-stamp-.*$
+^misc/(sid|sarge|dapper)/debian/python-foolscap($|/)
+^misc/(sid|sarge|dapper)/debian/python-foolscap\..*$
+^misc/(sid|sarge|dapper)/debian/files$
