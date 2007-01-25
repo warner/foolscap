@@ -55,11 +55,19 @@ class MyOptions(CertificateOptions):
             # think that would ignore forged signatures too, which would
             # obviously be a security hole.
             things_are_ok = (0,  # X509_V_OK
+                             9, # X509_V_ERR_CERT_NOT_YET_VALID
+                             10, # X509_V_ERR_CERT_HAS_EXPIRED
                              18, # X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT
                              19, # X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN
                              )
             if errno in things_are_ok:
                 return 1
+            # TODO: log the details of the error, because otherwise they get
+            # lost in the PyOpenSSL exception that will eventually be raised
+            # (possibly OpenSSL.SSL.Error: certificate verify failed)
+
+            # I think that X509_V_ERR_CERT_SIGNATURE_FAILURE is the most
+            # obvious sign of hostile attack.
             return 0
 
         # VERIFY_PEER means we ask the the other end for their certificate.
