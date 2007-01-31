@@ -225,6 +225,24 @@ URL as their starting point. Note that the URL can come from anywhere: typed
 in by the user, retrieved from a web page, or hardcoded into the
 application.</p>
 
+<h4>Using a persistent certificate</h4>
+
+<p>The Tub uses a TLS private-key certificate as the base of all its
+cryptographic operations. If you don't give it one when you create the Tub,
+it will generate a brand-new one.</p>
+
+<p>The TubID is simply the hash of this certificate, so if you are writing an
+application that should have a stable long-term identity, you will need to
+insure that the Tub uses the same certificate every time your app starts. The
+easiest way to do this is to pass the <code>certFile=</code> argument into
+your <code>Tub()</code> constructor call. This argument provides a filename
+where you want the Tub to store its certificate. The first time the Tub is
+started (when this file does not exist), the Tub will generate a new
+certificate and store it here. On subsequent invocations, the Tub will read
+the earlier certificate from this location. Make sure this filename points to
+a writable location, and that you pass the same filename to
+<code>Tub()</code> each time.</p>
+
 <h3>Retrieving a RemoteReference</h3>
 
 <p>On the <q>client</q> side, you also need to create a Tub, although you

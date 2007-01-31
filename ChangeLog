@@ -1,3 +1,14 @@
+2007-01-30  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Tub): add certFile= argument, to allow the Tub
+	to manage its own certificates. This argument provides a filename
+	where the Tub should read or write its certificate. If the file
+	exists, the Tub will read the certificate data from there. If not,
+	the Tub will generate a new certificate and write it to the file.
+	* foolscap/test/test_tub.py: test it
+	* doc/using-pb.xhtml: document certFile=
+	* doc/listings/pb2server.py: use certFile= in the example
+
 2007-01-24  Brian Warner  <warner@lothar.com>
 
 	* foolscap/crypto.py (MyOptions._makeContext.alwaysValidate): add

@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import weakref
+import os.path, weakref
 from zope.interface import implements
 from twisted.python import log
 from twisted.internet import defer, protocol
@@ -155,9 +155,25 @@ class Tub(service.MultiService):
     I contain Referenceables, and manage RemoteReferences to Referenceables
     that live in other Tubs.
 
+
     @param certData: if provided, use it as a certificate rather than
                      generating a new one. This is a PEM-encoded
                      private/public keypair, as returned by Tub.getCertData()
+
+    @param certFile: if provided, the Tub will store its certificate in
+                     this file. If the file does not exist when the Tub is
+                     created, the Tub will generate a new certificate and
+                     store it here. If the file does exist, the certificate
+                     will be loaded from this file.
+
+                     The simplest way to use the Tub is to choose a long-term
+                     location for the certificate, use certFile= to tell the
+                     Tub about it, and then let the Tub manage its own
+                     certificate.
+
+                     You may provide certData, or certFile, (or neither), but
+                     not both.
+
     @param options: a dictionary of options that can influence connection
                     connection negotiation. Currently defined keys are:
                      - debug_slow: if True, wait half a second between
@@ -186,10 +202,23 @@ class Tub(service.MultiService):
     encrypted = True
     negotiationClass = negotiate.Negotiation
 
-    def __init__(self, certData=None, options={}):
+    def __init__(self, certData=None, certFile=None, options={}):
         service.MultiService.__init__(self)
         self.setup(options)
-        self.setupEncryption(certData)
+        if certFile:
+            self.setupEncryptionFile(certFile)
+        else:
+            self.setupEncryption(certData)
+
+    def setupEncryptionFile(self, certFile):
+        if os.path.exists(certFile):
+            certData = open(certFile, "rb").read()
+            self.setupEncryption(certData)
+        else:
+            self.setupEncryption(None)
+            f = open(certFile, "wb")
+            f.write(self.getCertData())
+            f.close()
 
     def setupEncryption(self, certData):
         if not crypto:

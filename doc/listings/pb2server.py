@@ -10,7 +10,7 @@ class MathServer(Referenceable):
         return a-b
 
 myserver = MathServer()
-tub = Tub()
+tub = Tub(certFile="pb2server.pem")
 tub.listenOn("tcp:12345")
 tub.setLocation("localhost:12345")
 url = tub.registerReference(myserver, "math-service")
