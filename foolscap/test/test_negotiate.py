@@ -117,6 +117,7 @@ class BaseMixin:
             dl.append(defer.maybeDeferred(s.stopService))
         d = defer.DeferredList(dl)
         d.addCallback(self._checkListeners)
+        d.addCallback(self.stall, 0.1)
         return d
     def _checkListeners(self, res):
         self.failIf(pb.Listeners)

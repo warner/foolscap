@@ -1,3 +1,12 @@
+2007-02-08  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_negotiate.py (BaseMixin.tearDown): add a
+	100ms stall between shutting down all the Tubs and actually
+	finishing the test. This seems to be enough to stop the occasional
+	test failures that probably occur because TCP connections that
+	we've dropped haven't finished signalling the other end (also in
+	our process) that they've been closed.
+
 2007-01-30  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py (Tub): add certFile= argument, to allow the Tub
