@@ -1,3 +1,14 @@
+2007-02-16  Brian Warner  <warner@lothar.com>
+
+	* foolscap/eventual.py (_SimpleCallQueue._turn): retire all
+	pending eventual-send messages before returning control to the
+	reactor, rather than doing exactly one event per reactor turn.
+	This seems likely to help avoid starvation, as we now finish as
+	much work as possible before accepting IO (which might cause more
+	work to be added to our queue), and probably makes the interaction
+	between eventual-send and DelayedCalls a bit more consistent.
+	Thanks to Rob Kinninmont for the suggestion.
+
 2007-02-08  Brian Warner  <warner@lothar.com>
 
 	* foolscap/test/test_pb.py: move TestCall out to..

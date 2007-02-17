@@ -17,11 +17,15 @@ class _SimpleCallQueue:
 
     def _turn(self):
         self._timer = None
-        cb, args, kwargs = self._events.pop(0)
-        try:
-            cb(*args, **kwargs)
-        except:
-            log.err()
+        # flush all the messages that are currently in the queue. If anything
+        # gets added to the queue while we're doing this, those events will
+        # be put off until the next turn.
+        events, self._events = self._events, []
+        for cb, args, kwargs in events:
+            try:
+                cb(*args, **kwargs)
+            except:
+                log.err()
         if self._events and not self._timer:
             self._timer = reactor.callLater(0, self._turn)
         if not self._events:
