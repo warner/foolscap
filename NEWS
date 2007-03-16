@@ -1,5 +1,64 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.1.0 (15 Mar 2007)
+
+** usability improvements
+
+*** Tubs now have a certFile= argument
+
+A certFile= argument has been added to the Tub constructor to allow the Tub
+to manage its own certificates. This argument provides a filename where the
+Tub should read or write its certificate. If the file exists, the Tub will
+read the certificate data from there. If not, the Tub will generate a new
+certificate and write it to the file.
+
+The idea is that you can point certFile= at a persistent location on disk,
+perhaps in the application's configuration or preferences subdirectory, and
+then not need to distinguish between the first time the Tub has been created
+and later invocations. This allows the Tub's identity (derived from the
+certificate) to remain stable from one invocation to the next. The related
+problem of how to make (unguessable) object names persistent from one program
+run to the next is still outstanding, but I expect to implement something
+similar in the future (some sort of file to which object names are written
+and read later).
+
+certFile= is meant to be used somewhat like this:
+
+ where = os.path.expanduser("~/.myapp.cert")
+ t = Tub(certFile=where)
+ t.registerReference(obj) # ...
+
+*** All eventual-sends are retired on each reactor tick, not just one.
+
+Applications which make extensive use of the eventual-send operations (in
+foolscap.eventual) will probably run more smoothly now. In previous releases,
+the _SimpleCallQueue class would only execute a single eventual-send call per
+tick, then take care of all pending IO (and any pending timers) before
+servicing the next eventual-send. This could probably lead to starvation, as
+those eventual-sends might generate more work (and cause more network IO),
+which could cause the event queue to grow without bound. The new approach
+finishes as much eventual-send work as possible before accepting any IO. Any
+new eventual-sends which are queued during the current tick will be put off
+until the next tick, but everything which was queued before the current tick
+will be retired in the current tick.
+
+** bug fixes
+
+*** Tub certificates can now be used the moment they are created
+
+In previous releases, Tubs were only willing to accept SSL certificates that
+created before the moment of checking. If two systems A and B had
+unsynchronized clocks, and a Foolscap-using application on A was run for the
+first time to connect to B (thus creating a new SSL certificate), system B
+might reject the certificate because it looks like it comes from the future.
+
+This problem is endemic in systems which attempt to use the passage of time
+as a form of revocation. For now at least, to resolve the practical problem
+of certificates generated on demand and used by systems with unsynchronized
+clocks, Foolscap does not use certificate lifetimes, and will ignore
+timestamps on the certificates it examines.
+
+
 * Release 0.0.7 (16 Jan 2007)
 
 ** bug fixes
