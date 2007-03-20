@@ -301,6 +301,8 @@ class RemoteReferenceTracker:
 
 
 class RemoteReferenceOnly(object):
+    implements(ipb.IRemoteReference)
+
     def __init__(self, tracker):
         """@param tracker: the RemoteReferenceTracker which points to us"""
         self.tracker = tracker

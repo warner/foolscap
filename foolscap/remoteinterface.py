@@ -5,6 +5,7 @@ from foolscap.constraint import Constraint, OpenerConstraint, nothingTaster, \
      IConstraint, UnboundedSchema, IRemoteMethodConstraint, Optional
 from foolscap.tokens import Violation, InvalidRemoteInterface
 from foolscap.schema import addToConstraintTypeMap
+from foolscap import ipb
 
 class RemoteInterfaceClass(interface.InterfaceClass):
     """This metaclass lets RemoteInterfaces be a lot like Interfaces. The
@@ -343,12 +344,9 @@ class RemoteInterfaceConstraint(OpenerConstraint):
         self.interface = interface
     def checkObject(self, obj, inbound):
         if inbound:
-            # TODO: the late import is to deal with an import cycle.. find a
-            # better way to fix this.
-            from foolscap.referenceable import RemoteReference
-            if not isinstance(obj, RemoteReference):
+            if not ipb.IRemoteReference.providedBy(obj):
                 raise Violation("'%s' does not provide RemoteInterface %s, "
-                                " and isn't even a RemoteReference"
+                                "and doesn't even look like a RemoteReference"
                                 % (obj, self.interface))
             iface = obj.tracker.interface
             # TODO: this test probably doesn't handle subclasses of

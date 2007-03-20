@@ -1,5 +1,13 @@
 2007-03-19  Brian Warner  <warner@lothar.com>
 
+	* foolscap/ipb.py (IRemoteReference): new interface ..
+	* foolscap/referenceable.py (RemoteReferenceOnly): .. implemented here
+	* foolscap/remoteinterface.py
+	(RemoteInterfaceConstraint.checkObject): remove a circular import
+	by using IRemoteReference to detect RemoteReference instances,
+	rather than using isinstance().
+	* foolscap/test/test_schema.py (Interfaces): test it
+
 	* everything: massive Constraint refactoring. Primitive
 	constraints (StringConstraint, IntegerConstraint, etc) are now in
 	foolscap/constraint.py, while opentype-specific constraints like

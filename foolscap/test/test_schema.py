@@ -1,8 +1,12 @@
 
 from twisted.trial import unittest
 from foolscap import schema, copyable
+from foolscap.tokens import Violation
 from foolscap.constraint import IConstraint
-from foolscap.remoteinterface import RemoteMethodSchema
+from foolscap.remoteinterface import RemoteMethodSchema, \
+     RemoteInterfaceConstraint
+from foolscap.referenceable import RemoteReferenceTracker, RemoteReference
+from foolscap.test import common
 
 class Dummy:
     pass
@@ -302,3 +306,55 @@ class Arguments(unittest.TestCase):
         self.failUnlessRaises(schema.Violation,
                               r.checkResults, 12, False)
 
+
+
+class Interfaces(unittest.TestCase):
+    def check_inbound(self, obj, constraint):
+        try:
+            constraint.checkObject(obj, True)
+        except Violation, f:
+            self.fail("constraint was violated: %s" % f)
+
+    def check_outbound(self, obj, constraint):
+        try:
+            constraint.checkObject(obj, False)
+        except Violation, f:
+            self.fail("constraint was violated: %s" % f)
+
+    def violates_inbound(self, obj, constraint):
+        try:
+            constraint.checkObject(obj, True)
+        except Violation, f:
+            return
+        self.fail("constraint wasn't violated")
+
+    def violates_outbound(self, obj, constraint):
+        try:
+            constraint.checkObject(obj, False)
+        except Violation, f:
+            return
+        self.fail("constraint wasn't violated")
+
+    def test_referenceable(self):
+        h = common.HelperTarget()
+        c1 = RemoteInterfaceConstraint(common.RIHelper)
+        c2 = RemoteInterfaceConstraint(common.RIMyTarget)
+        self.violates_inbound("bogus", c1)
+        self.violates_outbound("bogus", c1)
+        self.check_outbound(h, c1)
+        self.violates_inbound(h, c1)
+        self.violates_inbound(h, c2)
+        self.violates_outbound(h, c2)
+
+    def test_remotereference(self):
+        # we need to create a fake RemoteReference here
+        parent, clid, url = None, 0, ""
+        interfaceName = common.RIHelper.__remote_name__
+        tracker = RemoteReferenceTracker(parent, clid, url, interfaceName)
+        rr = RemoteReference(tracker)
+        c1 = RemoteInterfaceConstraint(common.RIHelper)
+        c2 = RemoteInterfaceConstraint(common.RIMyTarget)
+        self.check_inbound(rr, c1)
+        self.violates_outbound(rr, c1)
+        self.violates_inbound(rr, c2)
+        self.violates_outbound(rr, c2)
