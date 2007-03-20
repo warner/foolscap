@@ -1,8 +1,8 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
 from twisted.internet.defer import Deferred
-from foolscap import schema, tokens
-from foolscap.tokens import Violation, BananaError
+from foolscap.constraint import Any, StringConstraint
+from foolscap.tokens import Violation, BananaError, INT, STRING
 from foolscap.slicer import BaseSlicer, BaseUnslicer, LeafUnslicer
 from foolscap.slicer import BananaUnslicerRegistry
 
@@ -57,12 +57,12 @@ class ReplaceVocabUnslicer(LeafUnslicer):
     opentype = ('set-vocab',)
     unslicerRegistry = BananaUnslicerRegistry
     maxKeys = None
-    valueConstraint = schema.StringConstraint(100)
+    valueConstraint = StringConstraint(100)
 
     def setConstraint(self, constraint):
-        if isinstance(constraint, schema.Any):
+        if isinstance(constraint, Any):
             return
-        assert isinstance(constraint, schema.StringConstraint)
+        assert isinstance(constraint, StringConstraint)
         self.valueConstraint = constraint
 
     def start(self, count):
@@ -73,10 +73,10 @@ class ReplaceVocabUnslicer(LeafUnslicer):
         if self.maxKeys is not None and len(self.d) >= self.maxKeys:
             raise Violation("the table is full")
         if self.key is None:
-            if typebyte != tokens.INT:
+            if typebyte != INT:
                 raise BananaError("VocabUnslicer only accepts INT keys")
         else:
-            if typebyte != tokens.STRING:
+            if typebyte != STRING:
                 raise BananaError("VocabUnslicer only accepts STRING values")
             if self.valueConstraint:
                 self.valueConstraint.checkToken(typebyte, size)
@@ -144,20 +144,20 @@ class AddVocabUnslicer(BaseUnslicer):
     unslicerRegistry = BananaUnslicerRegistry
     index = None
     value = None
-    valueConstraint = schema.StringConstraint(100)
+    valueConstraint = StringConstraint(100)
 
     def setConstraint(self, constraint):
-        if isinstance(constraint, schema.Any):
+        if isinstance(constraint, Any):
             return
-        assert isinstance(constraint, schema.StringConstraint)
+        assert isinstance(constraint, StringConstraint)
         self.valueConstraint = constraint
 
     def checkToken(self, typebyte, size):
         if self.index is None:
-            if typebyte != tokens.INT:
+            if typebyte != INT:
                 raise BananaError("Vocab key must be an INT")
         elif self.value is None:
-            if typebyte != tokens.STRING:
+            if typebyte != STRING:
                 raise BananaError("Vocab value must be a STRING")
             if self.valueConstraint:
                 self.valueConstraint.checkToken(typebyte, size)

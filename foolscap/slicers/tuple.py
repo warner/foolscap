@@ -2,9 +2,10 @@
 
 from twisted.internet.defer import Deferred
 from foolscap.tokens import Violation
-from foolscap import schema
 from foolscap.slicer import BaseUnslicer
 from foolscap.slicers.list import ListSlicer
+from foolscap.constraint import OpenerConstraint, Any, UnboundedSchema, IConstraint
+
 
 class TupleSlicer(ListSlicer):
     opentype = ("tuple",)
@@ -17,9 +18,9 @@ class TupleUnslicer(BaseUnslicer):
     constraints = None
 
     def setConstraint(self, constraint):
-        if isinstance(constraint, schema.Any):
+        if isinstance(constraint, Any):
             return
-        assert isinstance(constraint, schema.TupleConstraint)
+        assert isinstance(constraint, TupleConstraint)
         self.constraints = constraint.constraints
 
     def start(self, count):
@@ -97,3 +98,36 @@ class TupleUnslicer(BaseUnslicer):
 
     def describe(self):
         return "[%d]" % len(self.list)
+
+
+class TupleConstraint(OpenerConstraint):
+    opentypes = [("tuple",)]
+    name = "TupleConstraint"
+
+    def __init__(self, *elemConstraints):
+        self.constraints = [IConstraint(e) for e in elemConstraints]
+    def checkObject(self, obj, inbound):
+        if not isinstance(obj, tuple):
+            raise Violation("not a tuple")
+        if len(obj) != len(self.constraints):
+            raise Violation("wrong size tuple")
+        for i in range(len(self.constraints)):
+            self.constraints[i].checkObject(obj[i], inbound)
+    def maxSize(self, seen=None):
+        if not seen: seen = []
+        if self in seen:
+            raise UnboundedSchema # recursion
+        seen.append(self)
+        total = self.OPENBYTES("tuple")
+        for c in self.constraints:
+            total += c.maxSize(seen[:])
+        return total
+
+    def maxDepth(self, seen=None):
+        if not seen: seen = []
+        if self in seen:
+            raise UnboundedSchema # recursion
+        seen.append(self)
+        return 1 + reduce(max, [c.maxDepth(seen[:])
+                                for c in self.constraints])
+

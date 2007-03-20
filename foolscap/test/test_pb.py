@@ -11,12 +11,13 @@ from twisted.python import failure
 from twisted.internet import defer
 from twisted.trial import unittest
 
-from foolscap import schema, tokens, referenceable
+from foolscap import tokens, referenceable
 from foolscap import Tub
 from foolscap import getRemoteURL_TCP
 from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
 from foolscap.tokens import BananaFailure
 from foolscap import broker, call
+from foolscap.constraint import IConstraint
 
 try:
     from foolscap import crypto
@@ -114,7 +115,7 @@ class TestAnswer(unittest.TestCase):
 
     def testAccept2(self):
         req = TestRequest(12)
-        req.setConstraint(schema.makeConstraint(str))
+        req.setConstraint(IConstraint(str))
         self.broker.addRequest(req)
         u = self.newUnslicer()
         u.checkToken(INT, 0)
@@ -137,7 +138,7 @@ class TestAnswer(unittest.TestCase):
     def testReject2(self):
         # answer a request with a result that violates the constraint
         req = TestRequest(12)
-        req.setConstraint(schema.makeConstraint(int))
+        req.setConstraint(IConstraint(int))
         self.broker.addRequest(req)
         u = self.newUnslicer()
         u.checkToken(INT, 0)

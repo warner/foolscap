@@ -7,9 +7,30 @@ except ImportError:
 from twisted.python import failure, log, reflect
 from twisted.internet import defer
 
-from foolscap import copyable, slicer, schema, tokens
+from foolscap import copyable, slicer, tokens
 from foolscap.eventual import eventually
+from foolscap.copyable import AttributeDictConstraint
+from foolscap.constraint import StringConstraint
+from foolscap.slicers.list import ListConstraint
 from tokens import BananaError, Violation
+
+
+class FailureConstraint(AttributeDictConstraint):
+    opentypes = [("copyable", "twisted.python.failure.Failure")]
+    name = "FailureConstraint"
+    klass = failure.Failure
+
+    def __init__(self):
+        attrs = [('type', StringConstraint(200)),
+                 ('value', StringConstraint(1000)),
+                 ('traceback', StringConstraint(2000)),
+                 ('parents', ListConstraint(StringConstraint(200))),
+                 ]
+        AttributeDictConstraint.__init__(self, *attrs)
+
+    def checkObject(self, obj, inbound):
+        if not isinstance(obj, self.klass):
+            raise Violation("is not an instance of %s" % self.klass)
 
 
 class PendingRequest(object):
@@ -620,7 +641,7 @@ class ErrorSlicer(slicer.ScopedSlicer):
 
 class ErrorUnslicer(slicer.ScopedUnslicer):
     request = None
-    fConstraint = schema.FailureConstraint()
+    fConstraint = FailureConstraint()
     gotFailure = False
 
     def checkToken(self, typebyte, size):
@@ -731,7 +752,7 @@ class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
     """
 
     nonCyclic = True
-    stateSchema = schema.FailureConstraint()
+    stateSchema = FailureConstraint()
 
     def __init__(self):
         copyable.RemoteCopyOldStyle.__init__(self)

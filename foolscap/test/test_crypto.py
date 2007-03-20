@@ -4,8 +4,9 @@ from twisted.trial import unittest
 
 from zope.interface import implements
 from twisted.internet import defer
-from foolscap import pb, schema
+from foolscap import pb
 from foolscap import RemoteInterface, Referenceable, Tub
+from foolscap.remoteinterface import RemoteMethodSchema
 try:
     from foolscap import crypto
 except ImportError:
@@ -15,7 +16,7 @@ if crypto and not crypto.available:
 
 class RIMyCryptoTarget(RemoteInterface):
     # method constraints can be declared directly:
-    add1 = schema.RemoteMethodSchema(_response=int, a=int, b=int)
+    add1 = RemoteMethodSchema(_response=int, a=int, b=int)
 
     # or through their function definitions:
     def add(a=int, b=int): return int

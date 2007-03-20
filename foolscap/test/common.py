@@ -3,10 +3,11 @@
 from zope.interface import implements, implementsOnly, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer
-from foolscap import schema, broker
+from foolscap import broker
 from foolscap import Referenceable, RemoteInterface
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
-from foolscap.remoteinterface import getRemoteInterface
+from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema
+from foolscap.constraint import Any
 
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
@@ -54,13 +55,13 @@ class Loopback:
 
 
 class RIHelper(RemoteInterface):
-    def set(obj=schema.Any()): return bool
-    def set2(obj1=schema.Any(), obj2=schema.Any()): return bool
-    def append(obj=schema.Any()): return schema.Any()
-    def get(): return schema.Any()
-    def echo(obj=schema.Any()): return schema.Any()
-    def defer(obj=schema.Any()): return schema.Any()
-    def hang(): return schema.Any()
+    def set(obj=Any()): return bool
+    def set2(obj1=Any(), obj2=Any()): return bool
+    def append(obj=Any()): return Any()
+    def get(): return Any()
+    def echo(obj=Any()): return Any()
+    def defer(obj=Any()): return Any()
+    def hang(): return Any()
 
 class HelperTarget(Referenceable):
     implements(RIHelper)
@@ -152,7 +153,7 @@ class TargetMixin:
 
 class RIMyTarget(RemoteInterface):
     # method constraints can be declared directly:
-    add1 = schema.RemoteMethodSchema(_response=int, a=int, b=int)
+    add1 = RemoteMethodSchema(_response=int, a=int, b=int)
 
     # or through their function definitions:
     def add(a=int, b=int): return int
@@ -160,12 +161,12 @@ class RIMyTarget(RemoteInterface):
     # but it could be used for adding options or something
     def join(a=str, b=str, c=int): return str
     def getName(): return str
-    disputed = schema.RemoteMethodSchema(_response=int, a=int)
+    disputed = RemoteMethodSchema(_response=int, a=int)
     def fail(): return str  # actually raises an exception
 
 class RIMyTarget2(RemoteInterface):
     __remote_name__ = "RIMyTargetInterface2"
-    sub = schema.RemoteMethodSchema(_response=int, a=int, b=int)
+    sub = RemoteMethodSchema(_response=int, a=int, b=int)
 
 # For some tests, we want the two sides of the connection to disagree about
 # the contents of the RemoteInterface they are using. This is remarkably
@@ -176,15 +177,15 @@ class FakeTarget(dict):
 RIMyTarget3 = FakeTarget()
 RIMyTarget3.__remote_name__ = RIMyTarget.__remote_name__
 
-RIMyTarget3['disputed'] = schema.RemoteMethodSchema(_response=int, a=str)
+RIMyTarget3['disputed'] = RemoteMethodSchema(_response=int, a=str)
 RIMyTarget3['disputed'].name = "disputed"
 RIMyTarget3['disputed'].interface = RIMyTarget3
 
-RIMyTarget3['disputed2'] = schema.RemoteMethodSchema(_response=str, a=int)
+RIMyTarget3['disputed2'] = RemoteMethodSchema(_response=str, a=int)
 RIMyTarget3['disputed2'].name = "disputed"
 RIMyTarget3['disputed2'].interface = RIMyTarget3
 
-RIMyTarget3['sub'] = schema.RemoteMethodSchema(_response=int, a=int, b=int)
+RIMyTarget3['sub'] = RemoteMethodSchema(_response=int, a=int, b=int)
 RIMyTarget3['sub'].name = "sub"
 RIMyTarget3['sub'].interface = RIMyTarget3
 

@@ -2,9 +2,10 @@
 
 from twisted.python import log
 from twisted.internet.defer import Deferred
-from foolscap import schema
 from foolscap.tokens import Violation
 from foolscap.slicer import BaseSlicer, BaseUnslicer
+from foolscap.constraint import OpenerConstraint, Any, UnboundedSchema, IConstraint
+
 
 class ListSlicer(BaseSlicer):
     opentype = ("list",)
@@ -23,9 +24,9 @@ class ListUnslicer(BaseUnslicer):
     debug = False
 
     def setConstraint(self, constraint):
-        if isinstance(constraint, schema.Any):
+        if isinstance(constraint, Any):
             return
-        assert isinstance(constraint, schema.ListConstraint)
+        assert isinstance(constraint, ListConstraint)
         self.maxLength = constraint.maxLength
         self.itemConstraint = constraint.constraint
 
@@ -102,3 +103,39 @@ class ListUnslicer(BaseUnslicer):
 
     def describe(self):
         return "[%d]" % len(self.list)
+
+
+class ListConstraint(OpenerConstraint):
+    """The object must be a list of objects, with a given maximum length. To
+    accept lists of any length, use maxLength=None (but you will get a
+    UnboundedSchema warning). All member objects must obey the given
+    constraint."""
+
+    opentypes = [("list",)]
+    name = "ListConstraint"
+
+    def __init__(self, constraint, maxLength=30):
+        self.constraint = IConstraint(constraint)
+        self.maxLength = maxLength
+    def checkObject(self, obj, inbound):
+        if not isinstance(obj, list):
+            raise Violation("not a list")
+        if len(obj) > self.maxLength:
+            raise Violation("list too long")
+        for o in obj:
+            self.constraint.checkObject(o, inbound)
+    def maxSize(self, seen=None):
+        if not seen: seen = []
+        if self in seen:
+            raise UnboundedSchema # recursion
+        seen.append(self)
+        if self.maxLength == None:
+            raise UnboundedSchema
+        return (self.OPENBYTES("list") +
+                self.maxLength * self.constraint.maxSize(seen))
+    def maxDepth(self, seen=None):
+        if not seen: seen = []
+        if self in seen:
+            raise UnboundedSchema # recursion
+        seen.append(self)
+        return 1 + self.constraint.maxDepth(seen)

@@ -8,7 +8,9 @@ from twisted.python.components import registerAdapter
 from twisted.internet import defer
 
 import slicer, tokens
-from tokens import BananaError
+from tokens import BananaError, Violation
+from foolscap.constraint import OpenerConstraint, IConstraint, \
+     StringConstraint, UnboundedSchema, Optional
 
 Interface = interface.Interface
 
@@ -347,3 +349,84 @@ class RemoteCopy(_RemoteCopyBase, object):
 
     __metaclass__ = RemoteCopyClass
     pass
+
+
+class AttributeDictConstraint(OpenerConstraint):
+    """This is a constraint for dictionaries that are used for attributes.
+    All keys are short strings, and each value has a separate constraint.
+    It could be used to describe instance state, but could also be used
+    to constraint arbitrary dictionaries with string keys.
+
+    Some special constraints are legal here: Optional.
+    """
+    opentypes = [("attrdict",)]
+    name = "AttributeDictConstraint"
+
+    def __init__(self, *attrTuples, **kwargs):
+        self.ignoreUnknown = kwargs.get('ignoreUnknown', False)
+        self.acceptUnknown = kwargs.get('acceptUnknown', False)
+        self.keys = {}
+        for name, constraint in (list(attrTuples) +
+                                 kwargs.get('attributes', {}).items()):
+            assert name not in self.keys.keys()
+            self.keys[name] = IConstraint(constraint)
+
+    def maxSize(self, seen=None):
+        if not seen: seen = []
+        if self in seen:
+            raise UnboundedSchema # recursion
+        seen.append(self)
+        total = self.OPENBYTES("attributedict")
+        for name, constraint in self.keys.iteritems():
+            total += StringConstraint(len(name)).maxSize(seen)
+            total += constraint.maxSize(seen[:])
+        return total
+
+    def maxDepth(self, seen=None):
+        if not seen: seen = []
+        if self in seen:
+            raise UnboundedSchema # recursion
+        seen.append(self)
+        # all the attribute names are 1-deep, so the min depth of the dict
+        # items is 1. The other "1" is for the AttributeDict container itself
+        return 1 + reduce(max, [c.maxDepth(seen[:])
+                                for c in self.itervalues()], 1)
+
+    def getAttrConstraint(self, attrname):
+        c = self.keys.get(attrname)
+        if c:
+            if isinstance(c, Optional):
+                c = c.constraint
+            return (True, c)
+        # unknown attribute
+        if self.ignoreUnknown:
+            return (False, None)
+        if self.acceptUnknown:
+            return (True, None)
+        raise Violation("unknown attribute '%s'" % attrname)
+
+    def checkObject(self, obj, inbound):
+        if type(obj) != type({}):
+            raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
+                                                                type(obj))
+        allkeys = self.keys.keys()
+        for k in obj.keys():
+            try:
+                constraint = self.keys[k]
+                allkeys.remove(k)
+            except KeyError:
+                if not self.ignoreUnknown:
+                    raise Violation, "key '%s' not in schema" % k
+                else:
+                    # hmm. kind of a soft violation. allow it for now.
+                    pass
+            else:
+                constraint.checkObject(obj[k], inbound)
+
+        for k in allkeys[:]:
+            if isinstance(self.keys[k], Optional):
+                allkeys.remove(k)
+        if allkeys:
+            raise Violation("object is missing required keys: %s" % \
+                            ",".join(allkeys))
+

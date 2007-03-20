@@ -2,9 +2,9 @@
 
 from twisted.python import log
 from twisted.internet.defer import Deferred
-from foolscap import schema
 from foolscap.tokens import Violation, BananaError
 from foolscap.slicer import BaseSlicer, BaseUnslicer
+from foolscap.constraint import OpenerConstraint, Any, UnboundedSchema, IConstraint
 
 class DictSlicer(BaseSlicer):
     opentype = ('dict',)
@@ -24,9 +24,9 @@ class DictUnslicer(BaseUnslicer):
     maxKeys = None
 
     def setConstraint(self, constraint):
-        if isinstance(constraint, schema.Any):
+        if isinstance(constraint, Any):
             return
-        assert isinstance(constraint, schema.DictConstraint)
+        assert isinstance(constraint, DictConstraint)
         self.keyConstraint = constraint.keyConstraint
         self.valueConstraint = constraint.valueConstraint
         self.maxKeys = constraint.maxKeys
@@ -120,3 +120,43 @@ class OrderedDictSlicer(DictSlicer):
             value = self.obj[key]
             yield key
             yield value
+
+
+class DictConstraint(OpenerConstraint):
+    opentypes = [("dict",)]
+    name = "DictConstraint"
+
+    def __init__(self, keyConstraint, valueConstraint, maxKeys=30):
+        self.keyConstraint = IConstraint(keyConstraint)
+        self.valueConstraint = IConstraint(valueConstraint)
+        self.maxKeys = maxKeys
+    def checkObject(self, obj, inbound):
+        if not isinstance(obj, dict):
+            raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
+                                                                type(obj))
+        if self.maxKeys != None and len(obj) > self.maxKeys:
+            raise Violation, "Dict keys=%d > maxKeys=%d" % (len(obj),
+                                                            self.maxKeys)
+        for key, value in obj.iteritems():
+            self.keyConstraint.checkObject(key, inbound)
+            self.valueConstraint.checkObject(value, inbound)
+    def maxSize(self, seen=None):
+        if not seen: seen = []
+        if self in seen:
+            raise UnboundedSchema # recursion
+        seen.append(self)
+        if self.maxKeys == None:
+            raise UnboundedSchema
+        keySize = self.keyConstraint.maxSize(seen[:])
+        valueSize = self.valueConstraint.maxSize(seen[:])
+        return self.OPENBYTES("dict") + self.maxKeys * (keySize + valueSize)
+    def maxDepth(self, seen=None):
+        if not seen: seen = []
+        if self in seen:
+            raise UnboundedSchema # recursion
+        seen.append(self)
+        keyDepth = self.keyConstraint.maxDepth(seen[:])
+        valueDepth = self.valueConstraint.maxDepth(seen[:])
+        return 1 + max(keyDepth, valueDepth)
+
+

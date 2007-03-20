@@ -1,6 +1,8 @@
 
 from twisted.trial import unittest
-from foolscap import schema
+from foolscap import schema, copyable
+from foolscap.constraint import IConstraint
+from foolscap.remoteinterface import RemoteMethodSchema
 
 class Dummy:
     pass
@@ -209,18 +211,18 @@ class ConformTest(unittest.TestCase):
         self.violates(d, {"a": 1, "b": 2, "c": 3, "d": 4, "toomuch": 5})
 
     def testAttrDict(self):
-        d = schema.AttributeDictConstraint(('a', int), ('b', str))
+        d = copyable.AttributeDictConstraint(('a', int), ('b', str))
         self.conforms(d, {"a": 1, "b": "string"})
         self.violates(d, {"a": 1, "b": 2})
         self.violates(d, {"a": 1, "b": "string", "c": "is a crowd"})
 
-        d = schema.AttributeDictConstraint(('a', int), ('b', str),
-                                           ignoreUnknown=True)
+        d = copyable.AttributeDictConstraint(('a', int), ('b', str),
+                                             ignoreUnknown=True)
         self.conforms(d, {"a": 1, "b": "string"})
         self.violates(d, {"a": 1, "b": 2})
         self.conforms(d, {"a": 1, "b": "string", "c": "is a crowd"})
 
-        d = schema.AttributeDictConstraint(attributes={"a": int, "b": str})
+        d = copyable.AttributeDictConstraint(attributes={"a": int, "b": str})
         self.conforms(d, {"a": 1, "b": "string"})
         self.violates(d, {"a": 1, "b": 2})
         self.violates(d, {"a": 1, "b": "string", "c": "is a crowd"})
@@ -231,7 +233,7 @@ class CreateTest(unittest.TestCase):
         self.failUnless(isinstance(obj, expected))
 
     def testMakeConstraint(self):
-        make = schema.makeConstraint
+        make = IConstraint
         c = make(int)
         self.check(c, schema.IntegerConstraint)
         self.failUnlessEqual(c.maxBytes, -1)
@@ -254,7 +256,7 @@ class CreateTest(unittest.TestCase):
 class Arguments(unittest.TestCase):
     def test_arguments(self):
         def foo(a=int, b=bool, c=int): return str
-        r = schema.RemoteMethodSchema(method=foo)
+        r = RemoteMethodSchema(method=foo)
         getpos = r.getPositionalArgConstraint
         getkw = r.getKeywordArgConstraint
         self.failUnless(isinstance(getpos(0)[1], schema.IntegerConstraint))

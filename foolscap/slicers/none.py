@@ -1,7 +1,9 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
-from foolscap.tokens import BananaError
+from foolscap.tokens import Violation, BananaError
 from foolscap.slicer import BaseSlicer, LeafUnslicer
+from foolscap.constraint import OpenerConstraint
+
 
 class NoneSlicer(BaseSlicer):
     opentype = ('none',)
@@ -19,4 +21,21 @@ class NoneUnslicer(LeafUnslicer):
         raise BananaError("NoneUnslicer does not accept any tokens")
     def receiveClose(self):
         return None, None
+
+
+class Nothing(OpenerConstraint):
+    """Accept only 'None'."""
+    strictTaster = True
+    opentypes = [("none",)]
+    name = "Nothing"
+
+    def checkObject(self, obj, inbound):
+        if obj is not None:
+            raise Violation("'%s' is not None" % (obj,))
+    def maxSize(self, seen=None):
+        if not seen: seen = []
+        return self.OPENBYTES("none")
+    def maxDepth(self, seen=None):
+        if not seen: seen = []
+        return 1
 

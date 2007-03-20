@@ -5,7 +5,7 @@ from twisted.trial import unittest
 
 from foolscap import schema, remoteinterface
 from foolscap import RemoteInterface
-from foolscap.remoteinterface import getRemoteInterface
+from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema
 from foolscap.remoteinterface import RemoteInterfaceRegistry
 from foolscap.tokens import Violation
 from foolscap.referenceable import RemoteReference
@@ -68,7 +68,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
 
         # 'add' is defined with 'def'
         s1 = RIMyTarget['add']
-        self.failUnless(isinstance(s1, schema.RemoteMethodSchema))
+        self.failUnless(isinstance(s1, RemoteMethodSchema))
         ok, s2 = s1.getKeywordArgConstraint("a")
         self.failUnless(ok)
         self.failUnless(isinstance(s2, schema.IntegerConstraint))
@@ -80,7 +80,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
 
         # 'add1' is defined as a class attribute
         s1 = RIMyTarget['add1']
-        self.failUnless(isinstance(s1, schema.RemoteMethodSchema))
+        self.failUnless(isinstance(s1, RemoteMethodSchema))
         ok, s2 = s1.getKeywordArgConstraint("a")
         self.failUnless(ok)
         self.failUnless(isinstance(s2, schema.IntegerConstraint))

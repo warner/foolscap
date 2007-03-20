@@ -3,7 +3,7 @@ from twisted.trial import unittest
 from twisted.python import components, failure
 from foolscap.test.common import TargetMixin, HelperTarget
 
-from foolscap import copyable, tokens, schema
+from foolscap import copyable, tokens
 from foolscap import Copyable, RemoteCopy
 from foolscap.tokens import Violation
 
@@ -75,8 +75,8 @@ class MyCopyable4(Copyable):
     pass
 class MyRemoteCopy4(RemoteCopy):
     copytype = MyCopyable4.typeToCopy
-    stateSchema = schema.AttributeDictConstraint(('foo', int),
-                                                 ('bar', str))
+    stateSchema = copyable.AttributeDictConstraint(('foo', int),
+                                                   ('bar', str))
     pass
 
 # MyCopyable5 disables auto-registration

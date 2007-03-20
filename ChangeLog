@@ -1,5 +1,21 @@
 2007-03-19  Brian Warner  <warner@lothar.com>
 
+	* everything: massive Constraint refactoring. Primitive
+	constraints (StringConstraint, IntegerConstraint, etc) are now in
+	foolscap/constraint.py, while opentype-specific constraints like
+	ListConstraint and BooleanConstraint are in the same module that
+	defines the associated Slicer. Remote method constraints are in
+	remoteinterface.py and copyable.py, FailureConstraint is in
+	call.py . A new foolscap/constraint.py module contains the base
+	classes but is careful not to import much else. foolscap/schema.py
+	contains a reference to all constraints, so that user code can get
+	at them conveniently. Tests were updated to import from the new
+	places. Some circular imports were resolved. zope.interface
+	adaptation has been used to assist with the conversion from the
+	"shorthand" forms of constraint specification into the full form
+	(i.e. converting x=str into x=StringConstraint()), specifically
+	IConstraint(shorthand) will return a Constraint instance.
+
 	* foolscap/__init__.py: bump revision to 0.1.0+ while between releases
 	* misc/{sid|sarge|dapper}/debian/changelog: same
 

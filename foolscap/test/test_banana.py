@@ -9,6 +9,7 @@ from foolscap.tokens import BananaFailure
 from foolscap import slicer, schema, tokens, debug, storage
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
+from foolscap.constraint import IConstraint
 
 import StringIO
 import sets
@@ -1325,11 +1326,11 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
 
     def setConstraints(self, constraint, childConstraint):
         if constraint:
-            constraint = schema.makeConstraint(constraint)
+            constraint = IConstraint(constraint)
         self.banana.receiveStack[-1].constraint = constraint
 
         if childConstraint:
-            childConstraint = schema.makeConstraint(childConstraint)
+            childConstraint = IConstraint(childConstraint)
         self.banana.receiveStack[-1].childConstraint = childConstraint
 
     def conform2(self, stream, obj, constraint=None, childConstraint=None):

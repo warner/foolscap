@@ -11,8 +11,9 @@ from twisted.internet import defer, error
 from twisted.internet import interfaces as twinterfaces
 from twisted.internet.protocol import connectionDone
 
-from foolscap import schema, banana, tokens, ipb, vocab
+from foolscap import banana, tokens, ipb, vocab
 from foolscap import call, slicer, referenceable, copyable, remoteinterface
+from foolscap.constraint import Any
 from foolscap.tokens import Violation, BananaError
 from foolscap.ipb import DeadReferenceError
 from foolscap.slicers.root import RootSlicer, RootUnslicer
@@ -151,15 +152,15 @@ class RIBroker(remoteinterface.RemoteInterface):
         """If I have published an object by that name, return a reference to
         it."""
         # return Remote(interface=any)
-        return schema.Any()
+        return Any()
     def decref(clid=int, count=int):
         """Release some references to my-reference 'clid'. I will return an
         ack when the operation has completed."""
-        return schema.Nothing()
+        return None
     def decgift(giftID=int, count=int):
         """Release some reference to a their-reference 'giftID' that was
         sent earlier."""
-        return schema.Nothing()
+        return None
 
 
 class Broker(banana.Banana, referenceable.Referenceable):

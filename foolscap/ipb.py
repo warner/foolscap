@@ -5,7 +5,7 @@ Interface = interface.Interface
 
 # TODO: move these here
 from foolscap.tokens import ISlicer, IRootSlicer, IUnslicer
-
+_ignored = [ISlicer, IRootSlicer, IUnslicer] # hush pyflakes
 
 class DeadReferenceError(Exception):
     """The RemoteReference is dead, Jim."""

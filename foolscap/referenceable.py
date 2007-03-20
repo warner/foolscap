@@ -13,9 +13,10 @@ Interface = interface.Interface
 from twisted.internet import defer, error
 from twisted.python import failure
 
-from foolscap import ipb, schema, slicer, tokens, call
+from foolscap import ipb, slicer, tokens, call
 BananaError = tokens.BananaError
 Violation = tokens.Violation
+from foolscap.constraint import IConstraint, StringConstraint
 from foolscap.remoteinterface import getRemoteInterface, getRemoteInterfaceByName
 from foolscap.copyable import Copyable, RemoteCopy
 from foolscap.eventual import eventually
@@ -182,8 +183,8 @@ class ReferenceUnslicer(slicer.BaseUnslicer):
     clid = None
     interfaceName = None
     url = None
-    inameConstraint = schema.StringConstraint(200) # TODO: only known RI names?
-    urlConstraint = schema.StringConstraint(200)
+    inameConstraint = StringConstraint(200) # TODO: only known RI names?
+    urlConstraint = StringConstraint(200)
 
     def checkToken(self, typebyte, size):
         if self.state == 0:
@@ -399,7 +400,7 @@ class RemoteReference(RemoteReferenceOnly):
         # the schema's one
         if resultConstraint != "none":
             # overrides schema
-            req.setConstraint(schema.makeConstraint(resultConstraint))
+            req.setConstraint(IConstraint(resultConstraint))
 
         clid = self.tracker.clid
         slicer = call.CallSlicer(reqID, clid, methodName, args, kwargs)
@@ -570,7 +571,7 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
     state = 0
     giftID = None
     url = None
-    urlConstraint = schema.StringConstraint(200)
+    urlConstraint = StringConstraint(200)
 
     def checkToken(self, typebyte, size):
         if self.state == 0:

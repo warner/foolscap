@@ -1,8 +1,8 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
 from twisted.internet.defer import Deferred
-from foolscap import schema, tokens
-from foolscap.tokens import BananaError
+from foolscap.constraint import Any, StringConstraint
+from foolscap.tokens import BananaError, STRING
 from foolscap.slicer import BaseSlicer, LeafUnslicer
 
 class UnicodeSlicer(BaseSlicer):
@@ -18,13 +18,13 @@ class UnicodeUnslicer(LeafUnslicer):
     constraint = None
 
     def setConstraint(self, constraint):
-        if isinstance(constraint, schema.Any):
+        if isinstance(constraint, Any):
             return
-        assert isinstance(constraint, schema.StringConstraint)
+        assert isinstance(constraint, StringConstraint)
         self.constraint = constraint
 
     def checkToken(self, typebyte, size):
-        if typebyte != tokens.STRING:
+        if typebyte != STRING:
             raise BananaError("UnicodeUnslicer only accepts strings")
         if self.constraint:
             self.constraint.checkToken(typebyte, size)
