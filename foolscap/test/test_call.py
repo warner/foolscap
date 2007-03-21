@@ -277,7 +277,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failUnlessSubstring("INT token rejected by StringConstraint",
                                  str(f))
         self.failUnlessSubstring("in inbound method results", str(f))
-        self.failUnlessSubstring("<RootUnslicer>.Answer(req=0)", str(f))
+        self.failUnlessSubstring("<RootUnslicer>.Answer(req=1)", str(f))
 
 
 
@@ -348,3 +348,23 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failUnless(why.check(Violation))
         self.failUnlessSubstring("cannot serialize", why.value.args[0])
 
+
+class TestCallOnly(TargetMixin, unittest.TestCase):
+    def setUp(self):
+        TargetMixin.setUp(self)
+        self.setupBrokers()
+
+    def testCallOnly(self):
+        rr, target = self.setupTarget(TargetWithoutInterfaces())
+        ret = rr.callRemoteOnly("add", a=1, b=2)
+        self.failUnlessIdentical(ret, None)
+        # since we don't have a Deferred to wait upon, we just have to poll
+        # for the call to take place. It should happen pretty quickly.
+        def _check():
+            if target.calls:
+                self.failUnlessEqual(target.calls, [(1,2)])
+                return True
+            return False
+        d = self.poll(_check)
+        return d
+    testCallOnly.timeout = 2

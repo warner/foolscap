@@ -1,5 +1,26 @@
 2007-03-20  Brian Warner  <warner@lothar.com>
 
+	* foolscap/ipb.py (IRemoteReference.callRemoteOnly): new method to
+	invoke a remote method without waiting for a response. Useful for
+	certain messages where we really don't care whether the far end
+	receives them or not.
+	* foolscap/referenceable.py (RemoteReference.callRemoteOnly):
+	implement it
+	(TheirReferenceUnslicer.ackGift): use it
+	* foolscap/broker.py (Broker.initBroker): use reqID=0 to mean "we
+	don't want a response". Note that this is a compatibility barrier:
+	older endpoints which use reqID=0 for the first message will not
+	get a response. All subsequent messages will be ok, though.
+	(Broker._callFinished): don't send a response if reqID=0
+	(Broker.callFailed): don't send an error if reqID=0
+	* foolscap/call.py (InboundDelivery.logFailure): fix arg logging
+	(CallUnslicer.receiveChild): don't create an activeLocalCalls
+	entry if reqID=0
+	* foolscap/test/test_call.py (TestCallOnly.testCallOnly): test it
+	(TestCall._testFailWrongReturnLocal_1): update expectations,
+	now that reqIDs start at 1 instead of 0
+	* foolscap/test/common.py (TargetMixin.poll): new support code
+
 	* foolscap/referenceable.py: add Referenceable to
 	schema.constraintMap, so that RemoteInterfaces can use 'return
 	Referenceable' to indicate that they return a Referenceable of any

@@ -65,6 +65,39 @@ class IRemoteReference(Interface):
     def callRemote(name, *args, **kwargs):
         """Invoke a method on the remote object with which I am associated.
 
-        I always return a Deferred.
+        I always return a Deferred. This will fire with the results of the
+        method when and if the remote end finishes. It will errback if any of
+        the following things occur::
+
+         the arguments do not match the schema I believe is in use by the
+         far end (causes a Violation exception)
+
+         the connection to the far end has been lost (DeadReferenceError)
+
+         the arguments are not accepted by the schema in use by the far end
+         (Violation)
+
+         the method executed by the far end raises an exception (arbitrary)
+
+         the return value of the remote method is not accepted by the schema
+         in use by the far end (Violation)
+
+         the connection is lost before the response is returned
+         (ConnectionLost)
+
+         the return value is not accepted by the schema I believe is in use
+         by the far end (Violation)
+        """
+
+    def callRemoteOnly(name, *args, **kwargs):
+        """Invoke a method on the remote object with which I am associated.
+
+        This form is for one-way messages that do not require results or even
+        acknowledgement of completion. I do not wait for the method to finish
+        executing. The remote end will be instructed to not send any
+        response. There is no way to know whether the method was successfully
+        delivered or not.
+
+        I always return None.
         """
 

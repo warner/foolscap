@@ -214,7 +214,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
         # remote calls
         # sending side uses these
-        self.nextReqID = count().next
+        self.nextReqID = count(1).next # 0 means "we don't want a response"
         self.waitingForAnswers = {} # we wait for the other side to answer
         self.disconnectWatchers = []
         # receiving side uses these
@@ -335,8 +335,27 @@ class Broker(banana.Banana, referenceable.Referenceable):
             self.freeYourReferenceTracker(None, tracker)
             return
         try:
-            d = self.remote_broker.callRemote("decref",
-                                              clid=tracker.clid, count=count)
+            rb = self.remote_broker
+            # TODO: do we want callRemoteOnly here? is there a way we can
+            # avoid wanting to know when the decref has completed? Only if we
+            # send the interface list and URL on every occurrence of the
+            # my-reference sequence. Either A) we use callRemote("decref")
+            # and wait until the ack to free the tracker, or B) we use
+            # callRemoteOnly("decref") and free the tracker right away. In
+            # case B, the far end has no way to know that we've just freed
+            # the tracker and will therefore forget about everything they
+            # told us (including the interface list), so they cannot
+            # accurately do anything special on the "first" send of this
+            # reference. Which means that if we do B, we must either send
+            # that extra information on every my-reference sequence, or do
+            # without it, or make it optional, or retrieve it separately, or
+            # something.
+
+            # rb.callRemoteOnly("decref", clid=tracker.clid, count=count)
+            # self.freeYourReferenceTracker('bogus', tracker)
+            # return
+
+            d = rb.callRemote("decref", clid=tracker.clid, count=count)
             # if the connection was lost before we can get an ack, we're
             # tearing this down anyway
             d.addErrback(lambda f: f.trap(DeadReferenceError))
@@ -519,6 +538,8 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def _callFinished(self, res, delivery):
         reqID = delivery.reqID
+        if reqID == 0:
+            return
         methodSchema = delivery.methodSchema
         assert self.activeLocalCalls[reqID]
         if methodSchema:
@@ -546,11 +567,14 @@ class Broker(banana.Banana, referenceable.Referenceable):
         # raised after we receive the reqID but before we've actually invoked
         # the method, we are called by CallUnslicer.reportViolation and don't
         # get a delivery= argument.
-        if delivery and self.tub and self.tub.logLocalFailures:
-            delivery.logFailure(f)
-        assert self.activeLocalCalls[reqID]
-        self.send(call.ErrorSlicer(reqID, f))
-        del self.activeLocalCalls[reqID]
+        if delivery:
+            if (self.tub and self.tub.logLocalFailures) or not self.tub:
+                # the 'not self.tub' case is for unit tests
+                delivery.logFailure(f)
+        if reqID != 0:
+            assert self.activeLocalCalls[reqID]
+            self.send(call.ErrorSlicer(reqID, f))
+            del self.activeLocalCalls[reqID]
 
 # this loopback stuff is based upon twisted.protocols.loopback, except that
 # we use it for real, not just for testing. The IConsumer stuff hasn't been

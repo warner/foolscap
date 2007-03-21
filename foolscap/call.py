@@ -189,8 +189,8 @@ class InboundDelivery:
                 "someone else) failed")
         log.msg(" reqID=%d, rref=%s, methname=%s" %
                 (self.reqID, self.obj, self.methodname))
-        log.msg(" args=%s" % (self.args,))
-        log.msg(" kwargs=%s" % (self.kwargs,))
+        log.msg(" args=%s" % (self.allargs.args,))
+        log.msg(" kwargs=%s" % (self.allargs.kwargs,))
         stack = f.getTraceback()
         # TODO: trim stack to everything below Broker._doCall
         stack = "LOCAL: " + stack.replace("\n", "\nLOCAL: ")
@@ -444,8 +444,9 @@ class CallUnslicer(slicer.ScopedUnslicer):
             # we don't yet know which reqID to send any failure to
             self.reqID = token
             self.stage = 1
-            assert self.reqID not in self.broker.activeLocalCalls
-            self.broker.activeLocalCalls[self.reqID] = self
+            if self.reqID != 0:
+                assert self.reqID not in self.broker.activeLocalCalls
+                self.broker.activeLocalCalls[self.reqID] = self
             return
 
         if self.stage == 1: # objID
@@ -545,6 +546,7 @@ class AnswerSlicer(slicer.ScopedSlicer):
     opentype = ('answer',)
 
     def __init__(self, reqID, results):
+        assert reqID != 0
         slicer.ScopedSlicer.__init__(self, None)
         self.reqID = reqID
         self.results = results
