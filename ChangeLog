@@ -1,5 +1,8 @@
 2007-03-20  Brian Warner  <warner@lothar.com>
 
+	* foolscap/banana.py (Banana.outgoingVocabTableWasReplaced): remove
+	verbose debug message, not really needed anymore
+
 	* foolscap/ipb.py (IRemoteReference.callRemoteOnly): new method to
 	invoke a remote method without waiting for a response. Useful for
 	certain messages where we really don't care whether the far end

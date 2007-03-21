@@ -406,7 +406,6 @@ class Banana(protocol.Protocol):
     def outgoingVocabTableWasReplaced(self, newTable):
         # this is called by the ReplaceVocabSlicer to manipulate our table.
         # It must certainly *not* be called by higher-level user code.
-        log.msg("outgoingVocabTableWasReplaced(%s)" % newTable)
         self.outgoingVocabulary = newTable
         if newTable:
             maxIndex = max(newTable.values()) + 1
