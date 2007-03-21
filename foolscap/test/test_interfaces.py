@@ -189,11 +189,24 @@ class Types(TargetMixin, unittest.TestCase):
 
     def testTakesRemoteInterfaceBad(self):
         rr, target = self.setupTarget(TypesTarget(), True)
+        # takes_remoteinterface is specified to accept an RIDummy
         d = rr.callRemote('takes_remoteinterface', 12)
         def _check_failure(f):
             f.trap(Violation)
             self.failUnlessIn("RITypes.takes_remoteinterface(a=))", str(f))
-            self.failUnlessIn("'12' does not provide RemoteInterface ", str(f))
+            self.failUnlessIn("'12' is not a Referenceable", str(f))
+        self.deferredShouldFail(d, checker=_check_failure)
+        return d
+
+    def testTakesRemoteInterfaceBad2(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        # takes_remoteinterface is specified to accept an RIDummy
+        d = rr.callRemote('takes_remoteinterface', TypesTarget())
+        def _check_failure(f):
+            f.trap(Violation)
+            self.failUnlessIn("RITypes.takes_remoteinterface(a=))", str(f))
+            self.failUnlessIn(" does not provide RemoteInterface ", str(f))
+            self.failUnlessIn("foolscap.test.common.RIDummy", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -208,7 +221,7 @@ class Types(TargetMixin, unittest.TestCase):
 
     def testReturnsRemoteInterfaceGood(self):
         rr, target = self.setupTarget(TypesTarget(), True)
-        d = rr.callRemote('returns_remoteinterface', True)
+        d = rr.callRemote('returns_remoteinterface', 1)
         def _check(res):
             self.failUnless(isinstance(res, RemoteReference))
             #self.failUnless(RIDummy.providedBy(res))
@@ -218,13 +231,28 @@ class Types(TargetMixin, unittest.TestCase):
 
     def testReturnsRemoteInterfaceBad(self):
         rr, target = self.setupTarget(TypesTarget(), True)
-        d = rr.callRemote('returns_remoteinterface', False)
+        # returns_remoteinterface is specified to return an RIDummy
+        d = rr.callRemote('returns_remoteinterface', 0)
         def _check_failure(f):
             f.trap(Violation)
             self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
             self.failUnlessIn(">.returns_remoteinterface)", str(f))
-            self.failUnlessIn("'15' does not provide RemoteInterface ", str(f))
-            self.failUnlessIn("RIDummy", str(f))
+            self.failUnlessIn("'15' is not a Referenceable", str(f))
+        self.deferredShouldFail(d, checker=_check_failure)
+        return d
+
+    def testReturnsRemoteInterfaceBad2(self):
+        rr, target = self.setupTarget(TypesTarget(), True)
+        # returns_remoteinterface is specified to return an RIDummy
+        d = rr.callRemote('returns_remoteinterface', -1)
+        def _check_failure(f):
+            f.trap(Violation)
+            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
+            self.failUnlessIn(">.returns_remoteinterface)", str(f))
+            self.failUnlessIn("<foolscap.test.common.TypesTarget object ",
+                              str(f))
+            self.failUnlessIn(" does not provide RemoteInterface ", str(f))
+            self.failUnlessIn("foolscap.test.common.RIDummy", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 

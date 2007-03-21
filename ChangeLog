@@ -1,3 +1,18 @@
+2007-03-20  Brian Warner  <warner@lothar.com>
+
+	* foolscap/referenceable.py: add Referenceable to
+	schema.constraintMap, so that RemoteInterfaces can use 'return
+	Referenceable' to indicate that they return a Referenceable of any
+	sort. This is like using 'return RIFoo' to indicate that the
+	method returns a Referenceable that implements RIFoo, but without
+	the specific interface requirement.
+	* foolscap/remoteinterface.py (RemoteInterfaceConstraint): support
+	this by skipping the interface check if self.interface=None
+	* foolscap/test/test_schema.py (CreateTest): test it
+	* foolscap/test/test_interfaces.py (Types): update test to match,
+	since the error messages changed
+	* foolscap/test/common.py: more test support changes
+
 2007-03-19  Brian Warner  <warner@lothar.com>
 
 	* foolscap/ipb.py (IRemoteReference): new interface ..

@@ -17,7 +17,9 @@ from foolscap import ipb, slicer, tokens, call
 BananaError = tokens.BananaError
 Violation = tokens.Violation
 from foolscap.constraint import IConstraint, StringConstraint
-from foolscap.remoteinterface import getRemoteInterface, getRemoteInterfaceByName
+from foolscap.remoteinterface import getRemoteInterface, \
+     getRemoteInterfaceByName, RemoteInterfaceConstraint
+from foolscap.schema import constraintMap
 from foolscap.copyable import Copyable, RemoteCopy
 from foolscap.eventual import eventually
 
@@ -56,6 +58,8 @@ class Referenceable(OnlyReferenceable):
         meth = getattr(self, "remote_%s" % methodname)
         res = meth(*args, **kwargs)
         return res
+
+constraintMap[Referenceable] = RemoteInterfaceConstraint(None)
 
 class ReferenceableTracker:
     """I hold the data which tracks a local Referenceable that is in used by

@@ -334,7 +334,8 @@ class LocalInterfaceConstraint(Constraint):
 class RemoteInterfaceConstraint(OpenerConstraint):
     """This constraint accepts any RemoteReference that claims to be
     associated with a remote Referenceable that implements the given
-    RemoteInterface.
+    RemoteInterface. If 'interface' is None, just assert that it is a
+    RemoteReference at all.
     """
     opentypes = [("my-reference",)]
     # TODO: accept their-references too
@@ -344,10 +345,15 @@ class RemoteInterfaceConstraint(OpenerConstraint):
         self.interface = interface
     def checkObject(self, obj, inbound):
         if inbound:
+            # this ought to be a RemoteReference that claims to be associated
+            # with a remote Referenceable that implements the desired
+            # interface.
             if not ipb.IRemoteReference.providedBy(obj):
                 raise Violation("'%s' does not provide RemoteInterface %s, "
                                 "and doesn't even look like a RemoteReference"
                                 % (obj, self.interface))
+            if not self.interface:
+                return
             iface = obj.tracker.interface
             # TODO: this test probably doesn't handle subclasses of
             # RemoteInterface, which might be useful (if it even works)
@@ -355,7 +361,13 @@ class RemoteInterfaceConstraint(OpenerConstraint):
                 raise Violation("'%s' does not provide RemoteInterface %s"
                                 % (obj, self.interface))
         else:
-            if not self.interface.providedBy(obj):
+            # this ought to be a Referenceable which implements the desired
+            # interface
+            if not ipb.IReferenceable.providedBy(obj):
+                # TODO: maybe distinguish between OnlyReferenceable and
+                # Referenceable? which is more useful here?
+                raise Violation("'%s' is not a Referenceable" % obj)
+            if self.interface and not self.interface.providedBy(obj):
                 raise Violation("'%s' does not provide RemoteInterface %s"
                                 % (obj, self.interface))
 

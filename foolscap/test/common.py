@@ -232,7 +232,7 @@ class RIDummy(RemoteInterface):
 class RITypes(RemoteInterface):
     def returns_none(work=bool): return None
     def takes_remoteinterface(a=RIDummy): return str
-    def returns_remoteinterface(work=bool): return RIDummy
+    def returns_remoteinterface(work=int): return RIDummy
     def takes_interface(a=IFoo): return str
     def returns_interface(work=bool): return IFoo
 
@@ -257,8 +257,10 @@ class TypesTarget(Referenceable):
                            "but doesn't" % a)
 
     def remote_returns_remoteinterface(self, work):
-        if work:
+        if work == 1:
             return DummyTarget()
+        if work == -1:
+            return TypesTarget()
         return 15
 
     def remote_takes_interface(self, a):

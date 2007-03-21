@@ -4,8 +4,9 @@ from foolscap import schema, copyable
 from foolscap.tokens import Violation
 from foolscap.constraint import IConstraint
 from foolscap.remoteinterface import RemoteMethodSchema, \
-     RemoteInterfaceConstraint
-from foolscap.referenceable import RemoteReferenceTracker, RemoteReference
+     RemoteInterfaceConstraint, LocalInterfaceConstraint
+from foolscap.referenceable import RemoteReferenceTracker, \
+     RemoteReference, Referenceable
 from foolscap.test import common
 
 class Dummy:
@@ -255,6 +256,18 @@ class CreateTest(unittest.TestCase):
         self.failUnlessEqual(len(c.alternatives), 2)
         self.check(c.alternatives[0], schema.IntegerConstraint)
         self.check(c.alternatives[1], schema.StringConstraint)
+
+        c = make(common.RIHelper)
+        self.check(c, RemoteInterfaceConstraint)
+        self.failUnlessEqual(c.interface, common.RIHelper)
+
+        c = make(common.IFoo)
+        self.check(c, LocalInterfaceConstraint)
+        self.failUnlessEqual(c.interface, common.IFoo)
+
+        c = make(Referenceable)
+        self.check(c, RemoteInterfaceConstraint)
+        self.failUnlessEqual(c.interface, None)
 
 
 class Arguments(unittest.TestCase):
