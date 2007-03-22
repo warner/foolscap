@@ -1,5 +1,9 @@
 2007-03-22  Brian Warner  <warner@lothar.com>
 
+	* foolscap/constraint.py (StringConstraint): add a minLength=
+	argument
+	* foolscap/test/test_schema.py (ConformTest.testString): test it
+
 	* foolscap/slicers/set.py (BuiltinFrozenSetSlicer): add slicer for
 	the builtin 'frozenset' type that appeared in python2.4
 	(SetConstraint): provide a constraint for sets

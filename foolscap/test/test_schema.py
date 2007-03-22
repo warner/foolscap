@@ -89,6 +89,11 @@ class ConformTest(unittest.TestCase):
         self.violates(c, Dummy())
         self.violates(c, None)
 
+        c2 = schema.StringConstraint(15, 10)
+        self.violates(c2, "too short")
+        self.conforms(c2, "long enough")
+        self.violates(c2, "this is too long")
+
     def testBool(self):
         c = schema.BooleanConstraint()
         self.assertSize(c, 147)

@@ -194,8 +194,9 @@ class StringConstraint(Constraint):
     opentypes = [] # redundant, as taster doesn't accept OPEN
     name = "StringConstraint"
 
-    def __init__(self, maxLength=1000):
+    def __init__(self, maxLength=1000, minLength=0):
         self.maxLength = maxLength
+        self.minLength = minLength
         self.taster = {STRING: self.maxLength,
                        VOCAB: None}
     def checkObject(self, obj, inbound):
@@ -204,6 +205,10 @@ class StringConstraint(Constraint):
         if self.maxLength != None and len(obj) > self.maxLength:
             raise Violation("string too long (%d > %d)" %
                             (len(obj), self.maxLength))
+        if len(obj) < self.minLength:
+            raise Violation("string too short (%d < %d)" %
+                            (len(obj), self.minLength))
+
     def maxSize(self, seen=None):
         if self.maxLength == None:
             raise UnboundedSchema
