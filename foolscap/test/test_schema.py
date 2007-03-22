@@ -204,6 +204,7 @@ class ConformTest(unittest.TestCase):
         self.conforms(l, ["one", "two", "three"])
         self.violates(l, ("can't", "fool", "me"))
         self.violates(l, ["but", "perspicacity", "is too long"])
+        self.violates(l, [0, "numbers", "allowed"])
         self.conforms(l, ["short", "sweet"])
 
         l2 = schema.ListOf(schema.StringConstraint(10), 3)
@@ -211,6 +212,17 @@ class ConformTest(unittest.TestCase):
         self.assertDepth(l2, 2)
         self.conforms(l2, ["the number", "shall be", "three"])
         self.violates(l2, ["five", "is", "...", "right", "out"])
+
+        l3 = schema.ListOf(schema.StringConstraint(10), None)
+        self.assertUnboundedSize(l3)
+        self.assertDepth(l3, 2)
+        self.conforms(l3, ["long"] * 35)
+        self.violates(l3, ["number", 1, "rule", "is", 0, "numbers"])
+
+        l4 = schema.ListOf(schema.StringConstraint(10), 3, 3)
+        self.conforms(l4, ["three", "is", "good"])
+        self.violates(l4, ["but", "four", "is", "bad"])
+        self.violates(l4, ["two", "too"])
 
     def testSet(self):
         l = schema.SetOf(schema.IntegerConstraint(), 3)

@@ -1,5 +1,9 @@
 2007-03-22  Brian Warner  <warner@lothar.com>
 
+	* foolscap/slicers/list.py (ListConstraint): add a minLength=
+	argument, fix maxLength=None
+	* foolscap/test/test_schema.py (ConformTest.testList): test it
+
 	* foolscap/constraint.py (StringConstraint): add a minLength=
 	argument
 	* foolscap/test/test_schema.py (ConformTest.testString): test it

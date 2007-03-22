@@ -114,16 +114,21 @@ class ListConstraint(OpenerConstraint):
     opentypes = [("list",)]
     name = "ListConstraint"
 
-    def __init__(self, constraint, maxLength=30):
+    def __init__(self, constraint, maxLength=30, minLength=0):
         self.constraint = IConstraint(constraint)
         self.maxLength = maxLength
+        self.minLength = minLength
+
     def checkObject(self, obj, inbound):
         if not isinstance(obj, list):
             raise Violation("not a list")
-        if len(obj) > self.maxLength:
+        if self.maxLength is not None and len(obj) > self.maxLength:
             raise Violation("list too long")
+        if len(obj) < self.minLength:
+            raise Violation("list too short")
         for o in obj:
             self.constraint.checkObject(o, inbound)
+
     def maxSize(self, seen=None):
         if not seen: seen = []
         if self in seen:
