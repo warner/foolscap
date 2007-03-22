@@ -64,13 +64,14 @@ from foolscap.constraint import Constraint, Any, StringConstraint, \
 from foolscap.slicers.bool import BooleanConstraint
 from foolscap.slicers.dict import DictConstraint
 from foolscap.slicers.list import ListConstraint
+from foolscap.slicers.set import SetConstraint
 from foolscap.slicers.tuple import TupleConstraint
 from foolscap.slicers.none import Nothing
 #  we don't import RemoteMethodSchema from remoteinterface.py, because
 #  remoteinterface.py needs to import us (for addToConstraintTypeMap)
 ignored = [Constraint, Any, StringConstraint, IntegerConstraint,
            NumberConstraint, BooleanConstraint, DictConstraint,
-           ListConstraint, TupleConstraint, Nothing,
+           ListConstraint, SetConstraint, TupleConstraint, Nothing,
            Optional, Shared,
            ] # hush pyflakes
 
@@ -79,6 +80,7 @@ ignored = [Constraint, Any, StringConstraint, IntegerConstraint,
 TupleOf = TupleConstraint
 ListOf = ListConstraint
 DictOf = DictConstraint
+SetOf = SetConstraint
 
 
 class PolyConstraint(Constraint):

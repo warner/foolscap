@@ -1,4 +1,5 @@
 
+import sets
 from twisted.trial import unittest
 from foolscap import schema, copyable
 from foolscap.tokens import Violation
@@ -8,6 +9,13 @@ from foolscap.remoteinterface import RemoteMethodSchema, \
 from foolscap.referenceable import RemoteReferenceTracker, \
      RemoteReference, Referenceable
 from foolscap.test import common
+
+have_builtin_set = False
+try:
+    set
+    have_builtin_set = True
+except NameError:
+    pass # oh well
 
 class Dummy:
     pass
@@ -198,6 +206,78 @@ class ConformTest(unittest.TestCase):
         self.assertDepth(l2, 2)
         self.conforms(l2, ["the number", "shall be", "three"])
         self.violates(l2, ["five", "is", "...", "right", "out"])
+
+    def testSet(self):
+        l = schema.SetOf(schema.IntegerConstraint(), 3)
+        self.assertDepth(l, 2)
+        self.conforms(l, sets.Set([]))
+        self.conforms(l, sets.Set([1]))
+        self.conforms(l, sets.Set([1,2,3]))
+        self.violates(l, sets.Set([1,2,3,4]))
+        self.violates(l, sets.Set(["not a number"]))
+        self.conforms(l, sets.ImmutableSet([]))
+        self.conforms(l, sets.ImmutableSet([1]))
+        self.conforms(l, sets.ImmutableSet([1,2,3]))
+        self.violates(l, sets.ImmutableSet([1,2,3,4]))
+        self.violates(l, sets.ImmutableSet(["not a number"]))
+        if have_builtin_set:
+            self.conforms(l, set([]))
+            self.conforms(l, set([1]))
+            self.conforms(l, set([1,2,3]))
+            self.violates(l, set([1,2,3,4]))
+            self.violates(l, set(["not a number"]))
+            self.conforms(l, frozenset([]))
+            self.conforms(l, frozenset([1]))
+            self.conforms(l, frozenset([1,2,3]))
+            self.violates(l, frozenset([1,2,3,4]))
+            self.violates(l, frozenset(["not a number"]))
+
+        l = schema.SetOf(schema.IntegerConstraint(), 3, True)
+        self.conforms(l, sets.Set([]))
+        self.conforms(l, sets.Set([1]))
+        self.conforms(l, sets.Set([1,2,3]))
+        self.violates(l, sets.Set([1,2,3,4]))
+        self.violates(l, sets.Set(["not a number"]))
+        self.violates(l, sets.ImmutableSet([]))
+        self.violates(l, sets.ImmutableSet([1]))
+        self.violates(l, sets.ImmutableSet([1,2,3]))
+        self.violates(l, sets.ImmutableSet([1,2,3,4]))
+        self.violates(l, sets.ImmutableSet(["not a number"]))
+        if have_builtin_set:
+            self.conforms(l, set([]))
+            self.conforms(l, set([1]))
+            self.conforms(l, set([1,2,3]))
+            self.violates(l, set([1,2,3,4]))
+            self.violates(l, set(["not a number"]))
+            self.violates(l, frozenset([]))
+            self.violates(l, frozenset([1]))
+            self.violates(l, frozenset([1,2,3]))
+            self.violates(l, frozenset([1,2,3,4]))
+            self.violates(l, frozenset(["not a number"]))
+
+        l = schema.SetOf(schema.IntegerConstraint(), 3, False)
+        self.violates(l, sets.Set([]))
+        self.violates(l, sets.Set([1]))
+        self.violates(l, sets.Set([1,2,3]))
+        self.violates(l, sets.Set([1,2,3,4]))
+        self.violates(l, sets.Set(["not a number"]))
+        self.conforms(l, sets.ImmutableSet([]))
+        self.conforms(l, sets.ImmutableSet([1]))
+        self.conforms(l, sets.ImmutableSet([1,2,3]))
+        self.violates(l, sets.ImmutableSet([1,2,3,4]))
+        self.violates(l, sets.ImmutableSet(["not a number"]))
+        if have_builtin_set:
+            self.violates(l, set([]))
+            self.violates(l, set([1]))
+            self.violates(l, set([1,2,3]))
+            self.violates(l, set([1,2,3,4]))
+            self.violates(l, set(["not a number"]))
+            self.conforms(l, frozenset([]))
+            self.conforms(l, frozenset([1]))
+            self.conforms(l, frozenset([1,2,3]))
+            self.violates(l, frozenset([1,2,3,4]))
+            self.violates(l, frozenset(["not a number"]))
+
 
     def testDict(self):
         d = schema.DictOf(schema.StringConstraint(10),
