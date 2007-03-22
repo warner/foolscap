@@ -1,5 +1,5 @@
 
-import sets
+import sets, re
 from twisted.trial import unittest
 from foolscap import schema, copyable
 from foolscap.tokens import Violation
@@ -93,6 +93,17 @@ class ConformTest(unittest.TestCase):
         self.violates(c2, "too short")
         self.conforms(c2, "long enough")
         self.violates(c2, "this is too long")
+
+        c3 = schema.StringConstraint(regexp="needle")
+        self.violates(c3, "no present")
+        self.conforms(c3, "needle in a haystack")
+        c4 = schema.StringConstraint(regexp="[abc]+")
+        self.violates(c4, "spelled entirely without those letters")
+        self.conforms(c4, "add better cases")
+        c5 = schema.StringConstraint(regexp=re.compile("\d+\s\w+"))
+        self.conforms(c5, ": 123 boo")
+        self.violates(c5, "more than 1  spaces")
+        self.violates(c5, "letters first 123")
 
     def testBool(self):
         c = schema.BooleanConstraint()

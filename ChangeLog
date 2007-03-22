@@ -1,5 +1,8 @@
 2007-03-22  Brian Warner  <warner@lothar.com>
 
+	* foolscap/constraint.py (StringConstraint): add a regexp= argument
+	* foolscap/test/test_schema.py (ConformTest.testString): test it
+
 	* foolscap/test/test_banana.py (TestBananaMixin.shouldDropConnection):
 	fix a pyflakes warning
 	* foolscap/call.py: same, don't fall back to plain StringIO if

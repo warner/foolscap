@@ -5,6 +5,7 @@
 
 # This imports foolscap.tokens, but no other Foolscap modules.
 
+import re
 from zope.interface import implements, Interface
 
 from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
@@ -194,9 +195,15 @@ class StringConstraint(Constraint):
     opentypes = [] # redundant, as taster doesn't accept OPEN
     name = "StringConstraint"
 
-    def __init__(self, maxLength=1000, minLength=0):
+    def __init__(self, maxLength=1000, minLength=0, regexp=None):
         self.maxLength = maxLength
         self.minLength = minLength
+        # regexp can either be a string or a compiled SRE_Match object..
+        # re.compile appears to notice SRE_Match objects and pass them
+        # through unchanged.
+        self.regexp = None
+        if regexp:
+            self.regexp = re.compile(regexp)
         self.taster = {STRING: self.maxLength,
                        VOCAB: None}
     def checkObject(self, obj, inbound):
@@ -208,6 +215,9 @@ class StringConstraint(Constraint):
         if len(obj) < self.minLength:
             raise Violation("string too short (%d < %d)" %
                             (len(obj), self.minLength))
+        if self.regexp:
+            if not self.regexp.search(obj):
+                raise Violation("regexp failed to match")
 
     def maxSize(self, seen=None):
         if self.maxLength == None:
