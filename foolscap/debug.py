@@ -2,11 +2,7 @@
 # miscellaneous helper classes for debugging and testing, not needed for
 # normal use
 
-try:
-    import cStringIO as StringIO
-except ImportError:
-    import StringIO
-
+from cStringIO import StringIO
 from foolscap import banana, tokens, storage
 Banana = banana.Banana
 StorageBanana = storage.StorageBanana
@@ -204,7 +200,7 @@ def decodeTokens(tokens, debug=0):
 
 def encode(obj):
     b = LoggingStorageBanana()
-    b.transport = StringIO.StringIO()
+    b.transport = StringIO()
     b.send(obj)
     return b.transport.getvalue()
 def decode(string):

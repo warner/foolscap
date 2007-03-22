@@ -203,7 +203,7 @@ class TestBananaMixin:
         self.failUnlessEqual(len(self.banana.receiveStack), 1)
         f = self.banana.violation
         if not f:
-            self.fail("didn't fail, ret=%s" % obj)
+            self.fail("didn't fail")
         if not isinstance(f, BananaFailure):
             self.fail("violation wasn't a BananaFailure: %s" % f)
         if not f.check(Violation):
@@ -220,7 +220,7 @@ class TestBananaMixin:
         # dropped the connection anyway
         f = self.banana.transport.disconnectReason
         if not f:
-            self.fail("didn't fail, ret=%s" % ret)
+            self.fail("didn't fail")
         if not isinstance(f, BananaFailure):
             self.fail("disconnectReason wasn't a Failure: %s" % f)
         if not f.check(BananaError):

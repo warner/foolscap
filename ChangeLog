@@ -1,5 +1,12 @@
 2007-03-22  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_banana.py (TestBananaMixin.shouldDropConnection):
+	fix a pyflakes warning
+	* foolscap/call.py: same, don't fall back to plain StringIO if
+	cStringIO is unavailable
+	* foolscap/debug.py: same
+	* foolscap/storage.py: same
+
 	* foolscap/slicers/list.py (ListConstraint): add a minLength=
 	argument, fix maxLength=None
 	* foolscap/test/test_schema.py (ConformTest.testList): test it

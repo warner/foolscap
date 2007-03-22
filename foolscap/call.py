@@ -1,8 +1,5 @@
 
-try:
-    import cStringIO as StringIO
-except ImportError:
-    import StringIO
+from cStringIO import StringIO
 
 from twisted.python import failure, log, reflect
 from twisted.internet import defer
@@ -721,7 +718,7 @@ class FailureSlicer(slicer.BaseSlicer):
             state['value'] = str(obj.value) # Exception instance
         state['type'] = reflect.qual(obj.type) # Exception class
         if broker.unsafeTracebacks:
-            io = StringIO.StringIO()
+            io = StringIO()
             obj.printTraceback(io)
             state['traceback'] = io.getvalue()
             # TODO: provide something with globals and locals and HTML and

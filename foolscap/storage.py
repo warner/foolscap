@@ -15,12 +15,7 @@ This functionality is isolated here because it is never used for data coming
 over network connections.
 """
 
-
-try:
-    import cStringIO as StringIO
-except ImportError:
-    import StringIO
-
+from cStringIO import StringIO
 import types
 from new import instance, instancemethod
 from pickle import whichmodule  # used by FunctionSlicer
@@ -411,7 +406,7 @@ def serialize(obj):
     """Serialize an object graph into a sequence of bytes. Returns a Deferred
     that fires with the sequence of bytes."""
     b = StorageBanana()
-    b.transport = StringIO.StringIO()
+    b.transport = StringIO()
     d = b.send(obj)
     d.addCallback(lambda res: b.transport.getvalue())
     return d
