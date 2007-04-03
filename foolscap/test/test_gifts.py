@@ -25,7 +25,7 @@ class Gifts(unittest.TestCase):
         for s in self.services:
             s.startService()
             l = s.listenOn("tcp:0:interface=127.0.0.1")
-            s.setLocation("localhost:%d" % l.getPortnum())
+            s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
     def tearDown(self):
         return defer.DeferredList([s.stopService() for s in self.services])

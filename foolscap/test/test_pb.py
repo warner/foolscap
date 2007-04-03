@@ -375,7 +375,7 @@ class TestCallable(unittest.TestCase):
         for s in self.services:
             s.startService()
             l = s.listenOn("tcp:0:interface=127.0.0.1")
-            s.setLocation("localhost:%d" % l.getPortnum())
+            s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
     def tearDown(self):
         return defer.DeferredList([s.stopService() for s in self.services])
@@ -425,16 +425,16 @@ class TestService(unittest.TestCase):
     def testRegister(self):
         s = self.services[0]
         l = s.listenOn("tcp:0:interface=127.0.0.1")
-        s.setLocation("localhost:%d" % l.getPortnum())
+        s.setLocation("127.0.0.1:%d" % l.getPortnum())
         t1 = Target()
         public_url = s.registerReference(t1, "target")
         if crypto_available:
             self.failUnless(public_url.startswith("pb://"))
-            self.failUnless(public_url.endswith("@localhost:%d/target"
+            self.failUnless(public_url.endswith("@127.0.0.1:%d/target"
                                                 % l.getPortnum()))
         else:
             self.failUnlessEqual(public_url,
-                                 "pbu://localhost:%d/target"
+                                 "pbu://127.0.0.1:%d/target"
                                  % l.getPortnum())
         self.failUnlessEqual(s.registerReference(t1, "target"), public_url)
         self.failUnlessIdentical(s.getReferenceForURL(public_url), t1)
@@ -458,7 +458,7 @@ class TestService(unittest.TestCase):
         s2 = self.services[1]
         s2.startService()
         l = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("localhost:%d" % l.getPortnum())
+        s1.setLocation("127.0.0.1:%d" % l.getPortnum())
         public_url = s1.registerReference(target, "target")
         self.public_url = public_url
         d = s2.getReference(public_url)
@@ -547,7 +547,7 @@ class ThreeWayHelper:
     passed = False
 
     def start(self):
-        d = getRemoteURL_TCP("localhost", self.portnum1, "", RIHelper)
+        d = getRemoteURL_TCP("127.0.0.1", self.portnum1, "", RIHelper)
         d.addCallback(self.step2)
         d.addErrback(self.err)
         return d
@@ -556,7 +556,7 @@ class ThreeWayHelper:
         # .remote1 is our RRef to server1's "t1" HelperTarget
         self.clients.append(remote1)
         self.remote1 = remote1
-        d = getRemoteURL_TCP("localhost", self.portnum2, "", RIHelper)
+        d = getRemoteURL_TCP("127.0.0.1", self.portnum2, "", RIHelper)
         d.addCallback(self.step3)
         return d
 

@@ -1,5 +1,16 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_*.py (localhost): replace all use of
+	"localhost" with "127.0.0.1" to avoid invoking the address
+	resolver, which sometimes leaves a cleanup timer running. I think
+	the root problem is there's no clean way to interrupt a connection
+	attempt which still in the address resolution phase. You can stop
+	it, but there's no way to wait for the resolver's cleanup timer to
+	finish, which is what we'd need to make Trial happy.
+	tcp.BaseClient.resolveAddress does not keep a handle to the
+	resolver, so failIfNotConnected cannot halt its timer.
+	* foolscap/test/test_zz_resolve.py: removed this test
+
 	* foolscap/crypto.py (_ssl): import SSL goo in a different way to
 	appease pyflakes
 

@@ -135,7 +135,7 @@ class BaseMixin:
         tub.startService()
         self.services.append(tub)
         l = tub.listenOn("tcp:0", listenerOptions)
-        tub.setLocation("localhost:%d" % l.getPortnum())
+        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.target = Target()
         return tub.registerReference(self.target), l.getPortnum()
 
@@ -146,7 +146,7 @@ class BaseMixin:
         tub.startService()
         self.services.append(tub)
         l = tub.listenOn("tcp:0")
-        tub.setLocation("localhost:%d" % l.getPortnum())
+        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.target = Target()
         return tub.registerReference(self.target), l.getPortnum()
 
@@ -176,11 +176,11 @@ class BaseMixin:
         tub = UnauthenticatedTub()
         tub.startService()
         self.services.append(tub)
-        d = tub.getReference("pb://localhost:%d/hello" % portnum)
+        d = tub.getReference("pb://127.0.0.1:%d/hello" % portnum)
         return d
 
     def connectHTTPClient(self, portnum):
-        return getPage("http://localhost:%d/foo" % portnum)
+        return getPage("http://127.0.0.1:%d/foo" % portnum)
 
 class Basic(BaseMixin, unittest.TestCase):
 
@@ -239,7 +239,7 @@ class Versus(BaseMixin, unittest.TestCase):
         client = Tub()
         client.startService()
         self.services.append(client)
-        url = "pb://1234@localhost:%d/target" % portnum
+        url = "pb://1234@127.0.0.1:%d/target" % portnum
         d = client.getReference(url)
         d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
                        lambda f: f.trap(BananaError))
@@ -255,7 +255,7 @@ class Versus(BaseMixin, unittest.TestCase):
         client = UnauthenticatedTub()
         client.startService()
         self.services.append(client)
-        url = "pbu://localhost:%d/target" % portnum
+        url = "pbu://127.0.0.1:%d/target" % portnum
         d = client.getReference(url)
         d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
                        lambda f: f.trap(BananaError))
@@ -314,7 +314,7 @@ class Versus(BaseMixin, unittest.TestCase):
         client = UnauthenticatedTub(options={'connect_timeout': 1})
         client.startService()
         self.services.append(client)
-        url = "pbu://localhost:%d/target" % portnum
+        url = "pbu://127.0.0.1:%d/target" % portnum
         d = client.getReference(url)
         d.addCallbacks(lambda res: self.fail("hey! this is supposed to fail"),
                        lambda f: f.trap(tokens.NegotiationError))
@@ -335,7 +335,7 @@ class Versus(BaseMixin, unittest.TestCase):
         url, portnum = self.makeServer(False, listenerOptions=options)
         f = protocol.ClientFactory()
         f.protocol = protocol.Protocol # discards everything
-        s = internet.TCPClient("localhost", portnum, f)
+        s = internet.TCPClient("127.0.0.1", portnum, f)
         s.startService()
         self.services.append(s)
         d.addCallbacks(lambda res: self.fail("hey! this is supposed to fail"),
@@ -372,8 +372,8 @@ class Parallel(BaseMixin, unittest.TestCase):
         l1 = tub.listenOn("tcp:0", lo1)
         l2 = tub.listenOn("tcp:0", lo2)
         self.p1, self.p2 = l1.getPortnum(), l2.getPortnum()
-        tub.setLocation("localhost:%d" % l1.getPortnum(),
-                        "localhost:%d" % l2.getPortnum())
+        tub.setLocation("127.0.0.1:%d" % l1.getPortnum(),
+                        "127.0.0.1:%d" % l2.getPortnum())
         self.target = Target()
         return tub.registerReference(self.target)
 
@@ -522,7 +522,7 @@ class CrossfireMixin(BaseMixin):
         tub1.startService()
         self.services.append(tub1)
         l1 = tub1.listenOn("tcp:0", lo1)
-        tub1.setLocation("localhost:%d" % l1.getPortnum())
+        tub1.setLocation("127.0.0.1:%d" % l1.getPortnum())
         self.target1 = Target()
         self.url1 = tub1.registerReference(self.target1)
 
@@ -530,7 +530,7 @@ class CrossfireMixin(BaseMixin):
         tub2.startService()
         self.services.append(tub2)
         l2 = tub2.listenOn("tcp:0", lo2)
-        tub2.setLocation("localhost:%d" % l2.getPortnum())
+        tub2.setLocation("127.0.0.1:%d" % l2.getPortnum())
         self.target2 = Target()
         self.url2 = tub2.registerReference(self.target2)
 

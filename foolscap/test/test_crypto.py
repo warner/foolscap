@@ -70,7 +70,7 @@ class TestPersist(UsefulMixin, unittest.TestCase):
         s1,s2 = self.services
         l1 = s1.listenOn("0")
         port = l1.getPortnum()
-        s1.setLocation("localhost:%d" % port)
+        s1.setLocation("127.0.0.1:%d" % port)
         public_url = s1.registerReference(t1, "name")
         self.failUnless(public_url.startswith("pb:"))
         d = defer.maybeDeferred(s1.stopService)
@@ -85,7 +85,7 @@ class TestPersist(UsefulMixin, unittest.TestCase):
         t2 = Target()
         l3 = s3.listenOn("0")
         newport = l3.getPortnum()
-        s3.setLocation("localhost:%d" % newport)
+        s3.setLocation("127.0.0.1:%d" % newport)
         s3.registerReference(t2, "name")
         # now patch the URL to replace the port number
         newurl = re.sub(":%d/" % port, ":%d/" % newport, public_url)
@@ -148,9 +148,9 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         s1,s2,s3 = self.services
         # s1 and s2 will share a Listener
         l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("localhost:%d" % l1.getPortnum())
+        s1.setLocation("127.0.0.1:%d" % l1.getPortnum())
         s2.listenOn(l1)
-        s2.setLocation("localhost:%d" % l1.getPortnum())
+        s2.setLocation("127.0.0.1:%d" % l1.getPortnum())
 
         t1 = Target("one")
         t2 = Target("two")
@@ -178,9 +178,9 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         s1,s2,s3 = self.services
         # s1 and s2 will share a Listener
         l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("localhost:%d" % l1.getPortnum())
+        s1.setLocation("127.0.0.1:%d" % l1.getPortnum())
         s2.listenOn(l1)
-        s2.setLocation("localhost:%d" % l1.getPortnum())
+        s2.setLocation("127.0.0.1:%d" % l1.getPortnum())
         self.failUnless(l1.parentTub is s1)
         s1.stopListeningOn(l1)
         self.failUnless(l1.parentTub is s2)
@@ -200,7 +200,7 @@ class TestListeners(UsefulMixin, unittest.TestCase):
                                     "require TubIDs and thus crypto")
         s1,s2,s3 = self.services
         l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("localhost:%d" % l1.getPortnum())
+        s1.setLocation("127.0.0.1:%d" % l1.getPortnum())
         s4 = s1.clone()
         s4.startService()
         self.services.append(s4)
