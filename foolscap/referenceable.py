@@ -298,6 +298,8 @@ class RemoteReferenceTracker:
     def _handleRefLost(self):
         if self.ref() is None:
             count, self.received_count = self.received_count, 0
+            if count == 0:
+                return
             self.broker.freeYourReference(self, count)
         # otherwise our RemoteReference is actually still alive, resurrected
         # between the call to _refLost and the eventual call to

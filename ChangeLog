@@ -1,5 +1,9 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py
+	(RemoteReferenceTracker._handleRefLost): refrain from sending
+	decref messages with count=0
+
 	* foolscap/negotiate.py (TubConnectorClientFactory.__repr__):
 	include both the origin and the target of the factory
 
