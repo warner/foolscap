@@ -1,3 +1,11 @@
+2007-04-03  Brian Warner  <warner@lothar.com>
+
+	* foolscap/observer.py (OneShotObserverList): eventual-send -using
+	event distributor, following the pattern espoused by Mark Miller's
+	"Concurrency Among Strangers" paper. Many thanks to AllMyData.com
+	for contributing this class.
+	* foolscap/test/test_observer.py: tests for it
+
 2007-03-22  Brian Warner  <warner@lothar.com>
 
 	* foolscap/constraint.py (StringConstraint): add a regexp= argument
