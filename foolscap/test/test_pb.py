@@ -12,7 +12,7 @@ from twisted.internet import defer
 from twisted.trial import unittest
 
 from foolscap import tokens, referenceable
-from foolscap import Tub
+from foolscap import Tub, UnauthenticatedTub
 from foolscap import getRemoteURL_TCP
 from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
 from foolscap.tokens import BananaFailure
@@ -25,6 +25,12 @@ try:
     crypto_available = crypto.available
 except ImportError:
     pass
+
+# we use authenticated tubs if possible. If crypto is not available, fall
+# back to unauthenticated ones
+GoodEnoughTub = UnauthenticatedTub
+if crypto_available:
+    GoodEnoughTub = Tub
 
 from foolscap.test.common import HelperTarget, RIHelper, TargetMixin
 from foolscap.eventual import flushEventualQueue
@@ -370,7 +376,7 @@ class TestFactory(unittest.TestCase):
 
 class TestCallable(unittest.TestCase):
     def setUp(self):
-        self.services = [Tub(), Tub()]
+        self.services = [GoodEnoughTub(), GoodEnoughTub()]
         self.tubA, self.tubB = self.services
         for s in self.services:
             s.startService()
@@ -414,7 +420,7 @@ class TestCallable(unittest.TestCase):
 
 class TestService(unittest.TestCase):
     def setUp(self):
-        self.services = [Tub()]
+        self.services = [GoodEnoughTub()]
         self.services[0].startService()
 
     def tearDown(self):
@@ -453,7 +459,7 @@ class TestService(unittest.TestCase):
         # under multiple URLs
 
     def getRef(self, target):
-        self.services.append(Tub())
+        self.services.append(GoodEnoughTub())
         s1 = self.services[0]
         s2 = self.services[1]
         s2.startService()

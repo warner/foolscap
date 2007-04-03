@@ -1,5 +1,13 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_pb.py (GoodEnoughTub): when crypto is not
+	available, skip some tests that really require it. Modify others
+	to not really require it.
+	* foolscap/test/test_crypto.py: same
+	* foolscap/test/test_gifts.py: same
+	* foolscap/test/test_loopback.py: same
+	* foolscap/test/test_negotiate.py: same
+
 	* foolscap/test/test_*.py (localhost): replace all use of
 	"localhost" with "127.0.0.1" to avoid invoking the address
 	resolver, which sometimes leaves a cleanup timer running. I think

@@ -48,6 +48,8 @@ class Target(Referenceable):
 class UsefulMixin:
     num_services = 2
     def setUp(self):
+        if not crypto_available:
+            raise unittest.SkipTest("crypto not available")
         self.services = []
         for i in range(self.num_services):
             s = Tub()
@@ -64,8 +66,6 @@ class UsefulMixin:
 class TestPersist(UsefulMixin, unittest.TestCase):
     num_services = 2
     def testPersist(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
         t1 = Target()
         s1,s2 = self.services
         l1 = s1.listenOn("0")
@@ -122,9 +122,6 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         self.failUnless(portnum) # not 0, not None, must be *something*
 
     def testGetPort2(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available, shared ports "
-                                    "require TubIDs and thus crypto")
         s1,s2,s3 = self.services
         s1.listenOn("0")
         listeners = s1.getListeners()
@@ -142,9 +139,6 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         self.failUnlessEqual(l2[0].getPortnum(), l3[0].getPortnum())
 
     def testShared(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available, shared ports "
-                                    "require TubIDs and thus crypto")
         s1,s2,s3 = self.services
         # s1 and s2 will share a Listener
         l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
@@ -172,9 +166,6 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         self.failUnlessEqual(t2.calls, [(2,2)])
 
     def testSharedTransfer(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available, shared ports "
-                                    "require TubIDs and thus crypto")
         s1,s2,s3 = self.services
         # s1 and s2 will share a Listener
         l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
@@ -195,9 +186,6 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         self.failUnless(l1.parentTub is s3)
 
     def testClone(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available, shared ports "
-                                    "require TubIDs and thus crypto")
         s1,s2,s3 = self.services
         l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
         s1.setLocation("127.0.0.1:%d" % l1.getPortnum())

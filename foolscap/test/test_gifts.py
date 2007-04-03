@@ -2,9 +2,22 @@
 from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.internet.error import ConnectionDone
-from foolscap import Tub
+from foolscap import Tub, UnauthenticatedTub
 from foolscap.referenceable import RemoteReference
 from foolscap.test.common import HelperTarget
+
+crypto_available = False
+try:
+    from foolscap import crypto
+    crypto_available = crypto.available
+except ImportError:
+    pass
+
+# we use authenticated tubs if possible. If crypto is not available, fall
+# back to unauthenticated ones
+GoodEnoughTub = UnauthenticatedTub
+if crypto_available:
+    GoodEnoughTub = Tub
 
 def ignoreConnectionDone(f):
     f.trap(ConnectionDone)
@@ -20,7 +33,7 @@ class Gifts(unittest.TestCase):
     debug = False
 
     def setUp(self):
-        self.services = [Tub(), Tub(), Tub()]
+        self.services = [GoodEnoughTub(), GoodEnoughTub(), GoodEnoughTub()]
         self.tubA, self.tubB, self.tubC = self.services
         for s in self.services:
             s.startService()

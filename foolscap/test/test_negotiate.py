@@ -12,6 +12,12 @@ try:
 except ImportError:
     pass
 
+# we use authenticated tubs if possible. If crypto is not available, fall
+# back to unauthenticated ones
+GoodEnoughTub = UnauthenticatedTub
+if crypto_available:
+    GoodEnoughTub = Tub
+
 # this is tubID 3hemthez7rvgvyhjx2n5kdj7mcyar3yt
 certData_low = \
 """-----BEGIN CERTIFICATE-----
@@ -100,6 +106,10 @@ class OneTimeDeferred(defer.Deferred):
         return defer.Deferred.callback(self, res)
 
 class BaseMixin:
+
+    def requireCrypto(self):
+        if not crypto_available:
+            raise unittest.SkipTest("crypto not available")
 
     def setUp(self):
         self.connections = []
@@ -366,6 +376,7 @@ class Parallel(BaseMixin, unittest.TestCase):
     #   
 
     def makeServers(self, tubopts={}, lo1={}, lo2={}):
+        self.requireCrypto()
         self.tub = tub = Tub(options=tubopts)
         tub.startService()
         self.services.append(tub)
@@ -488,6 +499,8 @@ class CrossfireMixin(BaseMixin):
 
     def makeServers(self, t1opts={}, t2opts={}, lo1={}, lo2={},
                     tubAauthenticated=True, tubBauthenticated=True):
+        if tubAauthenticated or tubBauthenticated:
+            self.requireCrypto()
         # first we create two Tubs
         if tubAauthenticated:
             a = Tub(options=t1opts)
@@ -762,6 +775,7 @@ class Future(BaseMixin, unittest.TestCase):
 
         # the listening Tub will have the higher tubID, and thus make the
         # negotiation decision
+        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high)
         # the client 
         client = Tub(certData=certData_low)
@@ -779,6 +793,7 @@ class Future(BaseMixin, unittest.TestCase):
     def testFuture2(self):
         # same as before, but the connecting Tub will have the higher tubID,
         # and thus make the negotiation decision
+        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low)
         # the client 
         client = Tub(certData=certData_high)
@@ -796,6 +811,7 @@ class Future(BaseMixin, unittest.TestCase):
     def testFuture3(self):
         # same as testFuture1, but it is the listening server that
         # understands [1,2]
+        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high, NegotiationV2)
         client = Tub(certData=certData_low)
         client.startService()
@@ -811,6 +827,7 @@ class Future(BaseMixin, unittest.TestCase):
     def testFuture4(self):
         # same as testFuture2, but it is the listening server that
         # understands [1,2]
+        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low, NegotiationV2)
         # the client 
         client = Tub(certData=certData_high)
@@ -830,6 +847,7 @@ class Future(BaseMixin, unittest.TestCase):
 
         # the listening Tub will have the higher tubID, and thus make the
         # negotiation decision
+        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high)
         # the client 
         client = Tub(certData=certData_low)
@@ -848,6 +866,7 @@ class Future(BaseMixin, unittest.TestCase):
     def testTooFarInFuture2(self):
         # same as before, but the connecting Tub will have the higher tubID,
         # and thus make the negotiation decision
+        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low)
         client = Tub(certData=certData_high)
         client.negotiationClass = NegotiationV2Only
@@ -865,6 +884,7 @@ class Future(BaseMixin, unittest.TestCase):
     def testTooFarInFuture3(self):
         # same as testTooFarInFuture1, but it is the listening server which
         # only understands [2]
+        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high,
                                                NegotiationV2Only)
         client = Tub(certData=certData_low)
@@ -882,6 +902,7 @@ class Future(BaseMixin, unittest.TestCase):
     def testTooFarInFuture4(self):
         # same as testTooFarInFuture2, but it is the listening server which
         # only understands [2]
+        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low,
                                                NegotiationV2Only)
         client = Tub(certData=certData_high)

@@ -4,8 +4,22 @@ from twisted.internet import defer
 import foolscap
 from foolscap.test.common import HelperTarget
 
+crypto_available = False
+try:
+    from foolscap import crypto
+    crypto_available = crypto.available
+except ImportError:
+    pass
+
 
 class ConnectToSelf(unittest.TestCase):
+
+    def setUp(self):
+        self.services = []
+
+    def requireCrypto(self):
+        if not crypto_available:
+            raise unittest.SkipTest("crypto not available")
 
     def startTub(self, tub):
         self.services = [tub]
@@ -42,6 +56,7 @@ class ConnectToSelf(unittest.TestCase):
         return d
 
     def testConnectAuthenticated(self):
+        self.requireCrypto()
         tub = foolscap.Tub()
         self.startTub(tub)
         target = HelperTarget("bob")
