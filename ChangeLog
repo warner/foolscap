@@ -1,5 +1,8 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (TubConnectorClientFactory.__repr__):
+	include both the origin and the target of the factory
+
 	* foolscap/test/*.py (tearDown): insure that all tests use the
 	now-standard stopService+flushEventualQueue teardown procedure, to
 	avoid trial complaints about leftover timers and selectables.

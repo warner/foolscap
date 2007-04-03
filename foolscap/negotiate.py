@@ -932,8 +932,15 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
             # our annotation isn't really important, so don't fail just
             # because we guessed the default __repr__ incorrectly
             return base
-        target = self.tc.target.getTubID()[:8]
-        return base[:at] + " [to %s]" % target + base[at:]
+        if self.tc.tub.tubID:
+            origin = self.tc.tub.tubID[:8]
+        else:
+            origin = "<unauth>"
+        if self.tc.target.getTubID():
+            target = self.tc.target.getTubID()[:8]
+        else:
+            target = "<unauth>"
+        return base[:at] + " [from %s]" % origin + " [to %s]" % target + base[at:]
 
     def startedConnecting(self, connector):
         self.connector = connector
