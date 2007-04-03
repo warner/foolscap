@@ -4,19 +4,27 @@ available = False # hack to deal with half-broken imports in python <2.4
 
 from OpenSSL import SSL
 
+# we try to use ssl support classes from Twisted, if it is new enough. If
+# not, we pull them from a local copy of sslverify. The funny '_ssl' import
+# stuff is used to appease pyflakes, which otherwise complains that we're
+# redefining an imported name.
 from twisted.internet import ssl
 if hasattr(ssl, "DistinguishedName"):
     # Twisted-2.5 will contain these names
-    from twisted.internet.ssl import DistinguishedName, KeyPair
-    from twisted.internet.ssl import Certificate, PrivateCertificate
-    from twisted.internet.ssl import CertificateOptions
+    _ssl = ssl
+    CertificateOptions = ssl.CertificateOptions
 else:
     # but it hasn't been released yet (as of 16-Sep-2006). Without them, we
     # cannot use any encrypted Tubs. We fall back to using a private copy of
     # sslverify.py, copied from the Divmod tree.
-    from sslverify import DistinguishedName, KeyPair
-    from sslverify import Certificate, PrivateCertificate
+    import sslverify
+    _ssl = sslverify
     from sslverify import OpenSSLCertificateOptions as CertificateOptions
+DistinguishedName = _ssl.DistinguishedName
+KeyPair = _ssl.KeyPair
+Certificate = _ssl.Certificate
+PrivateCertificate = _ssl.PrivateCertificate
+
 from twisted.internet import error
 
 if hasattr(error, "CertificateError"):

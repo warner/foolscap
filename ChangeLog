@@ -1,5 +1,8 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/crypto.py (_ssl): import SSL goo in a different way to
+	appease pyflakes
+
 	* all: fix some pyflakes warnings by checking for the
 	importability of foolscap.crypto in a different way
 
