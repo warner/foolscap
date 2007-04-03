@@ -5,6 +5,7 @@ from twisted.internet.error import ConnectionDone
 from foolscap import Tub, UnauthenticatedTub
 from foolscap.referenceable import RemoteReference
 from foolscap.test.common import HelperTarget
+from foolscap.eventual import flushEventualQueue
 
 crypto_available = False
 try:
@@ -41,7 +42,9 @@ class Gifts(unittest.TestCase):
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
     def tearDown(self):
-        return defer.DeferredList([s.stopService() for s in self.services])
+        d = defer.DeferredList([s.stopService() for s in self.services])
+        d.addCallback(flushEventualQueue)
+        return d
 
     def createCharacters(self):
         self.alice = HelperTarget("alice")

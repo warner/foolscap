@@ -5,6 +5,7 @@ from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
 from foolscap import pb, negotiate, tokens
 from foolscap import Referenceable, Tub, UnauthenticatedTub, BananaError
+from foolscap.eventual import flushEventualQueue
 crypto_available = False
 try:
     from foolscap import crypto
@@ -127,7 +128,7 @@ class BaseMixin:
             dl.append(defer.maybeDeferred(s.stopService))
         d = defer.DeferredList(dl)
         d.addCallback(self._checkListeners)
-        d.addCallback(self.stall, 0.1)
+        d.addCallback(flushEventualQueue)
         return d
     def _checkListeners(self, res):
         self.failIf(pb.Listeners)
@@ -399,15 +400,6 @@ class Parallel(BaseMixin, unittest.TestCase):
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
-        return d
-
-    def NOTtearDown(self):
-        # every once in a while, one of these tests fails with a leftover
-        # pending timer to ThreadedResolver._cleanup, which is annoying. The
-        # 'stall' method is intended to give these stupid timers a chance to
-        # clean up.
-        d = BaseMixin.tearDown(self)
-        d.addCallback(self.stall, 1)
         return d
 
     def checkConnectedToFirstListener(self, rr, targetPhases):

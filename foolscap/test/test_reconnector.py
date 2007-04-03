@@ -5,7 +5,7 @@ from foolscap import UnauthenticatedTub
 from foolscap.test.common import HelperTarget
 from twisted.internet.main import CONNECTION_LOST
 from twisted.internet import defer
-from foolscap.eventual import eventually
+from foolscap.eventual import eventually, flushEventualQueue
 
 class Reconnector(unittest.TestCase):
 
@@ -18,7 +18,9 @@ class Reconnector(unittest.TestCase):
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
     def tearDown(self):
-        return defer.DeferredList([s.stopService() for s in self.services])
+        d = defer.DeferredList([s.stopService() for s in self.services])
+        d.addCallback(flushEventualQueue)
+        return d
 
 
     def test1(self):

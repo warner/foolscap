@@ -7,6 +7,7 @@ from twisted.internet import defer
 from foolscap import pb
 from foolscap import RemoteInterface, Referenceable, Tub
 from foolscap.remoteinterface import RemoteMethodSchema
+from foolscap.eventual import flushEventualQueue
 
 crypto_available = False
 try:
@@ -62,6 +63,7 @@ class UsefulMixin:
         return d
     def _tearDown_1(self, res):
         self.failIf(pb.Listeners)
+        return flushEventualQueue()
 
 class TestPersist(UsefulMixin, unittest.TestCase):
     num_services = 2

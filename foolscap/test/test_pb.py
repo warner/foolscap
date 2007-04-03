@@ -52,6 +52,9 @@ class TestReferenceUnslicer(unittest.TestCase):
     def setUp(self):
         self.broker = broker.Broker()
 
+    def tearDown(self):
+        return flushEventualQueue()
+
     def newUnslicer(self):
         unslicer = referenceable.ReferenceUnslicer()
         unslicer.broker = self.broker
@@ -96,6 +99,9 @@ class TestAnswer(unittest.TestCase):
     # OPEN(answer), INT(reqID), [answer], CLOSE
     def setUp(self):
         self.broker = broker.Broker()
+
+    def tearDown(self):
+        return flushEventualQueue()
 
     def newUnslicer(self):
         unslicer = call.AnswerUnslicer()
@@ -372,7 +378,11 @@ class TestFactory(unittest.TestCase):
         if self.client:
             self.client.broker.transport.loseConnection()
         if self.server:
-            return self.server.stopListening()
+            d = self.server.stopListening()
+        else:
+            d = defer.succeed(None)
+        d.addCallback(flushEventualQueue)
+        return d
 
 class TestCallable(unittest.TestCase):
     def setUp(self):
@@ -384,7 +394,9 @@ class TestCallable(unittest.TestCase):
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
     def tearDown(self):
-        return defer.DeferredList([s.stopService() for s in self.services])
+        d = defer.DeferredList([s.stopService() for s in self.services])
+        d.addCallback(flushEventualQueue)
+        return d
 
     def testBoundMethod(self):
         target = Target()
@@ -425,7 +437,7 @@ class TestService(unittest.TestCase):
 
     def tearDown(self):
         d = defer.DeferredList([s.stopService() for s in self.services])
-        d.addBoth(flushEventualQueue)
+        d.addCallback(flushEventualQueue)
         return d
 
     def testRegister(self):

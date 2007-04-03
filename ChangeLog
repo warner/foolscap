@@ -1,5 +1,9 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/*.py (tearDown): insure that all tests use the
+	now-standard stopService+flushEventualQueue teardown procedure, to
+	avoid trial complaints about leftover timers and selectables.
+
 	* foolscap/test/test_pb.py (GoodEnoughTub): when crypto is not
 	available, skip some tests that really require it. Modify others
 	to not really require it.

@@ -130,8 +130,9 @@ class TargetMixin:
     def tearDown(self):
         # returns a Deferred which fires when the Loopbacks are drained
         dl = [l.flush() for l in self.loopbacks]
-        dl.append(flushEventualQueue())
-        return defer.DeferredList(dl)
+        d = defer.DeferredList(dl)
+        d.addCallback(flushEventualQueue)
+        return d
 
     def setupTarget(self, target, txInterfaces=False):
         # txInterfaces controls what interfaces the sender uses

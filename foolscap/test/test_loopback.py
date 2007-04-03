@@ -3,6 +3,7 @@ from twisted.trial import unittest
 from twisted.internet import defer
 import foolscap
 from foolscap.test.common import HelperTarget
+from foolscap.eventual import flushEventualQueue
 
 crypto_available = False
 try:
@@ -29,7 +30,9 @@ class ConnectToSelf(unittest.TestCase):
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
     def tearDown(self):
-        return defer.DeferredList([s.stopService() for s in self.services])
+        d = defer.DeferredList([s.stopService() for s in self.services])
+        d.addCallback(flushEventualQueue)
+        return d
 
     def testConnectUnauthenticated(self):
         tub = foolscap.UnauthenticatedTub()
