@@ -2,12 +2,13 @@
 
 import os.path
 from twisted.trial import unittest
+
+crypto_available = False
 try:
     from foolscap import crypto
+    crypto_available = crypto.available
 except ImportError:
-    crypto = None
-if crypto and not crypto.available:
-    crypto = None
+    pass
 
 from foolscap import Tub
 
@@ -35,5 +36,5 @@ class TestCertFile(unittest.TestCase):
         data2 = t2.getCertData()
         self.failUnless(data1 == data2)
 
-if not crypto:
+if not crypto_available:
     del TestCertFile

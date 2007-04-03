@@ -19,13 +19,6 @@ from foolscap.ipb import DeadReferenceError
 from foolscap.slicers.root import RootSlicer, RootUnslicer
 from foolscap.eventual import eventually
 
-try:
-    from foolscap import crypto
-except ImportError:
-    crypto = None
-if crypto and not crypto.available:
-    crypto = None
-
 
 PBTopRegistry = {
     ("call",): call.CallUnslicer,

@@ -8,12 +8,13 @@ from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
 from foolscap.tokens import BananaError, \
      NegotiationError, RemoteNegotiationError
+
+crypto_available = False
 try:
     from foolscap import crypto
+    crypto_available = crypto.available
 except ImportError:
-    crypto = None
-if crypto and not crypto.available:
-    crypto = None
+    pass
 
 def isSubstring(small, big):
     assert type(small) is str and type(big) is str
@@ -445,7 +446,7 @@ class Negotiation(protocol.Protocol):
             log.msg("handlePLAINTEXTServer: wantEncrypted=%s" % wantEncrypted)
         # we ignore the rest of the lines
 
-        if wantEncrypted and not crypto:
+        if wantEncrypted and not crypto_available:
             # this is a confused client, or a bad URL: if we don't have
             # crypto, we couldn't have created a pb:// URL.
             log.msg("Negotiate.handlePLAINTEXTServer: client wants "

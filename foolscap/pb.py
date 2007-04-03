@@ -10,17 +10,20 @@ from foolscap import ipb, base32, negotiate, broker, observer
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError
 from foolscap.reconnector import Reconnector
+
+crypto_available = False
 try:
     from foolscap import crypto
+    crypto_available = crypto.available
 except ImportError:
-    crypto = None
-if crypto and not crypto.available:
-    crypto = None
+    pass
+
+randpool_available = False
 try:
     # we want to use the random-number generation code from PyCrypto
     from Crypto.Util import randpool
+    randpool_available = True
 except ImportError:
-    randpool = None
     # fall back to the stdlib 'random' module if we can't get something that
     # uses /dev/random. This form is seeded from the current system time,
     # which is much less satisfying.
@@ -195,7 +198,7 @@ class Tub(service.MultiService):
     debugBanana = False
     NAMEBITS = 160 # length of swissnumber for each reference
     TUBIDBITS = 16 # length of non-crypto tubID
-    if randpool:
+    if randpool_available:
         randpool = randpool.RandomPool()
     else:
         randpool = None
@@ -221,7 +224,7 @@ class Tub(service.MultiService):
             f.close()
 
     def setupEncryption(self, certData):
-        if not crypto:
+        if not crypto_available:
             raise RuntimeError("crypto for PB is not available, "
                                "try importing foolscap.crypto and see "
                                "what happens")
@@ -527,7 +530,7 @@ class Tub(service.MultiService):
         # pbu->pb: ok, requires crypto
         # pbu->pbu: ok
         # pb->pbu: ok, requires crypto
-        if sturdy.encrypted and not crypto:
+        if sturdy.encrypted and not crypto_available:
             e = BananaError("crypto for PB is not available, "
                             "we cannot handle encrypted PB-URLs like %s"
                             % sturdy.getURL())
@@ -705,7 +708,7 @@ class UnauthenticatedTub(Tub):
 
 def getRemoteURL_TCP(host, port, pathname, *interfaces):
     url = "pb://%s:%d/%s" % (host, port, pathname)
-    if crypto:
+    if crypto_available:
         s = Tub()
     else:
         s = UnauthenticatedTub()

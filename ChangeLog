@@ -1,5 +1,8 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* all: fix some pyflakes warnings by checking for the
+	importability of foolscap.crypto in a different way
+
 	* foolscap/pb.py (Tub.stopService): when shutting down the Tub,
 	make sure all outstanding connections are shut down as well. By
 	the time stopService's deferred fires, all of our TCP transports

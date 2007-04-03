@@ -1,7 +1,7 @@
 # -*- test-case-name: foolscap.test_observer -*-
 
 from twisted.trial import unittest
-from twisted.internet import defer, reactor
+from twisted.internet import defer
 from foolscap import observer
 
 class Observer(unittest.TestCase):

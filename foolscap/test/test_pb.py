@@ -19,12 +19,12 @@ from foolscap.tokens import BananaFailure
 from foolscap import broker, call
 from foolscap.constraint import IConstraint
 
+crypto_available = False
 try:
     from foolscap import crypto
+    crypto_available = crypto.available
 except ImportError:
-    crypto = None
-if crypto and not crypto.available:
-    crypto = None
+    pass
 
 from foolscap.test.common import HelperTarget, RIHelper, TargetMixin
 from foolscap.eventual import flushEventualQueue
@@ -428,7 +428,7 @@ class TestService(unittest.TestCase):
         s.setLocation("localhost:%d" % l.getPortnum())
         t1 = Target()
         public_url = s.registerReference(t1, "target")
-        if crypto:
+        if crypto_available:
             self.failUnless(public_url.startswith("pb://"))
             self.failUnless(public_url.endswith("@localhost:%d/target"
                                                 % l.getPortnum()))

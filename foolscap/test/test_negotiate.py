@@ -5,12 +5,12 @@ from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
 from foolscap import pb, negotiate, tokens
 from foolscap import Referenceable, Tub, UnauthenticatedTub, BananaError
+crypto_available = False
 try:
     from foolscap import crypto
+    crypto_available = crypto.available
 except ImportError:
-    crypto = None
-if crypto and not crypto.available:
-    crypto = None
+    pass
 
 # this is tubID 3hemthez7rvgvyhjx2n5kdj7mcyar3yt
 certData_low = \
@@ -189,7 +189,7 @@ class Basic(BaseMixin, unittest.TestCase):
         self.failUnlessEqual(self.tub.options['opt'], 12)
 
     def testAuthenticated(self):
-        if not crypto:
+        if not crypto_available:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(True)
         client = Tub()
@@ -209,7 +209,7 @@ class Basic(BaseMixin, unittest.TestCase):
     testUnauthenticated.timeout = 10
 
     def testHalfAuthenticated1(self):
-        if not crypto:
+        if not crypto_available:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(True)
         client = UnauthenticatedTub()
@@ -220,7 +220,7 @@ class Basic(BaseMixin, unittest.TestCase):
     testHalfAuthenticated1.timeout = 10
 
     def testHalfAuthenticated2(self):
-        if not crypto:
+        if not crypto_available:
             raise unittest.SkipTest("crypto not available")
         url, portnum = self.makeServer(False)
         client = Tub()
@@ -233,7 +233,7 @@ class Basic(BaseMixin, unittest.TestCase):
 class Versus(BaseMixin, unittest.TestCase):
 
     def testVersusHTTPServerAuthenticated(self):
-        if not crypto:
+        if not crypto_available:
             raise unittest.SkipTest("crypto not available")
         portnum = self.makeHTTPServer()
         client = Tub()
@@ -276,7 +276,7 @@ class Versus(BaseMixin, unittest.TestCase):
     testVersusHTTPClientUnauthenticated.timeout = 10
 
     def testVersusHTTPClientAuthenticated(self):
-        if not crypto:
+        if not crypto_available:
             raise unittest.SkipTest("crypto not available")
         try:
             from twisted.web import error

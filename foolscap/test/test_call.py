@@ -13,17 +13,8 @@ from twisted.trial import unittest
 from twisted.internet.main import CONNECTION_LOST
 
 from foolscap.tokens import Violation
-
-try:
-    from foolscap import crypto
-except ImportError:
-    crypto = None
-if crypto and not crypto.available:
-    crypto = None
-
-from foolscap.test.common import HelperTarget, TargetMixin
 from foolscap.eventual import flushEventualQueue
-
+from foolscap.test.common import HelperTarget, TargetMixin
 from foolscap.test.common import RIMyTarget, Target, TargetWithoutInterfaces, \
      BrokenTarget
 
