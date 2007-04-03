@@ -6,7 +6,8 @@ from twisted.internet import defer, reactor
 from foolscap import broker
 from foolscap import Referenceable, RemoteInterface
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
-from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema
+from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema, \
+     UnconstrainedMethod
 from foolscap.constraint import Any
 
 from twisted.python import failure
@@ -176,6 +177,7 @@ class TargetMixin:
 class RIMyTarget(RemoteInterface):
     # method constraints can be declared directly:
     add1 = RemoteMethodSchema(_response=int, a=int, b=int)
+    free = UnconstrainedMethod()
 
     # or through their function definitions:
     def add(a=int, b=int): return int
@@ -223,6 +225,9 @@ class Target(Referenceable):
         self.calls.append((a,b))
         return a+b
     remote_add1 = remote_add
+    def remote_free(self, *args, **kwargs):
+        self.calls.append((args, kwargs))
+        return "bird"
     def remote_getName(self):
         return self.name
     def remote_disputed(self, a):

@@ -2,7 +2,7 @@
 import types, inspect
 from zope.interface import interface, providedBy, implements
 from foolscap.constraint import Constraint, OpenerConstraint, nothingTaster, \
-     IConstraint, UnboundedSchema, IRemoteMethodConstraint, Optional
+     IConstraint, UnboundedSchema, IRemoteMethodConstraint, Optional, Any
 from foolscap.tokens import Violation, InvalidRemoteInterface
 from foolscap.schema import addToConstraintTypeMap
 from foolscap import ipb
@@ -306,6 +306,31 @@ class RemoteMethodSchema:
             raise UnboundedSchema
         # TODO: implement the rest of maxSize, just like a dictionary
         raise NotImplementedError
+
+class UnconstrainedMethod:
+    """I am a method constraint that accepts any arguments and any return
+    value.
+
+    To use this, assign it to a method name in a RemoteInterface::
+
+     class RIFoo(RemoteInterface):
+         def constrained_method(foo=int, bar=str): # this one is constrained
+             return str
+         not_method = UnconstrainedMethod()  # this one is not
+    """
+    implements(IRemoteMethodConstraint)
+
+    def getPositionalArgConstraint(self, argnum):
+        return (True, Any())
+    def getKeywordArgConstraint(self, argname, num_posargs=0,
+                                previous_kwargs=[]):
+        return (True, Any())
+    def checkAllArgs(self, args, kwargs, inbound):
+        pass # accept everything
+    def getResponseConstraint(self):
+        return Any()
+    def checkResults(self, results, inbound):
+        pass # accept everything
 
 
 class LocalInterfaceConstraint(Constraint):

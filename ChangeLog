@@ -1,5 +1,21 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/remoteinterface.py (UnconstrainedMethod): add a
+	"constraint" that can be used to mark a method as accepting
+	anything and returning anything. This might be useful if you have
+	RemoteInterface for most of your application, but there are still
+	one or two methods which should not enforce a schema of any sort.
+	This mostly defeats the purpose of schemas in the first place, but
+	offering UnconstrainedMethod means developers can make the
+	schema-or-not decision differently for individual methods, rather
+	than for a whole class at a time.
+	* foolscap/constraint.py (IRemoteMethodConstraint): document the
+	requirements on IRemoteMethodConstraint-providing classes, now that
+	there are two of them.
+	* foolscap/test/test_call.py (TestCall.testUnconstrainedMethod):
+	test it
+	* foolscap/test/common.py: add some support code for the test
+
 	* foolscap/referenceable.py
 	(RemoteReferenceTracker._handleRefLost): refrain from sending
 	decref messages with count=0

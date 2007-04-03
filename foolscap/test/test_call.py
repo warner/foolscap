@@ -148,6 +148,15 @@ class TestCall(TargetMixin, unittest.TestCase):
         return d
     testCall4.timeout = 2
 
+    def testUnconstrainedMethod(self):
+        rr, target = self.setupTarget(Target(), True)
+        d = rr.callRemote('free', 3, 4, x="boo")
+        def _check(res):
+            self.failUnlessEqual(res, "bird")
+            self.failUnlessEqual(target.calls, [((3,4), {"x": "boo"})])
+        d.addCallback(_check)
+        return d
+
     def testFailWrongMethodLocal(self):
         # the caller knows that this method does not really exist
         rr, target = self.setupTarget(Target(), True)

@@ -35,8 +35,38 @@ class UnboundedSchema(Exception):
 class IConstraint(Interface):
     pass
 class IRemoteMethodConstraint(IConstraint):
-    pass
+    def getPositionalArgConstraint(argnum):
+        """Return the constraint for posargs[argnum]. This is called on
+        inbound methods when receiving positional arguments. This returns a
+        tuple of (accept, constraint), where accept=False means the argument
+        should be rejected immediately, regardless of what type it might be."""
+    def getKeywordArgConstraint(argname, num_posargs=0, previous_kwargs=[]):
+        """Return the constraint for kwargs[argname]. The other arguments are
+        used to handle mixed positional and keyword arguments. Returns a
+        tuple of (accept, constraint)."""
 
+    def checkAllArgs(args, kwargs, inbound):
+        """Submit all argument values for checking. When inbound=True, this
+        is called after the arguments have been deserialized, but before the
+        method is invoked. When inbound=False, this is called just inside
+        callRemote(), as soon as the target object (and hence the remote
+        method constraint) is located.
+
+        This should either raise Violation or return None."""
+        pass
+    def getResponseConstraint():
+        """Return an IConstraint-providing object to enforce the response
+        constraint. This is called on outbound method calls so that when the
+        response starts to come back, we can start enforcing the appropriate
+        constraint right away."""
+    def checkResults(results, inbound):
+        """Inspect the results of invoking a method call. inbound=False is
+        used on the side that hosts the Referenceable, just after the target
+        method has provided a value. inbound=True is used on the
+        RemoteReference side, just after it has finished deserializing the
+        response.
+
+        This should either raise Violation or return None."""
 
 class Constraint:
     """
