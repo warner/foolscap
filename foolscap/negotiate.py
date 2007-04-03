@@ -181,6 +181,13 @@ class Negotiation(protocol.Protocol):
         # remaining timers will be canceled.
         self.debugTimers = {}
 
+        # if anything goes wrong during negotiation (version mismatch,
+        # malformed headers, assertion checks), we stash the Failure in this
+        # attribute and then drop the connection. For client-side
+        # connections, we notify our parent TubConnector when the
+        # connectionLost() message is finally delivered.
+        self.failureReason = None
+
     def initClient(self, connector, targetHost):
         # clients do connectTCP and speak first with a GET
         self.isClient = True
@@ -323,8 +330,8 @@ class Negotiation(protocol.Protocol):
         del self.negotiationTimer
         why = Failure(NegotiationError("negotiation timeout"))
         self.sendError(why)
-        self.negotiationFailed(why)
-        self.transport.loseConnection(why)
+        self.failureReason = why
+        self.transport.loseConnection()
 
     def stopNegotiationTimer(self):
         if self.negotiationTimer:
@@ -389,8 +396,8 @@ class Negotiation(protocol.Protocol):
                              'error': errmsg,
                              }
                     self.sendBlock(block)
-            self.negotiationFailed(why)
-            self.transport.loseConnection(why)
+            self.failureReason = why
+            self.transport.loseConnection()
             return
 
         # TODO: the error-handling needs some work, try to tell the other end
@@ -412,7 +419,9 @@ class Negotiation(protocol.Protocol):
             l = self.tub.options.get("debug_gatherPhases")
             if l is not None:
                 l.append(self.phase)
-        self.negotiationFailed(reason)
+        if not self.failureReason:
+            self.failureReason = reason
+        self.negotiationFailed()
 
     def handlePLAINTEXTServer(self, header):
         # the client sends us a GET message
@@ -887,7 +896,8 @@ class Negotiation(protocol.Protocol):
             theirTubRef = self.theirTubRef
         self.tub.brokerAttached(theirTubRef, b, self.isClient)
 
-    def negotiationFailed(self, reason):
+    def negotiationFailed(self):
+        reason = self.failureReason
         if self.debugNegotiation:
             # TODO: consider logging this unconditionally.. it shouldn't
             # happen very often, but if it does, it may take a long time to
@@ -951,6 +961,12 @@ class TubConnector:
     This is a single-use object. The connection attempt begins as soon as my
     connect() method is called.
 
+    I live until all but one of the TCP connections I initiated have finished
+    closing down. This means that connection establishment attempts in
+    progress are cancelled, and established connections (the ones which did
+    *not* complete negotiation before the winning connection) have called
+    their connectionLost() methods.
+
     @param locationHints: the list of 'host:port' hints where the remote tub
                           can be found.
     """
@@ -979,6 +995,7 @@ class TubConnector:
         This will either result in the successful Negotiation object invoking
         the parent Tub's brokerAttached() method, our us calling the Tub's
         connectionFailed() method."""
+        self.tub.connectorStarted(self)
         timeout = self.tub.options.get('connect_timeout',
                                        self.CONNECTION_TIMEOUT)
         self.timer = reactor.callLater(timeout, self.connectionTimedOut)
@@ -1007,6 +1024,10 @@ class TubConnector:
             f = TubConnectorClientFactory(self, host)
             c = reactor.connectTCP(host, port, f)
             self.pendingConnections[f] = c
+            # the tcp.Connector that we get back from reactor.connectTCP will
+            # retain a reference to the transport that it creates, so we can
+            # use it to disconnect the established (but not yet negotiated)
+            # connection
             if self.tub.options.get("debug_stall_second_connection"):
                 # for unit tests, hold off on making the second connection
                 # for a moment. This allows the first connection to get to a
@@ -1023,11 +1044,13 @@ class TubConnector:
         self.failed()
 
     def clientConnectionFailed(self, factory, reason):
-        # this is called if a TCP connection cannot be established
+        # this is called if some individual TCP connection cannot be
+        # established
         if not self.failureReason:
             self.failureReason = reason
         del self.pendingConnections[factory]
         self.checkForFailure()
+        self.checkForIdle()
 
     def redirectReceived(self, newLocation):
         # the redirected connection will disconnect soon, which will trigger
@@ -1049,6 +1072,7 @@ class TubConnector:
             self.failureReason = reason
         del self.pendingConnections[factory]
         self.checkForFailure()
+        self.checkForIdle()
 
     def negotiationComplete(self, factory):
         # 'factory' has just completed negotiation, so abandon all the other
@@ -1059,9 +1083,12 @@ class TubConnector:
             self.timer = None
         del self.pendingConnections[factory] # this one succeeded
         for f in self.pendingConnections.keys(): # abandon the others
-            # this will trigger clientConnectionFailed and/or
-            # negotiationFailed calls
+            # for connections that are not yet established, this will trigger
+            # clientConnectionFailed. For connections that are established
+            # (and exchanging negotiation messages), this does
+            # loseConnection() and will thus trigger negotiationFailed.
             f.disconnect()
+        self.checkForIdle()
 
     def checkForFailure(self):
         if not self.active:
@@ -1093,3 +1120,12 @@ class TubConnector:
         self.stopConnectionTimer()
         self.active = False
         self.tub.connectionFailed(self.target, self.failureReason)
+
+    def checkForIdle(self):
+        if self.remainingLocations:
+            return
+        if self.pendingConnections:
+            return
+        # we have no more outstanding connections (either in progress or in
+        # negotiation), so this connector is finished.
+        self.tub.connectorFinished(self)

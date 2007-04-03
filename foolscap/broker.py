@@ -240,6 +240,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def shutdown(self):
         self.disconnectWatchers = []
+        self.transport.loseConnection()
 
     def connectionLost(self, why):
         self.disconnected = True

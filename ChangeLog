@@ -1,5 +1,35 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.stopService): when shutting down the Tub,
+	make sure all outstanding connections are shut down as well. By
+	the time stopService's deferred fires, all of our TCP transports
+	should have had their 'connectionLost' methods fired. This is
+	specifically to help unit tests that use Trial, which insists upon
+	having a clean reactor between tests. With this change, test
+	suites should use a tearDown() method that looks like: 'd =
+	tub.stopService(); d.addCallback(flushEventualQueue); return d',
+	and trial shouldn't complain about foolscap selectables or timers
+	being left over.
+	(Tub.stopService): also, since Tubs are not currently restartable,
+	modify some entry points at shutdown to make sure nobody gets
+	confused about why their getReference() doesn't work anymore. Be
+	aware that at some point soon, we'll start enforcing the rule that
+	the Tub must be started before you can get any connections out of
+	it, at which point getReference() will queue requests until
+	startService() is called. The idea is that the Tub will not use
+	the network at all unless it is running.
+	* foolscap/broker.py: drop the connection when shutdown() is called
+	* foolscap/negotiate.py (Negotiate): rearrange error reporting and
+	connection shutdown. Now errors are stashed and loseConnection()
+	is called, but the errors are not reported to negotiationFailed()
+	until connectionLost() is fired (which will be after any remaining
+	data gets sent out over the wire).
+	(TubConnector): the TubConnector reports success once the first
+	connection has passed negotiation, but now lives until all of the
+	connections are finally closed. It then informs the Tub that it is
+	done, so the Tub can forget about it (and possibly notify
+	stopService that it can finally complete).
+
 	* foolscap/observer.py (OneShotObserverList): eventual-send -using
 	event distributor, following the pattern espoused by Mark Miller's
 	"Concurrency Among Strangers" paper. Many thanks to AllMyData.com

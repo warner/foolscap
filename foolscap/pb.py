@@ -6,7 +6,7 @@ from twisted.python import log
 from twisted.internet import defer, protocol
 from twisted.application import service, strports
 
-from foolscap import ipb, base32, negotiate, broker
+from foolscap import ipb, base32, negotiate, broker, observer
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError
 from foolscap.reconnector import Reconnector
@@ -249,6 +249,10 @@ class Tub(service.MultiService):
         self.unauthenticatedBrokers = [] # inbound Brokers without TubRefs
         self.reconnectors = []
 
+        self._allBrokersAreDisconnected = observer.OneShotObserverList()
+        self._activeConnectors = []
+        self._allConnectorsAreFinished = observer.OneShotObserverList()
+
     def setOption(self, name, value):
         if name == "logLocalFailures":
             # log (with log.err) any exceptions that occur during the
@@ -360,10 +364,27 @@ class Tub(service.MultiService):
             t.listenOn(l)
         return t
 
+    def connectorStarted(self, c):
+        assert self.running
+        self._activeConnectors.append(c)
+    def connectorFinished(self, c):
+        self._activeConnectors.remove(c)
+        if not self.running and not self._activeConnectors:
+            self._allConnectorsAreFinished.fire(self)
+
+
+    def _tubsAreNotRestartable(self):
+        raise RuntimeError("Sorry, but Tubs cannot be restarted.")
+    def _tubHasBeenShutDown(self):
+        raise RuntimeError("Sorry, but this Tub has been shut down.")
+
     def stopService(self):
         # note that once you stopService a Tub, I cannot be restarted. (at
         # least this code is not designed to make that possible.. it might be
         # doable in the future).
+        self.startService = self._tubsAreNotRestartable
+        self.getReference = self._tubHasBeenShutDown
+        self.connectTo = self._tubHasBeenShutDown
         dl = []
         for rc in self.reconnectors:
             rc.stopConnecting()
@@ -376,13 +397,19 @@ class Tub(service.MultiService):
             if isinstance(d, defer.Deferred):
                 dl.append(d)
         dl.append(service.MultiService.stopService(self))
+
+        if self._activeConnectors:
+            dl.append(self._allConnectorsAreFinished.whenFired())
+        for c in self._activeConnectors:
+            c.shutdown()
+
+        if self.brokers or self.unauthenticatedBrokers:
+            dl.append(self._allBrokersAreDisconnected.whenFired())
         for b in self.brokers.values():
             b.shutdown()
-            d = defer.maybeDeferred(b.transport.loseConnection)
-            dl.append(d)
         for b in self.unauthenticatedBrokers:
-            d = defer.maybeDeferred(b.transport.loseConnection)
-            dl.append(d)
+            b.shutdown()
+
         return defer.DeferredList(dl)
 
     def generateSwissnumber(self, bits):
@@ -652,6 +679,12 @@ class Tub(service.MultiService):
                 del self.brokers[tubref]
         if broker in self.unauthenticatedBrokers:
             self.unauthenticatedBrokers.remove(broker)
+        # if the Tub has already shut down, we may need to notify observers
+        # who are waiting for all of our connections to finish shutting down
+        if (not self.running
+            and not self.brokers
+            and not self.unauthenticatedBrokers):
+            self._allBrokersAreDisconnected.fire(self)
 
 class UnauthenticatedTub(Tub):
     encrypted = False
