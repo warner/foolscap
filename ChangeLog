@@ -3,6 +3,7 @@
 	* misc/feisty/debian/*: add debian packaging support for the
 	Ubuntu 'feisty' distribution
 	* Makefile: and a way to invoke it
+	* misc/edgy/debian/*: same for the 'edgy' distribution
 
 	* foolscap/test/test_call.py (TestCall.testMegaSchema): add a new
 	test to exercise lots of constraint code
