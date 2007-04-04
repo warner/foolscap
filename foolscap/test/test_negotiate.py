@@ -743,22 +743,25 @@ class Existing(CrossfireMixin, unittest.TestCase):
         d.addCallback(self.checkNumBrokers, 2, (r21,))
         return d
 
-# this test will have to change when the regular Negotiation moves to v2
-assert negotiate.Negotiation.maxVersion == 1
-class NegotiationV2(negotiate.Negotiation):
-    maxVersion = 2
+# this test will have to change when the regular Negotiation starts using
+# different decision blocks. The version numbers must be updated each time
+# the negotiation version is changed.
+assert negotiate.Negotiation.maxVersion == 2
+MAX_HANDLED_VERSION = negotiate.Negotiation.maxVersion
+UNHANDLED_VERSION = 3
+class NegotiationVbig(negotiate.Negotiation):
+    maxVersion = UNHANDLED_VERSION
     def __init__(self):
         negotiate.Negotiation.__init__(self)
         self.negotiationOffer["extra"] = "new value"
-    def evaluateNegotiationVersion2(self, offer):
-        # just like v1, but with version=2
-        self.decision_version = 2
-        return self._evaluateNegotiationVersion1(offer)
-    def acceptDecisionVersion2(self, decision):
+    def evaluateNegotiationVersion3(self, offer):
+        # just like v1, but different
+        return self.evaluateNegotiationVersion1(offer)
+    def acceptDecisionVersion3(self, decision):
         return self.acceptDecisionVersion1(decision)
 
-class NegotiationV2Only(NegotiationV2):
-    minVersion = 2
+class NegotiationVbigOnly(NegotiationVbig):
+    minVersion = UNHANDLED_VERSION
 
 class Future(BaseMixin, unittest.TestCase):
     def testFuture1(self):
@@ -771,13 +774,13 @@ class Future(BaseMixin, unittest.TestCase):
         url, portnum = self.makeSpecificServer(certData_high)
         # the client 
         client = Tub(certData=certData_low)
-        client.negotiationClass = NegotiationV2
+        client.negotiationClass = NegotiationVbig
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
         def _check_version(rref):
             ver = rref.tracker.broker._banana_decision_version
-            self.failUnlessEqual(ver, 1)
+            self.failUnlessEqual(ver, MAX_HANDLED_VERSION)
         d.addCallback(_check_version)
         return d
     testFuture1.timeout = 10
@@ -789,13 +792,13 @@ class Future(BaseMixin, unittest.TestCase):
         url, portnum = self.makeSpecificServer(certData_low)
         # the client 
         client = Tub(certData=certData_high)
-        client.negotiationClass = NegotiationV2
+        client.negotiationClass = NegotiationVbig
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
         def _check_version(rref):
             ver = rref.tracker.broker._banana_decision_version
-            self.failUnlessEqual(ver, 1)
+            self.failUnlessEqual(ver, MAX_HANDLED_VERSION)
         d.addCallback(_check_version)
         return d
     testFuture2.timeout = 10
@@ -804,14 +807,14 @@ class Future(BaseMixin, unittest.TestCase):
         # same as testFuture1, but it is the listening server that
         # understands [1,2]
         self.requireCrypto()
-        url, portnum = self.makeSpecificServer(certData_high, NegotiationV2)
+        url, portnum = self.makeSpecificServer(certData_high, NegotiationVbig)
         client = Tub(certData=certData_low)
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
         def _check_version(rref):
             ver = rref.tracker.broker._banana_decision_version
-            self.failUnlessEqual(ver, 1)
+            self.failUnlessEqual(ver, MAX_HANDLED_VERSION)
         d.addCallback(_check_version)
         return d
     testFuture3.timeout = 10
@@ -820,7 +823,7 @@ class Future(BaseMixin, unittest.TestCase):
         # same as testFuture2, but it is the listening server that
         # understands [1,2]
         self.requireCrypto()
-        url, portnum = self.makeSpecificServer(certData_low, NegotiationV2)
+        url, portnum = self.makeSpecificServer(certData_low, NegotiationVbig)
         # the client 
         client = Tub(certData=certData_high)
         client.startService()
@@ -828,7 +831,7 @@ class Future(BaseMixin, unittest.TestCase):
         d = client.getReference(url)
         def _check_version(rref):
             ver = rref.tracker.broker._banana_decision_version
-            self.failUnlessEqual(ver, 1)
+            self.failUnlessEqual(ver, MAX_HANDLED_VERSION)
         d.addCallback(_check_version)
         return d
     testFuture4.timeout = 10
@@ -843,7 +846,7 @@ class Future(BaseMixin, unittest.TestCase):
         url, portnum = self.makeSpecificServer(certData_high)
         # the client 
         client = Tub(certData=certData_low)
-        client.negotiationClass = NegotiationV2Only
+        client.negotiationClass = NegotiationVbigOnly
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -861,7 +864,7 @@ class Future(BaseMixin, unittest.TestCase):
         self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low)
         client = Tub(certData=certData_high)
-        client.negotiationClass = NegotiationV2Only
+        client.negotiationClass = NegotiationVbigOnly
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -878,7 +881,7 @@ class Future(BaseMixin, unittest.TestCase):
         # only understands [2]
         self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high,
-                                               NegotiationV2Only)
+                                               NegotiationVbigOnly)
         client = Tub(certData=certData_low)
         client.startService()
         self.services.append(client)
@@ -896,7 +899,7 @@ class Future(BaseMixin, unittest.TestCase):
         # only understands [2]
         self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low,
-                                               NegotiationV2Only)
+                                               NegotiationVbigOnly)
         client = Tub(certData=certData_high)
         client.startService()
         self.services.append(client)

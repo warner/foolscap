@@ -1,5 +1,13 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation): bump both minVersion and
+	maxVersion to 2, indicating that this release is not compatible
+	with 0.1.0, since the reqID=0 change will cause the first method
+	call in either direction (probably a getYourReferenceByName) to
+	never receive a response. The handler functions were rearranged a
+	bit too.
+	* foolscap/test/test_negotiate.py (Future): update to match
+
 	* NEWS: get ready for release
 
 	* foolscap/test/test_pb.py (TestCallable.testLogLocalFailure):

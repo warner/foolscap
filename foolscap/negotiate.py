@@ -39,6 +39,12 @@ def check_inrange(my_min, my_max, decision, name):
 PLAINTEXT, ENCRYPTED, DECIDING, ABANDONED = range(4)
 
 
+# version number history:
+#  1 (0.1.0): offer includes initial-vocab-table-range,
+#             decision includes initial-vocab-table-index
+#  2 (0.1.1): no changes to offer or decision
+#             reqID=0 was commandeered for use by callRemoteOnly()
+
 class Negotiation(protocol.Protocol):
     """This is the first protocol to speak over the wire. It is responsible
     for negotiating the connection parameters, then switching the connection
@@ -141,8 +147,8 @@ class Negotiation(protocol.Protocol):
     debugNegotiation = False
     forceNegotiation = None
 
-    minVersion = 1
-    maxVersion = 1
+    minVersion = 2
+    maxVersion = 2
 
     initialVocabTableRange = vocab.getVocabRange()
 
@@ -151,8 +157,8 @@ class Negotiation(protocol.Protocol):
 
     def __init__(self):
         for i in range(self.minVersion, self.maxVersion+1):
-            assert hasattr(self, "evaluateNegotiationVersion%d" % i)
-            assert hasattr(self, "acceptDecisionVersion%d" % i)
+            assert hasattr(self, "evaluateNegotiationVersion%d" % i), i
+            assert hasattr(self, "acceptDecisionVersion%d" % i), i
         assert isinstance(self.initialVocabTableRange, tuple)
         self.negotiationOffer = {
             "banana-negotiation-range": "%d %d" % (self.minVersion,
@@ -624,13 +630,10 @@ class Negotiation(protocol.Protocol):
                             "banana version")
 
         negfunc = getattr(self, "evaluateNegotiationVersion%d" % best)
+        self.decision_version = best
         return negfunc(offer)
 
     def evaluateNegotiationVersion1(self, offer):
-        self.decision_version = 1
-        return self._evaluateNegotiationVersion1(offer)
-
-    def _evaluateNegotiationVersion1(self, offer):
         forced = False
         f = offer.get('negotiation-forced', None)
         if f and f.lower() == "true":
@@ -762,6 +765,13 @@ class Negotiation(protocol.Protocol):
             # I am not the master, I receive the decision
             self.phase = DECIDING
 
+    def evaluateNegotiationVersion2(self, offer):
+        # version 2 changes the meaning of reqID=0 in a 'call' sequence, to
+        # support the implementation of callRemoteOnly. No other protocol
+        # changes were made, and no changes were made to the offer or
+        # decision blocks.
+        return self.evaluateNegotiationVersion1(offer)
+
     def sendDecision(self, decision, params):
         if self.debug_doTimer("sendDecision", 1,
                               self.sendDecision, decision, params):
@@ -833,11 +843,16 @@ class Negotiation(protocol.Protocol):
                    }
         return params
 
+    def acceptDecisionVersion2(self, decision):
+        # this only affects the interpretation of reqID=0, so we can use the
+        # same accept function
+        return self.acceptDecisionVersion1(decision)
+
     def loopbackDecision(self):
         # if we were talking to ourselves, what negotiation decision would we
         # reach? This is used for loopback connections
         max_vocab = self.initialVocabTableRange[1]
-        params = { 'banana-decision-version': 1,
+        params = { 'banana-decision-version': self.maxVersion,
                    'initial-vocab-table-index': max_vocab,
                    }
         return params
