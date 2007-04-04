@@ -7,7 +7,7 @@ if False:
     from twisted.python import log
     log.startLogging(sys.stderr)
 
-from twisted.python import failure
+from twisted.python import failure, log
 from twisted.internet import defer
 from twisted.trial import unittest
 
@@ -392,10 +392,71 @@ class TestCallable(unittest.TestCase):
             s.startService()
             l = s.listenOn("tcp:0:interface=127.0.0.1")
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
+        self._log_observers_to_remove = []
+
+    def addLogObserver(self, observer):
+        log.addObserver(observer)
+        self._log_observers_to_remove.append(observer)
 
     def tearDown(self):
+        for lo in self._log_observers_to_remove:
+            log.removeObserver(lo)
         d = defer.DeferredList([s.stopService() for s in self.services])
         d.addCallback(flushEventualQueue)
+        return d
+
+    def testLogLocalFailure(self):
+        self.tubB.setOption("logLocalFailures", True)
+        target = Target()
+        logs = []
+        self.addLogObserver(logs.append)
+        url = self.tubB.registerReference(target)
+        d = self.tubA.getReference(url)
+        d.addCallback(lambda rref: rref.callRemote("fail"))
+        # this will cause some text to be logged with log.msg. TODO: capture
+        # this text and look at it more closely.
+        def _check(res):
+            self.failUnless(isinstance(res, failure.Failure))
+            res.trap(ValueError)
+            messages = [l['message'][0] for l in logs]
+            text = "\n".join(messages)
+            self.failUnless("an inbound callRemote that we executed (on behalf of someone else) failed\n" in text)
+            self.failUnless("\n reqID=2, rref=<foolscap.test.common.Target object at "
+                            in text)
+            self.failUnless(", methname=fail\n" in text)
+            self.failUnless("\n args=[]\n" in text)
+            self.failUnless("\n kwargs={}\n" in text)
+            self.failUnless("\nLOCAL: Traceback (most recent call last):\n"
+                            in text)
+            self.failUnless("\nLOCAL: exceptions.ValueError: you asked me to fail\n" in text)
+        d.addBoth(_check)
+        return d
+
+    def testLogRemoteFailure(self):
+        self.tubA.setOption("logRemoteFailures", True)
+        target = Target()
+        logs = []
+        self.addLogObserver(logs.append)
+        url = self.tubB.registerReference(target)
+        d = self.tubA.getReference(url)
+        d.addCallback(lambda rref: rref.callRemote("fail"))
+        # this will cause some text to be logged with log.msg. TODO: capture
+        # this text and look at it more closely.
+        def _check(res):
+            self.failUnless(isinstance(res, failure.Failure))
+            res.trap(ValueError)
+            messages = [l['message'][0] for l in logs]
+            text = "\n".join(messages)
+            self.failUnless("an outbound callRemote (that we sent to someone else) failed on the far end\n" in text)
+            self.failUnless("\n reqID=2, rref=<RemoteReference at "
+                            in text)
+            self.failUnless((" [%s]>, methname=fail\n" % url) in text)
+            #self.failUnless("\n args=[]\n" in text) # TODO: log these too
+            #self.failUnless("\n kwargs={}\n" in text)
+            self.failUnless("\nREMOTE: Traceback from remote host -- Traceback (most recent call last):\n"
+                            in text)
+            self.failUnless("\nREMOTE: exceptions.ValueError: you asked me to fail\n" in text)
+        d.addBoth(_check)
         return d
 
     def testBoundMethod(self):

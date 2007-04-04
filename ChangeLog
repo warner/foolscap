@@ -1,5 +1,9 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_pb.py (TestCallable.testLogLocalFailure):
+	validate that Tub.setOption("logLocalFailures") actually works
+	(TestCallable.testLogRemoteFailure): same
+
 	* foolscap/remoteinterface.py (UnconstrainedMethod): add a
 	"constraint" that can be used to mark a method as accepting
 	anything and returning anything. This might be useful if you have
