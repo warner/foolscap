@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
+import re
 from zope.interface import implements, implementsOnly, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer, reactor
@@ -8,7 +9,8 @@ from foolscap import Referenceable, RemoteInterface
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema, \
      UnconstrainedMethod
-from foolscap.constraint import Any
+from foolscap.schema import Any, SetOf, DictOf, ListOf, TupleOf, \
+     NumberConstraint, StringConstraint, IntegerConstraint
 
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
@@ -54,6 +56,25 @@ class Loopback:
         self.connected = False
         return fireEventually()
 
+Digits = re.compile("\d*")
+MegaSchema1 = DictOf(str,
+                     ListOf(TupleOf(SetOf(int, maxLength=10, mutable=True),
+                                    str, bool, int, long, float, None,
+                                    Any(), NumberConstraint(),
+                                    IntegerConstraint(),
+                                    StringConstraint(maxLength=100,
+                                                     minLength=90,
+                                                     regexp="\w+"),
+                                    StringConstraint(regexp=Digits),
+                                    ),
+                            maxLength=20),
+                     maxKeys=5)
+# containers should convert their arguments into schemas
+MegaSchema2 = TupleOf(SetOf(int),
+                      ListOf(int),
+                      DictOf(int, str),
+                      )
+
 
 class RIHelper(RemoteInterface):
     def set(obj=Any()): return bool
@@ -63,6 +84,8 @@ class RIHelper(RemoteInterface):
     def echo(obj=Any()): return Any()
     def defer(obj=Any()): return Any()
     def hang(): return Any()
+    # test one of everything
+    def megaschema(obj1=MegaSchema1, obj2=MegaSchema2): return None
 
 class HelperTarget(Referenceable):
     implements(RIHelper)
@@ -101,6 +124,11 @@ class HelperTarget(Referenceable):
     def remote_hang(self):
         self.d = defer.Deferred()
         return self.d
+
+    def remote_megaschema(self, obj1, obj2):
+        self.obj1 = obj1
+        self.obj2 = obj2
+        return None
 
 
 class TargetMixin:

@@ -1,5 +1,12 @@
 2007-04-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_call.py (TestCall.testMegaSchema): add a new
+	test to exercise lots of constraint code
+	* foolscap/test/common.py: support code for it
+	* foolscap/slicers/set.py (SetUnslicer.setConstraint): fix bugs
+	discovered as a result
+	(SetConstraint.__init__): same
+
 	* foolscap/__init__.py: bump revision to 0.1.1+ while between releases
 	* misc/{sid|sarge|dapper}/debian/changelog: same
 

@@ -3,7 +3,8 @@
 import sets
 from foolscap.slicers.list import ListSlicer, ListUnslicer
 from foolscap.tokens import Violation
-from foolscap.constraint import OpenerConstraint, UnboundedSchema
+from foolscap.constraint import OpenerConstraint, UnboundedSchema, Any, \
+     IConstraint
 
 class SetSlicer(ListSlicer):
     opentype = ("set",)
@@ -37,7 +38,14 @@ class SetUnslicer(ListUnslicer):
     def receiveClose(self):
         return sets.Set(self.list), None
 
-class ImmutableSetUnslicer(ListUnslicer):
+    def setConstraint(self, constraint):
+        if isinstance(constraint, Any):
+            return
+        assert isinstance(constraint, SetConstraint)
+        self.maxLength = constraint.maxLength
+        self.itemConstraint = constraint.constraint
+
+class ImmutableSetUnslicer(SetUnslicer):
     opentype = ("immutable-set",)
     def receiveClose(self):
         return sets.ImmutableSet(self.list), None
@@ -65,7 +73,7 @@ class SetConstraint(OpenerConstraint):
     all_set_types = mutable_set_types + immutable_set_types
 
     def __init__(self, constraint, maxLength=30, mutable=None):
-        self.constraint = constraint
+        self.constraint = IConstraint(constraint)
         self.maxLength = maxLength
         self.mutable = mutable
 
