@@ -1,5 +1,18 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.1.2 (04 Apr 2007)
+
+** Bugfixes
+
+Yesterday's release had a bug in the new SetConstraint which rendered it
+completely unusable. This has been fixed, along with some new tests.
+
+** More debian packaging
+
+Some control scripts were added to make it easier to create debian packages
+for the Ubuntu 'edgy' and 'feisty' distributions.
+
+
 * Release 0.1.1 (03 Apr 2007)
 
 ** Incompatibility Warning

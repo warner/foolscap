@@ -4,5 +4,7 @@ include doc/listings/*.py
 include doc/specifications/*.xhtml
 include Makefile
 include misc/dapper/debian/*
+include misc/edgy/debian/*
+include misc/feisty/debian/*
 include misc/sid/debian/*
 include misc/sarge/debian/*

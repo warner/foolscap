@@ -1,9 +1,17 @@
 2007-04-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release Foolscap-0.1.2
+	* misc/{sid|sarge|dapper|edgy|feisty}/debian/changelog: same
+
+	* NEWS: update for new release
+
+2007-04-04  Brian Warner  <warner@lothar.com>
+
 	* misc/feisty/debian/*: add debian packaging support for the
 	Ubuntu 'feisty' distribution
 	* Makefile: and a way to invoke it
 	* misc/edgy/debian/*: same for the 'edgy' distribution
+	* MANIFEST.in: include the edgy/feisty files in the source tarball
 
 	* foolscap/test/test_call.py (TestCall.testMegaSchema): add a new
 	test to exercise lots of constraint code
