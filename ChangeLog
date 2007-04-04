@@ -1,5 +1,7 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* NEWS: get ready for release
+
 	* foolscap/test/test_pb.py (TestCallable.testLogLocalFailure):
 	validate that Tub.setOption("logLocalFailures") actually works
 	(TestCallable.testLogRemoteFailure): same

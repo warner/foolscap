@@ -1,5 +1,177 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release ?.?.? (?)
+
+** Incompatibility Warning
+
+Because of the technique used to implement callRemoteOnly() (specifically the
+commandeering of reqID=0), this release is not compatible with the previous
+release. The protocol negotiation version numbers have been bumped to avoid
+confusion, meaning that 0.1.0 Tubs will refuse to connect to 0.1.1 Tubs, and
+vice versa. Be aware that the errors reported when this occurs may not be
+ideal, in particular I think the "reconnector" (tub.connectTo) might not log
+this sort of connection failure in a very useful way.
+
+** changes to Constraints
+
+Method specifications inside RemoteInterfaces can now accept or return
+'Referenceable' to indicate that they will accept a Referenceable of any
+sort. Likewise, they can use something like 'RIFoo' to indicate that they
+want a Referenceable or RemoteReference that implements RIFoo. Note that this
+restriction does not quite nail down the directionality: in particular there
+is not yet a way to specify that the method will only accept a Referenceable
+and not a RemoteReference. I'm waiting to see if such a thing is actually
+useful before implementing it. As an example:
+
+class RIUser(RemoteInterface):
+    def get_age():
+        return int
+
+class RIUserListing(RemoteInterface):
+    def get_user(name=str):
+        """Get the User object for a given name."""
+        return RIUser
+
+In addition, several constraints have been enhanced. StringConstraint and
+ListConstraint now accept a minLength= argument, and StringConstraint also
+takes a regular expression to apply to the string it inspects (the regexp can
+either be passed as a string or as the output of re.compile()). There is a
+new SetConstraint object, with 'SetOf' as a short alias. Some examples:
+
+HexIdConstraint = StringConstraint(minLength=20, maxLength=20,
+                                   regexp=r'[\dA-Fa-f]+')
+class RITable(RemoteInterface):
+    def get_users_by_id(id=HexIdConstraint):
+        """Get a set of User objects; all will have the same ID number."""
+        return SetOf(RIUser, maxLength=200)
+
+These constraints should be imported from foolscap.schema . Once the
+constraint interface is stabilized and documented, these classes will
+probably be moved into foolscap/__init__.py so that you can just do 'from
+foolscap import SetOf', etc.
+
+*** UnconstrainedMethod
+
+To disable schema checking for a specific method, use UnconstrainedMethod in
+the RemoteInterface definition:
+
+from foolscap.remoteinterface import UnconstrainedMethod
+
+class RIUse(RemoteInterface):
+    def set_phone_number(area_code=int, number=int):
+        return bool
+    set_arbitrary_data = UnconstrainedMethod
+
+The schema-checking code will allow any sorts of arguments through to this
+remote method, and allow any return value. This is like schema.Any(), but for
+entire methods instead of just specific values. Obviously, using this defeats
+te whole purpose of schema checking, but in some circumstances it might be
+preferable to allow one or two unconstrained methods rather than resorting to
+leaving the entire class left unconstrained (by not declaring a
+RemoteInterface at all).
+
+*** internal schema implementation changes
+
+Constraints underwent a massive internal refactoring in this release, to
+avoid a number of messy circular imports. The new way to convert a
+"shorthand" description (like 'str') into an actual constraint object (like
+StringConstraint) is to adapt it to IConstraint.
+
+In addition, all constraints were moved closer to their associated
+slicer/unslicer definitions. For example, SetConstraint is defined in
+foolscap.slicers.set, right next to SetSlicer and SetUnslicer. The
+constraints for basic tokens (like lists and ints) live in
+foolscap.constraint .
+
+** callRemoteOnly
+
+A new "fire and forget" API was added to tell Foolscap that you want to send
+a message to the remote end, but do not care when or even whether it arrives.
+These messages are guaranteed to not fire an errback if the connection is
+already lost (DeadReferenceError) or if the connection is lost before the
+message is delivered or the response comes back (ConnectionLost). At present,
+this no-error philosophy is so strong that even schema Violation exceptions
+are suppressed, and the callRemoteOnly() method always returns None instead
+of a Deferred. This last part might change in the future.
+
+This is most useful for messages that are tightly coupled to the connection
+itself, such that if the connection is lost, then it won't matter whether the
+message was received or not. If the only state that the message modifies is
+both scoped to the connection (i.e. not used anywhere else in the receiving
+application) and only affects *inbound* data, then callRemoteOnly might be
+useful. It may involve less error-checking code on the senders side, and it
+may involve fewer round trips (since no response will be generated when the
+message is delivered).
+
+As a contrived example, a message which informs the far end that all
+subsequent messages on this connection will sent entirely in uppercase (such
+that the recipient should apply some sort of filter to them) would be
+suitable for callRemoteOnly. The sender does not need to know exactly when
+the message has been received, since Foolscap guarantees that all
+subsequently sent messages will be delivered *after* the 'SetUpperCase'
+message. And, the sender does not need to know whether the connection was
+lost before or after the receipt of the message, since the establishment of a
+new connection will reset this 'uppercase' flag back to some known
+initial-contact state.
+
+  rref.callRemoteOnly("set_uppercase", True)  # returns None!
+
+This method is intended to parallel the 'deliverOnly' method used in E's
+CapTP protocol. It is also used (or will be used) in some internal Foolscap
+messages to reduce unnecessary network traffic.
+
+** new Slicers: builtin set/frozenset
+
+Code has been added to allow Foolscap to handle the built-in 'set' and
+'frozenset' types that were introduced in python-2.4 . The wire protocol does
+not distinguish between 'set' and 'sets.Set', nor between 'frozenset' and
+'sets.ImmutableSet'.
+
+For the sake of compatibility, everything that comes out of the deserializer
+uses the pre-2.4 'sets' module. Unfortunately that means that a 'set' sent
+into a Foolscap connection will come back out as a 'sets.Set'. 'set' and
+'sets.Set' are not entirely interoperable, and concise things like 'added =
+new_things - old_things' will not work if the objects are of different types
+(but note that things like 'added = new_things.difference(old_things)' *do*
+work).
+
+The current workaround is for remote methods to coerce everything to a
+locally-preferred form before use. Better solutions to this are still being
+sought. The most promising approach is for Foolscap to unconditionally
+deserialize to the builtin types on python >= 2.4, but then an application
+which works fine on 2.3 (by using sets.Set) will fail when moved to 2.4 .
+
+** Tub.stopService now indicates full connection shutdown, helping Trial tests
+
+Like all twisted.application.service.MultiService instances, the
+Tub.stopService() method returns a Deferred that indicates when shutdown has
+finished. Previously, this Deferred could fire a bit early, when network
+connections were still trying to deliver the last bits of data. This caused
+problems with the Trial unit test framework, which insist upon having a clean
+reactor between tests.
+
+Trial test writers who use Foolscap should include the following sequence in
+their twisted.trial.unittest.TestCase.tearDown() methods:
+
+def tearDown(self):
+    from foolscap.eventual import flushEventualQueue
+    d = tub.stopService()
+    d.addCallback(flushEventualQueue)
+    return d
+
+This will insure that all network activity is complete, and that all message
+deliveries thus triggered have been retired. This activity includes any
+outbound connections that were initiated (but not completed, or finished
+negotiating), as well as any listening sockets.
+
+The only remaining problem I've seen so far is with reactor.resolve(), which
+is used to translate DNS names into addresses, and has a window during which
+you can shut down the Tub and it will leave a cleanup timer lying around. The
+only solution I've found is to avoid using DNS names in URLs. Of course for
+real applications this does not matter: it only makes a difference in Trial
+unit tests which are making heavy use of short-lived Tubs and connections.
+
+
 * Release 0.1.0 (15 Mar 2007)
 
 ** usability improvements
