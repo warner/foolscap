@@ -42,6 +42,6 @@
 ^dist($|/)
 ^MANIFEST$
 ^python-build-stamp-.*$
-^misc/(sid|sarge|dapper)/debian/python-foolscap($|/)
-^misc/(sid|sarge|dapper)/debian/python-foolscap\..*$
-^misc/(sid|sarge|dapper)/debian/files$
+^misc/(sid|sarge|dapper|feisty)/debian/python-foolscap($|/)
+^misc/(sid|sarge|dapper|feisty)/debian/python-foolscap\..*$
+^misc/(sid|sarge|dapper|feisty)/debian/files$

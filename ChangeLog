@@ -1,5 +1,9 @@
 2007-04-04  Brian Warner  <warner@lothar.com>
 
+	* misc/feisty/debian/*: add debian packaging support for the
+	Ubuntu 'feisty' distribution
+	* Makefile: and a way to invoke it
+
 	* foolscap/test/test_call.py (TestCall.testMegaSchema): add a new
 	test to exercise lots of constraint code
 	* foolscap/test/common.py: support code for it
