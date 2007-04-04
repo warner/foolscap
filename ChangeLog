@@ -1,5 +1,12 @@
 2007-04-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release Foolscap-0.1.1
+	* misc/{sid|sarge|dapper}/debian/changelog: same
+
+	* NEWS: update for new release
+
+2007-04-03  Brian Warner  <warner@lothar.com>
+
 	* foolscap/negotiate.py (Negotiation): bump both minVersion and
 	maxVersion to 2, indicating that this release is not compatible
 	with 0.1.0, since the reqID=0 change will cause the first method
