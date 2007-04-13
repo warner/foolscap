@@ -4,6 +4,8 @@
 	checks while running unit tests. We have 89.2% coverage! Use
 	'make test-figleaf figleaf-output' to see the results.
 	* Makefile: new targets for figleaf
+	(test): enable 'make test TEST=foolscap.test.test_call' to work
+	(test-figleaf): same
 
 	* foolscap/__init__.py: bump revision to 0.1.2+ while between releases
 	* misc/{sid|sarge|dapper|edgy|feisty}/debian/changelog: same

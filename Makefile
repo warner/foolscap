@@ -5,12 +5,13 @@
 build:
 	python setup.py build
 
+TEST=foolscap
 test:
-	trial foolscap
+	trial $(TEST)
 
 test-figleaf:
 	rm -f .figleaf
-	PYTHONPATH=misc/testutils trial --reporter=bwverbose-figleaf foolscap
+	PYTHONPATH=misc/testutils trial --reporter=bwverbose-figleaf $(TEST)
 
 figleaf-output:
 	rm -rf coverage-html
