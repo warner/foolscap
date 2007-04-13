@@ -4,7 +4,7 @@ import random
 from twisted.internet.error import ConnectError
 from twisted.internet import reactor
 from twisted.python import log
-from foolscap.tokens import NegotiationError
+from foolscap.tokens import NegotiationError, RemoteNegotiationError
 
 class Reconnector:
     """Establish (and maintain) a connection to a given PBURL.
@@ -84,7 +84,14 @@ class Reconnector:
         # failures here, but not hide coding errors.
         if self.verbose:
             log.msg("Reconnector._failed: %s" % f)
-        f.trap(NegotiationError, ConnectError)
+        # log certain unusual errors, even without self.verbose, to help
+        # people figure out why their reconnectors aren't connecting, since
+        # the usual getReference errback chain isn't active. This doesn't
+        # include ConnectError (which is a parent class of
+        # ConnectionRefusedError)
+        if f.check(RemoteNegotiationError, NegotiationError):
+            if not self.verbose:
+                log.msg("Reconnector._failed: %s" % f)
         if not self._active:
             return
         self._delay = min(self._delay * self.factor, self.maxDelay)

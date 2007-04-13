@@ -1,5 +1,13 @@
 2007-04-13  Brian Warner  <warner@lothar.com>
 
+	* foolscap/reconnector.py (Reconnector._failed): the old f.trap()
+	could sometimes cause the reconnector to stop trying forever.
+	Remove that. Thanks to Rob Kinninmont for finding the problem. Add
+	new code to log the failure if f.check() indicates that it is a
+	NegotiationError, since that's the sort of weird thing that users
+	will probably want to see.
+	* foolscap/test/test_reconnector.py: add lots of new tests
+
 	* misc/testutils: add tools to do figleaf-based code-coverage
 	checks while running unit tests. We have 89.2% coverage! Use
 	'make test-figleaf figleaf-output' to see the results.
