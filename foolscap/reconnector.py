@@ -1,7 +1,6 @@
 # -*- test-case-name: foolscap.test.test_reconnector -*-
 
 import random
-from twisted.internet.error import ConnectError
 from twisted.internet import reactor
 from twisted.python import log
 from foolscap.tokens import NegotiationError, RemoteNegotiationError
