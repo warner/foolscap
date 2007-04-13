@@ -46,6 +46,7 @@ class Copyable(object):
 class CopyableSlicer(slicer.BaseSlicer):
     """I handle ICopyable objects (things which are copied by value)."""
     def slice(self, streamable, banana):
+        self.streamable = streamable
         yield 'copyable'
         copytype = self.obj.getTypeToCopy()
         assert isinstance(copytype, str)
@@ -68,6 +69,7 @@ class Copyable2(slicer.BaseSlicer):
     def getStateToCopy(self):
         return self.__dict__
     def slice(self, streamable, banana):
+        self.streamable = streamable
         yield 'instance'
         yield self.getTypeToCopy()
         yield self.getStateToCopy()

@@ -1,5 +1,14 @@
 2007-04-13  Brian Warner  <warner@lothar.com>
 
+	* foolscap/copyable.py (CopyableSlicer.slice): set self.streamable
+	before yielding any tokens, otherwise contained elements that use
+	streaming will trigger an exception. Many thanks to
+	Ricky (iacovou-AT-gmail.com) for trying out advanced features of
+	Foolscap and discovering this problem, I would never have stumbled
+	over this one on my own. TODO: we still need unit tests to
+	exercise this sort of thing on a regular basis.
+	(Copyable2): same thing
+
 	* foolscap/schema.py (_tupleConstraintMaker): redefine what tuples
 	mean in constraint specifications. They used to indicate an
 	alternative: (int,str) meant accept either an int *or* a string.
