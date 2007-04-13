@@ -140,6 +140,10 @@ constraintTypeMap = []
 def addToConstraintTypeMap(typ, constraintMaker):
     constraintTypeMap.insert(0, (typ, constraintMaker))
 
+def _tupleConstraintMaker(t):
+    return TupleConstraint(*t)
+addToConstraintTypeMap(tuple, _tupleConstraintMaker)
+
 # this function transforms the simple syntax (as used in RemoteInterface
 # method definitions) into Constraint instances. This function is registered
 # as a zope.interface adapter hook, so that once we've been loaded, other
@@ -163,10 +167,6 @@ def adapt_obj_to_iconstraint(iface, t):
     # RIFoo means accept either a Referenceable that implements RIFoo, or a
     # RemoteReference that points to just such a Referenceable. This is
     # hooked in by remoteinterface.py, when it calls addToConstraintTypeMap
-
-    # alternatives
-    if type(t) == tuple:
-        return PolyConstraint(*t)
 
     # we are the only way to make constraints
     raise UnknownSchemaType("can't make constraint from '%s' (%s)" %

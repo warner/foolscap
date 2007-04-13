@@ -360,10 +360,9 @@ class CreateTest(unittest.TestCase):
 
         self.check(make(schema.NumberConstraint()), schema.NumberConstraint)
         c = make((int, str))
-        self.check(c, schema.PolyConstraint)
-        self.failUnlessEqual(len(c.alternatives), 2)
-        self.check(c.alternatives[0], schema.IntegerConstraint)
-        self.check(c.alternatives[1], schema.StringConstraint)
+        self.check(c, schema.TupleConstraint)
+        self.check(c.constraints[0], schema.IntegerConstraint)
+        self.check(c.constraints[1], schema.StringConstraint)
 
         c = make(common.RIHelper)
         self.check(c, RemoteInterfaceConstraint)

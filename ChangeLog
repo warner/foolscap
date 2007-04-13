@@ -1,5 +1,15 @@
 2007-04-13  Brian Warner  <warner@lothar.com>
 
+	* foolscap/schema.py (_tupleConstraintMaker): redefine what tuples
+	mean in constraint specifications. They used to indicate an
+	alternative: (int,str) meant accept either an int *or* a string.
+	Now tuples indicate actual tuples, so (int,str) means a 2-element
+	tuple in which the first element is an int, and the second is a
+	string. I don't know what I was thinking back then. If you really
+	want to use alternatives, use schema.ChoiceOf instead.
+	* foolscap/test/test_schema.py (CreateTest.testMakeConstraint):
+	test that tuples mean tuples
+
 	* foolscap/reconnector.py (Reconnector._failed): the old f.trap()
 	could sometimes cause the reconnector to stop trying forever.
 	Remove that. Thanks to Rob Kinninmont for finding the problem. Add
