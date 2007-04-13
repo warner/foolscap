@@ -8,6 +8,15 @@ build:
 test:
 	trial foolscap
 
+test-figleaf:
+	rm -f .figleaf
+	PYTHONPATH=misc/testutils trial --reporter=bwverbose-figleaf foolscap
+
+figleaf-output:
+	rm -rf coverage-html
+	PYTHONPATH=misc/testutils python misc/testutils/figleaf2html -d coverage-html -r .
+	@echo "now point your browser at coverage-html/index.html"
+
 debian-sid:
 	rm -f debian
 	ln -s misc/sid/debian debian

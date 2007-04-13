@@ -1,5 +1,10 @@
 2007-04-13  Brian Warner  <warner@lothar.com>
 
+	* misc/testutils: add tools to do figleaf-based code-coverage
+	checks while running unit tests. We have 89.2% coverage! Use
+	'make test-figleaf figleaf-output' to see the results.
+	* Makefile: new targets for figleaf
+
 	* foolscap/__init__.py: bump revision to 0.1.2+ while between releases
 	* misc/{sid|sarge|dapper|edgy|feisty}/debian/changelog: same
 

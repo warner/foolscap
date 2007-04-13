@@ -45,3 +45,6 @@
 ^misc/(sid|sarge|dapper|edgy|feisty)/debian/python-foolscap($|/)
 ^misc/(sid|sarge|dapper|edgy|feisty)/debian/python-foolscap\..*$
 ^misc/(sid|sarge|dapper|edgy|feisty)/debian/files$
+^\.figleaf$
+^coverage-html($|/)
+^misc/testutils/twisted/plugins/dropin.cache$
