@@ -1,3 +1,11 @@
+2007-04-16  Brian Warner  <warner@lothar.com>
+
+	* foolscap/banana.py (Banana.handleData): when the token prefix is
+	too long, log and emit the repr of the prefix string, so somebody
+	can figure out where it came from.
+	* foolscap/test/test_banana.py (InboundByteStream.testString):
+	update to match
+
 2007-04-13  Brian Warner  <warner@lothar.com>
 
 	* foolscap/copyable.py (CopyableSlicer.slice): set self.streamable

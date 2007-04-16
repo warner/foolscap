@@ -648,7 +648,8 @@ class Banana(protocol.Protocol):
             else:
                 if pos > 64:
                     # drop the connection
-                    raise BananaError("token prefix is limited to 64 bytes")
+                    raise BananaError("token prefix is limited to 64 bytes: "
+                                      "but got %r" % (buffer[:pos],))
                 return # still waiting for header to finish
 
             # At this point, the header and type byte have been received.

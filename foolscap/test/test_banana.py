@@ -1272,8 +1272,7 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
 
         f = self.shouldDropConnection("\x00" * 65)
         self.failUnlessEqual(f.value.where, "<RootUnslicer>")
-        self.failUnlessEqual(f.value.args[0],
-                             "token prefix is limited to 64 bytes")
+        self.failUnless(f.value.args[0].startswith("token prefix is limited to 64 bytes"))
         f = self.shouldDropConnection("\x00" * 65 + "\x82")
         self.failUnlessEqual(f.value.where, "<RootUnslicer>")
         self.failUnlessEqual(f.value.args[0],
