@@ -1,7 +1,7 @@
 
 from twisted.trial import unittest
 from twisted.internet import defer
-from twisted.internet.error import ConnectionDone
+from twisted.internet.error import ConnectionDone, ConnectionLost
 from foolscap import Tub, UnauthenticatedTub
 from foolscap.referenceable import RemoteReference
 from foolscap.test.common import HelperTarget
@@ -21,7 +21,7 @@ if crypto_available:
     GoodEnoughTub = Tub
 
 def ignoreConnectionDone(f):
-    f.trap(ConnectionDone)
+    f.trap(ConnectionDone, ConnectionLost)
     return None
 
 class Gifts(unittest.TestCase):
