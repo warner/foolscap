@@ -1,5 +1,10 @@
 2007-04-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/remoteinterface.py
+	(RemoteInterfaceConstraint.checkObject): string-format the object
+	inside a tuple, to avoid an annoying logging failure when the
+	object in question is actually a tuple
+
 	* foolscap/test/test_gifts.py (ignoreConnectionDone): trap both
 	ConnectionDone and ConnectionLost, since it appears that windows
 	signals ConnectionLost. Hopefully this will make the unit tests

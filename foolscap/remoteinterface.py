@@ -391,7 +391,7 @@ class RemoteInterfaceConstraint(OpenerConstraint):
             if not ipb.IReferenceable.providedBy(obj):
                 # TODO: maybe distinguish between OnlyReferenceable and
                 # Referenceable? which is more useful here?
-                raise Violation("'%s' is not a Referenceable" % obj)
+                raise Violation("'%s' is not a Referenceable" % (obj,))
             if self.interface and not self.interface.providedBy(obj):
                 raise Violation("'%s' does not provide RemoteInterface %s"
                                 % (obj, self.interface))
