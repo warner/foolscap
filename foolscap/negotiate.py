@@ -150,6 +150,8 @@ class Negotiation(protocol.Protocol):
     minVersion = 2
     maxVersion = 2
 
+    brokerClass = broker.Broker
+
     initialVocabTableRange = vocab.getVocabRange()
 
     SERVER_TIMEOUT = 60 # you have 60 seconds to complete negotiation, or else
@@ -199,6 +201,7 @@ class Negotiation(protocol.Protocol):
         # clients do connectTCP and speak first with a GET
         self.isClient = True
         self.tub = connector.tub
+        self.brokerClass = self.tub.brokerClass
         self.myTubID = self.tub.tubID
         self.connector = connector
         self.target = connector.target
@@ -212,6 +215,7 @@ class Negotiation(protocol.Protocol):
         self.isClient = False
         self.listener = listener
         self.options = self.listener.options.copy()
+        # the broker class is set when we find out which Tub we should use
 
     def parseLines(self, header):
         lines = header.split("\r\n")
@@ -481,6 +485,7 @@ class Negotiation(protocol.Protocol):
         if tub:
             self.tub = tub # our tub
             self.options.update(self.tub.options)
+            self.brokerClass = self.tub.brokerClass
             self.myTubID = tub.tubID
             self.sendPlaintextServerAndStartENCRYPTED(wantEncrypted)
         elif redirect:
@@ -891,7 +896,7 @@ class Negotiation(protocol.Protocol):
 
         self.stopNegotiationTimer()
 
-        b = broker.Broker(params)
+        b = self.brokerClass(params)
         b.factory = self.factory # not used for PB code
         b.setTub(self.tub)
         self.transport.protocol = b

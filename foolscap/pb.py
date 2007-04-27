@@ -204,6 +204,7 @@ class Tub(service.MultiService):
         randpool = None
     encrypted = True
     negotiationClass = negotiate.Negotiation
+    brokerClass = broker.Broker
 
     def __init__(self, certData=None, certFile=None, options={}):
         service.MultiService.__init__(self)
@@ -612,7 +613,7 @@ class Tub(service.MultiService):
         t1.setPeer(t2); t2.setPeer(t1)
         n = negotiate.Negotiation()
         params = n.loopbackDecision()
-        b1,b2 = broker.Broker(params), broker.Broker(params)
+        b1,b2 = self.brokerClass(params), self.brokerClass(params)
         # we treat b1 as "our" broker, and b2 as "theirs", and we pretend
         # that b2 has just connected to us. We keep track of b1, and b2 keeps
         # track of us.

@@ -1,3 +1,14 @@
+2007-04-27  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Tub.brokerClass): parameterize the kind of
+	Broker that this Tub will create, to make certain unit tests
+	easier to write (allowing them to substitute a custom Broker
+	subclass).
+	* foolscap/negotiate.py (Negotiation.brokerClass): same
+	(Negotiation.initClient): capture the brokerClass here for clients
+	(Negotiation.handlePLAINTEXTServer): and here for listeners
+	(Negotiation.switchToBanana): use it
+
 2007-04-26  Brian Warner  <warner@lothar.com>
 
 	* README (DEPENDENCIES, INSTALLATION): add docs
