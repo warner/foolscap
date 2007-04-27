@@ -18,6 +18,8 @@ OPEN     = chr(0x88)
 CLOSE    = chr(0x89)
 ABORT    = chr(0x8A)
 ERROR    = chr(0x8D)
+PING     = chr(0x8E)
+PONG     = chr(0x8F)
 
 tokenNames = {
     LIST: "LIST",
@@ -32,6 +34,8 @@ tokenNames = {
     CLOSE: "CLOSE",
     ABORT: "ABORT",
     ERROR: "ERROR",
+    PING: "PING",
+    PONG: "PONG",
     }
 
 SIZE_LIMIT = 1000 # default limit on the body length of long tokens (STRING,

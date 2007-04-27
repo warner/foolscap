@@ -193,7 +193,7 @@ being used, and the body is empty.</p>
   </li>
 
   <li>
-  <code>0x8D: ERROR [len-ERROR-chars]</code>
+  <p><code>0x8D: ERROR [len-ERROR-chars]</code></p>
 
   <p>This token defines a string of ASCII characters which hold an error
   message. When a severe protocol violation occurs, the offended side will
@@ -208,6 +208,34 @@ being used, and the body is empty.</p>
 
   <p>The ERROR token is limited to 1000 characters.</p>
   </li>
+
+  <li>
+  <p><code>0x8E: PING [[num]-PING-empty]</code></p>
+  <p><code>0x8F: PONG [[num]-PONG-empty]</code></p>
+
+  <p>These tokens have no semantic value, but are used to implement
+  connection timeouts and keepalives. When one side receives a PING message,
+  it should immediately queue a PONG message on the return stream. The
+  optional number can be used to associate a PONG with the PING that prompted
+  it: if present, it must be duplicated in the response.</p>
+
+  <p>Other than generating a PONG, these tokens are ignored by both ends.
+  They are not delivered to higher levels. They may appear in the middle of
+  an OPEN sequence without affecting it.</p>
+
+  <p>The intended use is that each side is configured with two timers: the
+  idle timer and the disconnect timer. The idle timer specifies how long the
+  inbound connection is allowed to remain quiet before poking it. If no data
+  has been received for this long, a PING is sent to provoke some kind of
+  traffic. The disconnect timer specifies how long the inbound connection is
+  allowed to remain quiet before concluding that the other end is dead and
+  thus terminating the connection.</p>
+  </li>
+
+  <p>These messages can also be used to estimate the connection's round-trip
+  time (including the depth of the transmit/receive queues at either end).
+  Just send a PING with a unique number, and measure the time until the
+  corresponding PONG is seen.</p>
   
 </ul>
 

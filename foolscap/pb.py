@@ -205,6 +205,8 @@ class Tub(service.MultiService):
     encrypted = True
     negotiationClass = negotiate.Negotiation
     brokerClass = broker.Broker
+    keepaliveTimeout = None # ping when connection has been idle this long
+    disconnectTimeout = None # disconnect after this much idle time
 
     def __init__(self, certData=None, certFile=None, options={}):
         service.MultiService.__init__(self)
@@ -278,6 +280,10 @@ class Tub(service.MultiService):
             # mechanism: this enables logging on the caller's side (i.e. our
             # side) as well.
             self.logRemoteFailures = value
+        elif name == "keepaliveTimeout":
+            self.keepaliveTimeout = value
+        elif name == "disconnectTimeout":
+            self.disconnectTimeout = value
         else:
             raise KeyError("unknown option name '%s'" % name)
 

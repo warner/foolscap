@@ -896,7 +896,10 @@ class Negotiation(protocol.Protocol):
 
         self.stopNegotiationTimer()
 
-        b = self.brokerClass(params)
+        b = self.brokerClass(params,
+                             self.tub.keepaliveTimeout,
+                             self.tub.disconnectTimeout,
+                             )
         b.factory = self.factory # not used for PB code
         b.setTub(self.tub)
         self.transport.protocol = b

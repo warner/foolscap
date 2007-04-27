@@ -1,7 +1,7 @@
 
-import types, struct, sets
+import types, struct, sets, time
 
-from twisted.internet import protocol, defer
+from twisted.internet import protocol, defer, reactor
 from twisted.python.failure import Failure
 from twisted.python import log
 
@@ -13,7 +13,10 @@ from foolscap.slicers.allslicers import ReplaceVocabSlicer, AddVocabSlicer
 import tokens
 from tokens import SIZE_LIMIT, STRING, LIST, INT, NEG, \
      LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR, \
+     PING, PONG, \
      BananaError, BananaFailure, Violation
+
+EPSILON = 0.1
 
 def int2b128(integer, stream):
     if integer == 0:
@@ -124,8 +127,29 @@ class Banana(protocol.Protocol):
     def connectionMade(self):
         if self.debugSend:
             print "Banana.connectionMade"
+        if self.keepaliveTimeout is not None:
+            self.dataLastReceivedAt = time.time()
+            t = reactor.callLater(self.keepaliveTimeout + EPSILON,
+                                  self.keepaliveTimerFired)
+            self.keepaliveTimer = t
+            self.useKeepalives = True
+        if self.disconnectTimeout is not None:
+            self.dataLastReceivedAt = time.time()
+            t = reactor.callLater(self.disconnectTimeout + EPSILON,
+                                  self.disconnectTimerFired)
+            self.disconnectTimer = t
+            self.useKeepalives = True
         # prime the pump
         self.produce()
+
+    def connectionLost(self, why):
+        if self.disconnectTimer:
+            self.disconnectTimer.cancel()
+            self.disconnectTimer = None
+        if self.keepaliveTimer:
+            self.keepaliveTimer.cancel()
+            self.keepaliveTimer = None
+        protocol.Protocol.connectionLost(self, why)
 
     ### SendBanana
     # called by .send()
@@ -433,6 +457,16 @@ class Banana(protocol.Protocol):
 
     # these methods define how we emit low-level tokens
 
+    def sendPING(self, number=0):
+        if number:
+            int2b128(number, self.transport.write)
+        self.transport.write(PING)
+
+    def sendPONG(self, number):
+        if number:
+            int2b128(number, self.transport.write)
+        self.transport.write(PONG)
+
     def sendOpen(self):
         openID = self.openCount
         self.openCount += 1
@@ -528,6 +562,11 @@ class Banana(protocol.Protocol):
     debugReceive = False
     logViolations = False
     logReceiveErrors = True
+    useKeepalives = False
+    keepaliveTimeout = None
+    keepaliveTimer = None
+    disconnectTimeout = None
+    disconnectTimer = None
 
     def initReceive(self):
         self.rootUnslicer = self.unslicerClass()
@@ -585,6 +624,8 @@ class Banana(protocol.Protocol):
     def dataReceived(self, chunk):
         if self.connectionAbandoned:
             return
+        if self.useKeepalives:
+            self.dataLastReceivedAt = time.time()
         try:
             self.handleData(chunk)
         except Exception, e:
@@ -601,6 +642,39 @@ class Banana(protocol.Protocol):
             self.sendError(msg)
             self.reportReceiveError(Failure())
             self.connectionAbandoned = True
+
+    def keepaliveTimerFired(self):
+        self.keepaliveTimer = None
+        age = time.time() - self.dataLastReceivedAt
+        if age > self.keepaliveTimeout:
+            # the connection looks idle, so let's provoke a response
+            self.sendPING()
+        # we restart the timer in either case
+        t = reactor.callLater(self.keepaliveTimeout + EPSILON,
+                              self.keepaliveTimerFired)
+        self.keepaliveTimer = t
+
+    def disconnectTimerFired(self):
+        self.disconnectTimer = None
+        age = time.time() - self.dataLastReceivedAt
+        if age > self.disconnectTimeout:
+            # the connection looks dead, so drop it
+            log.msg("disconnectTimeout, no data for %d seconds" % age)
+            self.connectionTimedOut()
+            # we assume that connectionTimedOut() will actually drop the
+            # connection, so we don't restart the timer. TODO: this might not
+            # be the right thing to do, perhaps we should restart it
+            # unconditionally.
+        else:
+            # we're still ok, so restart the timer
+            t = reactor.callLater(self.disconnectTimeout + EPSILON,
+                                  self.disconnectTimerFired)
+            self.disconnectTimer = t
+
+    def connectionTimedOut(self):
+        # this is to be implemented by higher-level code. It ought to log a
+        # suitable message and then drop the connection.
+        pass
 
     def reportReceiveError(self, f):
         # tests can override this to stash the failure somewhere else. Tests
@@ -693,12 +767,13 @@ class Banana(protocol.Protocol):
             # determine if this token will be accepted, and if so, how large
             # it is allowed to be (for STRING and LONGINT/LONGNEG)
 
-            if (not rejected) and (typebyte not in (ABORT, CLOSE, ERROR)):
-                # ABORT, CLOSE, and ERROR are always legal. All others
-                # (including OPEN) can be rejected by the schema: for
-                # example, a list of integers would reject STRING, VOCAB,
-                # and OPEN because none of those will produce integers. If
-                # the unslicer's .checkToken rejects the tokentype, its
+            if ((not rejected) and
+                (typebyte not in (PING, PONG, ABORT, CLOSE, ERROR))):
+                # PING, PONG, ABORT, CLOSE, and ERROR are always legal. All
+                # others (including OPEN) can be rejected by the schema: for
+                # example, a list of integers would reject STRING, VOCAB, and
+                # OPEN because none of those will produce integers. If the
+                # unslicer's .checkToken rejects the tokentype, its
                 # .receiveChild will immediately get an Failure
                 try:
                     # the purpose here is to limit the memory consumed by
@@ -883,6 +958,15 @@ class Banana(protocol.Protocol):
                     # this case is easier than STRING, because it is only 8
                     # bytes. We don't bother skipping anything.
                     return
+
+            elif typebyte == PING:
+                buffer = rest
+                self.sendPONG(header)
+                continue # otherwise ignored
+
+            elif typebyte == PONG:
+                buffer = rest
+                continue # otherwise ignored
 
             else:
                 raise BananaError("Invalid Type Byte 0x%x" % ord(typebyte))

@@ -178,8 +178,11 @@ class Broker(banana.Banana, referenceable.Referenceable):
     startingTLS = False
     startedTLS = False
 
-    def __init__(self, params={}):
+    def __init__(self, params={},
+                 keepaliveTimeout=None, disconnectTimeout=None):
         banana.Banana.__init__(self, params)
+        self.keepaliveTimeout = keepaliveTimeout
+        self.disconnectTimeout = disconnectTimeout
         self._banana_decision_version = params.get("banana-decision-version")
         vocab_table_index = params.get('initial-vocab-table-index')
         if vocab_table_index:
@@ -230,6 +233,12 @@ class Broker(banana.Banana, referenceable.Referenceable):
         tracker = referenceable.RemoteReferenceTracker(self, 0, None,
                                                        "RIBroker")
         self.remote_broker = referenceable.RemoteReference(tracker)
+
+    # connectionTimedOut is called in response to the Banana layer detecting
+    # the lack of connection activity
+
+    def connectionTimedOut(self):
+        self.shutdown()
 
     def shutdown(self):
         self.disconnectWatchers = []

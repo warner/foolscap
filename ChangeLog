@@ -1,5 +1,27 @@
 2007-04-27  Brian Warner  <warner@lothar.com>
 
+	* foolscap/banana.py (Banana): add keepalives and idle-disconnect.
+	The first timeout value says that if we haven't received any data
+	for this long, poke the other side by sending them a PING message.
+	The other end is obligated to respond with a PONG (both PING and
+	PONG are otherwise ignored). If we still haven't heard anything
+	from them by the time the second timeout expires, we drop the
+	connection.
+	(Banana.dataReceived): if we're using keepalives, update the
+	dataLastReceivedAt timestamp on every inbound message.
+	(Banana.sendPING, sendPONG): new messages and handlers. Both are
+	ignored, and serve only to update dataLastReceivedAt.
+	* foolscap/tokens.py: add PING and PONG tokens
+	* doc/specifications/banana.xhtml: document PING and PONG
+	* foolscap/broker.py (Broker.__init__): add keepaliveTimeout and
+	disconnectTimeout arguments. Both default to 'None' to disable
+	keepalives and disconnects.
+	* foolscap/negotiate.py (Negotiation.switchToBanana): copy
+	timeouts from the Tub into the new Banana/Broker instance
+	* foolscap/pb.py (Tub.setOption): accept 'keepaliveTimeout' and
+	'disconnectTimeout' options to enable this stuff.
+	* foolscap/test/test_keepalive.py: test it
+
 	* foolscap/pb.py (Tub.brokerClass): parameterize the kind of
 	Broker that this Tub will create, to make certain unit tests
 	easier to write (allowing them to substitute a custom Broker
