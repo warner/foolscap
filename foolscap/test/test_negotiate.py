@@ -746,18 +746,18 @@ class Existing(CrossfireMixin, unittest.TestCase):
 # this test will have to change when the regular Negotiation starts using
 # different decision blocks. The version numbers must be updated each time
 # the negotiation version is changed.
-assert negotiate.Negotiation.maxVersion == 2
+assert negotiate.Negotiation.maxVersion == 3
 MAX_HANDLED_VERSION = negotiate.Negotiation.maxVersion
-UNHANDLED_VERSION = 3
+UNHANDLED_VERSION = 4
 class NegotiationVbig(negotiate.Negotiation):
     maxVersion = UNHANDLED_VERSION
     def __init__(self):
         negotiate.Negotiation.__init__(self)
         self.negotiationOffer["extra"] = "new value"
-    def evaluateNegotiationVersion3(self, offer):
+    def evaluateNegotiationVersion4(self, offer):
         # just like v1, but different
         return self.evaluateNegotiationVersion1(offer)
-    def acceptDecisionVersion3(self, decision):
+    def acceptDecisionVersion4(self, decision):
         return self.acceptDecisionVersion1(decision)
 
 class NegotiationVbigOnly(NegotiationVbig):

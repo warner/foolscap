@@ -1,5 +1,16 @@
 2007-04-27  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation.minVersion): bump both min
+	and max version to '3', since we've added PING and PONG tokens
+	that weren't present before. It would be feasible to accomodate v2
+	peers (by adding a Banana flag that refrains from ever sending
+	PINGs), but there aren't enough 0.1.2 installations present to
+	make this seem like a good idea just now.
+	(Negotiation.maxVersion): same
+	(Negotiation.evaluateNegotiationVersion3): same
+	(Negotiation.acceptDecisionVersion3): same
+	* foolscap/test/test_negotiate.py (Future): same
+
 	* foolscap/banana.py (Banana): add keepalives and idle-disconnect.
 	The first timeout value says that if we haven't received any data
 	for this long, poke the other side by sending them a PING message.

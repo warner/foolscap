@@ -44,6 +44,7 @@ PLAINTEXT, ENCRYPTED, DECIDING, ABANDONED = range(4)
 #             decision includes initial-vocab-table-index
 #  2 (0.1.1): no changes to offer or decision
 #             reqID=0 was commandeered for use by callRemoteOnly()
+#  3 (0.1.3): added PING and PONG tokens
 
 class Negotiation(protocol.Protocol):
     """This is the first protocol to speak over the wire. It is responsible
@@ -147,8 +148,8 @@ class Negotiation(protocol.Protocol):
     debugNegotiation = False
     forceNegotiation = None
 
-    minVersion = 2
-    maxVersion = 2
+    minVersion = 3
+    maxVersion = 3
 
     brokerClass = broker.Broker
 
@@ -777,6 +778,12 @@ class Negotiation(protocol.Protocol):
         # decision blocks.
         return self.evaluateNegotiationVersion1(offer)
 
+    def evaluateNegotiationVersion3(self, offer):
+        # version 3 adds PING and PONG tokens, to enable keepalives and
+        # idle-disconnect. No other protocol changes were made, and no
+        # changes were made to the offer or decision blocks.
+        return self.evaluateNegotiationVersion1(offer)
+
     def sendDecision(self, decision, params):
         if self.debug_doTimer("sendDecision", 1,
                               self.sendDecision, decision, params):
@@ -851,6 +858,11 @@ class Negotiation(protocol.Protocol):
     def acceptDecisionVersion2(self, decision):
         # this only affects the interpretation of reqID=0, so we can use the
         # same accept function
+        return self.acceptDecisionVersion1(decision)
+
+    def acceptDecisionVersion3(self, decision):
+        # this adds PING and PONG tokens, so we can use the same accept
+        # function
         return self.acceptDecisionVersion1(decision)
 
     def loopbackDecision(self):
