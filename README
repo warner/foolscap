@@ -19,6 +19,23 @@ have well-known PB-URLs.
 
 Full documentation and examples are in the doc/ directory.
 
+DEPENDENCIES:
+
+ * Python 2.4 or later
+ * Twisted 2.4.0 or later
+ * PyOpenSSL (tested against 0.6)
+
+
+INSTALLATION:
+
+ To install foolscap into your system's normal python library directory, just
+ run the following (you will probably have to do this as root):
+
+  python setup.py install
+
+ You can also just add the foolscap source tree to your PYTHONPATH, since
+ there are no compile steps or .so/.dll files involved.
+
 
 COMPATIBILITY:
 
@@ -27,8 +44,18 @@ COMPATIBILITY:
  versions is *NOT* yet guaranteed. Do not use Foolscap if you do not have
  continuing control over both ends of the wire. Foolscap is not yet suitable
  for widespread deployment: for production applications please continue to
- use oldpb (in twisted.spread) . Foolscap has not been used extensively in
- any environment and serious bugs may exist.
+ use oldpb (in twisted.spread).
+
+ Foolscap has a built-in version-negotiation mechanism that allows the two
+ processes to determine how to best communicate with each other. The two ends
+ will agree upon the highest mutually-supported version for all their
+ traffic. If they do not have any versions in common, the connection will
+ fail with a NegotiationError.
+
+ Certain releases of Foolscap will remain compatible with earlier releases.
+ Please check the NEWS file for announcements of compatibility-breaking
+ changes in any given release.
+
 
 NAMING:
 
