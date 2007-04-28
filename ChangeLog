@@ -1,5 +1,11 @@
 2007-04-27  Brian Warner  <warner@lothar.com>
 
+	* foolscap/banana.py (Banana.handleData): rewrite the typebyte
+	scanning loop, to remove the redundant pos<64 check. Also, if we
+	get an overlong prefix, log it so we can figure out what's going
+	wrong.
+	* foolscap/test/test_banana.py: update to match
+
 	* foolscap/negotiate.py (Negotiation.dataReceived): if a
 	non-NegotiationError exception occurs, log it, since it indicates
 	a foolscap coding failure rather than some disagreement with the
