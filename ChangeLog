@@ -1,5 +1,9 @@
 2007-04-27  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py (Broker.freeYourReference._ignore_loss):
+	change the way we ignore DeadReferenceError and friends, since
+	f.trap is not suitable for direct use as an errback
+
 	* foolscap/referenceable.py (SturdyRef.__init__): log the repr of
 	the unparseable FURL, rather than just the str, in case there are
 	weird control characters in it

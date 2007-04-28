@@ -361,9 +361,12 @@ class Broker(banana.Banana, referenceable.Referenceable):
             d = rb.callRemote("decref", clid=tracker.clid, count=count)
             # if the connection was lost before we can get an ack, we're
             # tearing this down anyway
-            d.addErrback(lambda f: f.trap(DeadReferenceError))
-            d.addErrback(lambda f: f.trap(error.ConnectionLost))
-            d.addErrback(lambda f: f.trap(error.ConnectionDone))
+            def _ignore_loss(f):
+                f.trap(DeadReferenceError,
+                       error.ConnectionLost,
+                       error.ConnectionDone)
+                return None
+            d.addErrback(_ignore_loss)
             # once the ack comes back, or if we know we'll never get one,
             # release the tracker
             d.addCallback(self.freeYourReferenceTracker, tracker)
