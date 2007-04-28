@@ -2,7 +2,6 @@
 
 import os.path, weakref
 from zope.interface import implements
-from twisted.python import log
 from twisted.internet import defer, protocol
 from twisted.application import service, strports
 

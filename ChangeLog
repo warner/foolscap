@@ -1,5 +1,7 @@
 2007-04-27  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py: remove an unused import
+
 	* foolscap/pb.py (Tub.generateSwissnumber): always use os.urandom
 	to generate the unguessable identifier. Previously we used either
 	PyCrypto or fell back to the stdlib 'random' module (which of
