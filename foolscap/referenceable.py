@@ -693,7 +693,7 @@ class SturdyRef(Copyable, RemoteCopy):
                 self.tubID = None
                 self.location = url[:slash]
             else:
-                raise ValueError("unknown PB-URL prefix in '%s'" % url)
+                raise ValueError("unknown FURL prefix in %r" % (url,))
 
     def getTubRef(self):
         if self.encrypted:
