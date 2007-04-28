@@ -18,19 +18,6 @@ try:
 except ImportError:
     pass
 
-randpool_available = False
-try:
-    # we want to use the random-number generation code from PyCrypto
-    from Crypto.Util import randpool
-    randpool_available = True
-except ImportError:
-    # fall back to the stdlib 'random' module if we can't get something that
-    # uses /dev/random. This form is seeded from the current system time,
-    # which is much less satisfying.
-    log.msg("Warning: PyCrypto not available, so secure URLs will be "
-            "less random than we'd really prefer")
-    import random
-
 
 Listeners = []
 class Listener(protocol.ServerFactory):
@@ -198,10 +185,6 @@ class Tub(service.MultiService):
     debugBanana = False
     NAMEBITS = 160 # length of swissnumber for each reference
     TUBIDBITS = 16 # length of non-crypto tubID
-    if randpool_available:
-        randpool = randpool.RandomPool()
-    else:
-        randpool = None
     encrypted = True
     negotiationClass = negotiate.Negotiation
     brokerClass = broker.Broker
@@ -423,11 +406,7 @@ class Tub(service.MultiService):
         return defer.DeferredList(dl)
 
     def generateSwissnumber(self, bits):
-        if self.randpool:
-            bytes = self.randpool.get_bytes(bits/8)
-        else:
-            bytes = "".join([chr(random.randint(0,255))
-                             for n in range(bits/8)])
+        bytes = os.urandom(bits/8)
         return base32.encode(bytes)
 
     def buildURL(self, name):

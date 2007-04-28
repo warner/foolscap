@@ -1,5 +1,15 @@
 2007-04-27  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.generateSwissnumber): always use os.urandom
+	to generate the unguessable identifier. Previously we used either
+	PyCrypto or fell back to the stdlib 'random' module (which of
+	course isn't very random at all). I did it this way originally to
+	provide compatibility with python2.3 (which lacked os.urandom):
+	now that we require python2.4 or newer, os.urandom is a far better
+	source (it uses /dev/random or equivalent).
+	* doc/using-pb.xhtml: don't mention PyCrypto now that we aren't
+	using it at all.
+
 	* foolscap/negotiate.py (Negotiation.minVersion): bump both min
 	and max version to '3', since we've added PING and PONG tokens
 	that weren't present before. It would be feasible to accomodate v2
