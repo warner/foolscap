@@ -1,5 +1,15 @@
 2007-04-27  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.keepaliveTimeout): set the default keepalive
+	timer to 4 minutes. This means that at most 8 minutes will go by
+	without any traffic at all, which should be a reasonable value to
+	keep NAT table entries alive. PINGs are only sent if no other
+	traffic was received, and they are only one byte long, so the
+	traffic overhead should be minimal. Note that we are not turning
+	on disconnectTimeout by default: if you want quietly broken
+	connections to be disconnected before TCP notices a problem you'll
+	need to do tub.setOption("disconnectTimeout", 10*60) or something.
+
 	* foolscap/pb.py: remove an unused import
 
 	* foolscap/pb.py (Tub.generateSwissnumber): always use os.urandom

@@ -187,7 +187,7 @@ class Tub(service.MultiService):
     encrypted = True
     negotiationClass = negotiate.Negotiation
     brokerClass = broker.Broker
-    keepaliveTimeout = None # ping when connection has been idle this long
+    keepaliveTimeout = 4*60 # ping when connection has been idle this long
     disconnectTimeout = None # disconnect after this much idle time
 
     def __init__(self, certData=None, certFile=None, options={}):
