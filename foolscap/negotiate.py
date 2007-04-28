@@ -388,7 +388,7 @@ class Negotiation(protocol.Protocol):
         except Exception, e:
             why = Failure()
             if self.debugNegotiation:
-                log.msg("negotation had exception: %s" % why)
+                log.msg("negotiation had exception: %s" % why)
             if isinstance(e, RemoteNegotiationError):
                 pass # they've already hung up
             else:
@@ -397,6 +397,8 @@ class Negotiation(protocol.Protocol):
                 if isinstance(e, NegotiationError):
                     errmsg = str(e)
                 else:
+                    log.msg("negotiation had internal error:")
+                    log.msg(why)
                     errmsg = "internal server error, see logs"
                 errmsg = errmsg.replace("\n", " ").replace("\r", " ")
                 if self.phase == PLAINTEXT:
