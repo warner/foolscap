@@ -257,9 +257,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.yourReferenceByURL = {}
         self.myGifts = {}
         self.myGiftsByGiftID = {}
-        dw, self.disconnectWatchers = self.disconnectWatchers, []
-        for (cb,args,kwargs) in dw:
+        for (cb,args,kwargs) in self.disconnectWatchers:
             eventually(cb, *args, **kwargs)
+        self.disconnectWatchers = []
         banana.Banana.connectionLost(self, why)
         if self.tub:
             # TODO: remove the conditional. It is only here to accomodate
@@ -268,10 +268,26 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def notifyOnDisconnect(self, callback, *args, **kwargs):
         marker = (callback, args, kwargs)
-        self.disconnectWatchers.append(marker)
+        if self.disconnected:
+            eventually(callback, *args, **kwargs)
+        else:
+            self.disconnectWatchers.append(marker)
         return marker
     def dontNotifyOnDisconnect(self, marker):
-        self.disconnectWatchers.remove(marker)
+        if self.disconnected:
+            return
+        # be tolerant of attempts to unregister a callback that has already
+        # fired. I think it is hard to write safe code without this
+        # tolerance.
+
+        # TODO: on the other hand, I'm not sure this is the best policy,
+        # since you lose the feedback that tells you about
+        # unregistering-the-wrong-thing bugs. We need to look at the way that
+        # register/unregister gets used and see if there is a way to retain
+        # the typechecking that results from insisting that you can only
+        # remove something that was stil in the list.
+        if marker in self.disconnectWatchers:
+            self.disconnectWatchers.remove(marker)
 
     # methods to handle RemoteInterfaces
     def getRemoteInterfaceByName(self, name):

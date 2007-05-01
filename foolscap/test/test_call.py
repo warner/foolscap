@@ -323,7 +323,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         return d
     testDefer.timeout = 2
 
-    def testDisconnect1(self):
+    def testDisconnect_during_call(self):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("hang")
         e = RuntimeError("lost connection")
@@ -331,13 +331,12 @@ class TestCall(TargetMixin, unittest.TestCase):
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        lambda why: why.trap(RuntimeError) and None)
         return d
-    testDisconnect1.timeout = 2
 
     def disconnected(self, *args, **kwargs):
         self.lost = 1
         self.lost_args = (args, kwargs)
 
-    def testDisconnect2(self):
+    def testNotifyOnDisconnect(self):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
         rr.notifyOnDisconnect(self.disconnected)
@@ -346,20 +345,27 @@ class TestCall(TargetMixin, unittest.TestCase):
         def _check(res):
             self.failUnless(self.lost)
             self.failUnlessEqual(self.lost_args, ((),{}))
+            # it should be safe to unregister now, even though the callback
+            # has already fired, since dontNotifyOnDisconnect is tolerant
+            rr.dontNotifyOnDisconnect(self.disconnected)
         d.addCallback(_check)
         return d
 
-    def testDisconnect3(self):
+    def testNotifyOnDisconnect_unregister(self):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
         m = rr.notifyOnDisconnect(self.disconnected)
+        rr.dontNotifyOnDisconnect(m)
+        # dontNotifyOnDisconnect is supposed to be tolerant of duplicate
+        # unregisters, because otherwise it is hard to avoid race conditions.
+        # Validate that we can unregister something multiple times.
         rr.dontNotifyOnDisconnect(m)
         rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
         d = flushEventualQueue()
         d.addCallback(lambda res: self.failIf(self.lost))
         return d
 
-    def testDisconnect4(self):
+    def testNotifyOnDisconnect_args(self):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
         rr.notifyOnDisconnect(self.disconnected, "arg", foo="kwarg")
@@ -369,6 +375,21 @@ class TestCall(TargetMixin, unittest.TestCase):
             self.failUnless(self.lost)
             self.failUnlessEqual(self.lost_args, (("arg",),
                                                   {"foo": "kwarg"}))
+        d.addCallback(_check)
+        return d
+
+    def testNotifyOnDisconnect_already(self):
+        # make sure notifyOnDisconnect works even if the reference was already
+        # broken
+        rr, target = self.setupTarget(HelperTarget())
+        self.lost = 0
+        rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
+        d = flushEventualQueue()
+        d.addCallback(lambda res: rr.notifyOnDisconnect(self.disconnected))
+        d.addCallback(lambda res: flushEventualQueue())
+        def _check(res):
+            self.failUnless(self.lost, "disconnect handler not run")
+            self.failUnlessEqual(self.lost_args, ((),{}))
         d.addCallback(_check)
         return d
 

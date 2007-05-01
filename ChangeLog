@@ -1,5 +1,19 @@
 2007-04-30  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py (Broker.notifyOnDisconnect): if the
+	RemoteReference is already dead, notify the callback right away.
+	Previously we would never notify them, which was a problem.
+	(Broker.dontNotifyOnDisconnect): be tolerant of attempts to
+	unregister callbacks that have already fired. I think this makes it
+	easier to write correct code, but on the other hand it loses the
+	assertion feedback if somebody tries to unregister something that
+	was never registered in the first place.
+	* foolscap/test/test_call.py (TestCall.testNotifyOnDisconnect):
+	test this new tolerance
+	(TestCall.testNotifyOnDisconnect_unregister): same
+	(TestCall.testNotifyOnDisconnect_already): test that a handler
+	fires when the reference was already broken
+
 	* foolscap/call.py (InboundDelivery.logFailure): don't use
 	f.getTraceback() on string exceptions: twisted explodes
 	(FailureSlicer.getStateToCopy): same
