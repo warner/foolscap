@@ -1,3 +1,10 @@
+2007-04-30  Brian Warner  <warner@allmydata.com>
+
+	* doc/using-pb.xhtml (RemoteInterfaces): document the fact that
+	the default name is *not* fully-qualified, necessitating the use
+	of __remote_name__ to distinguish between foo.RIBar and baz.RIBar
+	* foolscap/remoteinterface.py: same
+
 2007-04-30  Brian Warner  <warner@lothar.com>
 
 	* foolscap/call.py (FailureSlicer.getStateToCopy): handle string
