@@ -709,14 +709,22 @@ class FailureSlicer(slicer.BaseSlicer):
         #state['stack'] = []
 
         state = {}
+        # string exceptions show up as obj.value == None and
+        # isinstance(obj.type, str). Normal exceptions show up as obj.value
+        # == text and obj.type == exception class. We need to make sure we
+        # can handle both.
         if isinstance(obj.value, failure.Failure):
             # TODO: how can this happen? I got rid of failure2Copyable, so
             # if this case is possible, something needs to replace it
             raise RuntimeError("not implemented yet")
             #state['value'] = failure2Copyable(obj.value, banana.unsafeTracebacks)
+        elif isinstance(obj.type, str):
+            state['value'] = str(obj.value)
+            state['type'] = obj.type # a string
         else:
             state['value'] = str(obj.value) # Exception instance
-        state['type'] = reflect.qual(obj.type) # Exception class
+            state['type'] = reflect.qual(obj.type) # Exception class
+
         if broker.unsafeTracebacks:
             io = StringIO()
             obj.printTraceback(io)

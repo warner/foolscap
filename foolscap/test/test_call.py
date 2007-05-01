@@ -124,6 +124,21 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failUnlessSubstring("TargetWithoutInterfaces", str(f))
         self.failUnlessSubstring(" has no attribute 'remote_bogus'", str(f))
 
+    def testFail4(self):
+        # make sure we handle string exceptions correctly
+        rr, target = self.setupTarget(TargetWithoutInterfaces())
+        d = rr.callRemote("failstring")
+        self.failIf(target.calls)
+        d.addBoth(self._testFail4_1)
+        return d
+    def _testFail4_1(self, f):
+        # f should be a CopiedFailure
+        self.failUnless(isinstance(f, failure.Failure),
+                        "Hey, we didn't fail: %s" % f)
+        self.failUnless(f.check("string exceptions are annoying"),
+                        "wrong exception type: %s" % f)
+
+
     def testCall2(self):
         # server end uses an interface this time, but not the client end
         rr, target = self.setupTarget(Target(), True)

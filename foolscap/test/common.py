@@ -215,6 +215,7 @@ class RIMyTarget(RemoteInterface):
     def getName(): return str
     disputed = RemoteMethodSchema(_response=int, a=int)
     def fail(): return str  # actually raises an exception
+    def failstring(): return str # raises a string exception
 
 class RIMyTarget2(RemoteInterface):
     __remote_name__ = "RIMyTargetInterface2"
@@ -262,6 +263,8 @@ class Target(Referenceable):
         return 24
     def remote_fail(self):
         raise ValueError("you asked me to fail")
+    def remote_failstring(self):
+        raise "string exceptions are annoying"
 
 class TargetWithoutInterfaces(Target):
     # undeclare the RIMyTarget interface
