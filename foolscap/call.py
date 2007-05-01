@@ -1,6 +1,4 @@
 
-from cStringIO import StringIO
-
 from twisted.python import failure, log, reflect
 from twisted.internet import defer
 
