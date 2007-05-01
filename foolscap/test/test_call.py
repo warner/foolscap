@@ -8,7 +8,7 @@ if False:
     from twisted.python import log
     log.startLogging(sys.stderr)
 
-from twisted.python import failure
+from twisted.python import failure, log
 from twisted.internet import reactor, defer
 from twisted.trial import unittest
 from twisted.internet.main import CONNECTION_LOST
