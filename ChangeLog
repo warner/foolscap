@@ -1,11 +1,17 @@
-2007-04-30  Brian Warner  <warner@allmydata.com>
+2007-04-30  Brian Warner  <warner@lothar.com>
+
+	* foolscap/call.py (InboundDelivery.logFailure): don't use
+	f.getTraceback() on string exceptions: twisted explodes
+	(FailureSlicer.getStateToCopy): same
+	* foolscap/test/test_call.py (TestCall.testFailStringException):
+	skip the test on python2.5, since string exceptions are deprecated
+	anyways and I don't want the warning message to clutter the test
+	logs
 
 	* doc/using-pb.xhtml (RemoteInterfaces): document the fact that
 	the default name is *not* fully-qualified, necessitating the use
 	of __remote_name__ to distinguish between foo.RIBar and baz.RIBar
 	* foolscap/remoteinterface.py: same
-
-2007-04-30  Brian Warner  <warner@lothar.com>
 
 	* foolscap/call.py (FailureSlicer.getStateToCopy): handle string
 	exceptions without exploding, annoying as they are.

@@ -2,9 +2,9 @@
 import gc
 import re
 import sets
+import sys
 
 if False:
-    import sys
     from twisted.python import log
     log.startLogging(sys.stderr)
 
@@ -124,14 +124,17 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failUnlessSubstring("TargetWithoutInterfaces", str(f))
         self.failUnlessSubstring(" has no attribute 'remote_bogus'", str(f))
 
-    def testFail4(self):
+    def testFailStringException(self):
         # make sure we handle string exceptions correctly
+        if sys.version_info >= (2,5):
+            log.msg("skipping test: string exceptions are deprecated in 2.5")
+            return
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("failstring")
         self.failIf(target.calls)
-        d.addBoth(self._testFail4_1)
+        d.addBoth(self._testFailStringException_1)
         return d
-    def _testFail4_1(self, f):
+    def _testFailStringException_1(self, f):
         # f should be a CopiedFailure
         self.failUnless(isinstance(f, failure.Failure),
                         "Hey, we didn't fail: %s" % f)

@@ -188,7 +188,10 @@ class InboundDelivery:
                 (self.reqID, self.obj, self.methodname))
         log.msg(" args=%s" % (self.allargs.args,))
         log.msg(" kwargs=%s" % (self.allargs.kwargs,))
-        stack = f.getTraceback()
+        if isinstance(f.type, str):
+            stack = "getTraceback() not available for string exceptions\n"
+        else:
+            stack = f.getTraceback()
         # TODO: trim stack to everything below Broker._doCall
         stack = "LOCAL: " + stack.replace("\n", "\nLOCAL: ")
         log.msg(" the failure was:")
@@ -726,9 +729,11 @@ class FailureSlicer(slicer.BaseSlicer):
             state['type'] = reflect.qual(obj.type) # Exception class
 
         if broker.unsafeTracebacks:
-            io = StringIO()
-            obj.printTraceback(io)
-            state['traceback'] = io.getvalue()
+            if isinstance(obj.type, str):
+                stack = "getTraceback() not available for string exceptions\n"
+            else:
+                stack = obj.getTraceback()
+            state['traceback'] = stack
             # TODO: provide something with globals and locals and HTML and
             # all that cool stuff
         else:
