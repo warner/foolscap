@@ -4,6 +4,13 @@
 	delivery, by keeping track of what state the receiver is in (i.e.
 	whether we should send them an HTTP error block, an rfc822-style
 	error-block, or a banana ERROR token).
+	(Negotiation.switchToBanana): empty self.buffer, to make sure that
+	any extra data is passed entirely to the new Banana protocol and
+	none of it gets passed back to ourselves
+	(Negotiation.dataReceived): same, only recurse if there's something
+	still in self.buffer. In other situtations we recurse here because
+	we might have somehow received data for two separate phases in a
+	single packet.
 
 	* foolscap/banana.py (Banana.sendError): rather than explode when
 	trying to send an overly-long error message, just truncate it.

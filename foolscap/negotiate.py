@@ -386,8 +386,11 @@ class Negotiation(protocol.Protocol):
                 self.handleDECIDING(header)
             else:
                 assert 0, "should not get here"
-            # there might be some leftover data for the next phase
-            self.dataReceived("")
+            # there might be some leftover data for the next phase.
+            # self.buffer will be emptied when we switchToBanana, so in that
+            # case we won't call the wrong dataReceived.
+            if self.buffer:
+                self.dataReceived("")
 
         except Exception, e:
             why = Failure()
@@ -935,7 +938,8 @@ class Negotiation(protocol.Protocol):
         b.setTub(self.tub)
         self.transport.protocol = b
         b.makeConnection(self.transport)
-        b.dataReceived(self.buffer)
+        buf, self.buffer = self.buffer, "" # empty our buffer, just in case
+        b.dataReceived(buf) # and hand it to the new protocol
 
         # if we were created as a client, we'll have a TubConnector. Let them
         # know that this connection has succeeded, so they can stop any other
