@@ -128,6 +128,14 @@ established since last startup. If you have no parent to attach it to, you
 can use <code>startService</code> and <code>stopService</code> on the Tub
 directly.</p>
 
+<p>Note that you must start the Tub before calling <code>getReference</code>
+or <code>connectTo</code>, since both of these trigger network activity, and
+Tubs are supposed to be silent until they are started. In a future release
+this requirement may be relaxed, but the principle of "no network activity
+until the Tub is started" will be maintained, probably by queueing the
+<code>getReference</code> calls and handling them after the Tub been
+started.</p>
+
 <h3>Making your Tub remotely accessible</h3>
 
 <p>To make any of your <code>Referenceable</code>s available, you must make
@@ -256,6 +264,7 @@ base="foolscap.pb.Tub">getReference</code>:</p>
 from foolscap import Tub
 
 tub = Tub()
+tub.startService()
 d = tub.getReference("pb://ABCD@myhost.example.com:12345/math-service")
 def gotReference(remote):
     print "Got the RemoteReference:", remote

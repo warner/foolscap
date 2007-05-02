@@ -517,8 +517,14 @@ class Tub(service.MultiService):
     def getReference(self, sturdyOrURL):
         """Acquire a RemoteReference for the given SturdyRef/URL.
 
+        The Tub must be running (i.e. Tub.startService()) when this is
+        invoked. Future releases may relax this requirement.
+
         @return: a Deferred that fires with the RemoteReference
         """
+
+        assert self.running
+
         if isinstance(sturdyOrURL, SturdyRef):
             sturdy = sturdyOrURL
         else:
@@ -553,6 +559,9 @@ class Tub(service.MultiService):
         connection goes away. At some point after it goes away, the
         Reconnector will reconnect.
 
+        The Tub must be running (i.e. Tub.startService()) when this is
+        invoked. Future releases may relax this requirement.
+
         I return a Reconnector object. When you no longer want to maintain
         this connection, call the stopConnecting() method on the Reconnector.
         I promise to not invoke your callback after you've called
@@ -573,6 +582,7 @@ class Tub(service.MultiService):
          rc.stopConnecting() # later
         """
 
+        assert self.running
         rc = Reconnector(self, sturdyOrURL, cb, *args, **kwargs)
         self.reconnectors.append(rc)
         return rc

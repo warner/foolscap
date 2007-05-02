@@ -1,5 +1,20 @@
 2007-05-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.getReference): assert that the Tub is
+	already running, either because someone called Tub.startService(),
+	or because we've been attached (with tub.setServiceParent) to a
+	running service. This requirement appeared with the
+	connector-tracking code, and I hope to relax it at some
+	point (such that any pre-startService getReferences will be queued
+	and serviced when the Tub is finally started), but for this
+	release it is a requirement to start the service before trying to
+	use it.
+	(Tub.connectTo): same
+	* doc/using-pb.xhtml: document it
+	* doc/listings/pb1client.py: update example to match
+	* doc/listings/pb2client.py: update example to match
+	* doc/listings/pb3client.py: update example to match
+
 	* foolscap/pb.py (Tub.connectorFinished): if, for some reason,
 	we're removing the same connector twice, log and ignore rather
 	than explode. I can't find a code path that would allow this, but
@@ -8,6 +23,7 @@
 	benefit of unit tests anyways (who want to know when
 	Tub.stopService is done), I think it's more important to keep
 	application code running.
+
 	* foolscap/negotiate.py (TubConnector.shutdown): clear out
 	self.remainingLocations too, in case it helps to shut things down
 	faster. Add some comments.
