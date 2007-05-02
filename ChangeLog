@@ -1,5 +1,8 @@
 2007-05-02  Brian Warner  <warner@lothar.com>
 
+	* MANIFEST.in: include some recently-added files to the source
+	tarball
+
 	* NEWS: update for the upcoming release
 
 	* foolscap/reconnector.py (Reconnector._failed): simplify
