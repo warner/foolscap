@@ -1,5 +1,8 @@
 2007-05-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/reconnector.py (Reconnector._failed): simplify
+	log/no-log logic
+
 	* foolscap/slicers/unicode.py (UnicodeConstraint): add a new
 	constraint that only accepts unicode objects. It isn't complete:
 	I've forgotten how the innards of Constraints work, and as a
