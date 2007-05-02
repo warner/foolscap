@@ -172,6 +172,8 @@ class TestCall(TargetMixin, unittest.TestCase):
         rr, target = self.setupTarget(HelperTarget())
         t = (sets.Set([1, 2, 3]),
              "str", True, 12, 12L, 19.3, None,
+             u"unicode",
+             "bytestring",
              "any", 14.3,
              15,
              "a"*95,
@@ -309,7 +311,7 @@ class TestCall(TargetMixin, unittest.TestCase):
     testFailWrongReturnLocal.timeout = 2
     def _testFailWrongReturnLocal_1(self, f):
         self.failUnless(f.check(Violation))
-        self.failUnlessSubstring("INT token rejected by StringConstraint",
+        self.failUnlessSubstring("INT token rejected by ByteStringConstraint",
                                  str(f))
         self.failUnlessSubstring("in inbound method results", str(f))
         self.failUnlessSubstring("<RootUnslicer>.Answer(req=1)", str(f))

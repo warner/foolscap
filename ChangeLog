@@ -1,5 +1,32 @@
 2007-05-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/slicers/unicode.py (UnicodeConstraint): add a new
+	constraint that only accepts unicode objects. It isn't complete:
+	I've forgotten how the innards of Constraints work, and as a
+	result this one is too permissive: it will probably accept too
+	many tokens over the wire before raising a Violation (although the
+	post-receive just-before-the-method-is-called check should still
+	be enforced, so application code shouldn't notice the issue).
+	* foolscap/test/test_schema.py (ConformTest.testUnicode): test it
+	(CreateTest.testMakeConstraint): check the typemap too
+	* foolscap/test/test_call.py (TestCall.testMegaSchema): test in a call
+	* foolscap/test/common.py: same
+
+	* foolscap/constraint.py (ByteStringConstraint): rename
+	StringConstraint to ByteStringConstraint, to more accurately
+	describe its function. This constraint will *not* accept unicode
+	objects.
+	* foolscap/call.py, foolscap/copyable.py, foolscap/referenceable.py:
+	* foolscap/slicers/vocab.py: same
+
+	* foolscap/schema.py (AnyStringConstraint): add a new constraint
+	to accept either bytestrings or unicode objects. I don't think it
+	actually works yet, particularly when used inside containers.
+	(constraintMap): map 'str' to ByteStringConstraint for now. Maybe
+	someday it should be mapped to AnyStringConstraint, but not today.
+	Map 'unicode' to UnicodeConstraint.
+
+
 	* foolscap/pb.py (Tub.getReference): assert that the Tub is
 	already running, either because someone called Tub.startService(),
 	or because we've been attached (with tub.setServiceParent) to a

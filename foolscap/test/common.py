@@ -10,7 +10,8 @@ from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema, \
      UnconstrainedMethod
 from foolscap.schema import Any, SetOf, DictOf, ListOf, TupleOf, \
-     NumberConstraint, StringConstraint, IntegerConstraint
+     NumberConstraint, ByteStringConstraint, IntegerConstraint, \
+     UnicodeConstraint
 
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
@@ -60,12 +61,14 @@ Digits = re.compile("\d*")
 MegaSchema1 = DictOf(str,
                      ListOf(TupleOf(SetOf(int, maxLength=10, mutable=True),
                                     str, bool, int, long, float, None,
+                                    UnicodeConstraint(),
+                                    ByteStringConstraint(),
                                     Any(), NumberConstraint(),
                                     IntegerConstraint(),
-                                    StringConstraint(maxLength=100,
-                                                     minLength=90,
-                                                     regexp="\w+"),
-                                    StringConstraint(regexp=Digits),
+                                    ByteStringConstraint(maxLength=100,
+                                                         minLength=90,
+                                                         regexp="\w+"),
+                                    ByteStringConstraint(regexp=Digits),
                                     ),
                             maxLength=20),
                      maxKeys=5)

@@ -5,7 +5,7 @@ from twisted.internet import defer
 from foolscap import copyable, slicer, tokens
 from foolscap.eventual import eventually
 from foolscap.copyable import AttributeDictConstraint
-from foolscap.constraint import StringConstraint
+from foolscap.constraint import ByteStringConstraint
 from foolscap.slicers.list import ListConstraint
 from tokens import BananaError, Violation
 
@@ -16,10 +16,10 @@ class FailureConstraint(AttributeDictConstraint):
     klass = failure.Failure
 
     def __init__(self):
-        attrs = [('type', StringConstraint(200)),
-                 ('value', StringConstraint(1000)),
-                 ('traceback', StringConstraint(2000)),
-                 ('parents', ListConstraint(StringConstraint(200))),
+        attrs = [('type', ByteStringConstraint(200)),
+                 ('value', ByteStringConstraint(1000)),
+                 ('traceback', ByteStringConstraint(2000)),
+                 ('parents', ListConstraint(ByteStringConstraint(200))),
                  ]
         AttributeDictConstraint.__init__(self, *attrs)
 
