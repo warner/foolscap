@@ -1,3 +1,13 @@
+2007-05-02  Brian Warner  <warner@lothar.com>
+
+	* foolscap/negotiate.py (Negotiation): improve error-message
+	delivery, by keeping track of what state the receiver is in (i.e.
+	whether we should send them an HTTP error block, an rfc822-style
+	error-block, or a banana ERROR token).
+
+	* foolscap/banana.py (Banana.sendError): rather than explode when
+	trying to send an overly-long error message, just truncate it.
+
 2007-04-30  Brian Warner  <warner@lothar.com>
 
 	* foolscap/broker.py (Broker.notifyOnDisconnect): if the

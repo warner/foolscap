@@ -527,8 +527,7 @@ class Banana(protocol.Protocol):
 
     def sendError(self, msg):
         if len(msg) > SIZE_LIMIT:
-            raise BananaError, \
-                  "error string is too long to send (%d)" % len(msg)
+            msg = msg[:SIZE_LIMIT-10] + "..."
         int2b128(len(msg), self.transport.write)
         self.transport.write(ERROR)
         self.transport.write(msg)
