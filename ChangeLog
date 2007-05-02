@@ -1,5 +1,17 @@
 2007-05-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.connectorFinished): if, for some reason,
+	we're removing the same connector twice, log and ignore rather
+	than explode. I can't find a code path that would allow this, but
+	I *have* seen it occur in practice, and the results aren't pretty.
+	Since the whole connection-tracking thing is really for the
+	benefit of unit tests anyways (who want to know when
+	Tub.stopService is done), I think it's more important to keep
+	application code running.
+	* foolscap/negotiate.py (TubConnector.shutdown): clear out
+	self.remainingLocations too, in case it helps to shut things down
+	faster. Add some comments.
+
 	* foolscap/negotiate.py (Negotiation): improve error-message
 	delivery, by keeping track of what state the receiver is in (i.e.
 	whether we should send them an HTTP error block, an rfc822-style

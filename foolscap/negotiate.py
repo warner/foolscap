@@ -1045,7 +1045,7 @@ class TubConnector:
         self.tub = parent
         self.target = tubref
         self.remainingLocations = self.target.getLocations()
-        # attemptedLocations keeps track of where we've already try to
+        # attemptedLocations keeps track of where we've already tried to
         # connect, so we don't try them twice.
         self.attemptedLocations = []
 
@@ -1075,9 +1075,14 @@ class TubConnector:
 
     def shutdown(self):
         self.active = False
+        self.remainingLocations = []
         self.stopConnectionTimer()
         for c in self.pendingConnections.values():
             c.disconnect()
+        # as each disconnect() finishes, it will either trigger our
+        # clientConnectionFailed or our negotiationFailed methods, both of
+        # which will trigger checkForIdle, and the last such message will
+        # invoke self.tub.connectorFinished()
 
     def connectToAll(self):
         while self.remainingLocations:

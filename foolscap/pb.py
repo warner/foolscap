@@ -4,6 +4,7 @@ import os.path, weakref
 from zope.interface import implements
 from twisted.internet import defer, protocol
 from twisted.application import service, strports
+from twisted.python import log
 
 from foolscap import ipb, base32, negotiate, broker, observer
 from foolscap.referenceable import SturdyRef
@@ -360,6 +361,17 @@ class Tub(service.MultiService):
         assert self.running
         self._activeConnectors.append(c)
     def connectorFinished(self, c):
+        if c not in self._activeConnectors:
+            # TODO: I've seen this happen, but I can't figure out how it
+            # could possibly happen. Log and ignore rather than exploding
+            # when we try to do .remove, since this whole connector-tracking
+            # thing is mainly for the benefit of the unit tests (applications
+            # which never shut down a Tub aren't going to care), and it is
+            # more important to let application code run normally than to
+            # force an error here.
+            log.msg("Tub.connectorFinished: WEIRD, %s is not in %s"
+                    % (c, self._activeConnectors))
+            return
         self._activeConnectors.remove(c)
         if not self.running and not self._activeConnectors:
             self._allConnectorsAreFinished.fire(self)
