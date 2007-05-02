@@ -1,5 +1,7 @@
 2007-05-02  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the upcoming release
+
 	* foolscap/reconnector.py (Reconnector._failed): simplify
 	log/no-log logic
 
