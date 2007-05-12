@@ -1,3 +1,51 @@
+2007-05-11  Brian Warner  <warner@lothar.com>
+
+	* foolscap/slicers/set.py (FrozenSetSlicer): finally acknowledge
+	our dependence on python2.4 or newer, by using the built-in 'set'
+	and 'frozenset' types by default. We'll serialize the old sets.Set
+	and sets.ImmutableSet too, but they'll emerge as a set/frozenset.
+	This will cause problems for code that was written to be
+	compatible with python2.3 (by using sets.Set) and wasn't changed
+	when moved to 2.4, if it tries to mingle sets.Set with the data
+	coming out of Foolscap. Unfortunate, but doing it this way
+	preserves both sanity and good behavior for modern 2.4-or-later
+	apps.
+	(SetUnslicer): fix handling of children that were unreferenceable
+	during construction, fix handling of children that are not ready
+	for use (i.e. gifts).
+	(FrozenSetUnslicer): base this off of TupleUnslicer, since
+	previously the cycle-handling logic was completely broken. I'm not
+	entirely sure this is necessary, since I think the contents of
+	sets must be transitively immutable (or at least transitively
+	hashable), but it good to review and clean it up anyways.
+	* foolscap/slicers/allslicers.py: match name change
+
+	* foolscap/slicers/tuple.py (TupleUnslicer.receiveClose): fix
+	handling of unready children (i.e. gifts), previously gifts inside
+	containers were completely broken.
+	* foolscap/slicers/list.py (ListUnslicer.receiveClose): same
+	* foolscap/slicers/dict.py (DictUnslicer.receiveClose): same
+
+	* foolscap/call.py: add debug log messages (disabled)
+
+	* foolscap/referenceable.py (TheirReferenceUnslicer.receiveClose):
+	gifts must declare themselves 'unready' until the RemoteReference
+	resolves, since we might be inside a container of some sort.
+	Without this fix, methods would be invoked too early, before the
+	RemoteReference was really available.
+
+	* foolscap/test/test_banana.py (ThereAndBackAgain.test_set): match
+	new set/sets.Set behavior
+	(ThereAndBackAgain.test_cycles_1): test some of the cycles
+	(ThereAndBackAgain.test_cycles_3): add (disabled) test for
+	checking cycles that involve sets. I think these tests are
+	non-sensical, since sets can't really participate in the sorts of
+	cycles we worry about, but I left the (disabled) test code in
+	place in case it becomes useful again.
+
+	* foolscap/test/test_gifts.py (Gifts.testContainers): validate
+	that gifts can appear in all sorts of containers successfully.
+
 2007-05-11  Brian Warner  <warner@lothar.com.com>
 
 	* foolscap/__init__.py: bump revision to 0.1.3+ while between releases

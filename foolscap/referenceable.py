@@ -630,8 +630,18 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
         d.addBoth(self.ackGift)
         # we return a Deferred that will fire with the RemoteReference when
         # it becomes available. The RemoteReference is not even referenceable
-        # until then.
-        return d,None
+        # until then. In addition, we provide a ready_deferred, since any
+        # mutable container which holds the gift will be referenceable early
+        # but the message delivery must still wait for the getReference to
+        # complete. See to it that we fire the object deferred before we fire
+        # the ready_deferred.
+        obj_deferred, ready_deferred = defer.Deferred(), defer.Deferred()
+        def _ready(rref):
+            obj_deferred.callback(rref)
+            ready_deferred.callback(rref)
+        d.addCallback(_ready)
+
+        return obj_deferred, ready_deferred
 
     def ackGift(self, rref):
         rb = self.broker.remote_broker
