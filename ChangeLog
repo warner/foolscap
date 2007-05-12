@@ -1,3 +1,8 @@
+2007-05-11  Brian Warner  <warner@lothar.com.com>
+
+	* foolscap/__init__.py: bump revision to 0.1.3+ while between releases
+	* misc/{sid|sarge|dapper|edgy|feisty}/debian/changelog: same
+
 2007-05-02  Brian Warner  <warner@lothar.com>
 
 	* foolscap/__init__.py: release Foolscap-0.1.3
