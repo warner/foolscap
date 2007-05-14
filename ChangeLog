@@ -1,5 +1,8 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* misc/testutils/figleaf.py (CodeTracer.start): remove leftover
+	debug logging
+
 	* foolscap/remoteinterface.py (RemoteInterfaceConstraint): accept
 	gifts too: allow sending of RemoteReferences on the outbound side,
 	and accept their-reference sequences on the inbound side.
