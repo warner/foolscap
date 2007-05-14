@@ -199,7 +199,8 @@ class RemoteMethodSchema:
             raise InvalidRemoteInterface(why)
         if not names:
             typeList = []
-        if len(names) != len(typeList):
+        # 'def foo(oops)' results in typeList==None
+        if typeList is None or len(names) != len(typeList):
             # TODO: relax this, use schema=Any for the args that don't have
             # default values. This would make:
             #  def foo(a, b=int): return None

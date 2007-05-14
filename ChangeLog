@@ -1,3 +1,13 @@
+2007-05-14  Brian Warner  <warner@lothar.com>
+
+	* foolscap/remoteinterface.py (RemoteMethodSchema.initFromMethod):
+	properly handle methods like 'def foo(nodefault)' that are missing
+	*all* default values. Previously this resulted in an unhelpful
+	exception (since typeList==None), now it gives a sensible
+	InvalidRemoteInterface exception.
+	* foolscap/test/test_schema.py (Arguments.test_bad_arguments):
+	test it
+
 2007-05-11  Brian Warner  <warner@lothar.com>
 
 	* foolscap/slicers/set.py (FrozenSetSlicer): finally acknowledge
