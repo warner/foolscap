@@ -1,5 +1,9 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_call.py (TestCall.testCall1): replace an
+	arbitrary delay with a polling loop, to make the test more
+	reliable under load
+
 	* foolscap/referenceable.py (SturdyRef.asLiveRef): remove a method
 	that was never used, didn't work, and is of dubious utility
 	anyways.
