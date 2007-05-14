@@ -1,5 +1,10 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (SturdyRef.asLiveRef): remove a method
+	that was never used, didn't work, and is of dubious utility
+	anyways.
+	(_AsLiveRef): remove this too
+
 	* misc/testutils/figleaf.py (CodeTracer.start): remove leftover
 	debug logging
 

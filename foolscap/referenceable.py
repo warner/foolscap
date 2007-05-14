@@ -737,26 +737,6 @@ class SturdyRef(Copyable, RemoteCopy):
                 cmp(self.__class__, them.__class__) or
                 cmp(self._distinguishers(), them._distinguishers()))
 
-    def asLiveRef(self):
-        """Return an object that can be sent over the wire and unserialized
-        as a live RemoteReference on the far end. Use this when you have a
-        SturdyRef and want to give someone a reference to its target, but
-        when you haven't bothered to acquire your own live reference to it."""
-
-        return _AsLiveRef(self)
-
-class _AsLiveRef:
-    implements(ipb.ISlicer)
-
-    def __init__(self, sturdy):
-        self.target = sturdy
-
-    def slice(self, streamable, banana):
-        yield 'their-reference'
-        yield giftID
-        yield self.target.getURL()
-        yield [] # interfacenames
-
 
 class TubRef:
     """This is a little helper class which provides a comparable identifier
