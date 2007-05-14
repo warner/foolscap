@@ -1,10 +1,11 @@
 
+from zope.interface import implements
 from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.internet.error import ConnectionDone, ConnectionLost
-from foolscap import Tub, UnauthenticatedTub
+from foolscap import Tub, UnauthenticatedTub, RemoteInterface, Referenceable
 from foolscap.referenceable import RemoteReference
-from foolscap.test.common import HelperTarget
+from foolscap.test.common import HelperTarget, RIHelper
 from foolscap.eventual import flushEventualQueue
 
 crypto_available = False
@@ -23,6 +24,19 @@ if crypto_available:
 def ignoreConnectionDone(f):
     f.trap(ConnectionDone, ConnectionLost)
     return None
+
+class RIConstrainedHelper(RemoteInterface):
+    def set(obj=RIHelper): return None
+
+
+class ConstrainedHelper(Referenceable):
+    implements(RIConstrainedHelper)
+
+    def __init__(self, name="unnamed"):
+        self.name = name
+
+    def remote_set(self, obj):
+        self.obj = obj
 
 class Gifts(unittest.TestCase):
     # Here we test the three-party introduction process as depicted in the
@@ -283,6 +297,25 @@ class Gifts(unittest.TestCase):
             self.failUnlessEqual(len(bcourtney), 1)
             self.failUnless(isinstance(bcourtney['a'], RemoteReference))
 
+        d.addCallback(_checkBob)
+        return d
+
+    def create_constrained_characters(self):
+        self.alice = HelperTarget("alice")
+        self.bob = ConstrainedHelper("bob")
+        self.bob_url = self.tubB.registerReference(self.bob)
+        self.carol = HelperTarget("carol")
+        self.carol_url = self.tubC.registerReference(self.carol)
+
+    def test_constraint(self):
+        self.create_constrained_characters()
+        self.bob.calls = []
+        d = self.createInitialReferences()
+        def _introduce(res):
+            return self.abob.callRemote("set", self.acarol)
+        d.addCallback(_introduce)
+        def _checkBob(res):
+            self.failUnless(isinstance(self.bob.obj, RemoteReference))
         d.addCallback(_checkBob)
         return d
 

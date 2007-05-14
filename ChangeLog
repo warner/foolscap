@@ -1,5 +1,17 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* foolscap/remoteinterface.py (RemoteInterfaceConstraint): accept
+	gifts too: allow sending of RemoteReferences on the outbound side,
+	and accept their-reference sequences on the inbound side.
+	* foolscap/test/test_gifts.py (Gifts.test_constraint): test it
+	* foolscap/test/test_schema.py (Interfaces.test_remotereference):
+	update test, since now we allow RemoteReferences to be sent on the
+	outbound side
+
+	* foolscap/remoteinterface.py (getRemoteInterface): improve the
+	error message reported when a Referenceable class implements
+	multiple RemoteInterfaces
+
 	* foolscap/remoteinterface.py (RemoteMethodSchema.initFromMethod):
 	properly handle methods like 'def foo(nodefault)' that are missing
 	*all* default values. Previously this resulted in an unhelpful

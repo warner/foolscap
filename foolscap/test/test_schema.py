@@ -527,9 +527,11 @@ class Interfaces(unittest.TestCase):
         interfaceName = common.RIHelper.__remote_name__
         tracker = RemoteReferenceTracker(parent, clid, url, interfaceName)
         rr = RemoteReference(tracker)
+
         c1 = RemoteInterfaceConstraint(common.RIHelper)
-        c2 = RemoteInterfaceConstraint(common.RIMyTarget)
         self.check_inbound(rr, c1)
-        self.violates_outbound(rr, c1)
+        self.check_outbound(rr, c1) # gift
+
+        c2 = RemoteInterfaceConstraint(common.RIMyTarget)
         self.violates_inbound(rr, c2)
         self.violates_outbound(rr, c2)
