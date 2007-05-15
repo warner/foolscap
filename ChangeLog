@@ -1,5 +1,7 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* doc/using-foolscap.xhtml: rename from doc/using-pb.xhtml
+
 	* doc/using-pb.xhtml: replace all uses of 'PB URL' with 'FURL'
 
 	* foolscap/pb.py (Tub.getReference): if getReference() is called
