@@ -1,5 +1,7 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* doc/using-pb.xhtml: replace all uses of 'PB URL' with 'FURL'
+
 	* foolscap/pb.py (Tub.getReference): if getReference() is called
 	before Tub.startService(), queue the request until startup.
 	(Tub.connectTo): same for connectTo().
