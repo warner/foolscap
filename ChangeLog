@@ -1,5 +1,11 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release Foolscap-0.1.4
+	* misc/{sid|sarge|dapper|edgy|feisty}/debian/changelog: same, also
+	remove a bunch of old between-release version numbers
+
+2007-05-14  Brian Warner  <warner@lothar.com>
+
 	* NEWS: update for the upcoming release
 
 	* doc/using-foolscap.xhtml: rename from doc/using-pb.xhtml
