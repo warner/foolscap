@@ -1,5 +1,15 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.getReference): if getReference() is called
+	before Tub.startService(), queue the request until startup.
+	(Tub.connectTo): same for connectTo().
+	(Tub.startService): launch pending getReference() and connectTo()
+	requests. There are all fired with eventual-sends.
+	* foolscap/reconnector.py (Reconnector): don't automatically start
+	the Reconnector in __init__, rather wait for the Tub to start it.
+	* foolscap/test/test_tub.py (QueuedStartup): test it
+	* doc/using-pb.xhtml: update docs to match
+
 	* foolscap/test/test_call.py (TestCall.testCall1): replace an
 	arbitrary delay with a polling loop, to make the test more
 	reliable under load

@@ -128,13 +128,13 @@ established since last startup. If you have no parent to attach it to, you
 can use <code>startService</code> and <code>stopService</code> on the Tub
 directly.</p>
 
-<p>Note that you must start the Tub before calling <code>getReference</code>
-or <code>connectTo</code>, since both of these trigger network activity, and
-Tubs are supposed to be silent until they are started. In a future release
-this requirement may be relaxed, but the principle of "no network activity
-until the Tub is started" will be maintained, probably by queueing the
-<code>getReference</code> calls and handling them after the Tub been
-started.</p>
+<p>Note that no network activity will occur until the Tub's
+<code>startService</code> method has been called. This means that any
+<code>getReference</code> or <code>connectTo</code> requests that occur
+before the Tub is started will be deferred until startup. If the program
+forgets to start the Tub, these requests will never be serviced. A message to
+this effect is added to the twistd.log file to help developers discover this
+kind of problem.</p>
 
 <h3>Making your Tub remotely accessible</h3>
 
@@ -278,6 +278,25 @@ d.addCallbacks(gotReference, gotError)
 <code>Referenceable</code> named by the URL. It will use an existing
 connection, if one is available, and it will return an existing
 <code>RemoteReference</code>, it one has already been acquired.</p>
+
+<p>Since <code>getReference</code> requests are queued until the Tub starts,
+the following will work too. But don't forget to call
+<code>tub.startService()</code> eventually, otherwise your program will hang
+forever.</p>
+
+<pre class="python">
+from foolscap import Tub
+
+tub = Tub()
+d = tub.getReference("pb://ABCD@myhost.example.com:12345/math-service")
+def gotReference(remote):
+    print "Got the RemoteReference:", remote
+def gotError(err):
+    print "error:", err
+d.addCallbacks(gotReference, gotError)
+tub.startService()
+</pre>
+
 
 <h3>Complete example</h3>
 
