@@ -1,5 +1,7 @@
 2007-05-14  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the upcoming release
+
 	* doc/using-foolscap.xhtml: rename from doc/using-pb.xhtml
 
 	* doc/using-pb.xhtml: replace all uses of 'PB URL' with 'FURL'
