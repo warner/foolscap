@@ -1,3 +1,5 @@
 (^|/)\_darcs($|/)
 (^|/)\.hg($|/)
 (^|/)\.hgtags($|/)
+\.pyc$
+^_trial_temp/
