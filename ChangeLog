@@ -1,3 +1,9 @@
+2007-07-15  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_interfaces.py (TestInterface.testStack):
+	don't look for a '/' in the stacktrace, since it won't be there
+	under windows. Thanks to 'strank'. Closes Twisted#2731.
+
 2007-06-29  Brian Warner  <warner@lothar.com>
 
 	* foolscap/__init__.py: bump revision to 0.1.4+ while between releases
