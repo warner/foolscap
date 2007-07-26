@@ -398,6 +398,11 @@ class Bad(Base, unittest.TestCase):
     # if the recipient cannot claim their gift, the caller should see an
     # errback.
 
+    def setUp(self):
+        if not crypto_available:
+            raise unittest.SkipTest("crypto not available")
+        Base.setUp(self)
+
     def test_swissnum(self):
         self.createCharacters()
         d = self.createInitialReferences()

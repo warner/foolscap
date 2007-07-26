@@ -1,5 +1,9 @@
 2007-07-26  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_gifts.py (Bad.setUp): disable these tests when
+	we don't have crypto, since TubIDs are not mangleable in the same
+	way without crypto.
+
 	* foolscap/slicer.py (BaseUnslicer.receiveChild): new convention:
 	Unslicers should accumulate their children's ready_deferreds into
 	an AsyncAND, and pass it to the parent. If something goes wrong,
