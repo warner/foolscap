@@ -11,7 +11,7 @@ from zope.interface import implements
 from twisted.python.components import registerAdapter
 Interface = interface.Interface
 from twisted.internet import defer
-from twisted.python import failure
+from twisted.python import failure, log
 
 from foolscap import ipb, slicer, tokens, call
 BananaError = tokens.BananaError
@@ -635,11 +635,26 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
         # but the message delivery must still wait for the getReference to
         # complete. See to it that we fire the object deferred before we fire
         # the ready_deferred.
-        obj_deferred, ready_deferred = defer.Deferred(), defer.Deferred()
+
+        obj_deferred = defer.Deferred()
+        ready_deferred = defer.Deferred()
+
         def _ready(rref):
             obj_deferred.callback(rref)
             ready_deferred.callback(rref)
-        d.addCallback(_ready)
+        def _failed(f):
+            # if an error in getReference() occurs, log it locally (with
+            # priority UNUSUAL), because this end might need to diagnose some
+            # connection or networking problems.
+            log.msg("gift (%s) failed to resolve: %s" % (self.url, f))
+            # deliver a placeholder object to the container, but signal the
+            # ready_deferred that we've failed. This will bubble up to the
+            # enclosing InboundDelivery, and when it gets to the top of the
+            # queue, it will be flunked.
+            obj_deferred.callback("Place holder for a Gift which failed to "
+                                  "resolve: %s" % f)
+            ready_deferred.errback(f)
+        d.addCallbacks(_ready, _failed)
 
         return obj_deferred, ready_deferred
 
