@@ -818,6 +818,30 @@ class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
         self.frames = []
         self.stack = []
 
+        # MAYBE: for native exception types, be willing to wire up a
+        # reference to the real exception class. For other exception types,
+        # our .type attribute will be a string, which (from a Failure's point
+        # of view) looks as if someone raised an old-style string exception.
+        # This is here so that trial will properly render a CopiedFailure
+        # that comes out of a test case (since it unconditionally does
+        # reflect.qual(f.type)
+
+        # ACTUALLY: replace self.type with a class that looks a lot like the
+        # original exception class (meaning that reflect.qual() will return
+        # the same string for this as for the original). If someone calls our
+        # .trap method, resulting in a new Failure with contents copied from
+        # this one, then the new Failure.printTraceback will attempt to use
+        # reflect.qual() on our self.type, so it needs to be a class instead
+        # of a string.
+
+        assert isinstance(self.type, str)
+        typepieces = self.type.split(".")
+        class ExceptionLikeString:
+            pass
+        self.type = ExceptionLikeString
+        self.type.__module__ = ".".join(typepieces[:-1])
+        self.type.__name__ = typepieces[-1]
+
     def __str__(self):
         return "[CopiedFailure instance: %s]" % self.getBriefTraceback()
 
@@ -829,3 +853,21 @@ class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
         file.write(self.traceback)
 
 copyable.registerRemoteCopy(FailureSlicer.classname, CopiedFailure)
+
+class CopiedFailureSlicer(FailureSlicer):
+    # A calls B. B calls C. C fails and sends a Failure to B. B gets a
+    # CopiedFailure and sends it to A. A should get a CopiedFailure too. This
+    # class lives on B and slicers the CopiedFailure as it is sent to A.
+    slices = CopiedFailure
+
+    def getStateToCopy(self, obj, broker):
+        state = {}
+        for k in ('value', 'type', 'parents'):
+            state[k] = getattr(obj, k)
+        if broker.unsafeTracebacks:
+            state['traceback'] = obj.traceback
+        else:
+            state['traceback'] = "Traceback unavailable\n"
+        if not isinstance(state['type'], str):
+            state['type'] = reflect.qual(state['type']) # Exception class
+        return state

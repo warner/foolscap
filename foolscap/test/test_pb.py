@@ -7,7 +7,7 @@ if False:
     from twisted.python import log
     log.startLogging(sys.stderr)
 
-from twisted.python import failure, log
+from twisted.python import failure, log, reflect
 from twisted.internet import defer
 from twisted.trial import unittest
 
@@ -617,7 +617,7 @@ class TestService(unittest.TestCase):
         return d
     testBadMethod2.timeout = 5
     def _testBadMethod2_eb(self, f):
-        self.failUnlessEqual(f.type, 'exceptions.AttributeError')
+        self.failUnlessEqual(reflect.qual(f.type), 'exceptions.AttributeError')
         self.failUnlessSubstring("TargetWithoutInterfaces", f.value)
         self.failUnlessSubstring(" has no attribute 'remote_missing'", f.value)
 

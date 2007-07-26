@@ -1,3 +1,22 @@
+2007-07-25  Brian Warner  <warner@lothar.com>
+
+	* foolscap/call.py (CopiedFailure.setCopyableState): set .type to
+	a class that behaves (as least as far as reflect.qual() is
+	concerned) just like the original exception class. This improves
+	the behavior of derived Failure objects, as well as trial's
+	handling of CopiedFailures that get handed to log.err().
+	CopiedFailures are now a bit more like actual Failures. See ticket
+	#4 (http://foolscap.lothar.com/trac/ticket/4) for more details.
+	(CopiedFailureSlicer): make sure that CopiedFailures can be
+	serialized, so that A-calls-B-calls-C can return a failure all
+	the way back.
+	* foolscap/test/test_call.py (TestCall.testCopiedFailure): test it
+	* foolscap/test/test_copyable.py: update to match, now we must
+	compare reflect.qual(f.type) against some extension classname,
+	rather than just f.type.
+	* foolscap/test/test_pb.py: same
+	* foolscap/test/common.py: same
+
 2007-07-15  Brian Warner  <warner@lothar.com>
 
 	* foolscap/test/test_interfaces.py (TestInterface.testStack):
