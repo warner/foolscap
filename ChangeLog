@@ -1,5 +1,10 @@
 2007-07-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/util.py (AsyncAND): new utility class, which is like
+	DeferredList but is specifically for control flow rather than data
+	flow.
+	* foolscap/test/test_util.py: test it
+
 	* foolscap/call.py (CopiedFailure.setCopyableState): set .type to
 	a class that behaves (as least as far as reflect.qual() is
 	concerned) just like the original exception class. This improves
