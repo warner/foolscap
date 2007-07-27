@@ -256,6 +256,43 @@ class Gifts(Base, unittest.TestCase):
         d.addCallback(_carolAndCindyCalled)
         return d
 
+    # test gifts in return values too
+
+    def testReturn(self):
+        self.createCharacters()
+        d = self.createInitialReferences()
+        def _introduce(res):
+            self.bob.obj = self.bdave
+            return self.abob.callRemote("get")
+        d.addCallback(_introduce)
+        def _check(adave):
+            # this ought to be a RemoteReference to dave, usable by alice
+            self.failUnless(isinstance(adave, RemoteReference))
+            return adave.callRemote("set", 12)
+        d.addCallback(_check)
+        def _check2(res):
+            self.failUnlessEqual(self.dave.obj, 12)
+        d.addCallback(_check2)
+        return d
+
+    def testReturnInContainer(self):
+        self.createCharacters()
+        d = self.createInitialReferences()
+        def _introduce(res):
+            self.bob.obj = {"foo": [(set([self.bdave]),)]}
+            return self.abob.callRemote("get")
+        d.addCallback(_introduce)
+        def _check(obj):
+            adave = list(obj["foo"][0][0])[0]
+            # this ought to be a RemoteReference to dave, usable by alice
+            self.failUnless(isinstance(adave, RemoteReference))
+            return adave.callRemote("set", 12)
+        d.addCallback(_check)
+        def _check2(res):
+            self.failUnlessEqual(self.dave.obj, 12)
+        d.addCallback(_check2)
+        return d
+
     def testOrdering(self):
         self.createCharacters()
         self.bob.calls = []

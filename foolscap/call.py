@@ -550,6 +550,11 @@ class AnswerUnslicer(slicer.ScopedUnslicer):
     resultConstraint = None
     haveResults = False
 
+    def start(self, count):
+        slicer.ScopedUnslicer.start(self, count)
+        self._ready_deferreds = []
+        self._child_deferred = None
+
     def checkToken(self, typebyte, size):
         if self.request is None:
             if typebyte != tokens.INT:
@@ -583,15 +588,20 @@ class AnswerUnslicer(slicer.ScopedUnslicer):
         return unslicer
 
     def receiveChild(self, token, ready_deferred=None):
-        assert not isinstance(token, defer.Deferred)
-        assert ready_deferred is None
         if self.request == None:
+            assert not isinstance(token, defer.Deferred)
+            assert ready_deferred is None
             reqID = token
             # may raise Violation for bad reqIDs
             self.request = self.broker.getRequest(reqID)
             self.resultConstraint = self.request.constraint
         else:
-            self.results = token
+            if isinstance(token, defer.Deferred):
+                self._child_deferred = token
+            else:
+                self._child_deferred = defer.succeed(token)
+            if ready_deferred:
+                self._ready_deferreds.append(ready_deferred)
             self.haveResults = True
 
     def reportViolation(self, f):
@@ -602,7 +612,32 @@ class AnswerUnslicer(slicer.ScopedUnslicer):
         return f # give up our sequence
 
     def receiveClose(self):
-        self.request.complete(self.results)
+        # three things must happen before our request is complete:
+        #   receiveClose has occurred
+        #   the receiveChild object deferred (if any) has fired
+        #   ready_deferred has finished
+        # If ready_deferred errbacks, provide its failure object to the
+        # request. If not, provide the request with whatever receiveChild
+        # got.
+
+        if not self._child_deferred:
+            raise BananaError("Answer didn't include an answer")
+
+        if self._ready_deferreds:
+            d = AsyncAND(self._ready_deferreds)
+        else:
+            d = defer.succeed(None)
+
+        def _ready(res):
+            return self._child_deferred
+        d.addCallback(_ready)
+
+        def _done(res):
+            self.request.complete(res)
+        def _fail(f):
+            self.request.fail(f)
+        d.addCallbacks(_done, _fail)
+
         return None, None
 
     def describe(self):

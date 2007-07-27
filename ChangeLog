@@ -1,5 +1,15 @@
 2007-07-26  Brian Warner  <warner@lothar.com>
 
+	* foolscap/call.py (AnswerUnslicer.receiveChild): accept a
+	ready_deferred, to accomodate Gifts in return values. Closes #5.
+	(AnswerUnslicer.receiveClose): .. and don't fire the response
+	until any such Gifts resolve
+	* foolscap/test/test_gifts.py (Gifts.testReturn): test it
+	(Gifts.testReturnInContainer): same
+	* foolscap/test/test_pb.py (TestAnswer.testAccept1): fix a test
+	which wasn't calling start() properly and was broken by that change
+	(TestAnswer.testAccept2): same
+
 	* foolscap/test/test_gifts.py (Bad.setUp): disable these tests when
 	we don't have crypto, since TubIDs are not mangleable in the same
 	way without crypto.

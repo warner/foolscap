@@ -117,6 +117,7 @@ class TestAnswer(unittest.TestCase):
         req = TestRequest(12)
         self.broker.addRequest(req)
         u = self.newUnslicer()
+        u.start(0)
         u.checkToken(INT, 0)
         u.receiveChild(12) # causes broker.getRequest
         u.checkToken(STRING, 8)
@@ -130,6 +131,7 @@ class TestAnswer(unittest.TestCase):
         req.setConstraint(IConstraint(str))
         self.broker.addRequest(req)
         u = self.newUnslicer()
+        u.start(0)
         u.checkToken(INT, 0)
         u.receiveChild(12) # causes broker.getRequest
         u.checkToken(STRING, 15)
