@@ -532,3 +532,24 @@ class Bad(Base, unittest.TestCase):
     test_hang.timeout = 10
     
 
+    def testReturn_swissnum(self):
+        self.createCharacters()
+        d = self.createInitialReferences()
+        def _introduce(res):
+            # now break the gift to insure that Alice is unable to claim it.
+            # The first way to do this is to simple mangle the swissnum,
+            # which will result in a failure in remote_getReferenceByName.
+            # NOTE: this will have to change when we modify the way gifts are
+            # referenced, since tracker.url is scheduled to go away.
+            r = SturdyRef(self.bdave.tracker.url)
+            r.name += ".MANGLED"
+            self.bdave.tracker.url = r.getURL()
+            self.bob.obj = self.bdave
+            return self.abob.callRemote("get")
+        d.addCallback(_introduce)
+        d.addBoth(self.shouldFail, KeyError, "Bad.testReturn_swissnum")
+        # make sure we can still talk to Bob, though
+        d.addCallback(lambda res: self.abob.callRemote("set", 14))
+        d.addCallback(lambda res: self.failUnlessEqual(self.bob.obj, 14))
+        return d
+    testReturn_swissnum.timeout = 10

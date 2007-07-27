@@ -6,6 +6,8 @@
 	until any such Gifts resolve
 	* foolscap/test/test_gifts.py (Gifts.testReturn): test it
 	(Gifts.testReturnInContainer): same
+	(Bad.testReturn_swissnum): and test the failure case too
+
 	* foolscap/test/test_pb.py (TestAnswer.testAccept1): fix a test
 	which wasn't calling start() properly and was broken by that change
 	(TestAnswer.testAccept2): same
