@@ -1,3 +1,16 @@
+2007-07-27  Brian Warner  <warner@lothar.com>
+
+	* foolscap/referenceable.py (LocalReferenceable): implement an
+	adapter that allows code to do IRemoteReference(t).callRemote(...)
+	and have it work for both RemoteReferences and local
+	Referenceables. You might want to do this if you're getting back
+	introductions to a variety of remote Referenceables, some of which
+	might actually be on your local system, and you want to treat all
+	of the, the same way. Local Referenceables will be wrapped with a
+	class that implements callRemote() and makes it behave like an
+	actual remote callRemote() would. Closes ticket #1.
+	* foolscap/test/test_reference.py (LocalReference): test it
+
 2007-07-26  Brian Warner  <warner@lothar.com>
 
 	* foolscap/call.py (AnswerUnslicer.receiveChild): accept a

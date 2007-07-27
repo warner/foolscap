@@ -21,7 +21,7 @@ from foolscap.remoteinterface import getRemoteInterface, \
      getRemoteInterfaceByName, RemoteInterfaceConstraint
 from foolscap.schema import constraintMap
 from foolscap.copyable import Copyable, RemoteCopy
-from foolscap.eventual import eventually
+from foolscap.eventual import eventually, fireEventually
 
 class OnlyReferenceable(object):
     implements(ipb.IReferenceable)
@@ -537,6 +537,33 @@ class RemoteMethodReference(RemoteReference):
         methodName = ""
         methodSchema = None
         return interfaceName, methodName, methodSchema
+
+class LocalReferenceable:
+    implements(ipb.IRemoteReference)
+    def __init__(self, original):
+        self.original = original
+
+    def notifyOnDisconnect(self, callback, *args, **kwargs):
+        # local objects never disconnect
+        return None
+    def dontNotifyOnDisconnect(self, marker):
+        pass
+
+    def callRemote(self, methname, *args, **kwargs):
+        def _try(ignored):
+            meth = getattr(self.original, "remote_" + methname)
+            return meth(*args, **kwargs)
+        d = fireEventually()
+        d.addCallback(_try)
+        return d
+
+    def callRemoteOnly(self, methname, *args, **kwargs):
+        d = self.callRemote(methname, *args, **kwargs)
+        d.addErrback(lambda f: None)
+        return None
+
+registerAdapter(LocalReferenceable, ipb.IReferenceable, ipb.IRemoteReference)
+    
 
 
 class YourReferenceSlicer(slicer.BaseSlicer):
