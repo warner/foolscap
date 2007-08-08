@@ -1,3 +1,15 @@
+2007-08-07  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Tub.registerNameLookupHandler): new function to
+	augment Tub.registerReference(). This allows names to be looked up
+	at request time, rather than requiring all Referenceables be
+	pre-registered with registerReference(). The chief use of this
+	would be for FURLs which point at objects that live on disk in
+	some persistent state until they are needed. Closes #6.
+	(Tub.unregisterNameLookupHandler): allow handlers to be removed
+	(Tub.getReferenceForName): use the handler during lookup
+	* foolscap/test/test_tub.py (NameLookup): test it
+
 2007-07-27  Brian Warner  <warner@lothar.com>
 
 	* foolscap/referenceable.py (LocalReferenceable): implement an
