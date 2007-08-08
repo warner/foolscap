@@ -1,5 +1,7 @@
 2007-08-07  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the upcoming release
+
 	* foolscap/pb.py (Tub.registerNameLookupHandler): new function to
 	augment Tub.registerReference(). This allows names to be looked up
 	at request time, rather than requiring all Referenceables be
