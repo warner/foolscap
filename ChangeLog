@@ -1,5 +1,10 @@
 2007-08-07  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release Foolscap-0.1.5
+	* misc/{sid|sarge|dapper|edgy|feisty}/debian/changelog: same
+
+2007-08-07  Brian Warner  <warner@lothar.com>
+
 	* NEWS: update for the upcoming release
 
 	* foolscap/pb.py (Tub.registerNameLookupHandler): new function to
