@@ -1,5 +1,8 @@
 2007-08-09  Brian Warner  <warner@lothar.com>
 
+	* setup.py: add classifiers= and platforms=, update metadata, so
+	that I can use 'setup.py register' for the next release. Closes	#7.
+
 	* README: update references to the home page. Closes #9.
 
 2007-08-08  Brian Warner  <warner@lothar.com>
