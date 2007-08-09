@@ -530,7 +530,7 @@ class Bad(Base, unittest.TestCase):
         d.addBoth(_stop_listening)
         return d
     test_hang.timeout = 10
-    
+
 
     def testReturn_swissnum(self):
         self.createCharacters()

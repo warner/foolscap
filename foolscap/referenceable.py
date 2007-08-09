@@ -563,7 +563,7 @@ class LocalReferenceable:
         return None
 
 registerAdapter(LocalReferenceable, ipb.IReferenceable, ipb.IRemoteReference)
-    
+
 
 
 class YourReferenceSlicer(slicer.BaseSlicer):
