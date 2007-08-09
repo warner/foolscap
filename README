@@ -14,8 +14,8 @@ graphs for the arguments and the eventual response, and an object reference
 system to keep track of which objects you are connecting to. It uses a
 capability-based security model, such that once you create a non-public
 object, it is only accessible to clients to whom you've given the
-(unguessable) PB-URL. You can of course publish world-visible objects that
-have well-known PB-URLs.
+(unguessable) FURL. You can of course publish world-visible objects that
+have well-known FURLs.
 
 Full documentation and examples are in the doc/ directory.
 
@@ -75,8 +75,8 @@ NAMING:
 AUTHOR:
 
  Brian Warner is responsible for this thing. Please discuss it on the
- twisted-python list.
+ twisted-python mailing list.
 
- The wiki page at <http://twistedmatrix.com/trac/wiki/FoolsCap> contains
- pointers to the latest release, as well as documentation and other
- resources.
+ The Foolscap home page is a Trac instance at <http://foolscap.lothar.com>.
+ It contains pointers to the latest release, bug reports, patches,
+ documentation, and other resources.
