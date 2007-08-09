@@ -1,5 +1,8 @@
 2007-08-09  Brian Warner  <warner@lothar.com>
 
+	* doc/using-foolscap.xhtml: fix typos, thanks to David Ripton for
+	the catch.
+
 	* setup.py: add classifiers= and platforms=, update metadata, so
 	that I can use 'setup.py register' for the next release. Closes	#7.
 

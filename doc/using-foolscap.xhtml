@@ -51,7 +51,7 @@ object-capabilities model in python.</p>
 
 <p>Any Foolscap application has at least two sides: one which hosts a
 remotely-callable object, and another which calls (remotely) the methods of
-that object. We'll start with a simple example that demostrates both ends.
+that object. We'll start with a simple example that demonstrates both ends.
 Later, we'll add more features like RemoteInterface declarations, and
 transferring object references.</p>
 
@@ -492,7 +492,7 @@ example.</p>
 
 <p>The server registers the Calculator instance and prints the FURL at which
 it is listening. You need to pass this FURL to the client program so it knows
-how to contact the servre. If you have a modern version of Twisted (2.5 or
+how to contact the server. If you have a modern version of Twisted (2.5 or
 later) and the right encryption libraries installed, you'll get an
 authenticated Tub (for which the FURL will start with "pb:" and will be
 fairly long). If you don't, you'll get an unauthenticated Tub (with a
@@ -693,7 +693,7 @@ sort of thing is still being worked out.</span>.</p>
 <p>The <code class="API"
 base="foolscap.remoteinterface">RemoteInterface</code> is how you describe
 your constraints. You can provide a constraint for each argument of each
-method, as well as one for the return value. You can also specify addtional
+method, as well as one for the return value. You can also specify additional
 flags on the methods. The convention (which is actually enforced by the code)
 is to name <code>RemoteInterface</code> objects with an <q>RI</q> prefix,
 like <code>RIFoo</code>.</p>
@@ -824,7 +824,7 @@ sure that both sides agree on the interface. Future versions of Foolscap may
 implement some sort of checksum-verification or Interface-serialization as a
 failsafe, but fundamentally the <code>RemoteInterface</code> that
 <em>you</em> are using defines what <em>your</em> program is prepared to
-handle. There is no difference between an old client accidentaly using a
+handle. There is no difference between an old client accidentally using a
 different version of the RemoteInterface by mistake, and a malicious attacker
 actively trying to confuse your code. The only promise that Foolscap can make
 is that the constraints you provide in the RemoteInterface will be faithfully
