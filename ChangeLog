@@ -1,5 +1,8 @@
 2007-08-08  Brian Warner  <warner@lothar.com>
 
+	* misc/{sid|sarge|dapper|edgy|feisty}/debian/rules: fix references
+	to renamed docs/ files.
+
 	* foolscap/__init__.py: bump revision to 0.1.5+ while between releases
 	* misc/{sid|sarge|dapper|edgy|feisty}/debian/changelog: same
 
