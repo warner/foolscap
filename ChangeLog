@@ -1,3 +1,9 @@
+2007-08-11  Brian Warner  <warner@lothar.com>
+
+	* doc/using-foolscap.xhtml: replace the phrase "private-key
+	certificate" with the more accurate and more widely-used
+	"public-key certificate". Thanks to Zooko for the patch.
+
 2007-08-09  Brian Warner  <warner@lothar.com>
 
 	* doc/using-foolscap.xhtml: fix typos, thanks to David Ripton for
