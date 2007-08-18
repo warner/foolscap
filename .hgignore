@@ -3,3 +3,5 @@
 (^|/)\.hgtags($|/)
 \.pyc$
 ^_trial_temp/
+^doc/.*\.html$
+^doc/specifications/.*\.html$

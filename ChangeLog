@@ -1,3 +1,7 @@
+2007-08-17  Brian Warner  <warner@lothar.com>
+
+	* .hgignore: ignore generated .html files in doc/
+
 2007-08-11  Brian Warner  <warner@lothar.com>
 
 	* doc/using-foolscap.xhtml: replace the phrase "private-key
