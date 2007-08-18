@@ -562,7 +562,7 @@ this document</span>.</p>
 over the wire that it does not know how to serialize, and (unlike the
 standard <code>pickle</code> module) it will not make assumptions about how
 to handle classes that that have not been explicitly marked as serializable.
-This is for security, both for the sender (making you you don't pass anything
+This is for security, both for the sender (making sure you don't pass anything
 over the wire that you didn't intend to let out of your security perimeter),
 and for the recipient (making sure outsiders aren't allowed to create
 arbitrary instances inside your memory space, and therefore letting them run
@@ -621,7 +621,7 @@ lines of your source code to the remote end).</p>
 base="twisted.internet.defer">Deferred</code>. If this happens, the caller
 will not actually get a response until you fire that Deferred. This is useful
 when the remote operation being requested cannot complete right away. The
-caller's Deferred with fire with whatever value you eventually fire your own
+caller's Deferred will fire with whatever value you eventually fire your own
 Deferred with. If your Deferred is errbacked, their Deferred will be
 errbacked with a <code>CopiedFailure</code>.</p>
 
@@ -662,8 +662,8 @@ nested OPEN/stuff/stuff/CLOSE sequences of tokens.</p>
 
 <p>Each token consists of a header, a type byte, and an optional body. The
 header is always a base-128 number with a maximum of 64 digits, and the type
-byte is always a single byte. The body (if present) has a length dictated by
-the magnitude of the header.</p>
+byte is always a single byte. The length of the body (if present) is
+indicated by the number encoded in the header.</p>
 
 <p>The length-first token format means that the receiving system never has to
 accept more than 65 bytes before it knows the type and size of the token, at
@@ -681,7 +681,7 @@ applied to the contents of the list. You can nest <code>Constraint</code>s in
 this way to describe the <q>shape</q> of the object graph that you are
 willing to accept.</p>
 
-<p>At any given time, the receiving Banana protocol has single
+<p>At any given time, the receiving Banana protocol has a single
 <code>Constraint</code> object that it enforces against the inbound data
 stream<span class="footnote">to be precise, each <code>Unslicer</code> on the
 receive stack has a <code>Constraint</code>, and the idea is that all of them
