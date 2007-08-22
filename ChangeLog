@@ -1,3 +1,8 @@
+2007-08-21  Brian Warner  <warner@lothar.com>
+
+	* foolscap/slicers/unicode.py (UnicodeConstraint.checkObject):
+	improve error message
+
 2007-08-17  Brian Warner  <warner@lothar.com>
 
 	* doc/using-foolscap.xhtml: fix more typos, as reported by

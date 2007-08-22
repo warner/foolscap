@@ -73,7 +73,7 @@ class UnicodeConstraint(OpenerConstraint):
 
     def checkObject(self, obj, inbound):
         if not isinstance(obj, unicode):
-            raise Violation("not a String")
+            raise Violation("not a unicode object")
         if self.maxLength != None and len(obj) > self.maxLength:
             raise Violation("string too long (%d > %d)" %
                             (len(obj), self.maxLength))
