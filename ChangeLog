@@ -1,5 +1,9 @@
 2007-08-21  Brian Warner  <warner@lothar.com>
 
+	* foolscap/call.py (FailureSlicer.getStateToCopy): if we can't fit
+	the whole traceback, elide the middle rather than truncate the
+	end, since the end is usually the most interesting part.
+
 	* foolscap/pb.py (Tub.setupEncryptionFile): don't use
 	os.path.exists to decide if the certFile exists or not, just try
 	to open it and deal with the exception if it happens. This avoids

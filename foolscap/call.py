@@ -760,9 +760,15 @@ class FailureSlicer(slicer.BaseSlicer):
             # all that cool stuff
         else:
             state['traceback'] = 'Traceback unavailable\n'
+
+        # The last few lines are often the most interesting. If we need to
+        # truncate this, grab the first few lines and then as much of the
+        # tail as we can get.
         if len(state['traceback']) > 1900:
-            state['traceback'] = (state['traceback'][:1900] +
-                                  "\n\n-- TRACEBACK TRUNCATED --\n")
+            state['traceback'] = (state['traceback'][:700] +
+                                  "\n\n-- TRACEBACK ELIDED --\n\n"
+                                  + state['traceback'][-1200:])
+
         state['parents'] = obj.parents
         return state
 
