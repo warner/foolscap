@@ -1,5 +1,11 @@
 2007-08-21  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.setupEncryptionFile): don't use
+	os.path.exists to decide if the certFile exists or not, just try
+	to open it and deal with the exception if it happens. This avoids
+	a race condition, not a big deal here but a good pattern to get in
+	the habit of using everywhere.
+
 	* foolscap/slicers/unicode.py (UnicodeConstraint.checkObject):
 	improve error message
 

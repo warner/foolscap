@@ -200,11 +200,13 @@ class Tub(service.MultiService):
             self.setupEncryption(certData)
 
     def setupEncryptionFile(self, certFile):
-        if os.path.exists(certFile):
+        try:
             certData = open(certFile, "rb").read()
-            self.setupEncryption(certData)
-        else:
-            self.setupEncryption(None)
+        except EnvironmentError:
+            certData = None
+        self.setupEncryption(certData)
+
+        if certData is None:
             f = open(certFile, "wb")
             f.write(self.getCertData())
             f.close()
