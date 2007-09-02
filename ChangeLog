@@ -1,5 +1,7 @@
 2007-09-02  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the upcoming release
+
 	* Makefile (api-docs): new target to run 'epydoc' and generate API
 	documentation. Addresses #16.
 	(docs): fix the URLs of API doc targets to match

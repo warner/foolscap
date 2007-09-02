@@ -1,5 +1,35 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.1.6 (02 Sep 2007)
+
+** Compatibility
+
+All releases between 0.1.3 and 0.1.6 (inclusive) are fully wire-compatible.
+
+** Bug Fixes
+
+Using a schema of ChoiceOf(StringConstraint(2000), None) would fail to accept
+strings between 1000 and 2000 bytes: it would accept a short string, or None,
+but not a long string. This has been fixed. ChoiceOf() remains a troublesome
+constraint: having it is awfully nice, and things like ChoiceOf(str,None)
+seem to work, but it is unreliable. Using ChoiceOf with non-terminal children
+is not recommended (the garden-path problem is unlikely to be easy to solve):
+schemas are not regular expressions.
+
+The debian packaging rules have been fixed. The ones in 0.1.5 failed to run
+because of some renamed documentation files.
+
+** Minor Fixes
+
+Several minor documentation errors have been corrected. A new 'make api-docs'
+target has been added to run epydoc and build HTML versions of the API
+documentation.
+
+When a remote method fails and needs to send a traceback over the wire, and
+when the traceback is too large, trim out the middle rather than the end,
+since usually it's the beginning and the end that are the most useful.
+
+
 * Release 0.1.5 (07 Aug 2007)
 
 ** Compatibility
