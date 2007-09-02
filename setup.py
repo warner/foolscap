@@ -12,7 +12,7 @@ if __name__ == '__main__':
         author="Brian Warner",
         author_email="warner-foolscap@lothar.com",
         url="http://foolscap.lothar.com/",
-        download_url="http://foolscap.lothar.com/releases/foolscap-0.1.5.tar.gz",
+        download_url="http://foolscap.lothar.com/releases/foolscap-0.1.6.tar.gz",
         license="MIT",
         long_description="""\
 Foolscap (aka newpb) is a new version of Twisted's native RPC protocol, known

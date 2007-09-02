@@ -1,5 +1,13 @@
 2007-09-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release 0.1.6
+	* misc/{dapper|edgy|feisty|sarge|sid}/debian/changelog: same
+
+	* misc/etch: copy sid packaging for etch
+	* Makefile (debian-etch): new target for etch .debs
+	* setup.py: update download_url for 0.1.6
+	* MANIFEST.in: include etch files in the source release
+
 	* NEWS: update for the upcoming release
 
 	* Makefile (api-docs): new target to run 'epydoc' and generate API
