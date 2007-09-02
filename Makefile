@@ -1,6 +1,6 @@
 
 .PHONY: build test debian-sid debian-dapper debian-feisty debian-sarge
-.PHONY: debian-edgy
+.PHONY: debian-edgy debian-etch
 
 build:
 	python setup.py build
@@ -21,6 +21,12 @@ figleaf-output:
 debian-sid:
 	rm -f debian
 	ln -s misc/sid/debian debian
+	chmod a+x debian/rules
+	debuild -uc -us
+
+debian-etch:
+	rm -f debian
+	ln -s misc/etch/debian debian
 	chmod a+x debian/rules
 	debuild -uc -us
 

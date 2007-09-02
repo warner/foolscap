@@ -8,5 +8,6 @@ include misc/edgy/debian/*
 include misc/feisty/debian/*
 include misc/sid/debian/*
 include misc/sarge/debian/*
+include misc/etch/debian/*
 include misc/testutils/*
 include misc/testutils/twisted/plugins/*
