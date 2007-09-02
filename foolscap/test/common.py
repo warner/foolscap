@@ -11,7 +11,7 @@ from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema, \
      UnconstrainedMethod
 from foolscap.schema import Any, SetOf, DictOf, ListOf, TupleOf, \
      NumberConstraint, ByteStringConstraint, IntegerConstraint, \
-     UnicodeConstraint
+     UnicodeConstraint, ChoiceOf
 
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
@@ -89,6 +89,7 @@ class RIHelper(RemoteInterface):
     def hang(): return Any()
     # test one of everything
     def megaschema(obj1=MegaSchema1, obj2=MegaSchema2): return None
+    def choice1(obj1=ChoiceOf(ByteStringConstraint(2000), int)): return None
 
 class HelperTarget(Referenceable):
     implements(RIHelper)
@@ -133,6 +134,9 @@ class HelperTarget(Referenceable):
         self.obj2 = obj2
         return None
 
+    def remote_choice1(self, obj):
+        self.obj = obj
+        return None
 
 class TargetMixin:
 

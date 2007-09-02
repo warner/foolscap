@@ -183,6 +183,39 @@ class TestCall(TargetMixin, unittest.TestCase):
         return d
     testCall4.timeout = 2
 
+    def testChoiceOf(self):
+        # this is a really small test case to check specific bugs. We
+        # definitely need more here.
+
+        # in bug (#13), the ChoiceOf constraint did not override the
+        # checkToken() call to its children, which had the consequence of not
+        # propagating the maxLength= attribute of the StringConstraint to the
+        # children (using the default of 1000 bytes instead).
+        rr, target = self.setupTarget(HelperTarget())
+        t = 4
+        d = rr.callRemote("choice1", 4)
+        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        d.addCallback(lambda res: rr.callRemote("choice1", "a"*2000))
+        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        def _check_false(res):
+            # False does not conform
+            d1 = rr.callRemote("choice1", False)
+            d1.addBoth(self.shouldFail, Violation, "testChoiceOf")
+            return d1
+        d.addCallback(_check_false)
+        return d
+
+    def shouldFail(self, res, expected_failure, which, substring=None):
+        if isinstance(res, failure.Failure):
+            res.trap(expected_failure)
+            if substring:
+                self.failUnless(substring in str(res),
+                                "substring '%s' not in '%s'"
+                                % (substring, str(res)))
+        else:
+            self.fail("%s was supposed to raise %s, not get '%s'" %
+                      (which, expected_failure, res))
+
     def testMegaSchema(self):
         # try to exercise all our constraints at once
         rr, target = self.setupTarget(HelperTarget())

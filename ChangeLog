@@ -1,3 +1,14 @@
+2007-08-31  Brian Warner  <warner@lothar.com>
+
+	* foolscap/schema.py (PolyConstraint.checkToken): we need to
+	override this method as well as checkObject, otherwise inbound
+	tokens may get rejected by the token-checking phase. robk noticed
+	this with a ChoiceOf(StringConstraint(maxLength=3000, None)),
+	which refused to accept a 2000 byte string (since the default
+	Constraint.checkToken uses the everythingTaster which only accepts
+	1000-byte strings). Closes #13.
+	* foolscap/test/test_call.py (TestCall.testChoiceOf): test it
+
 2007-08-21  Brian Warner  <warner@lothar.com>
 
 	* foolscap/call.py (FailureSlicer.getStateToCopy): if we can't fit

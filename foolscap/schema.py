@@ -55,7 +55,7 @@ modifiers:
 
 """
 
-from foolscap.tokens import Violation, UnknownSchemaType
+from foolscap.tokens import Violation, UnknownSchemaType, BananaError
 
 # make constraints available in a single location
 from foolscap.constraint import Constraint, Any, ByteStringConstraint, \
@@ -99,6 +99,18 @@ class PolyConstraint(Constraint):
         self.alternatives = [IConstraint(a) for a in alternatives]
         self.alternatives = tuple(self.alternatives)
         # TODO: taster/opentypes should be a union of the alternatives'
+
+    def checkToken(self, typebyte, size):
+        ok = False
+        for c in self.alternatives:
+            try:
+                c.checkToken(typebyte, size)
+                ok = True
+            except (Violation, BananaError), e:
+                pass
+        if not ok:
+            raise Violation("does not satisfy any of %s" \
+                            % (self.alternatives,))
 
     def checkObject(self, obj, inbound):
         ok = False
