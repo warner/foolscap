@@ -244,7 +244,7 @@ class _MethodGetterWrapper:
 
 
 def send(o):
-    """Make an eventual-send call on object C{o}. Use this as follows:
+    """Make an eventual-send call on object C{o}. Use this as follows::
 
      p = send(o).foo(args)
 

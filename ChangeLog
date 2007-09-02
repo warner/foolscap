@@ -1,3 +1,12 @@
+2007-09-02  Brian Warner  <warner@lothar.com>
+
+	* Makefile (api-docs): new target to run 'epydoc' and generate API
+	documentation. Addresses #16.
+	(docs): fix the URLs of API doc targets to match
+	* foolscap/negotiate.py: fix some docstrings
+	* foolscap/pb.py: same
+	* foolscap/promise.py: same
+
 2007-08-31  Brian Warner  <warner@lothar.com>
 
 	* foolscap/schema.py (PolyConstraint.checkToken): we need to

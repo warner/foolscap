@@ -51,6 +51,9 @@ debian-sarge:
 DOC_TEMPLATE=doc/template.tpl
 docs:
 	lore -p --config template=$(DOC_TEMPLATE) --config ext=.html \
+	--config baseurl='api/%s-class.html' \
 	`find doc -name '*.xhtml'`
 
-
+api-docs:
+	rm -rf doc/api
+	PYTHONPATH=. epydoc -v -o doc/api --html -n Foolscap -u http://foolscap.lothar.com --exclude foolscap.test foolscap

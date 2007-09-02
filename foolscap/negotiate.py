@@ -1032,9 +1032,6 @@ class TubConnector:
     progress are cancelled, and established connections (the ones which did
     *not* complete negotiation before the winning connection) have called
     their connectionLost() methods.
-
-    @param locationHints: the list of 'host:port' hints where the remote tub
-                          can be found.
     """
 
     failureReason = None

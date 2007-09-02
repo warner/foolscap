@@ -176,6 +176,10 @@ class Tub(service.MultiService):
     @ivar referenceToName: maps Referenceable to a name
     @ivar nameToReference: maps name to Referenceable
 
+    @type tubID: string
+    @ivar tubID: a global identifier for this Tub, possibly including
+                 authentication information, hash of SSL certificate
+
     """
     implements(ipb.ITub)
 
@@ -774,12 +778,6 @@ class Tub(service.MultiService):
 
 class UnauthenticatedTub(Tub):
     encrypted = False
-
-    """
-    @type tubID: string
-    @ivar tubID: a global identifier for this Tub, possibly including
-                 authentication information, hash of SSL certificate
-    """
 
     def __init__(self, tubID=None, options={}):
         service.MultiService.__init__(self)

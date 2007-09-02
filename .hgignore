@@ -5,3 +5,4 @@
 ^_trial_temp/
 ^doc/.*\.html$
 ^doc/specifications/.*\.html$
+^doc/api
