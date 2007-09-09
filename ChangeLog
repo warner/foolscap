@@ -1,3 +1,8 @@
+2007-09-08  Brian Warner  <warner@lothar.com>
+
+	* foolscap/__init__.py: bump revision to 0.1.6+ while between releases
+	* misc/*/debian/changelog: same
+
 2007-09-02  Brian Warner  <warner@lothar.com>
 
 	* foolscap/__init__.py: release 0.1.6
