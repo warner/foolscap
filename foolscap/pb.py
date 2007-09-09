@@ -8,7 +8,7 @@ from twisted.python import log
 
 from foolscap import ipb, base32, negotiate, broker, observer, eventual
 from foolscap.referenceable import SturdyRef
-from foolscap.tokens import PBError, BananaError
+from foolscap.tokens import PBError, BananaError, WrongTubIdError
 from foolscap.reconnector import Reconnector
 
 crypto_available = False
@@ -448,7 +448,7 @@ class Tub(service.MultiService):
             return "pb://" + self.tubID + "@" + hints + "/" + name
         return "pbu://" + self.locationHints[0] + "/" + name
 
-    def registerReference(self, ref, name=None):
+    def registerReference(self, ref, name=None, furlFile=None):
         """Make a Referenceable available to the outside world. A URL is
         returned which can be used to access this object. This registration
         will remain in effect (and the Tub will retain a reference to the
@@ -460,6 +460,11 @@ class Tub(service.MultiService):
                      name. If not, a random (unguessable) string will be
                      used.
 
+        @param furlFile: if provided, get the name from this file (if
+                         it exists), and write the new FURL to this file.
+                         If 'name=' is also provided, it is used for the
+                         name, but the FURL is still written to this file.
+
         @rtype: string
         @return: the URL which points to this object. This URL can be passed
         to Tub.getReference() in any Tub on any host which can reach this
@@ -469,11 +474,29 @@ class Tub(service.MultiService):
         if not self.locationHints:
             raise RuntimeError("you must setLocation() before "
                                "you can registerReference()")
+        oldfurl = None
+        if furlFile:
+            try:
+                oldfurl = open(furlFile, "r").read().strip()
+            except EnvironmentError:
+                pass
+        if oldfurl:
+            if name is None:
+                sr = SturdyRef(oldfurl)
+                name = sr.name
+            if self.tubID != sr.tubID:
+                raise WrongTubIdError("I cannot keep using the old FURL (%s)"
+                                      " because it does not have the same"
+                                      " TubID as I do (%s)" %
+                                      (oldfurl, self.tubID))
         name = self._assignName(ref, name)
         assert name
         if ref not in self.strongReferences:
             self.strongReferences.append(ref)
-        return self.buildURL(name)
+        furl = self.buildURL(name)
+        if furlFile:
+            open(furlFile, "w").write(furl + "\n")
+        return furl
 
     # this is called by either registerReference or by
     # getOrCreateURLForReference

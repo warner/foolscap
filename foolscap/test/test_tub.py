@@ -3,6 +3,7 @@
 import os.path
 from twisted.trial import unittest
 from twisted.internet import defer
+from twisted.application import service
 
 crypto_available = False
 try:
@@ -15,6 +16,7 @@ from foolscap import Tub, UnauthenticatedTub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin
+from foolscap.tokens import WrongTubIdError
 
 # we use authenticated tubs if possible. If crypto is not available, fall
 # back to unauthenticated ones
@@ -48,6 +50,73 @@ class TestCertFile(unittest.TestCase):
 
 if not crypto_available:
     del TestCertFile
+
+class FurlFile(unittest.TestCase):
+
+    def setUp(self):
+        self.s = service.MultiService()
+        self.s.startService()
+
+    def tearDown(self):
+        d = self.s.stopService()
+        d.addCallback(flushEventualQueue)
+        return d
+
+    def test_furlfile(self):
+        cfn = "test_tub.FurlFile.test_furlfile.certfile"
+        t1 = Tub(certFile=cfn)
+        t1.setServiceParent(self.s)
+        l = t1.listenOn("tcp:0:interface=127.0.0.1")
+        t1.setLocation("127.0.0.1:%d" % l.getPortnum())
+        port1 = "tcp:%d:interface=127.0.0.1" % l.getPortnum()
+        r1 = Referenceable()
+        ffn = "test_tub.FurlFile.test_furlfile.furlfile"
+        furl1 = t1.registerReference(r1, furlFile=ffn)
+        d = defer.maybeDeferred(t1.disownServiceParent)
+
+        self.failUnless(os.path.exists(ffn))
+        self.failUnlessEqual(furl1, open(ffn,"r").read().strip())
+
+        def _take2(res):
+            t2 = Tub(certFile=cfn)
+            t2.setServiceParent(self.s)
+            l = t2.listenOn(port1)
+            t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+            r2 = Referenceable()
+            furl2 = t2.registerReference(r2, furlFile=ffn)
+            self.failUnlessEqual(furl1, furl2)
+            return t2.disownServiceParent()
+        d.addCallback(_take2)
+        return d
+
+    def test_tubid_check(self):
+        t1 = Tub() # gets a new key
+        t1.setServiceParent(self.s)
+        l = t1.listenOn("tcp:0:interface=127.0.0.1")
+        t1.setLocation("127.0.0.1:%d" % l.getPortnum())
+        port1 = "tcp:%d:interface=127.0.0.1" % l.getPortnum()
+        r1 = Referenceable()
+        ffn = "test_tub.FurlFile.test_tubid_check.furlfile"
+        furl1 = t1.registerReference(r1, furlFile=ffn)
+        d = defer.maybeDeferred(t1.disownServiceParent)
+
+        self.failUnless(os.path.exists(ffn))
+        self.failUnlessEqual(furl1, open(ffn,"r").read().strip())
+
+        def _take2(res):
+            t2 = Tub() # gets a different key
+            t2.setServiceParent(self.s)
+            l = t2.listenOn(port1)
+            t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+            r2 = Referenceable()
+            self.failUnlessRaises(WrongTubIdError,
+                                  t2.registerReference, r2, furlFile=ffn)
+            return t2.disownServiceParent()
+        d.addCallback(_take2)
+        return d
+
+if not crypto_available:
+    del FurlFile
 
 class QueuedStartup(TargetMixin, unittest.TestCase):
     # calling getReference and connectTo before the Tub has started should

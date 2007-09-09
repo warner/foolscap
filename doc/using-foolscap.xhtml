@@ -101,8 +101,7 @@ d.addCallbacks(gotAnswer, gotError)
 
 <p>Ok, now how do you acquire that <code>RemoteReference</code>? How do you
 make the <code>Referenceable</code> available to the outside world? For this,
-we'll need to discuss the <q>Tub</q>, and the concept of a <q>FURL
-URL</q>.</p>
+we'll need to discuss the <q>Tub</q>, and the concept of a <q>FURL</q>.</p>
 
 <h2>Tubs: The Foolscap Service</h2>
 
@@ -172,11 +171,11 @@ to other processes on the same host. The <code>strports</code> module
 provides many other possibilities.</p>
 
 <p>The Tub needs to be told how it can be reached, so it knows what host and
-port to put into the URLs it creates. This location is simply a string in the
-format <q>host:port</q>, using the host name by which that TCP port you've
-just opened can be reached. Foolscap cannot, in general, guess what this name
-is, especially if there are NAT boxes or port-forwarding devices in the way.
-If your machine is reachable directly over the internet as
+port to put into the FURLs it creates. This location is simply a string in
+the format <q>host:port</q>, using the host name by which that TCP port
+you've just opened can be reached. Foolscap cannot, in general, guess what
+this name is, especially if there are NAT boxes or port-forwarding devices in
+the way. If your machine is reachable directly over the internet as
 <q>myhost.example.com</q>, then you could use something like this:</p>
 
 <pre class="python">
@@ -194,11 +193,11 @@ tub.setLocation("myhost.example.com:12345")
 registering it:</p>
 
 <pre class="python">
-url = tub.registerReference(myserver, "math-service")
+furl = tub.registerReference(myserver, "math-service")
 </pre>
 
 <p>This returns the <q>FURL</q> for your <code>Referenceable</code>. Remote
-systems will use this URL to access your newly-published object. The
+systems will use this FURL to access your newly-published object. The
 registration just maps a per-Tub name to the <code>Referenceable</code>:
 technically the same <code>Referenceable</code> could be published multiple
 times, under different names, or even be published by multiple Tubs in the
@@ -206,7 +205,7 @@ same application. But in general, each program will have exactly one Tub, and
 each object will be registered under only one name.</p>
 
 <p>In this example (if we pretend the generated TubID was <q>ABCD</q>), the
-URL returned by <code>registerReference</code> would be
+FURL returned by <code>registerReference</code> would be
 <code>"pb://ABCD@myhost.example.com:12345/math-service"</code>.</p>
 
 <p>If you do not provide a name, a random (and unguessable) name will be
@@ -221,17 +220,17 @@ from foolscap import UnauthenticatedTub
 tub = UnauthenticatedTub()
 tub.listenOn("tcp:12345")  # start listening on TCP port 12345
 tub.setLocation("myhost.example.com:12345")
-url = tub.registerReference(myserver, "math-service")
+furl = tub.registerReference(myserver, "math-service")
 </pre>
 
-<p>In this case, the URL would be
+<p>In this case, the FURL would be
 <code>"pbu://myhost.example.com:12345/math-service"</code>. The deterministic
 nature of this form makes it slightly easier to throw together
 quick-and-dirty Foolscap applications, since you only need to hard-code the
 target host and port into the client side program. However any serious
 application should just used the default authenticated form and use a full
-URL as their starting point. Note that the URL can come from anywhere: typed
-in by the user, retrieved from a web page, or hardcoded into the
+FURL as their starting point. Note that the FURL can come from anywhere:
+typed in by the user, retrieved from a web page, or hardcoded into the
 application.</p>
 
 <h4>Using a persistent certificate</h4>
@@ -251,6 +250,28 @@ certificate and store it here. On subsequent invocations, the Tub will read
 the earlier certificate from this location. Make sure this filename points to
 a writable location, and that you pass the same filename to
 <code>Tub()</code> each time.</p>
+
+<h4>Using a Persistent FURL</h4>
+
+<p>It is often useful to insure that a given Referenceable's FURL is both
+unguessable and stable, remaining the same from one invocation of the program
+that hosts it to the next. One (bad) way to do this is to have the programmer
+choose an unguessable name, embed it in the program, and pass it into
+<code>registerReference</code> each time the program runs, but of course this
+means that the name will be visible to anyone who sees the source code for
+the program, and the same name will be used by all copies of the program
+everywhere.</p>
+
+<p>A better approach is to use the <code>furlFile=</code> argument. This
+argument provides a filename that is used to hold the stable FURL for this
+object. If the furlfile exists when <code>registerReference</code> is called,
+the Tub will use the name inside it when constructing the new FURL. If it
+doesn't exist, it will create a new (unguessable) name. The new FURL will
+always be written into the furlfile afterwards. In addition, the tubid in the
+old FURL will be checked against the current Tub's tubid to make sure it
+matches. (this means that if you use furlFile=, you should also use the
+certFile= argument when constructing the Tub).</p>
+
 
 <h3>Retrieving a RemoteReference</h3>
 
@@ -276,7 +297,7 @@ d.addCallbacks(gotReference, gotError)
 
 <p><code>getReference</code> returns a Deferred which will fire with a
 <code>RemoteReference</code> that is connected to the remote
-<code>Referenceable</code> named by the URL. It will use an existing
+<code>Referenceable</code> named by the FURL. It will use an existing
 connection, if one is available, and it will return an existing
 <code>RemoteReference</code>, it one has already been acquired.</p>
 
@@ -303,8 +324,8 @@ tub.startService()
 
 <p>Here are two programs, one implementing the server side of our
 remote-addition protocol, the other behaving as a client. This first example
-uses an unauthenticated Tub so you don't have to manually copy a URL from the
-server to the client. Both of these are standalone programs (you just run
+uses an unauthenticated Tub so you don't have to manually copy a FURL from
+the server to the client. Both of these are standalone programs (you just run
 them), but normally you would create an <code class="API"
 base="twisted.application.service">Application</code> object and pass the
 file to <code>twistd -noy</code>. An example of that usage will be provided
@@ -330,7 +351,7 @@ the answer is 3
 </pre>
 
 <p>The second example uses authenticated Tubs. When running this example, you
-must copy the URL printed by the server and provide it as an argument to the
+must copy the FURL printed by the server and provide it as an argument to the
 client.</p>
 
 <a href="listings/pb2server.py" class="py-listing"
@@ -355,16 +376,16 @@ the answer is 3
 
 <h3>FURLs</h3>
 
-<p>In Foolscap, each world-accessible Referenceable has one or more URLs
+<p>In Foolscap, each world-accessible Referenceable has one or more FURLs
 which are <q>secure</q>, where we use the capability-security definition of
-the term, meaning those URLs have the following properties:</p>
+the term, meaning those FURLs have the following properties:</p>
 
 <ul>
-  <li>The only way to acquire the URL is either to get it from someone else
+  <li>The only way to acquire the FURL is either to get it from someone else
   who already has it, or to be the person who published it in the first
   place.</li>
 
-  <li>Only that original creator of the URL gets to determine which
+  <li>Only that original creator of the FURL gets to determine which
   Referenceable it will connect to. If your
   <code>tub.getReference(url)</code> call succeeds, the Referenceable you
   will be connected to will be the right one.</li>
@@ -949,12 +970,12 @@ through multiple paths, the recipient will receive the same
 
 <p>For a <code>RemoteReference</code> to be transferrable to third-parties in
 this fashion, the original <code>Referenceable</code> must live in a Tub
-which has a working listening port, and an established base URL. It is not
+which has a working listening port, and an established base FURL. It is not
 necessary for the Referenceable to have been published with
 <code>registerReference</code> first: if it is sent over the wire before a
 name has been associated with it, it will be registered under a new random
 and unguessable name. The <code>RemoteReference</code> will contain the
-resulting URL, enabling it to be sent to third parties.</p>
+resulting FURL, enabling it to be sent to third parties.</p>
 
 <p>When this introduction is made, the receiving system must establish a
 connection with the Tub that holds the original Referenceable, and acquire

@@ -1,5 +1,12 @@
 2007-09-08  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.registerReference): add furlFile= argument,
+	to make it easy to persist unguessable FURLs in a file on disk.
+	* foolscap/test/test_tub.py (FurlFile): test it
+	* foolscap/tokens.py (WrongTubIdError): new exception for it
+	* doc/using-foolscap.xhtml (Using a Persistent FURL): document it.
+	Also replace all use of 'url' with 'furl'.
+
 	* foolscap/__init__.py: bump revision to 0.1.6+ while between releases
 	* misc/*/debian/changelog: same
 

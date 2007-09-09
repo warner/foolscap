@@ -113,6 +113,8 @@ class BananaFailure(Failure):
     a child Unslicer"""
     pass
 
+class WrongTubIdError(Exception):
+    """getReference(furlFile=) used a FURL with a different TubID"""
 
 
 class ISlicer(Interface):
