@@ -137,7 +137,8 @@ class RootUnslicer(BaseUnslicer):
     constraint = None
     openCount = None
 
-    def __init__(self):
+    def __init__(self, protocol):
+        self.protocol = protocol
         self.objects = {}
         keys = []
         for r in self.topRegistries + self.openRegistries:
@@ -236,8 +237,8 @@ class RootUnslicer(BaseUnslicer):
 class ScopedRootUnslicer(RootUnslicer):
     # combines RootUnslicer and ScopedUnslicer
 
-    def __init__(self):
-        RootUnslicer.__init__(self)
+    def __init__(self, protocol):
+        RootUnslicer.__init__(self, protocol)
         self.references = {}
 
     def setObject(self, counter, obj):

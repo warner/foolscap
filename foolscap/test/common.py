@@ -145,8 +145,8 @@ class TargetMixin:
 
     def setupBrokers(self):
 
-        self.targetBroker = broker.LoggingBroker()
-        self.callingBroker = broker.LoggingBroker()
+        self.targetBroker = broker.Broker()
+        self.callingBroker = broker.Broker()
 
         t1 = Loopback()
         t1.peer = self.callingBroker

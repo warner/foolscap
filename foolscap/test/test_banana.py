@@ -1,28 +1,25 @@
 
 from twisted.trial import unittest
 from twisted.python import reflect
+from twisted.python.failure import Failure
 from twisted.python.components import registerAdapter
 from twisted.internet import defer
 
 from foolscap.tokens import ISlicer, Violation, BananaError
-from foolscap.tokens import BananaFailure
-from foolscap import slicer, schema, tokens, debug, storage
+from foolscap.tokens import BananaFailure, \
+     OPEN, CLOSE, ABORT, INT, LONGINT, NEG, LONGNEG, FLOAT, STRING
+from foolscap import slicer, schema, tokens, storage, banana
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
 from foolscap.constraint import IConstraint
+from foolscap.banana import int2b128, long_to_bytes
 
 import StringIO
-import sets
+import sets, struct
 
 #log.startLogging(sys.stderr)
 
 # some utility functions to manually assemble bytestreams
-
-def tOPEN(count):
-    return ("OPEN", count)
-def tCLOSE(count):
-    return ("CLOSE", count)
-tABORT = ("ABORT",)
 
 def bOPEN(opentype, count):
     assert count < 128
@@ -59,9 +56,35 @@ def bABORT(count):
 # VocabTest2 (1): send object, test bytestream w/vocab-encoding
 # Sliceable (2): turn instance into tokens (with ISliceable, test tokens
 
-class TokenBanana(debug.TokenStorageBanana):
+def tOPEN(count):
+    return ("OPEN", count)
+def tCLOSE(count):
+    return ("CLOSE", count)
+tABORT = ("ABORT",)
+
+class TokenBanana(banana.Banana):
     """this Banana formats tokens as strings, numbers, and ('OPEN',) tuples
     instead of bytes. Used for testing purposes."""
+
+    def sendOpen(self):
+        openID = self.openCount
+        self.openCount += 1
+        self.sendToken(("OPEN", openID))
+        return openID
+
+    def sendToken(self, token):
+        #print token
+        self.tokens.append(token)
+
+    def sendClose(self, openID):
+        self.sendToken(("CLOSE", openID))
+
+    def sendAbort(self, count=0):
+        self.sendToken(("ABORT",))
+
+    def sendError(self, msg):
+        #print "TokenBanana.sendError(%s)" % msg
+        pass
 
     def testSlice(self, obj):
         assert len(self.slicerStack) == 1
@@ -79,10 +102,55 @@ class TokenBanana(debug.TokenStorageBanana):
     def __del__(self):
         assert not self.rootSlicer.sendQueue
 
+def untokenize(tokens):
+    data = []
+    for t in tokens:
+        if isinstance(t, tuple):
+            if t[0] == "OPEN":
+                int2b128(t[1], data.append)
+                data.append(OPEN)
+            elif t[0] == "CLOSE":
+                int2b128(t[1], data.append)
+                data.append(CLOSE)
+            elif t[0] == "ABORT":
+                data.append(ABORT)
+            else:
+                raise RuntimeError("bad token")
+        else:
+            if isinstance(t, (int, long)):
+                if t >= 2**31:
+                    s = long_to_bytes(t)
+                    int2b128(len(s), data.append)
+                    data.append(LONGINT)
+                    data.append(s)
+                elif t >= 0:
+                    int2b128(t, data.append)
+                    data.append(INT)
+                elif -t > 2**31: # NEG is [-2**31, 0)
+                    s = long_to_bytes(-t)
+                    int2b128(len(s), data.append)
+                    data.append(LONGNEG)
+                    data.append(s)
+                else:
+                    int2b128(-t, data.append)
+                    data.append(NEG)
+            elif isinstance(t, float):
+                data.append(FLOAT)
+                data.append(struct.pack("!d", t))
+            elif isinstance(t, str):
+                int2b128(len(t), data.append)
+                data.append(STRING)
+                data.append(t)
+            else:
+                raise BananaError, "could not send object: %s" % repr(t)
+    return "".join(data)
+
 class UnbananaTestMixin:
     def setUp(self):
         self.hangup = False
-        self.banana = TokenBanana()
+        self.banana = storage.StorageBanana()
+        self.banana.slicerClass = storage.UnsafeStorageRootSlicer
+        self.banana.unslicerClass = storage.UnsafeStorageRootUnslicer
         self.banana.connectionMade()
     def tearDown(self):
         if not self.hangup:
@@ -93,35 +161,38 @@ class UnbananaTestMixin:
     def do(self, tokens):
         self.banana.object = None
         self.banana.violation = None
-        self.banana.transport.disconnectReason = None
+        self.banana.disconnectReason = None
         self.failUnless(len(self.banana.receiveStack) == 1)
         self.failUnless(isinstance(self.banana.receiveStack[0],
                                    storage.UnsafeStorageRootUnslicer))
-        obj = self.banana.processTokens(tokens)
-        return obj
+        data = untokenize(tokens)
+        self.banana.dataReceived(data)
+        return self.banana.object
 
     def shouldFail(self, tokens):
         obj = self.do(tokens)
         self.failUnless(obj is None, "object was produced: %s" % obj)
         self.failUnless(self.banana.violation, "didn't fail, ret=%s" % obj)
-        self.failIf(self.banana.transport.disconnectReason,
+        self.failIf(self.banana.disconnectReason,
                     "connection was dropped: %s" % \
-                    self.banana.transport.disconnectReason)
+                    self.banana.disconnectReason)
         return self.banana.violation
 
     def shouldDropConnection(self, tokens):
         self.banana.logReceiveErrors = False
-        obj = self.do(tokens)
-        self.failUnless(obj is None, "object was produced: %s" % obj)
-        self.failIf(self.banana.violation)
-        f = self.banana.transport.disconnectReason
-        self.failUnless(f, "didn't fail, ret=%s" % obj)
-        if not isinstance(f, BananaFailure):
-            self.fail("disconnectReason wasn't a Failure: %s" % f)
-        if not f.check(BananaError):
-            self.fail("wrong exception type: %s" % f)
-        self.hangup = True # to stop the tearDown check
-        return f
+        try:
+            obj = self.do(tokens)
+            self.fail("connection was supposed to be dropped, got obj=%s"
+                      % (obj,))
+        except BananaError:
+            f = self.banana.disconnectReason
+            if not isinstance(f, Failure):
+                self.fail("disconnectReason wasn't a Failure: %s" % f)
+            if not f.check(BananaError):
+                self.fail("wrong exception type: %s" % f)
+            self.hangup = True # to stop the tearDown check
+            self.failIf(self.banana.violation)
+            return f
 
 
     def failIfBananaFailure(self, res):
@@ -144,19 +215,6 @@ class UnbananaTestMixin:
         self.failUnlessEqual(res.where, where)
         self.banana.object = None # to stop the tearDown check TODO ??
 
-class TestBanana(debug.LoggingStorageBanana):
-    #doLog = "rx"
-
-    def receivedObject(self, obj):
-        self.object = obj
-
-    def reportViolation(self, why):
-        self.violation = why
-
-    def reportReceiveError(self, f):
-        debug.LoggingStorageBanana.reportReceiveError(self, f)
-        self.transport.disconnectReason = BananaFailure()
-
 class TestTransport(StringIO.StringIO):
     disconnectReason = None
     def loseConnection(self):
@@ -169,7 +227,9 @@ class TestBananaMixin:
         self.makeBanana()
 
     def makeBanana(self):
-        self.banana = TestBanana()
+        self.banana = storage.StorageBanana()
+        self.banana.slicerClass = storage.UnsafeStorageRootSlicer
+        self.banana.unslicerClass = storage.UnsafeStorageRootUnslicer
         self.banana.transport = TestTransport()
         self.banana.connectionMade()
 
@@ -190,17 +250,18 @@ class TestBananaMixin:
     def shouldDecode(self, stream):
         obj = self.decode(stream)
         self.failIf(self.banana.violation)
-        self.failIf(self.banana.transport.disconnectReason)
+        self.failIf(self.banana.disconnectReason)
         self.failUnlessEqual(len(self.banana.receiveStack), 1)
         return obj
 
     def shouldFail(self, stream):
         obj = self.decode(stream)
-        self.failUnless(obj is None,
-                        "obj was '%s', not None" % (obj,))
-        self.failIf(self.banana.transport.disconnectReason,
+        # Violations on a StorageBanana will continue to decode objects, but
+        # will set b.violation, which we can examine afterwards
+        self.failUnlessEqual(obj, None)
+        self.failIf(self.banana.disconnectReason,
                     "connection was dropped: %s" % \
-                    self.banana.transport.disconnectReason)
+                    self.banana.disconnectReason)
         self.failUnlessEqual(len(self.banana.receiveStack), 1)
         f = self.banana.violation
         if not f:
@@ -213,21 +274,22 @@ class TestBananaMixin:
 
     def shouldDropConnection(self, stream):
         self.banana.logReceiveErrors = False # trial hooks log.err
-        obj = self.decode(stream)
-        self.failUnless(obj is None,
-                        "decode worked! got '%s', expected dropConnection" \
-                        % obj)
-        # the receiveStack is allowed to be non-empty here, since we've
-        # dropped the connection anyway
-        f = self.banana.transport.disconnectReason
-        if not f:
-            self.fail("didn't fail")
-        if not isinstance(f, BananaFailure):
-            self.fail("disconnectReason wasn't a Failure: %s" % f)
-        if not f.check(BananaError):
-            self.fail("wrong exception type: %s" % f)
-        self.makeBanana() # need a new one, we squished the last one
-        return f
+        try:
+            obj = self.decode(stream)
+            self.fail("decode worked! got '%s', expected dropConnection" \
+                      % (obj,))
+        except BananaError:
+            # the receiveStack is allowed to be non-empty here, since we've
+            # dropped the connection anyway
+            f = self.banana.disconnectReason
+            if not f:
+                self.fail("didn't fail")
+            if not isinstance(f, Failure):
+                self.fail("disconnectReason wasn't a Failure: %s" % f)
+            if not f.check(BananaError):
+                self.fail("wrong exception type: %s" % f)
+            self.makeBanana() # need a new one, we squished the last one
+            return f
 
     def wantEqual(self, got, wanted):
         if got != wanted:
@@ -609,6 +671,8 @@ class Foo(Bar):
 class EncodeTest(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
+        self.banana.slicerClass = storage.UnsafeStorageRootSlicer
+        self.banana.unslicerClass = storage.UnsafeStorageRootUnslicer
         self.banana.connectionMade()
     def do(self, obj):
         return self.banana.testSlice(obj)
@@ -818,12 +882,15 @@ class ErrorfulSlicer(slicer.BaseSlicer):
 class EncodeFailureTest(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
+        self.banana.slicerClass = storage.UnsafeStorageRootSlicer
+        self.banana.unslicerClass = storage.UnsafeStorageRootUnslicer
         self.banana.connectionMade()
 
     def tearDown(self):
         return flushEventualQueue()
 
     def send(self, obj):
+        self.banana.tokens = []
         d = self.banana.send(obj)
         d.addCallback(lambda res: self.banana.tokens)
         return d
@@ -1320,6 +1387,7 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
 
     def testBool(self):
         self.check(True, self.TRUE())
+        self.check(False, self.FALSE())
 
 class InboundByteStream2(TestBananaMixin, unittest.TestCase):
 
@@ -1786,13 +1854,14 @@ class VocabTest1(unittest.TestCase):
             setVdict.append(k)
             setVdict.append(vdict[k])
         setVdict.append(tCLOSE(0))
-        b.processTokens(setVdict)
+        b.dataReceived(untokenize(setVdict))
         # banana should now know this vocabulary
         self.failUnlessEqual(b.incomingVocabulary, vdict)
 
     def test_outgoing(self):
         b = TokenBanana()
         b.connectionMade()
+        b.tokens = []
         strings = ["list", "tuple", "dict"]
         vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
         keys = vdict.keys()
@@ -1803,7 +1872,7 @@ class VocabTest1(unittest.TestCase):
             setVdict.append(vdict[k])
         setVdict.append(tCLOSE(0))
         b.setOutgoingVocabulary(strings)
-        vocabTokens = b.getTokens()
+        vocabTokens = b.tokens
         self.failUnlessEqual(vocabTokens, setVdict)
 
 class VocabTest2(TestBananaMixin, unittest.TestCase):

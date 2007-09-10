@@ -1,5 +1,5 @@
 
-import types, struct, sets, time
+import struct, sets, time
 
 from twisted.internet import protocol, defer, reactor
 from twisted.python.failure import Failure
@@ -479,7 +479,7 @@ class Banana(protocol.Protocol):
 
     def sendToken(self, obj):
         write = self.transport.write
-        if isinstance(obj, types.IntType) or isinstance(obj, types.LongType):
+        if isinstance(obj, (int, long)):
             if obj >= 2**31:
                 s = long_to_bytes(obj)
                 int2b128(len(s), write)
@@ -496,10 +496,10 @@ class Banana(protocol.Protocol):
             else:
                 int2b128(-obj, write)
                 write(NEG)
-        elif isinstance(obj, types.FloatType):
+        elif isinstance(obj, float):
             write(FLOAT)
             write(struct.pack("!d", obj))
-        elif isinstance(obj, types.StringType):
+        elif isinstance(obj, str):
             if self.outgoingVocabulary.has_key(obj):
                 symbolID = self.outgoingVocabulary[obj]
                 int2b128(symbolID, write)
@@ -589,8 +589,7 @@ class Banana(protocol.Protocol):
         self.exploded = None # last-ditch error catcher
 
     def initUnslicer(self):
-        self.rootUnslicer = self.unslicerClass()
-        self.rootUnslicer.protocol = self
+        self.rootUnslicer = self.unslicerClass(self)
         self.receiveStack = [self.rootUnslicer]
         self.objectCounter = 0
         self.objects = {}
@@ -645,8 +644,8 @@ class Banana(protocol.Protocol):
                     msg += ", except that self.logReceiveErrors=False"
                     msg += ", sucks to be you"
             self.sendError(msg)
-            self.reportReceiveError(Failure())
             self.connectionAbandoned = True
+            self.reportReceiveError(Failure())
 
     def keepaliveTimerFired(self):
         self.keepaliveTimer = None

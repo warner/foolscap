@@ -649,8 +649,3 @@ class LoopbackTransport(object):
         if self.producer is not None and not self.streamingProducer:
             self.producer.resumeProducing()
 
-
-import debug
-class LoggingBroker(debug.LoggingBananaMixin, Broker):
-    pass
-

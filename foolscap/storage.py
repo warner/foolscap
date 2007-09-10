@@ -23,7 +23,7 @@ from pickle import whichmodule  # used by FunctionSlicer
 from foolscap import slicer, banana, tokens
 from foolscap.tokens import BananaError
 from twisted.internet.defer import Deferred
-from twisted.python import reflect, log
+from twisted.python import reflect
 from foolscap.slicers.dict import OrderedDictSlicer
 from foolscap.slicers.root import ScopedRootSlicer, ScopedRootUnslicer
 
@@ -96,10 +96,12 @@ UnsafeSlicerTable.update({
     # http://docs.python.org/lib/node68.html
     })
 
+# the root slicer for storage is exactly like the regular root slicer
+class StorageRootSlicer(ScopedRootSlicer):
+    pass
 
-
-
-class UnsafeStorageRootSlicer(ScopedRootSlicer):
+# but the "unsafe" one (which handles instances and stuff) uses its own table
+class UnsafeStorageRootSlicer(StorageRootSlicer):
     slicerTable = UnsafeSlicerTable
 
 
@@ -346,8 +348,15 @@ class FunctionUnslicer(slicer.LeafUnslicer):
             raise BananaError("FunctionUnslicer requires a string")
         return self.func, None
 
+# the root unslicer for storage is just like the regular one
+class StorageRootUnslicer(ScopedRootUnslicer):
+    pass
+    # needed:
+    #  PBRootUnslicer.open (for copyable)
+    # to serialize liverefs, we need some of the elements from PBOpenRegistry
 
-class UnsafeStorageRootUnslicer(ScopedRootUnslicer):
+# but the "unsafe" one has its own tables
+class UnsafeStorageRootUnslicer(StorageRootUnslicer):
     # This version tracks references for the entire lifetime of the
     # protocol. It is most appropriate for single-use purposes, such as a
     # replacement for Pickle.
@@ -356,28 +365,30 @@ class UnsafeStorageRootUnslicer(ScopedRootUnslicer):
                      UnsafeUnslicerRegistry]
     openRegistries = [slicer.UnslicerRegistry,
                       UnsafeUnslicerRegistry]
-    # needed:
-    #  PBRootUnslicer.open (for copyable)
-    # to serialize liverefs, we need some of the elements from PBOpenRegistry
-
-################## The unsafe form of Banana that uses these (Un)Slicers
-
 
 class StorageBanana(banana.Banana):
-    # this is "unsafe", in that it will do import() and create instances of
-    # arbitrary classes. It is also scoped at the root, so each
-    # StorageBanana should be used only once.
-    slicerClass = UnsafeStorageRootSlicer
-    unslicerClass = UnsafeStorageRootUnslicer
-    # it also stashes top-level objects in .obj, so you can retrieve them
-    # later
+    object = None
+    violation = None
+    disconnectReason = None
+
     def receivedObject(self, obj):
         self.object = obj
 
-def serialize(obj, outstream=None, root_class=UnsafeStorageRootSlicer):
+    def sendError(self, msg):
+        pass
+
+    def reportViolation(self, why):
+        self.violation = why
+        return None
+
+    def reportReceiveError(self, f):
+        self.disconnectReason = f
+        f.raiseException()
+
+def serialize(obj, outstream=None, root_class=StorageRootSlicer):
     """Serialize an object graph into a sequence of bytes. Returns a Deferred
     that fires with the sequence of bytes."""
-    b = StorageBanana()
+    b = banana.Banana()
     b.slicerClass = root_class
     if outstream is None:
         b.transport = StringIO()
@@ -391,9 +402,9 @@ def serialize(obj, outstream=None, root_class=UnsafeStorageRootSlicer):
         d.addCallback(lambda res: outstream)
     return d
 
-def unserialize(str_or_instream, root_class=UnsafeStorageRootUnslicer):
+def unserialize(str_or_instream, root_class=StorageRootUnslicer):
     """Unserialize a sequence of bytes back into an object graph."""
-    b = StorageBanana()
+    b = banana.Banana()
     b.unslicerClass = root_class
     b.connectionMade()
     if isinstance(str_or_instream, str):
