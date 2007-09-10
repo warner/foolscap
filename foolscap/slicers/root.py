@@ -8,6 +8,7 @@ from foolscap.tokens import Violation, BananaError
 from foolscap.slicer import BaseUnslicer, ReferenceSlicer
 from foolscap.slicer import UnslicerRegistry, BananaUnslicerRegistry
 from foolscap.slicers.vocab import ReplaceVocabularyTable, AddToVocabularyTable
+from foolscap import copyable # does this create a cycle?
 from twisted.python import log
 
 class RootSlicer:
@@ -33,12 +34,26 @@ class RootSlicer:
         # could use a table here if you think it'd be faster than an
         # adapter lookup
         if self.debug: log.msg("slicerForObject(%s)" % type(obj))
+
         # do the adapter lookup first, so that registered adapters override
         # UnsafeSlicerTable's InstanceSlicer
         slicer = tokens.ISlicer(obj, None)
         if slicer:
             if self.debug: log.msg("got ISlicer %s" % slicer)
             return slicer
+
+        # zope.interface doesn't do transitive adaptation, which is a shame
+        # because we want to let people register ICopyable adapters for
+        # third-party code, and there is an ICopyable->ISlicer adapter
+        # defined in copyable.py, but z.i won't do the transitive
+        #  ThirdPartyClass -> ICopyable -> ISlicer
+        # so instead we manually do it here
+
+        copier = copyable.ICopyable(obj, None)
+        if copier:
+            s = tokens.ISlicer(copier)
+            return s
+
         slicerFactory = self.slicerTable.get(type(obj))
         if slicerFactory:
             if self.debug: log.msg(" got slicerFactory %s" % slicerFactory)
@@ -178,13 +193,26 @@ class RootUnslicer(BaseUnslicer):
         # of what kind of unslicer it is. This is only used for "internal"
         # objects: non-top-level nodes
         assert len(self.protocol.receiveStack) > 1
+
+        if opentype[0] == 'copyable':
+            if len(opentype) > 1:
+                copyablename = opentype[1]
+                try:
+                    factory = copyable.CopyableRegistry[copyablename]
+                except KeyError:
+                    raise Violation("unknown RemoteCopy name '%s'" \
+                                    % copyablename)
+                child = factory()
+                return child
+            return None # still waiting for copyablename
+
         for reg in self.openRegistries:
             opener = reg.get(opentype)
             if opener is not None:
                 child = opener()
                 return child
-        else:
-            raise Violation("unknown OPEN type %s" % (opentype,))
+
+        raise Violation("unknown OPEN type %s" % (opentype,))
 
     def doOpen(self, opentype):
         # this is only called for top-level objects

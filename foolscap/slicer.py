@@ -6,7 +6,7 @@ from zope.interface import implements
 from twisted.internet.defer import Deferred
 import tokens
 from tokens import Violation, BananaError
-
+from foolscap.ipb import IBroker
 
 class SlicerClass(type):
     # auto-register Slicers
@@ -32,6 +32,13 @@ class BaseSlicer:
     def __init__(self, obj):
         # this simplifies Slicers which are adapters
         self.obj = obj
+
+    def requireBroker(self, protocol):
+        broker = IBroker(protocol, None)
+        if not broker:
+            msg = "This object can only be serialized by a broker"
+            raise Violation(msg)
+        return broker
 
     def registerReference(self, refid, obj):
         # optimize: most Slicers will delegate this up to the Root

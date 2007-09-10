@@ -40,6 +40,9 @@ class IRemotelyCallable(Interface):
 class ITub(Interface):
     """This marks a Tub."""
 
+class IBroker(Interface):
+    """This marks a broker."""
+
 class IRemoteReference(Interface):
     """This marks a RemoteReference."""
 

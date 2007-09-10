@@ -15,7 +15,7 @@ from foolscap import banana, tokens, ipb, vocab
 from foolscap import call, slicer, referenceable, copyable, remoteinterface
 from foolscap.constraint import Any
 from foolscap.tokens import Violation, BananaError
-from foolscap.ipb import DeadReferenceError
+from foolscap.ipb import DeadReferenceError, IBroker
 from foolscap.slicers.root import RootSlicer, RootUnslicer
 from foolscap.eventual import eventually
 
@@ -74,22 +74,9 @@ class PBRootUnslicer(RootUnslicer):
         
     def open(self, opentype):
         # used for lower-level objects, delegated up from childunslicer.open
-        assert len(self.protocol.receiveStack) > 1
-        child = None
-        if opentype[0] == 'copyable':
-            if len(opentype) > 1:
-                classname = opentype[1]
-                try:
-                    factory = copyable.CopyableRegistry[classname]
-                except KeyError:
-                    raise Violation("unknown RemoteCopy class '%s'" \
-                                    % classname)
-                child = factory()
-            else:
-                return None # still need classname
-        if not child:
-            child = RootUnslicer.open(self, opentype)
-        child.broker = self.broker
+        child = RootUnslicer.open(self, opentype)
+        if child:
+            child.broker = self.broker
         return child
 
     def doOpen(self, opentype):
@@ -114,23 +101,9 @@ class PBRootSlicer(RootSlicer):
                    types.FunctionType: referenceable.CallableSlicer,
                    }
     def registerReference(self, refid, obj):
+        # references are never Broker-scoped: they're always scoped more
+        # narrowly, by the CallSlicer or the AnswerSlicer.
         assert 0
-
-    def slicerForObject(self, obj):
-        # zope.interface doesn't do transitive adaptation, which is a shame
-        # because we want to let people register ICopyable adapters for
-        # third-party code, and there is an ICopyable->ISlicer adapter
-        # defined in copyable.py, but z.i won't do the transitive
-        #  ThirdPartyClass -> ICopyable -> ISlicer
-        # so instead we manually do it here
-        s = tokens.ISlicer(obj, None)
-        if s:
-            return s
-        copier = copyable.ICopyable(obj, None)
-        if copier:
-            s = tokens.ISlicer(copier)
-            return s
-        return RootSlicer.slicerForObject(self, obj)
 
 
 class RIBroker(remoteinterface.RemoteInterface):
@@ -159,7 +132,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     """
 
-    implements(RIBroker)
+    implements(RIBroker, IBroker)
     slicerClass = PBRootSlicer
     unslicerClass = PBRootUnslicer
     unsafeTracebacks = True
@@ -572,6 +545,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             # TODO: .send should return a Deferred that fires when the last
             # byte has been queued, and we should delete the local note then
         except:
+            log.msg("Broker._callfinished unable to send")
             log.err()
         del self.activeLocalCalls[reqID]
 

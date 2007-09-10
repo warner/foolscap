@@ -370,6 +370,8 @@ class StorageBanana(banana.Banana):
     object = None
     violation = None
     disconnectReason = None
+    slicerClass = StorageRootSlicer
+    unslicerClass = StorageRootUnslicer
 
     def receivedObject(self, obj):
         self.object = obj
@@ -385,31 +387,54 @@ class StorageBanana(banana.Banana):
         self.disconnectReason = f
         f.raiseException()
 
+class SerializerTransport:
+    def __init__(self, sio):
+        self.sio = sio
+    def write(self, data):
+        self.sio.write(data)
+    def loseConnection(self, why="ignored"):
+        pass
+
 def serialize(obj, outstream=None, root_class=StorageRootSlicer):
     """Serialize an object graph into a sequence of bytes. Returns a Deferred
     that fires with the sequence of bytes."""
-    b = banana.Banana()
+    b = StorageBanana()
     b.slicerClass = root_class
     if outstream is None:
-        b.transport = StringIO()
+        sio = StringIO()
     else:
-        b.transport = outstream
+        sio = outstream
+    b.transport = SerializerTransport(sio)
     b.connectionMade()
     d = b.send(obj)
+    def _report_error(res):
+        if b.disconnectReason:
+            return b.disconnectReason
+        if b.violation:
+            return b.violation
+        return res
+    d.addCallback(_report_error)
     if outstream is None:
-        d.addCallback(lambda res: b.transport.getvalue())
+        d.addCallback(lambda res: sio.getvalue())
     else:
         d.addCallback(lambda res: outstream)
     return d
 
 def unserialize(str_or_instream, root_class=StorageRootUnslicer):
     """Unserialize a sequence of bytes back into an object graph."""
-    b = banana.Banana()
+    b = StorageBanana()
     b.unslicerClass = root_class
     b.connectionMade()
     if isinstance(str_or_instream, str):
         b.dataReceived(str_or_instream)
     else:
         raise RuntimeError("input streams not implemented yet")
-    return b.object
+    def _report_error(res):
+        if b.disconnectReason:
+            return b.disconnectReason
+        if b.violation:
+            return b.violation
+        return res
+    #d.addCallback(_report_error)
+    return _report_error(b.object)
 

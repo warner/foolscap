@@ -183,6 +183,10 @@ class Banana(protocol.Protocol):
         if self.debugSend: print "Banana.send(%s)" % obj
         return self.rootSlicer.send(obj)
 
+    def _slice_error(self, f, s):
+        log.msg("Error in Deferred returned by slicer %s: %s" % (s, f))
+        self.sendFailed(f)
+
     def produce(self, dummy=None):
         # optimize: cache 'next' because we get many more tokens than stack
         # pushes/pops
@@ -197,7 +201,7 @@ class Banana(protocol.Protocol):
                         if not s.streamable:
                             raise Violation("parent not streamable")
                     obj.addCallback(self.produce)
-                    obj.addErrback(self.sendFailed) # what could cause this?
+                    obj.addErrback(self._slice_error, s)
                     # this is the primary exit point
                     break
                 elif type(obj) in (int, long, float, str):
@@ -225,7 +229,6 @@ class Banana(protocol.Protocol):
                         f = BananaFailure()
                         if self.debugSend:
                             print " violation in newSlicerFor:", f
-
                         self.handleSendViolation(f,
                                                  doPop=False, sendAbort=False)
 
@@ -245,6 +248,7 @@ class Banana(protocol.Protocol):
 
             except:
                 print "exception in produce"
+                log.msg("exception in produce")
                 self.sendFailed(Failure())
                 # there is no point to raising this again. The Deferreds are
                 # all errbacked in sendFailed(). This function was called

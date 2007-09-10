@@ -116,7 +116,8 @@ class ReferenceableSlicer(slicer.BaseSlicer):
     """
     opentype = ('my-reference',)
 
-    def sliceBody(self, streamable, broker):
+    def sliceBody(self, streamable, protocol):
+        broker = self.requireBroker(protocol)
         puid = ipb.IReferenceable(self.obj).processUniqueID()
         tracker = broker.getTrackerForMyReference(puid, self.obj)
         yield tracker.clid
@@ -141,7 +142,8 @@ class CallableSlicer(slicer.BaseSlicer):
     clid values."""
     opentype = ('my-reference',)
 
-    def sliceBody(self, streamable, broker):
+    def sliceBody(self, streamable, protocol):
+        broker = self.requireBroker(protocol)
         # TODO: consider this requirement, maybe based upon a Tub flag
         # assert ipb.ISlicer(self.obj.im_self)
         # or maybe even isinstance(self.obj.im_self, Referenceable)
@@ -571,7 +573,8 @@ class YourReferenceSlicer(slicer.BaseSlicer):
     original pb.Referenceable-holder)
     """
 
-    def slice(self, streamable, broker):
+    def slice(self, streamable, protocol):
+        broker = self.requireBroker(protocol)
         self.streamable = streamable
         tracker = self.obj.tracker
         if tracker.broker == broker:
