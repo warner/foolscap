@@ -5,9 +5,10 @@ from zope.interface import implements
 from twisted.internet.defer import Deferred
 from foolscap import tokens
 from foolscap.tokens import Violation, BananaError
-from foolscap.slicer import BaseUnslicer
+from foolscap.slicer import BaseUnslicer, ReferenceSlicer
 from foolscap.slicer import UnslicerRegistry, BananaUnslicerRegistry
 from foolscap.slicers.vocab import ReplaceVocabularyTable, AddToVocabularyTable
+from twisted.python import log
 
 class RootSlicer:
     implements(tokens.ISlicer, tokens.IRootSlicer)
@@ -31,22 +32,22 @@ class RootSlicer:
     def slicerForObject(self, obj):
         # could use a table here if you think it'd be faster than an
         # adapter lookup
-        if self.debug: print "slicerForObject(%s)" % type(obj)
+        if self.debug: log.msg("slicerForObject(%s)" % type(obj))
         # do the adapter lookup first, so that registered adapters override
         # UnsafeSlicerTable's InstanceSlicer
         slicer = tokens.ISlicer(obj, None)
         if slicer:
-            if self.debug: print "got ISlicer", slicer
+            if self.debug: log.msg("got ISlicer %s" % slicer)
             return slicer
         slicerFactory = self.slicerTable.get(type(obj))
         if slicerFactory:
-            if self.debug: print " got slicerFactory", slicerFactory
+            if self.debug: log.msg(" got slicerFactory %s" % slicerFactory)
             return slicerFactory(obj)
         if issubclass(type(obj), types.InstanceType):
             name = str(obj.__class__)
         else:
             name = str(type(obj))
-        if self.debug: print "cannot serialize %s (%s)" % (obj, name)
+        if self.debug: log.msg("cannot serialize %s (%s)" % (obj, name))
         raise Violation("cannot serialize %s (%s)" % (obj, name))
 
     def slice(self):
@@ -102,6 +103,29 @@ class RootSlicer:
         for obj, d in self.sendQueue:
             d.errback(why)
         self.sendQueue = []
+
+class ScopedRootSlicer(RootSlicer):
+    # this combines RootSlicer with foolscap.slicer.ScopedSlicer . The funny
+    # self-delegation of slicerForObject() means we can't just inherit from
+    # both. It would be nice to refactor everything to make this cleaner.
+
+    def __init__(self, obj):
+        RootSlicer.__init__(self, obj)
+        self.references = {} # maps id(obj) -> (obj,refid)
+
+    def registerReference(self, refid, obj):
+        self.references[id(obj)] = (obj,refid)
+
+    def slicerForObject(self, obj):
+        # check for an object which was sent previously or has at least
+        # started sending
+        obj_refid = self.references.get(id(obj), None)
+        if obj_refid is not None:
+            # we've started to send this object already, so just include a
+            # reference to it
+            return ReferenceSlicer(obj_refid[1])
+        # otherwise go upstream so we can serialize the object completely
+        return RootSlicer.slicerForObject(self, obj)
 
 
 
@@ -209,3 +233,16 @@ class RootUnslicer(BaseUnslicer):
     def getObject(self, counter):
         return None
 
+class ScopedRootUnslicer(RootUnslicer):
+    # combines RootUnslicer and ScopedUnslicer
+
+    def __init__(self):
+        RootUnslicer.__init__(self)
+        self.references = {}
+
+    def setObject(self, counter, obj):
+        self.references[counter] = obj
+
+    def getObject(self, counter):
+        obj = self.references.get(counter)
+        return obj

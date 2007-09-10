@@ -47,10 +47,18 @@ class TestRequest(call.PendingRequest):
     def fail(self, why):
         self.answers.append((False, why))
 
+class NullTransport:
+    def write(self, data):
+        pass
+    def loseConnection(self, why=None):
+        pass
+
 class TestReferenceUnslicer(unittest.TestCase):
     # OPEN(reference), INT(refid), [STR(interfacename), INT(version)]... CLOSE
     def setUp(self):
         self.broker = broker.Broker()
+        self.broker.transport = NullTransport()
+        self.broker.connectionMade()
 
     def tearDown(self):
         return flushEventualQueue()
@@ -99,6 +107,8 @@ class TestAnswer(unittest.TestCase):
     # OPEN(answer), INT(reqID), [answer], CLOSE
     def setUp(self):
         self.broker = broker.Broker()
+        self.broker.transport = NullTransport()
+        self.broker.connectionMade()
 
     def tearDown(self):
         return flushEventualQueue()

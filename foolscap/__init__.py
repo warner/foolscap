@@ -13,6 +13,7 @@ from foolscap.copyable import registerCopier, registerRemoteCopyFactory
 from foolscap.ipb import DeadReferenceError
 from foolscap.tokens import BananaError
 from foolscap import schema # necessary for the adapter_hooks side-effect
+from foolscap.storage import serialize, unserialize
 # TODO: Violation?
 
 # hush pyflakes
@@ -25,5 +26,6 @@ _unused = [
     DeadReferenceError,
     BananaError,
     schema,
+    serialize, unserialize,
     ]
 del _unused

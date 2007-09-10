@@ -23,9 +23,9 @@ from pickle import whichmodule  # used by FunctionSlicer
 from foolscap import slicer, banana, tokens
 from foolscap.tokens import BananaError
 from twisted.internet.defer import Deferred
-from twisted.python import reflect
+from twisted.python import reflect, log
 from foolscap.slicers.dict import OrderedDictSlicer
-from foolscap.slicers.root import RootSlicer, RootUnslicer
+from foolscap.slicers.root import ScopedRootSlicer, ScopedRootUnslicer
 
 
 ################## Slicers for "unsafe" things
@@ -99,26 +99,8 @@ UnsafeSlicerTable.update({
 
 
 
-class UnsafeRootSlicer(RootSlicer):
+class UnsafeStorageRootSlicer(ScopedRootSlicer):
     slicerTable = UnsafeSlicerTable
-
-class StorageRootSlicer(UnsafeRootSlicer):
-    # some pieces taken from ScopedSlicer
-    def __init__(self, protocol):
-        UnsafeRootSlicer.__init__(self, protocol)
-        self.references = {}
-
-    def registerReference(self, refid, obj):
-        self.references[id(obj)] = (obj,refid)
-
-    def slicerForObject(self, obj):
-        # check for an object which was sent previously or has at least
-        # started sending
-        obj_refid = self.references.get(id(obj), None)
-        if obj_refid is not None:
-            return slicer.ReferenceSlicer(obj_refid[1])
-        # otherwise go upstream
-        return UnsafeRootSlicer.slicerForObject(self, obj)
 
 
 ################## Unslicers for "unsafe" things
@@ -365,27 +347,18 @@ class FunctionUnslicer(slicer.LeafUnslicer):
         return self.func, None
 
 
-class UnsafeRootUnslicer(RootUnslicer):
+class UnsafeStorageRootUnslicer(ScopedRootUnslicer):
+    # This version tracks references for the entire lifetime of the
+    # protocol. It is most appropriate for single-use purposes, such as a
+    # replacement for Pickle.
     topRegistries = [slicer.UnslicerRegistry,
                      slicer.BananaUnslicerRegistry,
                      UnsafeUnslicerRegistry]
     openRegistries = [slicer.UnslicerRegistry,
                       UnsafeUnslicerRegistry]
-
-class StorageRootUnslicer(UnsafeRootUnslicer, slicer.ScopedUnslicer):
-    # This version tracks references for the entire lifetime of the
-    # protocol. It is most appropriate for single-use purposes, such as a
-    # replacement for Pickle.
-
-    def __init__(self):
-        slicer.ScopedUnslicer.__init__(self)
-        UnsafeRootUnslicer.__init__(self)
-
-    def setObject(self, counter, obj):
-        return slicer.ScopedUnslicer.setObject(self, counter, obj)
-    def getObject(self, counter):
-        return slicer.ScopedUnslicer.getObject(self, counter)
-
+    # needed:
+    #  PBRootUnslicer.open (for copyable)
+    # to serialize liverefs, we need some of the elements from PBOpenRegistry
 
 ################## The unsafe form of Banana that uses these (Un)Slicers
 
@@ -394,26 +367,38 @@ class StorageBanana(banana.Banana):
     # this is "unsafe", in that it will do import() and create instances of
     # arbitrary classes. It is also scoped at the root, so each
     # StorageBanana should be used only once.
-    slicerClass = StorageRootSlicer
-    unslicerClass = StorageRootUnslicer
-
+    slicerClass = UnsafeStorageRootSlicer
+    unslicerClass = UnsafeStorageRootUnslicer
     # it also stashes top-level objects in .obj, so you can retrieve them
     # later
     def receivedObject(self, obj):
         self.object = obj
 
-def serialize(obj):
+def serialize(obj, outstream=None, root_class=UnsafeStorageRootSlicer):
     """Serialize an object graph into a sequence of bytes. Returns a Deferred
     that fires with the sequence of bytes."""
     b = StorageBanana()
-    b.transport = StringIO()
+    b.slicerClass = root_class
+    if outstream is None:
+        b.transport = StringIO()
+    else:
+        b.transport = outstream
+    b.connectionMade()
     d = b.send(obj)
-    d.addCallback(lambda res: b.transport.getvalue())
+    if outstream is None:
+        d.addCallback(lambda res: b.transport.getvalue())
+    else:
+        d.addCallback(lambda res: outstream)
     return d
 
-def unserialize(str):
+def unserialize(str_or_instream, root_class=UnsafeStorageRootUnslicer):
     """Unserialize a sequence of bytes back into an object graph."""
     b = StorageBanana()
-    b.dataReceived(str)
+    b.unslicerClass = root_class
+    b.connectionMade()
+    if isinstance(str_or_instream, str):
+        b.dataReceived(str_or_instream)
+    else:
+        raise RuntimeError("input streams not implemented yet")
     return b.object
 

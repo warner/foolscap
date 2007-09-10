@@ -83,11 +83,12 @@ class UnbananaTestMixin:
     def setUp(self):
         self.hangup = False
         self.banana = TokenBanana()
+        self.banana.connectionMade()
     def tearDown(self):
         if not self.hangup:
             self.failUnless(len(self.banana.receiveStack) == 1)
             self.failUnless(isinstance(self.banana.receiveStack[0],
-                                       storage.StorageRootUnslicer))
+                                       storage.UnsafeStorageRootUnslicer))
             
     def do(self, tokens):
         self.banana.object = None
@@ -95,7 +96,7 @@ class UnbananaTestMixin:
         self.banana.transport.disconnectReason = None
         self.failUnless(len(self.banana.receiveStack) == 1)
         self.failUnless(isinstance(self.banana.receiveStack[0],
-                                   storage.StorageRootUnslicer))
+                                   storage.UnsafeStorageRootUnslicer))
         obj = self.banana.processTokens(tokens)
         return obj
 
@@ -608,6 +609,7 @@ class Foo(Bar):
 class EncodeTest(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
+        self.banana.connectionMade()
     def do(self, obj):
         return self.banana.testSlice(obj)
     def tearDown(self):
@@ -816,6 +818,7 @@ class ErrorfulSlicer(slicer.BaseSlicer):
 class EncodeFailureTest(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
+        self.banana.connectionMade()
 
     def tearDown(self):
         return flushEventualQueue()
@@ -1774,6 +1777,7 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
 class VocabTest1(unittest.TestCase):
     def test_incoming1(self):
         b = TokenBanana()
+        b.connectionMade()
         vdict = {1: 'list', 2: 'tuple', 3: 'dict'}
         keys = vdict.keys()
         keys.sort()
@@ -1788,6 +1792,7 @@ class VocabTest1(unittest.TestCase):
 
     def test_outgoing(self):
         b = TokenBanana()
+        b.connectionMade()
         strings = ["list", "tuple", "dict"]
         vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
         keys = vdict.keys()
@@ -1854,6 +1859,7 @@ registerAdapter(_AndICanHelp, CouldBeSliceable, ISlicer)
 class Sliceable(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
+        self.banana.connectionMade()
     def do(self, obj):
         return self.banana.testSlice(obj)
     def tearDown(self):

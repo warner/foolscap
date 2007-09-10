@@ -75,6 +75,7 @@ class PBRootUnslicer(RootUnslicer):
     def open(self, opentype):
         # used for lower-level objects, delegated up from childunslicer.open
         assert len(self.protocol.receiveStack) > 1
+        child = None
         if opentype[0] == 'copyable':
             if len(opentype) > 1:
                 classname = opentype[1]
@@ -84,17 +85,10 @@ class PBRootUnslicer(RootUnslicer):
                     raise Violation("unknown RemoteCopy class '%s'" \
                                     % classname)
                 child = factory()
-                child.broker = self.broker
-                return child
             else:
                 return None # still need classname
-        for reg in self.openRegistries:
-            opener = reg.get(opentype)
-            if opener is not None:
-                child = opener()
-                break
-        else:
-            raise Violation("unknown OPEN type %s" % (opentype,))
+        if not child:
+            child = RootUnslicer.open(self, opentype)
         child.broker = self.broker
         return child
 
@@ -190,8 +184,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.initBroker()
 
     def initBroker(self):
-        self.rootSlicer.broker = self
-        self.rootUnslicer.broker = self
 
         # tracking Referenceables
         # sending side uses these
@@ -227,6 +219,8 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def connectionMade(self):
         banana.Banana.connectionMade(self)
+        self.rootSlicer.broker = self
+        self.rootUnslicer.broker = self
         # create the remote_broker object. We don't use the usual
         # reference-counting mechanism here, because this is a synthetic
         # object that lives forever.

@@ -127,6 +127,8 @@ class Banana(protocol.Protocol):
     def connectionMade(self):
         if self.debugSend:
             print "Banana.connectionMade"
+        self.initSlicer()
+        self.initUnslicer()
         if self.keepaliveTimeout is not None:
             self.dataLastReceivedAt = time.time()
             t = reactor.callLater(self.keepaliveTimeout + EPSILON,
@@ -155,12 +157,18 @@ class Banana(protocol.Protocol):
     # called by .send()
     # calls transport.write() and transport.loseConnection()
 
-    slicerClass = RootSlicer
+    slicerClass = RootSlicer # this is used in connectionMade()
     paused = False
-    streamable = True # this is only checked during __init__
+    streamable = True # this is checked at connectionMade() time
     debugSend = False
 
     def initSend(self):
+        self.openCount = 0
+        self.outgoingVocabulary = {}
+        self.nextAvailableOutgoingVocabularyIndex = 0
+        self.pendingVocabAdditions = sets.Set()
+
+    def initSlicer(self):
         self.rootSlicer = self.slicerClass(self)
         self.rootSlicer.allowStreaming(self.streamable)
         assert tokens.ISlicer.providedBy(self.rootSlicer)
@@ -170,11 +178,6 @@ class Banana(protocol.Protocol):
         next = iter(itr).next
         top = (self.rootSlicer, next, None)
         self.slicerStack = [top]
-
-        self.openCount = 0
-        self.outgoingVocabulary = {}
-        self.nextAvailableOutgoingVocabularyIndex = 0
-        self.pendingVocabAdditions = sets.Set()
 
     def send(self, obj):
         if self.debugSend: print "Banana.send(%s)" % obj
@@ -526,6 +529,8 @@ class Banana(protocol.Protocol):
         self.transport.write(ABORT)
 
     def sendError(self, msg):
+        if not self.transport:
+            return
         if len(msg) > SIZE_LIMIT:
             msg = msg[:SIZE_LIMIT-10] + "..."
         int2b128(len(msg), self.transport.write)
@@ -568,12 +573,6 @@ class Banana(protocol.Protocol):
     disconnectTimer = None
 
     def initReceive(self):
-        self.rootUnslicer = self.unslicerClass()
-        self.rootUnslicer.protocol = self
-        self.receiveStack = [self.rootUnslicer]
-        self.objectCounter = 0
-        self.objects = {}
-
         self.inOpen = False # set during the Index Phase of an OPEN sequence
         self.opentype = [] # accumulates Index Tokens
 
@@ -588,6 +587,13 @@ class Banana(protocol.Protocol):
         self.skipBytes = 0 # used to discard a single long token
         self.discardCount = 0 # used to discard non-primitive objects
         self.exploded = None # last-ditch error catcher
+
+    def initUnslicer(self):
+        self.rootUnslicer = self.unslicerClass()
+        self.rootUnslicer.protocol = self
+        self.receiveStack = [self.rootUnslicer]
+        self.objectCounter = 0
+        self.objects = {}
 
     def printStack(self, verbose=0):
         print "STACK:"
