@@ -930,7 +930,12 @@ class Negotiation(protocol.Protocol):
 
         self.stopNegotiationTimer()
 
-        b = self.brokerClass(params,
+        if self.isClient:
+            theirTubRef = self.target
+        else:
+            theirTubRef = self.theirTubRef
+
+        b = self.brokerClass(theirTubRef, params,
                              self.tub.keepaliveTimeout,
                              self.tub.disconnectTimeout,
                              )
@@ -949,10 +954,6 @@ class Negotiation(protocol.Protocol):
 
         # finally let our Tub know that they can start using the new Broker.
         # This will wake up anyone who initiated an outbound connection.
-        if self.isClient:
-            theirTubRef = self.target
-        else:
-            theirTubRef = self.theirTubRef
         self.tub.brokerAttached(theirTubRef, b, self.isClient)
 
     def negotiationFailed(self):

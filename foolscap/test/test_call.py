@@ -136,6 +136,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         self.failIf(target.calls)
         d.addBoth(self._testFailStringException_1)
         return d
+    testFailStringException.timeout = 2
     def _testFailStringException_1(self, f):
         # f should be a CopiedFailure
         self.failUnless(isinstance(f, failure.Failure),
@@ -145,7 +146,7 @@ class TestCall(TargetMixin, unittest.TestCase):
 
     def testCopiedFailure(self):
         # A calls B, who calls C. C fails. B gets a CopiedFailure and reports
-        # it back to A. What does a get?
+        # it back to A. What does A get?
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("fail_remotely", target)
         def _check(f):
@@ -157,6 +158,7 @@ class TestCall(TargetMixin, unittest.TestCase):
             self.failUnlessSubstring("you asked me to fail", f.value)
         d.addBoth(_check)
         return d
+    testCopiedFailure.timeout = 2
 
     def testCall2(self):
         # server end uses an interface this time, but not the client end

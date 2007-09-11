@@ -194,6 +194,7 @@ class Gifts(Base, unittest.TestCase):
             self.failUnlessEqual(res, 12)
         d.addCallback(_carolCalled)
         return d
+    testGift.timeout = 10
 
     def testImplicitGift(self):
         # in this test, Carol was registered in her Tub (using
