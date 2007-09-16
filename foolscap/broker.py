@@ -169,7 +169,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.yourReferenceByURL = {}
 
         # tracking Gifts
-        self.nextGiftID = count().next
+        self.nextGiftID = count(1).next
         self.myGifts = {} # maps (broker,clid) to (rref, giftID, count)
         self.myGiftsByGiftID = {} # maps giftID to (broker,clid)
 
