@@ -6,7 +6,7 @@ from twisted.internet import defer, protocol
 from twisted.application import service, strports
 from twisted.python import log
 
-from foolscap import ipb, base32, negotiate, broker, observer, eventual
+from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError
 from foolscap.reconnector import Reconnector
@@ -688,6 +688,21 @@ class Tub(service.MultiService):
                     % _sturdyOrURL)
         self.reconnectors.append(rc)
         return rc
+
+    def serialize(self, obj):
+        b = broker.StorageBroker()
+        b.setTub(self)
+        d = storage.serialize(obj, banana=b)
+        return d
+
+    def unserialize(self, data):
+        b = broker.StorageBroker()
+        b.setTub(self)
+        d = storage.unserialize(data, banana=b)
+        assert isinstance(d, defer.Deferred)
+        return d
+
+    # beyond here are internal methods, not for use by application code
 
     # _removeReconnector is called by the Reconnector
     def _removeReconnector(self, rc):

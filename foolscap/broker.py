@@ -586,6 +586,8 @@ class StorageBrokerRootUnslicer(PBRootUnslicer):
     # probably by making the scopedness a mixin.
 
     openRegistries = [slicer.UnslicerRegistry, PBStorageOpenRegistry]
+    topRegistries = openRegistries
+
     def __init__(self, protocol):
         PBRootUnslicer.__init__(self, protocol)
         self.references = {}
@@ -599,6 +601,13 @@ class StorageBrokerRootUnslicer(PBRootUnslicer):
 
     def receiveChild(self, obj, ready_deferred):
         self.protocol.receiveChild(obj, ready_deferred)
+
+    def reportViolation(self, why):
+        # unlike PBRootUnslicer, we do *not* absorb the failure. Any error
+        # during deserialization is fatal to the process. We give it to the
+        # StorageBroker, which will eventually fire the unserialization
+        # Deferred.
+        self.protocol.reportViolation(why)
 
 class StorageBroker(Broker):
     # like Broker, but used to serialize data for storage rather than for
@@ -621,6 +630,15 @@ class StorageBroker(Broker):
         else:
             self.d.callback(obj)
         del self.d
+
+    def reportViolation(self, why):
+        self.violation = why
+        eventually(self.d.callback, None)
+        return None
+
+    def reportReceiveError(self, f):
+        self.disconnectReason = f
+        f.raiseException()
 
 # this loopback stuff is based upon twisted.protocols.loopback, except that
 # we use it for real, not just for testing. The IConsumer stuff hasn't been

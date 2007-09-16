@@ -393,7 +393,6 @@ class StorageBanana(banana.Banana):
 
     def reportViolation(self, why):
         self.violation = why
-        return None
 
     def reportReceiveError(self, f):
         self.disconnectReason = f

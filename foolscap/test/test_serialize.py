@@ -5,6 +5,7 @@ from twisted.application import service
 from twisted.internet import defer
 from twisted.python import failure
 from cStringIO import StringIO
+import gc
 
 crypto_available = False
 try:
@@ -133,18 +134,49 @@ class Serialize(unittest.TestCase):
         return d
         
 
-    def OFFtest_referenceable(self):
+    def test_referenceable(self):
         t1 = GoodEnoughTub()
         t1.setServiceParent(self.s)
         l = t1.listenOn("tcp:0:interface=127.0.0.1")
         t1.setLocation("127.0.0.1:%d" % l.getPortnum())
         r1 = Referenceable()
+        # the serialized blob can't keep the reference alive, so you must
+        # arrange for that separately
+        t1.registerReference(r1)
         t2 = GoodEnoughTub()
+        t2.setServiceParent(self.s)
         obj = ("graph tangly", r1)
         d = t1.serialize(obj)
+        del r1; del obj
+        def _done(data):
+            self.failUnless("their-reference" in data)
+            return data
+        d.addCallback(_done)
         d.addCallback(lambda data: t2.unserialize(data))
         def _check(obj2):
             self.failUnlessEqual(obj2[0], "graph tangly")
             self.failUnless(isinstance(obj2[1], RemoteReference))
         d.addCallback(_check)
         return d
+    test_referenceable.timeout = 5
+
+    def test_referenceables_die(self):
+        # serialized data will not keep the referenceable alive
+        t1 = GoodEnoughTub()
+        t1.setServiceParent(self.s)
+        l = t1.listenOn("tcp:0:interface=127.0.0.1")
+        t1.setLocation("127.0.0.1:%d" % l.getPortnum())
+        r1 = Referenceable()
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.s)
+        obj = ("graph tangly", r1)
+        d = t1.serialize(obj)
+        del r1; del obj
+        gc.collect()
+        d.addCallback(lambda data:
+                      self.shouldFail(None,
+                                      KeyError,
+                                      "unable to find reference for name",
+                                      t2.unserialize, data))
+        return d
+    test_referenceables_die.timeout = 5

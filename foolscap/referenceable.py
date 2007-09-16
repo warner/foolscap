@@ -116,24 +116,42 @@ class ReferenceableSlicer(slicer.BaseSlicer):
     """
     opentype = ('my-reference',)
 
-    def sliceBody(self, streamable, protocol):
+    def slice(self, streamable, protocol):
         broker = self.requireBroker(protocol)
         puid = ipb.IReferenceable(self.obj).processUniqueID()
         tracker = broker.getTrackerForMyReference(puid, self.obj)
-        yield tracker.clid
-        firstTime = tracker.send()
-        if firstTime:
-            # this is the first time the Referenceable has crossed this wire.
-            # In addition to the clid, send the interface name (if any), and
-            # any URL this reference might be known by
-            iname = ipb.IRemotelyCallable(self.obj).getInterfaceName()
-            if iname:
-                yield iname
-            else:
-                yield ""
-            url = tracker.getURL()
-            if url:
-                yield url
+        if broker.remote_broker:
+            # emit a my-reference sequence
+            yield 'my-reference'
+            yield tracker.clid
+            firstTime = tracker.send()
+            if firstTime:
+                # this is the first time the Referenceable has crossed this
+                # wire. In addition to the clid, send the interface name (if
+                # any), and any URL this reference might be known by
+                iname = ipb.IRemotelyCallable(self.obj).getInterfaceName()
+                if iname:
+                    yield iname
+                else:
+                    yield ""
+                url = tracker.getURL()
+                if url:
+                    yield url
+        else:
+            # when we're serializing to data, rather than to a live
+            # connection, all of my Referenceables are turned into
+            # their-reference sequences, to prompt the eventual recipient to
+            # create a new connection for this object.
+
+            # a big note on object lifetimes: obviously, the data cannot keep
+            # the Referenceable alive. Use tub.registerReference() on any
+            # Referenceable that you want to include in the serialized data,
+            # and take steps to make sure that later incarnations of this Tub
+            # will do the same.
+            yield 'their-reference'
+            yield 0 # giftID==0 tells the recipient to not try to ack it
+            yield tracker.getURL()
+            
 
 registerAdapter(ReferenceableSlicer, Referenceable, ipb.ISlicer)
 
@@ -274,6 +292,9 @@ class RemoteReferenceTracker:
     def __repr__(self):
         s = "<RemoteReferenceTracker(clid=%d,url=%s)>" % (self.clid, self.url)
         return s
+
+    def getURL(self):
+        return self.url
 
     def getRef(self):
         """Return the actual RemoteReference that we hold, creating it if
@@ -587,7 +608,7 @@ class YourReferenceSlicer(slicer.BaseSlicer):
             giftID = broker.makeGift(self.obj)
             yield 'their-reference'
             yield giftID
-            yield tracker.url
+            yield tracker.getURL()
 
     def describe(self):
         return "<your-ref-%s>" % self.obj.tracker.clid
@@ -689,9 +710,11 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
         return obj_deferred, ready_deferred
 
     def ackGift(self, rref):
-        rb = self.broker.remote_broker
-        # if we lose the connection, they'll decref the gift anyway
-        rb.callRemoteOnly("decgift", giftID=self.giftID, count=1)
+        # giftID==0 means they aren't doing reference counting
+        if self.giftID != 0:
+            rb = self.broker.remote_broker
+            # if we lose the connection, they'll decref the gift anyway
+            rb.callRemoteOnly("decgift", giftID=self.giftID, count=1)
         return rref
 
     def describe(self):
