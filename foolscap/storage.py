@@ -348,12 +348,12 @@ class FunctionUnslicer(slicer.LeafUnslicer):
             raise BananaError("FunctionUnslicer requires a string")
         return self.func, None
 
-# the root unslicer for storage is just like the regular one
+# the root unslicer for storage is just like the regular one, but hands
+# received objects to the StorageBanana
 class StorageRootUnslicer(ScopedRootUnslicer):
-    pass
-    # needed:
-    #  PBRootUnslicer.open (for copyable)
-    # to serialize liverefs, we need some of the elements from PBOpenRegistry
+    def receiveChild(self, obj, ready_deferred):
+        self.protocol.receiveChild(obj, ready_deferred)
+
 
 # but the "unsafe" one has its own tables
 class UnsafeStorageRootUnslicer(StorageRootUnslicer):
@@ -372,6 +372,18 @@ class StorageBanana(banana.Banana):
     disconnectReason = None
     slicerClass = StorageRootSlicer
     unslicerClass = StorageRootUnslicer
+
+    def prepare(self):
+        self.d = Deferred()
+        return self.d
+
+    def receiveChild(self, obj, ready_deferred):
+        if ready_deferred:
+            ready_deferred.addBoth(self.d.callback)
+            self.d.addCallback(lambda res: obj)
+        else:
+            self.d.callback(obj)
+        del self.d
 
     def receivedObject(self, obj):
         self.object = obj
@@ -395,11 +407,14 @@ class SerializerTransport:
     def loseConnection(self, why="ignored"):
         pass
 
-def serialize(obj, outstream=None, root_class=StorageRootSlicer):
+def serialize(obj, outstream=None, root_class=StorageRootSlicer, banana=None):
     """Serialize an object graph into a sequence of bytes. Returns a Deferred
     that fires with the sequence of bytes."""
-    b = StorageBanana()
-    b.slicerClass = root_class
+    if banana:
+        b = banana
+    else:
+        b = StorageBanana()
+        b.slicerClass = root_class
     if outstream is None:
         sio = StringIO()
     else:
@@ -420,11 +435,15 @@ def serialize(obj, outstream=None, root_class=StorageRootSlicer):
         d.addCallback(lambda res: outstream)
     return d
 
-def unserialize(str_or_instream, root_class=StorageRootUnslicer):
+def unserialize(str_or_instream, banana=None, root_class=StorageRootUnslicer):
     """Unserialize a sequence of bytes back into an object graph."""
-    b = StorageBanana()
-    b.unslicerClass = root_class
+    if banana:
+        b = banana
+    else:
+        b = StorageBanana()
+        b.unslicerClass = root_class
     b.connectionMade()
+    d = b.prepare() # this will fire with the unserialized object
     if isinstance(str_or_instream, str):
         b.dataReceived(str_or_instream)
     else:
@@ -434,7 +453,7 @@ def unserialize(str_or_instream, root_class=StorageRootUnslicer):
             return b.disconnectReason
         if b.violation:
             return b.violation
-        return res
-    #d.addCallback(_report_error)
-    return _report_error(b.object)
+        return res # return the unserialized object
+    d.addCallback(_report_error)
+    return d
 

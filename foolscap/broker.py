@@ -16,7 +16,7 @@ from foolscap import call, slicer, referenceable, copyable, remoteinterface
 from foolscap.constraint import Any
 from foolscap.tokens import Violation, BananaError
 from foolscap.ipb import DeadReferenceError, IBroker
-from foolscap.slicers.root import RootSlicer, RootUnslicer
+from foolscap.slicers.root import RootSlicer, RootUnslicer, ScopedRootSlicer
 from foolscap.eventual import eventually
 
 
@@ -143,6 +143,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
     remote_broker = None
     startingTLS = False
     startedTLS = False
+    use_remote_broker = True
 
     def __init__(self, params={},
                  keepaliveTimeout=None, disconnectTimeout=None):
@@ -194,6 +195,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
         banana.Banana.connectionMade(self)
         self.rootSlicer.broker = self
         self.rootUnslicer.broker = self
+        if self.use_remote_broker:
+            self._create_remote_broker()
+
+    def _create_remote_broker(self):
         # create the remote_broker object. We don't use the usual
         # reference-counting mechanism here, because this is a synthetic
         # object that lives forever.
@@ -563,6 +568,59 @@ class Broker(banana.Banana, referenceable.Referenceable):
             assert self.activeLocalCalls[reqID]
             self.send(call.ErrorSlicer(reqID, f))
             del self.activeLocalCalls[reqID]
+
+class StorageBrokerRootSlicer(ScopedRootSlicer):
+    # each StorageBroker is a single serialization domain, so we inherit from
+    # ScopedRootSlicer
+    slicerTable = {types.MethodType: referenceable.CallableSlicer,
+                   types.FunctionType: referenceable.CallableSlicer,
+                   }
+
+PBStorageOpenRegistry = {
+    ('their-reference',): referenceable.TheirReferenceUnslicer,
+    }
+
+class StorageBrokerRootUnslicer(PBRootUnslicer):
+    # we want all the behavior of PBRootUnslicer, plus the scopedness of a
+    # ScopedRootUnslicer. TODO: find some way to refactor all of this,
+    # probably by making the scopedness a mixin.
+
+    openRegistries = [slicer.UnslicerRegistry, PBStorageOpenRegistry]
+    def __init__(self, protocol):
+        PBRootUnslicer.__init__(self, protocol)
+        self.references = {}
+
+    def setObject(self, counter, obj):
+        self.references[counter] = obj
+
+    def getObject(self, counter):
+        obj = self.references.get(counter)
+        return obj
+
+    def receiveChild(self, obj, ready_deferred):
+        self.protocol.receiveChild(obj, ready_deferred)
+
+class StorageBroker(Broker):
+    # like Broker, but used to serialize data for storage rather than for
+    # transmission over a specific connection.
+    slicerClass = StorageBrokerRootSlicer
+    unslicerClass = StorageBrokerRootUnslicer
+    object = None
+    violation = None
+    disconnectReason = None
+    use_remote_broker = False
+
+    def prepare(self):
+        self.d = defer.Deferred()
+        return self.d
+
+    def receiveChild(self, obj, ready_deferred):
+        if ready_deferred:
+            ready_deferred.addBoth(self.d.callback)
+            self.d.addCallback(lambda res: obj)
+        else:
+            self.d.callback(obj)
+        del self.d
 
 # this loopback stuff is based upon twisted.protocols.loopback, except that
 # we use it for real, not just for testing. The IConsumer stuff hasn't been

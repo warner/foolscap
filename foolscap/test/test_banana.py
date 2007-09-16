@@ -159,15 +159,21 @@ class UnbananaTestMixin:
                                        storage.UnsafeStorageRootUnslicer))
             
     def do(self, tokens):
-        self.banana.object = None
         self.banana.violation = None
         self.banana.disconnectReason = None
         self.failUnless(len(self.banana.receiveStack) == 1)
         self.failUnless(isinstance(self.banana.receiveStack[0],
                                    storage.UnsafeStorageRootUnslicer))
         data = untokenize(tokens)
+        results = []
+        d = self.banana.prepare()
+        d.addCallback(results.append)
         self.banana.dataReceived(data)
-        return self.banana.object
+        # we expect everything here to be synchronous
+        if len(results) == 1:
+            return results[0]
+        self.failUnless(self.banana.violation or self.banana.disconnectReason)
+        return None
 
     def shouldFail(self, tokens):
         obj = self.do(tokens)
@@ -242,10 +248,16 @@ class TestBananaMixin:
         self.banana.transport = TestTransport()
 
     def decode(self, stream):
-        self.banana.object = None
         self.banana.violation = None
+        results = []
+        d = self.banana.prepare()
+        d.addCallback(results.append)
         self.banana.dataReceived(stream)
-        return self.banana.object
+        # we expect everything here to be synchronous
+        if len(results) == 1:
+            return results[0]
+        self.failUnless(self.banana.violation or self.banana.disconnectReason)
+        return None
 
     def shouldDecode(self, stream):
         obj = self.decode(stream)
