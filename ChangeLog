@@ -1,3 +1,54 @@
+2007-09-16  Brian Warner  <warner@lothar.com>
+
+	* all: merge in serialization-refactoring branch, adding
+	Tub.(un)serialize (which can handle Referenceables) and moving us
+	slightly closer to Sealers/Unsealers. The regular
+	storage.serialize can now handle Copyables and objects for which
+	you've registered an ISlicer adapter. Eventually the default
+	unserialization interface will be 'safe' (meaning it won't create
+	instances of arbitrary classes), and you'll have to give it
+	additional arguments to enable 'unsafe' behavior.
+	* doc/serializing.xhtml: document it
+	* foolscap/banana.py: create slicer/unslicer at connectionMade,
+	not __init__. Also change the way that errors are handled, and
+	remove the use of 'types'.
+	* foolscap/broker.py (PBRootUnslicer.open): refactor, move code
+	to slicers.root.RootUnslicer
+	(Broker.use_remote_broker): new attribute, True for connected
+	brokers, False for the non-connected one that Tub.serialize uses.
+	This is used by ReferenceableSlicer to decide whether to emit a
+	my-reference sequence or a their-reference sequence.
+	(StorageBroker): new subclass of Broker, uses new
+	StorageBrokerRoot(un)Slicer. This broker is specialized to accept
+	exactly one object, and hand it off to a waiting Deferred. There's
+	still some useful refactoring to do, to mix in the behavior of 
+	ScopedRootUnslicer better.
+	* foolscap/debug.py: delete this, having it around made the 
+	refactoring too difficult
+	* foolscap/ipb.py (IBroker): use this to distinguish between a
+	regular Banana instance and a Broker. The PB-specific slicers use it
+	to assert that their .protocol is really a Broker.
+	* foolscap/referenceable.py (ReferenceableSlicer): if the 
+	Referenceable is being sliced for storage, emit a their-reference
+	sequence instead of a (useless) my-reference. Use giftID=0 to
+	indicate that we don't want to do reference counting.
+	(TheirReferenceUnslicer.ackGift): giftID=0 means don't ack
+	* foolscap/slicers/root.py: RootSlicer refactoring
+	(ScopedRootSlicer): new class for refactoring
+	(ScopedRootUnslicer): same
+	* foolscap/storage.py: same. Rewrite serialize/unserialize, they
+	now return Deferreds and let you override the banana and
+	root (un)slicer class to use, as well as the IO stream.
+	* foolscap/test/test_banana.py: massive hacking to make it work.
+	The storage classes changed a lot, requiring this cleanup. Also
+	all banana/broker objects must have a transport and their
+	connectionMade() method needs to be called before you can use them.
+	* foolscap/test/test_pb.py: same
+	* foolscap/test/test_serialize.py: test all the new functionality,
+	including how serialized data cannot keep a Referenceable alive,
+	and how you you can only serialize Referenceables with
+	Tub.serialize(), not with foolscap.serialize().
+
 2007-09-11  Brian Warner  <warner@lothar.com>
 
 	* foolscap/call.py (PendingRequest.fail): improve
