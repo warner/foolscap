@@ -367,6 +367,11 @@ class Tub(service.MultiService):
             t.listenOn(l)
         return t
 
+    def getTubID(self):
+        return self.tubID
+    def getShortTubID(self):
+        return self.tubID[:4]
+
     def connectorStarted(self, c):
         assert self.running
         self._activeConnectors.append(c)
@@ -690,13 +695,13 @@ class Tub(service.MultiService):
         return rc
 
     def serialize(self, obj):
-        b = broker.StorageBroker()
+        b = broker.StorageBroker(None)
         b.setTub(self)
         d = storage.serialize(obj, banana=b)
         return d
 
     def unserialize(self, data):
-        b = broker.StorageBroker()
+        b = broker.StorageBroker(None)
         b.setTub(self)
         d = storage.unserialize(data, banana=b)
         assert isinstance(d, defer.Deferred)
@@ -737,7 +742,8 @@ class Tub(service.MultiService):
         t1.setPeer(t2); t2.setPeer(t1)
         n = negotiate.Negotiation()
         params = n.loopbackDecision()
-        b1,b2 = self.brokerClass(params), self.brokerClass(params)
+        b1,b2 = (self.brokerClass(tubref, params),
+                 self.brokerClass(tubref, params))
         # we treat b1 as "our" broker, and b2 as "theirs", and we pretend
         # that b2 has just connected to us. We keep track of b1, and b2 keeps
         # track of us.
@@ -824,6 +830,10 @@ class UnauthenticatedTub(Tub):
         assert not tubID # not yet
         self.tubID = tubID
 
+    def getTubID(self):
+        return "<unauth>"
+    def getShortTubID(self):
+        return "<unauth>"
 
 def getRemoteURL_TCP(host, port, pathname, *interfaces):
     url = "pb://%s:%d/%s" % (host, port, pathname)

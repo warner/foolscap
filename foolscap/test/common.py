@@ -12,6 +12,7 @@ from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema, \
 from foolscap.schema import Any, SetOf, DictOf, ListOf, TupleOf, \
      NumberConstraint, ByteStringConstraint, IntegerConstraint, \
      UnicodeConstraint, ChoiceOf
+from foolscap.referenceable import TubRef
 
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
@@ -145,8 +146,8 @@ class TargetMixin:
 
     def setupBrokers(self):
 
-        self.targetBroker = broker.Broker()
-        self.callingBroker = broker.Broker()
+        self.targetBroker = broker.Broker(TubRef("targetBroker"))
+        self.callingBroker = broker.Broker(TubRef("callingBroker"))
 
         t1 = Loopback()
         t1.peer = self.callingBroker

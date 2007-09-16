@@ -1,3 +1,35 @@
+2007-09-11  Brian Warner  <warner@lothar.com>
+
+	* foolscap/call.py (PendingRequest.fail): improve
+	logRemoteFailures by adding a source+dest TubID to the log
+	message. Closes #23.
+	(InboundDelivery.logFailure): same for logLocalFailures
+	(CallUnslicer.receiveClose): tell the InboundDelivery about its
+	broker
+	* foolscap/pb.py (Tub.getTubID, .getShortTubID): utility methods
+	(UnauthenticatedTub.getTubID, .getShortTubID): same
+	* foolscap/referenceable.py (TubRef.getShortTubID): same
+	(NoAuthTubRef.getShortTubID): same
+	(RemoteReference._callRemote): tell the PendingRequest about the
+	interface name it is using, so it can log a fully-qualified
+	remote method name
+	* foolscap/broker.py (Broker): tell the Broker about the remote
+	TubRef it is attached to
+	(Broker.doNextCall): make sure to log.err any problems that occur
+	during callFailed, rather than discarding them. This catches
+	errors in InboundDelivery.logFailure
+	* foolscap/negotiate.py (Negotiation.switchToBanana): pass the
+	remote TubRef to the newly-created Broker
+
+	* foolscap/test/test_pb.py (TestCallable.testLogLocalFailure): test it
+	(TestCallable.testLogLocalFailure): reduce timeout
+	(TestCallable.testLogRemoteFailure._check): test it
+	(TestCallable.testLogRemoteFailure): reduce timeout
+	* foolscap/test/test_call.py (TestCall.testFailStringException): same
+	(TestCall.testCopiedFailure): same
+	* foolscap/test/test_gifts.py (Gifts.testGift): same
+	* foolscap/test/common.py (TargetMixin.setupBrokers): provide tubref
+
 2007-09-08  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py (Tub.registerReference): add furlFile= argument,

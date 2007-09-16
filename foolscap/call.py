@@ -32,7 +32,6 @@ class PendingRequest(object):
     # this object is a local representation of a message we have sent to
     # someone else, that will be executed on their end.
     active = True
-    methodName = None # for debugging
 
     def __init__(self, reqID, rref=None):
         self.reqID = reqID
@@ -62,10 +61,19 @@ class PendingRequest(object):
             if (self.broker and
                 self.broker.tub and
                 self.broker.tub.logRemoteFailures):
-                log.msg("an outbound callRemote (that we sent to someone "
-                        "else) failed on the far end")
+
+                my_short_tubid = "??"
+                if self.broker.tub: # for tests
+                    my_short_tubid = self.broker.tub.getShortTubID()
+                their_short_tubid = self.broker.remote_tubref.getShortTubID()
+
+                log.msg("an outbound callRemote (that we [%s] sent to "
+                        "someone else [%s]) failed on the far end"
+                        % (my_short_tubid, their_short_tubid))
+                methname = ".".join([self.interfaceName or "?",
+                                     self.methodName or "?"])
                 log.msg(" reqID=%d, rref=%s, methname=%s"
-                        % (self.reqID, self.rref, self.methodName))
+                        % (self.reqID, self.rref, methname))
                 stack = why.getTraceback()
                 # TODO: include the first few letters of the remote tubID in
                 # this REMOTE tag
@@ -153,9 +161,10 @@ class InboundDelivery:
     above any cycles.
     """
 
-    def __init__(self, reqID, obj,
+    def __init__(self, broker, reqID, obj,
                  interface, methodname, methodSchema,
                  allargs):
+        self.broker = broker
         self.reqID = reqID
         self.obj = obj
         self.interface = interface
@@ -165,10 +174,21 @@ class InboundDelivery:
 
     def logFailure(self, f):
         # called if tub.logLocalFailures is True
-        log.msg("an inbound callRemote that we executed (on behalf of "
-                "someone else) failed")
+        my_short_tubid = "??"
+        if self.broker.tub: # for tests
+            my_short_tubid = self.broker.tub.getShortTubID()
+        their_short_tubid = "<unauth>"
+        if self.broker.remote_tubref:
+            their_short_tubid = self.broker.remote_tubref.getShortTubID()
+        log.msg("an inbound callRemote that we [%s] executed (on behalf of "
+                "someone else, TubID %s) failed"
+                % (my_short_tubid, their_short_tubid))
+        if self.interface:
+            methname = self.interface.getName() + "." + self.methodname
+        else:
+            methname = self.methodname
         log.msg(" reqID=%d, rref=%s, methname=%s" %
-                (self.reqID, self.obj, self.methodname))
+                (self.reqID, self.obj, methname))
         log.msg(" args=%s" % (self.allargs.args,))
         log.msg(" kwargs=%s" % (self.allargs.kwargs,))
         if isinstance(f.type, str):
@@ -502,7 +522,7 @@ class CallUnslicer(slicer.ScopedUnslicer):
         if self.stage != 4:
             raise BananaError("'call' sequence ended too early")
         # time to create the InboundDelivery object so we can queue it
-        delivery = InboundDelivery(self.reqID, self.obj,
+        delivery = InboundDelivery(self.broker, self.reqID, self.obj,
                                    self.interface, self.methodname,
                                    self.methodSchema,
                                    self.allargs)

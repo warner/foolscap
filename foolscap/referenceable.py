@@ -426,7 +426,11 @@ class RemoteReference(RemoteReferenceOnly):
          methodName,
          methodSchema) = self._getMethodInfo(_name)
 
-        req.methodName = methodName # for debugging
+        # for debugging: these are put into the messages emitted when
+        # logRemoteFailures is turned on
+        req.interfaceName = interfaceName
+        req.methodName = methodName
+
         if methodConstraintOverride != "none":
             methodSchema = methodConstraintOverride
 
@@ -821,6 +825,8 @@ class TubRef:
 
     def getTubID(self):
         return self.tubID
+    def getShortTubID(self):
+        return self.tubID[:4]
 
     def __str__(self):
         return "pb://" + self.tubID
@@ -847,6 +853,8 @@ class NoAuthTubRef(TubRef):
         return [self.location]
 
     def getTubID(self):
+        return "<unauth>"
+    def getShortTubID(self):
         return "<unauth>"
 
     def __str__(self):

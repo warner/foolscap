@@ -56,7 +56,7 @@ class NullTransport:
 class TestReferenceUnslicer(unittest.TestCase):
     # OPEN(reference), INT(refid), [STR(interfacename), INT(version)]... CLOSE
     def setUp(self):
-        self.broker = broker.Broker()
+        self.broker = broker.Broker(None)
         self.broker.transport = NullTransport()
         self.broker.connectionMade()
 
@@ -106,7 +106,7 @@ class TestReferenceUnslicer(unittest.TestCase):
 class TestAnswer(unittest.TestCase):
     # OPEN(answer), INT(reqID), [answer], CLOSE
     def setUp(self):
-        self.broker = broker.Broker()
+        self.broker = broker.Broker(None)
         self.broker.transport = NullTransport()
         self.broker.connectionMade()
 
@@ -432,10 +432,14 @@ class TestCallable(unittest.TestCase):
             res.trap(ValueError)
             messages = [l['message'][0] for l in logs]
             text = "\n".join(messages)
-            self.failUnless("an inbound callRemote that we executed (on behalf of someone else) failed\n" in text)
+            msg = ("an inbound callRemote that we [%s] executed (on behalf of "
+                   "someone else, TubID %s) failed\n"
+                   % (self.tubB.getShortTubID(), self.tubA.getShortTubID()))
+            self.failUnless(msg in text,
+                            "msg '%s' not in text '%s'" % (msg, text))
             self.failUnless("\n reqID=2, rref=<foolscap.test.common.Target object at "
                             in text)
-            self.failUnless(", methname=fail\n" in text)
+            self.failUnless(", methname=RIMyTarget.fail\n" in text)
             self.failUnless("\n args=[]\n" in text)
             self.failUnless("\n kwargs={}\n" in text)
             self.failUnless("\nLOCAL: Traceback (most recent call last):\n"
@@ -443,6 +447,7 @@ class TestCallable(unittest.TestCase):
             self.failUnless("\nLOCAL: exceptions.ValueError: you asked me to fail\n" in text)
         d.addBoth(_check)
         return d
+    testLogLocalFailure.timeout = 2
 
     def testLogRemoteFailure(self):
         self.tubA.setOption("logRemoteFailures", True)
@@ -459,10 +464,14 @@ class TestCallable(unittest.TestCase):
             res.trap(ValueError)
             messages = [l['message'][0] for l in logs]
             text = "\n".join(messages)
-            self.failUnless("an outbound callRemote (that we sent to someone else) failed on the far end\n" in text)
+            msg = ("an outbound callRemote (that we [%s] sent to someone "
+                   "else [%s]) failed on the far end\n"
+                   % (self.tubA.getShortTubID(), self.tubB.getShortTubID()))
+            self.failUnless(msg in text)
             self.failUnless("\n reqID=2, rref=<RemoteReference at "
                             in text)
-            self.failUnless((" [%s]>, methname=fail\n" % url) in text)
+            self.failUnless((" [%s]>, methname=RIMyTarget.fail\n" % url)
+                            in text)
             #self.failUnless("\n args=[]\n" in text) # TODO: log these too
             #self.failUnless("\n kwargs={}\n" in text)
             self.failUnless("\nREMOTE: Traceback from remote host -- Traceback (most recent call last):\n"
@@ -470,6 +479,7 @@ class TestCallable(unittest.TestCase):
             self.failUnless("\nREMOTE: exceptions.ValueError: you asked me to fail\n" in text)
         d.addBoth(_check)
         return d
+    testLogRemoteFailure.timeout = 2
 
     def testBoundMethod(self):
         target = Target()

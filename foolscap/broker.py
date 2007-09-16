@@ -145,9 +145,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
     startedTLS = False
     use_remote_broker = True
 
-    def __init__(self, params={},
+    def __init__(self, remote_tubref, params={},
                  keepaliveTimeout=None, disconnectTimeout=None):
         banana.Banana.__init__(self, params)
+        self.remote_tubref = remote_tubref
         self.keepaliveTimeout = keepaliveTimeout
         self.disconnectTimeout = disconnectTimeout
         self._banana_decision_version = params.get("banana-decision-version")
@@ -495,6 +496,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         d.addCallback(lambda res: self._doCall(delivery))
         d.addCallback(self._callFinished, delivery)
         d.addErrback(self.callFailed, delivery.reqID, delivery)
+        d.addErrback(log.err)
         def _done(res):
             self._call_is_running = False
             eventually(self.doNextCall)
