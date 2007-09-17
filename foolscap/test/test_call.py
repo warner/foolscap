@@ -376,6 +376,20 @@ class TestCall(TargetMixin, unittest.TestCase):
         return d
     testDefer.timeout = 2
 
+    def testStallOrdering(self):
+        # if the first message hangs (it returns a Deferred that doesn't fire
+        # for a while), that shouldn't stall the second message.
+        rr, target = self.setupTarget(HelperTarget())
+        d0 = rr.callRemote("hang")
+        d = rr.callRemote("echo", 1)
+        d.addCallback(lambda res: self.failUnlessEqual(res, 1))
+        def _done(res):
+            target.d.callback(2)
+            return d0
+        d.addCallback(_done)
+        return d
+    testStallOrdering.timeout = 5
+
     def testDisconnect_during_call(self):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("hang")

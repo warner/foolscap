@@ -181,7 +181,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.disconnectWatchers = []
         # receiving side uses these
         self.inboundDeliveryQueue = []
-        self._call_is_running = False
+        self._waiting_for_call_to_be_ready = False
         self.activeLocalCalls = {} # the other side wants an answer from us
 
     def setTub(self, tub):
@@ -484,26 +484,41 @@ class Broker(banana.Banana, referenceable.Referenceable):
         eventually(self.doNextCall)
 
     def doNextCall(self):
-        if self._call_is_running:
+        if self._waiting_for_call_to_be_ready:
             return
         if not self.inboundDeliveryQueue:
             return
         delivery, ready_deferred = self.inboundDeliveryQueue.pop(0)
-        self._call_is_running = True
+        self._waiting_for_call_to_be_ready = True
         if not ready_deferred:
             ready_deferred = defer.succeed(None)
         d = ready_deferred
+
+        def _ready(res):
+            self._waiting_for_call_to_be_ready = False
+            eventually(self.doNextCall)
+            return res
+        d.addBoth(_ready)
+
+        # at this point, the Deferred chain for this one delivery runs
+        # independently of any other, and methods which take a long time to
+        # complete will not hold up other methods. We must call _doCall and
+        # let the remote_ method get control before we process any other
+        # message, but the eventually() above insures we'll have a chance to
+        # do that before we give up control.
+
         d.addCallback(lambda res: self._doCall(delivery))
         d.addCallback(self._callFinished, delivery)
         d.addErrback(self.callFailed, delivery.reqID, delivery)
         d.addErrback(log.err)
-        def _done(res):
-            self._call_is_running = False
-            eventually(self.doNextCall)
-        d.addBoth(_done)
         return None
 
     def _doCall(self, delivery):
+        # our ordering rules require that the order in which each
+        # remote_foo() method gets control is exactly the same as the order
+        # in which the original caller invoked callRemote(). To insure this,
+        # _startCall() is not allowed to insert additional delays before it
+        # runs doRemoteCall() on the target object.
         obj = delivery.obj
         args = delivery.allargs.args
         kwargs = delivery.allargs.kwargs

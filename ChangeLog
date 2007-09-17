@@ -1,5 +1,11 @@
 2007-09-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py (Broker.doNextCall): don't allow slow
+	remote_foo methods to stall subsequent calls. This fixes a major
+	message-delivery bug. Closes #25.
+	* foolscap/test/test_call.py (TestCall.testStallOrdering): test it
+
+
 	* all: merge in serialization-refactoring branch, adding
 	Tub.(un)serialize (which can handle Referenceables) and moving us
 	slightly closer to Sealers/Unsealers. The regular
