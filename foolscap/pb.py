@@ -820,6 +820,27 @@ class Tub(service.MultiService):
             and not self.unauthenticatedBrokers):
             self._allBrokersAreDisconnected.fire(self)
 
+    def debug_listBrokers(self):
+        # return a list of (tubref, inbound, outbound) tuples. The tubref
+        # tells you which broker this is, 'inbound' is a list of
+        # InboundDelivery objects (one per outstanding inbound message), and
+        # 'outbound' is a list of PendingRequest objects (one per message
+        # that's waiting on a remote broker to complete).
+        output = []
+        all_brokers = (self.brokers.items()
+                       + [("unauth",broker)
+                          for broker in self.unauthenticatedBrokers])
+        for tubref,broker in all_brokers:
+            inbound = broker.inboundDeliveryQueue[:]
+            outbound = [pr
+                        for (reqID, pr) in
+                        sorted(broker.waitingForAnswers.items()) ]
+            output.append( (str(tubref), inbound, outbound) )
+        output.sort(lambda x,y: cmp( (len(x[1]), len(x[2])),
+                                     (len(y[1]), len(y[2])) ))
+        return output
+
+
 class UnauthenticatedTub(Tub):
     encrypted = False
 

@@ -1,5 +1,11 @@
 2007-09-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.debug_listBrokers): add a debugging method
+	that tells you about all the connected brokers, and what methods
+	are outstanding (both inbound and outbound) for each. If you see
+	any method is sitting in one of these lists for a long time, there
+	might be a problem in the execution of that method.
+
 	* foolscap/broker.py (Broker.doNextCall): don't allow slow
 	remote_foo methods to stall subsequent calls. This fixes a major
 	message-delivery bug. Closes #25.
