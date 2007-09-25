@@ -1,5 +1,10 @@
 2007-09-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/__init__.py: release 0.1.7
+	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
+
+2007-09-24  Brian Warner  <warner@lothar.com>
+
 	* setup.py: remove download_url, I think url= is sufficient.
 	* NEWS: update for the upcoming release
 
