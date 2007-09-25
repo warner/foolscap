@@ -1,5 +1,7 @@
 2007-09-24  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the upcoming release
+
 	* all: remove default size limits on Constraints. Users who wish
 	to enforce size limits should provide a maxLength= argument to
 	their Constraint constructors. These limits turned out to be more
