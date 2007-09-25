@@ -1,5 +1,7 @@
 2007-09-24  Brian Warner  <warner@lothar.com>
 
+	* doc/serializing.xhtml: oops, fix closing tags
+
 	* foolscap/__init__.py: bump revision to 0.1.7+ while between releases
 	* misc/*/debian/changelog: same
 
