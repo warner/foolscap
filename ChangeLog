@@ -1,5 +1,6 @@
 2007-09-24  Brian Warner  <warner@lothar.com>
 
+	* setup.py: remove download_url, I think url= is sufficient.
 	* NEWS: update for the upcoming release
 
 	* all: remove default size limits on Constraints. Users who wish
