@@ -6,6 +6,7 @@ from foolscap.test.common import TargetMixin, HelperTarget
 from foolscap import copyable, tokens
 from foolscap import Copyable, RemoteCopy
 from foolscap.tokens import Violation
+from foolscap.schema import StringConstraint
 
 # MyCopyable1 is the basic Copyable/RemoteCopy pair, using auto-registration.
 
@@ -75,8 +76,9 @@ class MyCopyable4(Copyable):
     pass
 class MyRemoteCopy4(RemoteCopy):
     copytype = MyCopyable4.typeToCopy
-    stateSchema = copyable.AttributeDictConstraint(('foo', int),
-                                                   ('bar', str))
+    stateSchema = copyable.AttributeDictConstraint(
+        ('foo', int),
+        ('bar', StringConstraint(1000)))
     pass
 
 # MyCopyable5 disables auto-registration
@@ -224,7 +226,9 @@ class Copyable(TargetMixin, unittest.TestCase):
 
         obj.foo = 12
         obj.bar = "very long " * 1000
+        # MyRemoteCopy4 says .bar is a String(1000), so reject long strings
         d = self.send(obj)
+        d.addCallbacks
         d.addCallbacks(lambda res: self.fail("this was supposed to fail"),
                        self._testCopy4_4)
         return d

@@ -122,7 +122,7 @@ class ListConstraint(OpenerConstraint):
     opentypes = [("list",)]
     name = "ListConstraint"
 
-    def __init__(self, constraint, maxLength=30, minLength=0):
+    def __init__(self, constraint, maxLength=None, minLength=0):
         self.constraint = IConstraint(constraint)
         self.maxLength = maxLength
         self.minLength = minLength

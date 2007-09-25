@@ -397,11 +397,15 @@ class CreateTest(unittest.TestCase):
 
         c = make(str)
         self.check(c, schema.ByteStringConstraint)
-        self.failUnlessEqual(c.maxLength, 1000)
+        self.failUnlessEqual(c.maxLength, None)
+
+        c = make(schema.ByteStringConstraint(2000))
+        self.check(c, schema.ByteStringConstraint)
+        self.failUnlessEqual(c.maxLength, 2000)
 
         c = make(unicode)
         self.check(c, schema.UnicodeConstraint)
-        self.failUnlessEqual(c.maxLength, 1000)
+        self.failUnlessEqual(c.maxLength, None)
 
         self.check(make(bool), schema.BooleanConstraint)
         self.check(make(float), schema.NumberConstraint)

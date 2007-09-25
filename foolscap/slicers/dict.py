@@ -131,7 +131,7 @@ class DictConstraint(OpenerConstraint):
     opentypes = [("dict",)]
     name = "DictConstraint"
 
-    def __init__(self, keyConstraint, valueConstraint, maxKeys=30):
+    def __init__(self, keyConstraint, valueConstraint, maxKeys=None):
         self.keyConstraint = IConstraint(keyConstraint)
         self.valueConstraint = IConstraint(valueConstraint)
         self.maxKeys = maxKeys

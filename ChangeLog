@@ -1,3 +1,20 @@
+2007-09-24  Brian Warner  <warner@lothar.com>
+
+	* all: remove default size limits on Constraints. Users who wish
+	to enforce size limits should provide a maxLength= argument to
+	their Constraint constructors. These limits turned out to be more
+	surprising than helpful. Closes #26.
+	* foolscap/constraint.py (everythingTaster): remove the default
+	SIZE_LIMIT on STRING tokens.
+	(ByteStringConstraint.__init__): and on StringConstraint
+	* foolscap/slicers/unicode.py (UnicodeConstraint.__init__): and here
+	* foolscap/slicers/list.py (ListConstraint.__init__): and here
+	* foolscap/slicers/dict.py (DictConstraint.__init__): and here
+	* foolscap/slicers/set.py (SetConstraint.__init__): and here
+	* foolscap/test/test_schema.py (CreateTest.testMakeConstraint):
+	update tests to match
+	* foolscap/test/test_copyable.py (MyRemoteCopy4.stateSchema): same
+
 2007-09-16  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py (Tub.debug_listBrokers): add a debugging method

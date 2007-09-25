@@ -14,11 +14,11 @@ from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
 
 everythingTaster = {
     # he likes everything
-    STRING: SIZE_LIMIT,
+    STRING: None,
     LIST: None,
     INT: None,
     NEG: None,
-    LONGINT: SIZE_LIMIT,
+    LONGINT: SIZE_LIMIT, # this limits numbers to about 2**8000, probably ok
     LONGNEG: SIZE_LIMIT,
     VOCAB: None,
     FLOAT: None,
@@ -226,7 +226,7 @@ class ByteStringConstraint(Constraint):
     opentypes = [] # redundant, as taster doesn't accept OPEN
     name = "ByteStringConstraint"
 
-    def __init__(self, maxLength=1000, minLength=0, regexp=None):
+    def __init__(self, maxLength=None, minLength=0, regexp=None):
         self.maxLength = maxLength
         self.minLength = minLength
         # regexp can either be a string or a compiled SRE_Match object..
@@ -293,6 +293,7 @@ class IntegerConstraint(Constraint):
         return 1
 
 class NumberConstraint(IntegerConstraint):
+    """I accept floats, ints, and longs."""
     name = "NumberConstraint"
 
     def __init__(self, maxBytes=1024):

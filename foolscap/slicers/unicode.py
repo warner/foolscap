@@ -53,7 +53,7 @@ class UnicodeConstraint(OpenerConstraint):
     opentypes = [("unicode",)]
     name = "UnicodeConstraint"
 
-    def __init__(self, maxLength=1000, minLength=0, regexp=None):
+    def __init__(self, maxLength=None, minLength=0, regexp=None):
         self.maxLength = maxLength
         self.minLength = minLength
         # allow VOCAB in case the Banana-level tokenizer decides to tokenize

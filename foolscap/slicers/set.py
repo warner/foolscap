@@ -171,7 +171,7 @@ class SetConstraint(OpenerConstraint):
     immutable_set_types = (frozenset, sets.ImmutableSet)
     all_set_types = mutable_set_types + immutable_set_types
 
-    def __init__(self, constraint, maxLength=30, mutable=None):
+    def __init__(self, constraint, maxLength=None, mutable=None):
         self.constraint = IConstraint(constraint)
         self.maxLength = maxLength
         self.mutable = mutable
