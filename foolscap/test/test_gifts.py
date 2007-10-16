@@ -492,7 +492,7 @@ class Bad(Base, unittest.TestCase):
             # establish a TCP connection.
             r = SturdyRef(adave.tracker.url)
             # highly unlikely that there's anything listening on this port
-            r.locationHints = ["127.0.0.47:1"]
+            r.locationHints = ["127.0.0.1:2"]
             adave.tracker.url = r.getURL()
             return self.acarol.callRemote("set", adave)
         d.addCallback(_introduce)

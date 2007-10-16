@@ -1,3 +1,12 @@
+2007-10-16  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_gifts.py (Bad.test_location._introduce): use
+	127.0.0.1:2 as the bogus port, instead of 127.0.0.47:1 .
+	Connecting to .47 causes a long delay on OS-X (probably because of
+	some sort of personal firewall), whereas .1 fails right away. Port
+	2 is not listed in my copy of /etc/services and seems unlikely to
+	have a real service running on it.
+
 2007-09-24  Brian Warner  <warner@lothar.com>
 
 	* doc/serializing.xhtml: oops, fix closing tags
