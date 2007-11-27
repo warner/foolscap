@@ -1,0 +1,108 @@
+#! /usr/bin/python
+
+import sys, os.path
+from twisted.python import usage
+
+# preamble to allow bin/flogtool to be run out of an uninstalled source tree
+where = os.path.realpath(sys.argv[0]).split(os.sep)
+if len(where) >= 2 and where[-2] == "bin":
+    base = os.sep.join(where[:-2])
+if (os.path.exists(os.path.join(base, "setup.py")) and
+    os.path.exists(os.path.join(base, "foolscap"))):
+    sys.path.insert(0, base)
+
+class TailOptions(usage.Options):
+    synopsis = "Usage: flogtool tail (LOGPORT.furl/furlfile/nodedir)"
+
+    def parseArgs(self, target):
+        if target.startswith("pb:"):
+            self.target_furl = target
+        elif os.path.isfile(target):
+            self.target_furl = open(target, "r").read().strip()
+        elif os.path.isdir(target):
+            fn = os.path.join(target, "logport.furl")
+            self.target_furl = open(fn, "r").read().strip()
+        else:
+            raise RuntimeError("Can't use tail target: %s" % target)
+
+class GatherOptions(usage.Options):
+    pass
+
+class DumpOptions(usage.Options):
+    synopsis = "Usage: flogtool dump DUMPFILE.pickle"
+
+    def parseArgs(self, dumpfile):
+        self.dumpfile = dumpfile
+
+class WebViewerOptions(usage.Options):
+    synopsis = "Usage: flogtool web-viewer DUMPFILE.pickle"
+
+    optParameters = [
+        ["port", "p", "tcp:0",
+         "strports specification of where the web server should listen."],
+        ]
+
+    def parseArgs(self, dumpfile):
+        self.dumpfile = dumpfile
+
+class Options(usage.Options):
+    synopsis = "Usage: flogtool (tail|gather|dump) args.."
+
+    subCommands = [
+        ("tail", None, TailOptions, "follow logs of the target node"),
+        ("gather", None, GatherOptions,
+         "run as a daemon, record all logs to the current directory"),
+        ("dump", None, DumpOptions,
+         "dump the logs recorded by 'logtool gather'"),
+        ("web-viewer", None, WebViewerOptions,
+         "view the logs through a web page"),
+        ]
+
+    def postOptions(self):
+        if not hasattr(self, 'subOptions'):
+            raise usage.UsageError("must specify a command")
+
+    def opt_help(self):
+        print self.synopsis
+        sys.exit(0)
+
+
+def dispatch(command, options):
+    if command == "tail":
+        from foolscap.logging.tail import LogTail
+        lt = LogTail()
+        lt.run(options.target_furl)
+
+    elif command == "gather":
+        from foolscap.logging.gatherer import LogGatherer
+        lg = LogGatherer()
+        lg.run()
+
+    elif command == "dump":
+        from foolscap.logging.dumper import LogDumper
+        ld = LogDumper()
+        ld.run(options)
+
+    elif command == "web-viewer":
+        from foolscap.logging.web import WebViewer
+        wv = WebViewer()
+        wv.run(options)
+
+    else:
+        print "unknown command '%s'" % command
+        raise NotImplementedError
+
+if __name__ == '__main__':
+    config = Options()
+    try:
+        config.parseOptions()
+    except usage.error, e:
+        print "%s:  %s" % (sys.argv[0], e)
+        print
+        c = getattr(config, 'subOptions', config)
+        print str(c)
+        sys.exit(1)
+
+    command = config.subCommand
+    so = config.subOptions
+    dispatch(command, so)

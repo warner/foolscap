@@ -33,4 +33,5 @@ object reference system, and a capability-based security model.
         platforms=["any"],
         
         packages=["foolscap", "foolscap/slicers", "foolscap/test"],
+        scripts=["bin/flogtool"],
         )

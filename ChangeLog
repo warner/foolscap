@@ -1,3 +1,11 @@
+2007-11-27  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/*: new logging support, including hierarchical
+	logging, remote publishing, gathering tools
+	* foolscap/test/test_logging.py: minimal tests for it
+	* bin/flogtool: command-line tool to view/gather log events
+	* setup.py (scripts=): include flogtool
+
 2007-10-16  Brian Warner  <warner@lothar.com>
 
 	* foolscap/test/test_gifts.py (Bad.test_location._introduce): use
