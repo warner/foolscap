@@ -1,0 +1,702 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Foolscap Logging</title>
+<style src="stylesheet-unprocessed.css"></style>
+</head>
+
+<body>
+<h1>Logging in Foolscap</h1>
+
+<p>Foolscap comes with an advanced event-logging package. This package is
+used internally to record connection establishment, remote message delivery,
+and errors. It can also be used by applications built on top of Foolscap for
+their own needs.</p>
+
+<p>This logging package includes a viewer application that processes locally
+saved log data or data retrieved over a foolscap connection, and displays a
+selected subset of the events. It also includes code to create a web page
+inside your application that presents the same kind of log view.</p>
+
+
+<h2>Philosophy</h2>
+
+<p>My background is in embedded systems, specifically routers, in which bugs
+and unexpected operations happen from time to time, causing problems. In this
+environment, storage space is at a premium (most routers do not have hard
+drives, and only a limited amount of RAM and non-volatile flash memory), and
+devices are often deployed at remote sites with no operator at the console.
+Embedded devices are expected to function properly without human
+intervention, and crashes or other malfunctions are rare compared to
+interactive applications.</p>
+
+<p>In this environment, when an error occurs, it is a good idea to record as
+much information as possible, because asking the operator to turn on extra
+event logging and then try to re-create the failure is only going to make the
+customer more angry ("my network has already broken once today, you want me
+to intentionally break it again?"). That one crash is the only chance you
+have to learn about the cause.</p>
+
+<p>In addition, as new features are being developed (or completed ones are
+being debugged), it is important to have visibility into certain internal
+state. Extra logging messages are added to illuminate this state, sometimes
+resulting in hundreds of messages per second. These messages are useful only
+while the problem is being investigated. Since most log formats involve flat
+text files, lots of additional log messages tend to obscure important things
+like unhandled exceptions and assertion failures, so once the messages have
+outlived their usefulness they are just getting in the way. Each message
+costs a certain amount of human attention, so we are motiviated to minimize
+that cost by removing the unhelpful messages.</p>
+
+<p>Logging also gets removed because it consumes CPU time, disk IO, disk
+space, or memory space. Many operations that can be done in linear time can
+expand to super-linear time if additional work is required to log the actions
+taking place, or the current state of the program.</p>
+
+<p>As a result, many formerly-useful log messages are commented out once they
+have served their purpose. Having been disabled, the cost to re-enable them
+if the bug should resurface is fairly high: at the very least it requires
+modifying the source code and restarting the program, and for some languages
+requires a complete recompile/rebuild. Even worse, to keep the source code
+readable, disabled log messages are frequently deleted altogether. After many
+months it may not be obvious where the log messages should be put back, and
+developers will need to re-acquaint themselves with the code base to find
+suitable places for those messages.</p>
+
+<p>To balance these costs, developers try to leave enough log messages in
+place that unexpected events will be captured with enough detail to start
+debugging, but not so many that it impacts performance or a human's ability
+to spot problems while scanning the logs. But it would be nice if certain log
+messages could be disabled or disregarded in a way that didn't abandon all of
+the work that went into developing and placing them.</p>
+
+<h3>Memory-limited, strangeness-triggered log dumping</h3>
+
+<p>Each potential log message could be described (to a human) as being useful
+in a particular set of circumstances. For example, if the program tried to
+read from a file and got a permission-denied error, it would be useful to
+know which file it was trying to read from, and how it came to decide upon
+that particular filename, and what user command was responsible for
+triggering this action. If a protocol parser which implements a state machine
+finds itself in an invalid state, it would be useful to know what series of
+input messages had arrived recently, to work backwards to the place where
+things started to go awry.</p>
+
+<p>Flip this around and you can phrase it as: the filename we compute will be
+interesting only if we get an error when we finally try to access it.
+Likewise, the series of input messages <b>would</b> be interesting to know
+if, at some point in the near future, an invalid protocol state is
+reached.</p>
+
+<p>The thing to note about these patterns is that at event at time T
+<b>causes</b> events before time T to become interesting. Interesting
+messages are worth keeping (and storing, and examining). Non-interesting
+messages are not worth as much, but there are different kinds of costs, and
+as the message becomes less interesting (or loses the potential to become
+interesting), we want to lower our costs. Displaying a message to a human is
+pretty expensive, since it tends to obscure other, more important messages.
+Storing messages is less expensive, depending upon how long we expect to
+store them (and how much storage space is available). Generating messages may
+be expensive or cheap, depending upon their frequency and complexity.</p>
+
+<p>Foolscap's logging library seeks to capture this ex-post-facto
+interestingness by categorizing messages into "severity levels", recording
+each level into a separate size-limited circular buffer, and provoking a dump
+of all buffers when certain higher-severity events take place. The idea is
+that, at any given time, we have a record (in memory) of a lot of
+low-frequency important things (like program startup, user actions, and
+unhandled exceptions), and only the most recent high-frequency events
+(verbose debugging data). But, if something strange happens, we dump
+everything we've got to disk, because it is likely that some of these noisy
+high-frequency not-normally-interesting events will be helpful to track down
+the cause of the unusual event. The viewing tools then rearrange all of these
+events into a linear order, and make it easy to filter out events by severity
+level or origin.</p>
+
+<p>Each severity level is (roughly) inversely proportional to a message rate.
+Assertion checks in code are in the "this should never happen" category, and
+their resulting low expected rate puts them in a high-severity level. Routine
+actions are expected to happen all the time, which puts them into a
+low-severity level.</p>
+
+<p>(you might think of severity as a separate axis than frequency. Severity
+would mean "how much damage will this cause". Frequency equals cost,
+controlling how long we keep the message around in the hopes of it becoming
+interesting. But things which cause a lot of damage should not be happening
+very frequently, and things which happen frequently must not cause a lot of
+damage. So these axes are sufficiently aligned for us to use just a single
+parameter for now.)</p>
+
+
+<h3>Structured Logging</h3>
+
+<p>The usual approach to event logging involves a single file with a sequence
+of lines of text, new events being continually appended at the end, perhaps
+with the files being rotated once they become too large or old. Typically the
+source code is peppered with lines like:</p>
+
+<pre class="python">
+log.msg(text)
+Log.Log(source, facility, severity, text)
+log.log_stacktrace()
+log.err(failure)
+</pre>
+
+<p>Each such function call adds some more text to the logfile, encoding the
+various parameters into a new line.</p>
+
+<p>Using a text-based file format enables the use of certain unix tools like
+'grep' and 'wc' to analyze the log entries, but frequently inhbits the use of
+more complex tools because they must first parse the human-readable lines
+back into the structured arguments that were originally passed to the log()
+call. Frequently, the free-form text portion of the log cannot be reliably
+distinguished from the stringified metadata (the quoting issue), making
+analysis tools more difficult to write. In addition, the desire to make both
+logfiles and the generating source code more greppable is occasionally at
+odds with clean code structure (putting everything on a single line) or
+refactoring goals (sending all logging for a given module through a common
+function).</p>
+
+<p>The Foolscap log system uses binary logfiles that accurately and
+reversibly serialize all the metadata associated with a given event. Tools
+are provided to turn this data into a human-readable greppable form, but
+better tools are provided to perform many of the same tasks that 'grep' is
+typically used for. For example, a log viewer can apply a python expression
+to each event as a filter, and the expression can do arbitrary comparison of
+event parameters (e.g. "show me all events related to failing uploads of
+files larger than 20MB").</p>
+
+<p>(in compiled languages, it would be useful and cheap to embed the source
+file and line number of the log() call inside the log event. Unfortunately,
+in Python, this would require expensive stack crawling, so developers are
+generally stuck with grepping for the log message in their source tree to
+backtrack from a log message to the code that generated it)</p>
+
+<h3>Remote log aggregation</h3>
+
+<p>Code is provided to allow a Foolscap-based application to easily publish a
+'logport': an object which providers remote callers with access to that
+application's accumulated log data. Events are delivered over a secure
+Foolscap connection, to prevent eavesdroppers from seeing sensitive data
+inside the log messages themselves. This can be useful for a developer who
+wants to find out what just happened inside a given application, or who is
+about to do something to the application and wants to see how it responds
+from the inside. The <code>flogtool tail</code> tool is provided for this
+job.</p>
+
+<p>Each Tub always activates a logport, and a Tub option makes it possible to
+use a persistent FURL for remote access.</p>
+
+<p>(TODO: really?) The log-viewer application can either read log data from a
+local log directory, or it can connect to the logport on a remote host.</p>
+
+<p>A centralized "log gatherer" program can connect to multiple logports and
+aggregate all the logs collected from each, similar to the unix 'syslog'
+facility. This is most useful when the gatherer is configured to store more
+messages than the applications (perhaps it stores all of them), since it
+allows the costs to be shifted to a secondary machine with extra disk and
+fewer CPU-intensive responsibilities.</p>
+
+<p>To facility this, each Tub can either be given the FURL of a Log
+Gatherer,, or the name of a file that might contain this FURL. This makes
+deployment easier: just copy the FURL of your central gatherer into this file
+in each of your application's working directories.</p>
+
+<p>A basic log gatherer is provided by running <code>flogtool gather</code>
+and giving it a storage directory: this emits a gatherer FURL that can be
+used in the app configuration, and saves all incoming log events to disk.</p>
+
+
+<h3>Causality Tracing</h3>
+
+<p>Log messages correspond to events. Events are triggered by other events.
+Sometimes the relationship between events is visible to the local programmer,
+sometimes it involves external hosts that can confuse the relationships.</p>
+
+<p>For local "application-level" causality, Foolscap's logging system makes
+it possible to define hierarchies of log events. Each call to
+<code>log.msg</code> returns an identifier (really just a number). If you
+pass this same identifier into a later <code>log.msg</code> call as the
+<code>parent=</code> parameter, that second message is said to be a "child"
+of the first. This creates multiple trees of log events, in which the tree
+tops are the parentless messages. For example, a user command like "copy this
+file" could be a top-level event, while the various steps involved in copying
+the file (compute source filename, open source file, compute target filename,
+open target file, read data, write data, close) would be children of that
+top-level event.</p>
+
+<p>The viewer application has a way to hide or expand the nodes of these
+trees, to make it easy to look at just the messages that are related to a
+specific action. This lets you prioritize events along both severity (is this
+a common event?) and relevance (is this event related to the one of
+interest?)</p>
+
+<p>In the future, Foolscap's logging system will be enhanced to offer tools
+for analyzing causality relationships between multiple systems, taking
+inspiration from the E <a
+href="http://www.erights.org/elang/tools/causeway/index.html">Causeway</a>
+debugger. In this system, when one Tub sends a message to another, enough
+data is logged to enable a third party (with access to all the logs) to
+figure out the set of operations that were <b>caused</b> by the first
+message. Each message send is recorded, with an index that includes the
+TubID, current event number, and stack trace. Event A on tub 1 triggers event
+B on tub 2, along with certain operations and log messages. Event B triggers
+further operations, etc.</p>
+
+<p>The viewer application will offer a causality-oriented view in addition to
+the temporal one.</p>
+
+
+<h2>Using Foolscap Logging</h2>
+
+<p>The majority of your application's interaction with the Foolscap logging
+system will be in the form of calls to its <code>log.msg</code> function.
+</p>
+
+<h3>Logging Messages From Application Code</h3>
+
+<p>To emit log messages from application code, just use the
+<code>foolscap.log.msg</code> function:</p>
+
+<pre class="python">
+from foolscap.logging import log
+
+log.msg("hello world")
+</pre>
+
+<p>There are a number of arguments you can add:</p>
+
+<pre class="python">
+parent = log.msg(facility="initialization", level=log.INFREQUENT,
+                 msg="hello world", stacktrace=False)
+log.msg(facility="initialization", level=log.OPERATIONAL, msg="init storage",
+        stacktrace=False, parent=parent)
+</pre>
+
+<p>The list of levels is defined in <code>foolscap/log.py</code>, and looks
+like this:</p>
+
+<ul>
+  <li><code>BAD</code>: something which significantly breaks functionality.
+  Unhandled exceptions and broken invariants fall into this category.</li>
+
+  <li><code>SCARY</code>: something which is a problem, and shouldn't happen
+  in normal operation, but which causes minimal functional impact, or from
+  which the application can somehow recover.</li>
+
+  <li><code>WEIRD</code>: not as much of a problem as SCARY, but still not
+  right.</li>
+
+  <li><code>CURIOUS</code></li>
+
+  <li><code>INFREQUENT</code>: messages which are emitted as a normal course
+  of operation, but which happen infrequently, perhaps once every ten to one
+  hundred seconds. User actions like triggering an upload or sending a
+  message fall into this category.</li>
+
+  <li><code>UNUSUAL</code>: messages which indicate events that are not
+  normal, but not particularly fatal. Examples include excessive memory or
+  CPU usage, minor errors which can be corrected by fallback code. </li>
+
+  <li><code>OPERATIONAL</code>: messages which are emitted as a normal course
+  of operation, like all the steps involved in uploading a file, potentially
+  one to ten per second..</li>
+
+  <li><code>NOISY</code>: verbose debugging about small operations,
+  potentially emitting tens or hundreds per second</li>
+
+</ul>
+
+<p>The <code>stacktrace</code> argument controls whether or not a stack trace
+is recorded along with the rest of the log message.</p>
+
+<p>The <code>parent</code> argument allows messages to be related to earlier
+messages.</p>
+
+<h4>Logging Messages Through a Tub</h4>
+
+<p>Each Tub offers a log method: this is just like the process-wide
+<code>log.msg</code> described above, but it adds an additional parameter
+named <code>tubid</code>. This is convenient during analysis, to identify
+which messages came from which applications.</p>
+
+<pre class="python">
+class Example:
+  def __init__(self):
+    self.tub = Tub()
+    ...
+  def query(self, args):
+    self.tub.log("about to send query to server")
+    self.server.callRemote("query", args).addCallback(self._query_done)
+</pre>
+
+
+<h3>Facilities</h3>
+  
+<p>Facility names are up to the application: the viewer app will show a list
+of checkboxes, one for each facility name discovered in the logged data.
+Facility names should be divided along functional boundaries, so that
+developers who do not care about, say, UI events can turn all of them off
+with a single click. Related facilities can be given names separated with
+slashes, for example "ui/internationalization" and "ui/toolkit", and the
+viewer app may make it easy to enable or disable entire groups at once.
+Facilities can also be associated with more descriptive strings by calling
+<code>log.explain_facility</code> at least once:</p>
+
+<pre class="python">
+log.explain_facility("ui/web", "rendering pages for the web UI")
+</pre>
+
+<h2>Configuring Logging</h2>
+
+<p>Foolscap's logging system is always enabled, but the default configuration
+is lacking a number of useful features.</p>
+
+<h3>Saving Log Events to Disk</h3>
+
+<p>The first missing piece is that it does not have a place to save log
+events in the event of something strange happening, so the short-term
+circular buffers are the only source of historical log events.</p>
+
+<p>To give the logging system some disk space to work with, just give it a
+logdir. The logging system will dump the circular buffers into this directory
+any time something strange happens, and both the in-memory buffers and the
+on-disk records are made available to viewing applications:</p>
+
+<pre class="python">
+from foolscap import log
+log.setLogDir("~/saved-log-events")   # == log.theLogger.setLogDir
+</pre>
+
+<p>The foolscap logging code does not delete files from this directory.
+Applications which set up a logdir should arrange to delete old files once
+storage space becomes a problem. TODO: we could provide a maximum size for
+the logdir and have Foolscap automatically delete the oldest logfiles to stay
+under the size limit: this would make the disk-based logdir an extension of
+the memory-based circular buffers.</p>
+
+<p>TODO: define what events cause logs to be written to disk.</p>
+
+<h3>Setting up the logport</h3>
+
+<p>The <code>logport</code> is a <code>foolscap.Referenceable</code> object
+which provides access to all available log events. Viewer applications can
+either retrieve old events (buffered in RAM or on disk), or subscribe to hear
+about new events that occur later. The logport implements the
+<code>foolscap.logging.interfaces.RILogPublisher</code> interface, which
+defines the methods that can be called on it. Each Tub automatically creates
+and registers a logport: the <code>tub.getLogPort()</code> and
+<code>tub.getLogPortFURL()()</code> methods make it possible to grant access
+to others:</p>
+
+<pre class="python">
+t = Tub()
+... # usual Tub setup: startService, listenOn, setLocation
+
+logport_furl = t.getLogPortFURL() # this is how you learn the logport furl
+print "please point your log viewer at: %s" % logport_furl
+
+logport = t.getLogPort() # a Referenceable you can pass over the wire
+rref.callRemote("please_use_my_logport", logport)
+</pre>
+
+<p>The default behavior is register the logport object with an ephemeral
+name, and therefore its FURL will change from one run of the program to the
+next. This can be an operational nuisance, since the external log viewing
+program you're running (<code>flogtool tail LOGPORT</code>) would need a new
+FURL each time the target program is restarted. By giving the logport a place
+to store its FURL between program runs, the logport gets a persistent name.
+The <code>logport-furlfile</code> option is used to identify this file. If
+the file exists, the desired FURL will be read out of it. If it does not, the
+newly-generated FURL will be written into it.</p>
+
+<p>Note that this option must be set before you call <code>getLogPort</code>
+or <code>getLogPortFURL</code>, otherwise an ephemeral name will have already
+been registered.</p>
+
+<pre class="python">
+tub.setOption("logport-furlfile", "~/logport.furl")
+print "please point your log viewer at: %s" % tub.getLogPortFURL()
+</pre>
+
+<p>This <code>logport.furl</code> file can be read directly by other tools if
+you want to point them at an operating directory rather than the actual
+logport FURL. For example, the <code>flogtool tail</code> command (described
+below) can accept either an actual FURL, or the directory in which a file
+named <code>logport.furl</code> can be located, making it easier to examine
+the logs of a local application. Note that the <code>logport-furlfile</code>
+is chmod'ed <code>go-r</code>, since it is a secret: the idea is that only
+people with access to the application's working directory (and presumeably to
+the application itself) should get access to the logs.</p>
+
+<h3>Configuring a Log Gatherer</h3>
+
+<p>The third feature that requires special setup is the log gatherer. You can
+either tell the Tub a specific gatherer to use, or give it a filename where
+the FURL of a log gatherer is stored.</p>
+
+<p>The <code>tub.setOption("log-gatherer", gatherer_FURL)</code> call can be
+used to have the Tub automatically connect to the log gatherer and offer its
+logport. The Tub uses a Reconnector to make sure the gatherer connection is
+reestablished each time it gets dropped.</p>
+
+<pre class="python">
+t = Tub()
+t.setOption("log-gatherer", gatherer_FURL)
+</pre>
+
+
+<p>Alternatively, you can use the
+<code>tub.setOption("log-gatherer-furlfile", "~/gatherer.furl")</code> call
+to tell the Tub about a file where a gatherer FURL might be found. If that
+file exists, the Tub will read a FURL from it, otherwise the Tub will not use
+a gatherer. This is probably the easiest deployment mode:</p>
+
+<pre class="python">
+t = Tub()
+t.setOption("log-gatherer-furlfile", "~/gatherer.furl")
+</pre>
+
+<p>In both cases, the gatherer FURL is expected to point to a remote object
+which implements the <code>foolscap.logging.RILogGatherer</code> interface.
+The Tub will connect to the gatherer and offer it the logport.</p>
+
+
+<h3>Interacting With Other Logging Systems</h3>
+
+<p>There are two other logging systems that the Foolscap logging code knows
+how to handle: <code>twisted.python.log</code> and the stdlib
+<code>logging</code> system.</p>
+
+<p>First, a brief discussion of the single-instance nature of Foolscap's
+logging is in order. Each process that uses Foolscap gets a single instance
+of the Foolscap logging code (named <code>theLogger</code> and defined at
+module level in <code>foolscap.logging.log</code>). This maintains a single
+logdir. Each time a process is started it gets a new "incarnation record",
+which consists of a randomly generated (unique) number, and (if a logdir is
+available) a continuously incrementing sequence number. All log events are
+tagged with this incarnation record: it is used to distinguish between
+event#23 in one process versus the same event number from a different
+process.</p>
+
+<p>Each Tub has a distinct TubID, and all log events that go through the Tub
+(via <code>tub.log</code>) are tagged with this TubID. Each Tub maintains its
+own logport (specifically there is a single <code>LogPublisher</code> object,
+but like all Referenceables it can be registered in multiple Tubs and gets a
+distinct FURL for each one).</p>
+
+<h4>twisted.python.log</h4>
+
+<p>Twisted's logging mechanism is used by importing
+<code>twisted.python.log</code> and invoking its <code>log.msg()</code> and
+<code>log.err</code> methods. This mechanism is used extensively by Twisted
+itself; the most important messages are those concerning "Unhandled Error in
+Deferred" and other exceptions in processing received data and timed calls.
+The normal destination for Twisted log messages depends upon how the
+application is run: the <code>twistd</code> daemonization tool sends the log
+messages to a file named <code>twistd.log</code>, the <code>trial</code>
+unit-test tool puts them in <code>_trial_temp/test.log</code>, and standalone
+scripts discard these logs by default (unless you use something like
+<code>log.startLogging(sys.stderr)</code>).</p>
+
+<p>To capture these log messages, you need a "bridge", which will add a
+Twisted log observer and copy each Twisted log message into Foolscap. There
+can be at most one such bridge per python process. Either you will use a
+generic bridge (which tags each message with the incarnation record), or you
+will use a Tub as a bridge (which additionally tags each message with the
+TubID). Each time you set the twisted log bridge, any previous bridge is
+discarded.</p>
+
+<p>When you have only one Tub in an application, use the Tub bridge. Likewise
+if you have multiple Tubs but there is one that is long-lived, use that Tub
+for the bridge. If you have mutiple Tubs with no real primary one, use the
+generic bridge. Using a Tub bridge adds slightly more information to the log
+events, and may make it a bit easier to correlate Twisted log messages with
+actions of your application code, especially when you're combining events
+from several applications together for analysis.</p>
+
+<p>To set up the generic bridge, use the following code:</p>
+
+<pre class="python">
+from foolcap.logging import log
+log.bridgeTwistedLogs()
+</pre>
+
+<p>To set up a Tub bridge, use this instead:</p>
+
+<pre class="python">
+t = Tub()
+t.setOption("bridge-twisted-logs", True)
+</pre>
+
+<p>Note that for Tub bridges, the Twisted log messages will only be delivered
+while the Tub is running (specifically from the time its startService()
+method is until its stopService() method is called). TODO: review this
+behavior, we want earlier messages to be bridged too.</p>
+
+<h4>stdlib 'logging' module</h4>
+
+<p>stdlib <code>logging</code> messages must be bridged in the same way. TODO:
+define the bridge setup</p>
+
+<h4>Preferred Logging API</h4>
+
+<p>To take advantage of the parent/child causality mechanism, you must use
+Foolscap's native API. (to be precise, you can pass in <code>parent=</code>
+to either Twisted's <code>log.msg</code> or stdlib's
+<code>logging.log</code>, but to get a handle to use as a value to
+<code>parent=</code> you must use <code>foolscap.log.msg</code>, because
+neither stdlib's nor Twisted's log calls provide a return value)</p>
+
+
+<h3>Controlling Buffer Sizes</h3>
+
+<p>(NOTE: this section is incomplete and has not been implemented)</p>
+
+<p>Each level is given a separate circular buffer, with a maximum size. After
+each message is added, the size of the buffer is checked and enough old
+messages are discarded to bring the size back down to the limit. If desired,
+each facility can use a separate set of buffers, so that e.g. the NOISY
+messages from the "ui" facility do not evict the NOISY messages from the
+"upload" facility.</p>
+
+<p>The sizes of these buffers can be controlled with the
+<code>log.set_buffer_size</code> function. Setting it without a facility name
+controls the all-facility buffer. Using a facility name indicates that you
+want this facility to use a separate buffer for its messages. Use
+<code>log.allocate_facility_buffers</code> to allocate a set of buffers for a
+specific facility, using the default sizes:</p>
+
+<pre class="python">
+log.set_buffer_size(log.NOISY, 10000)
+log.set_buffer_size(level=log.NOISY, facility="upload", size=10000)
+log.allocate_facility_buffers("web")
+print log.get_buffer_size(log.NOISY, facility="upload")
+</pre>
+
+<h3>Some Messages Are Not Worth Generating</h3>
+
+<p>(NOTE: this section is incomplete and has not been implemented)</p>
+
+<p>If the message to be logged is below some threshold, it will not even be
+generated. This makes it easy to leave the log line in the source code, but
+not consume CPU time or memory space by actually using it. Such messages must
+be enabled before use (either through the logport or by restarting the
+application with different log settings), but at least developers will not
+have to re-learn the source code to figure out where it might be useful to
+add some messages. This threshold can be configured for all facilities at the
+same time, or on a facility-by-facility basis.</p>
+
+<pre class="python">
+log.set_generation_threshold(log.NOISY)
+log.set_generation_threshold(level=log.OPERATIONAL, facility="web")
+print log.get_generation_threshold()
+print log.get_generation_threshold(facility="web")
+</pre>
+
+<h2>Viewing Log Messages</h2>
+
+<p>There are a variety of ways for humans (and their tools) to read and
+analyze log messages. The <code>flogtool</code> program, provided with
+Foolscap, provides access to many of them.</p>
+
+<ul>
+  <li><code>flogtool dump</code>: look at the saved log events (in a logdir)
+  and display their contents to stdout. Options are provided to specify the
+  log source, the facilities and severity levels to display, and grep-like
+  filters on the messages to emit. </li>
+
+  <li><code>flogtool tail</code>: connect to a logport and display new log
+  events to stdout. The <code>--catchup</code> option will also display old
+  events.</li>
+
+  <li><code>flogtool gtk-viewer</code>: a Gtk-based graphical tool to examine
+  log messages.</li>
+
+  <li><code>flogtool web-viewer</code>: runs a local web server, through
+  which log events can be examined.</li>
+</ul>
+
+<p>This tool uses a log-viewing API defined here (TODO). Application code can
+use the same API to get access to log messages from inside a python
+program.</p>
+
+<h3>Log Views</h3>
+
+<p>(NOTE: this section is incomplete and has not been implemented)</p>
+
+<p>Many of these tools share the concept of "Log Views". This is a particular
+set of filters which can be applied to the overall log event stream. For
+example, one view might show all events that are UNUSUAL or worse. Another
+view might show NOISY messages for the "ui" facility but nothing else.</p>
+
+<p>Each view is described by a set of thresholds: each facility gets a
+severity threshold, and all messages at or above the threshold will be
+included in the view. While in principle there is a threshold for each
+facility, this may be expressed as a single generic threshold combined with
+overrides for a few specific facilities.</p>
+
+<h3>Log Observers</h3>
+
+<p>(NOTE: this section is incomplete and has not been implemented)</p>
+
+<p>A "Log Observer" can be attached to a foolscap-using program (either
+internally or by subscribing through the flogport). Once attached, this
+observer will receive a stream of log messages, which the observer is then
+free to format, store, or ignore as it sees fit.</p>
+
+<p>Each log message is an instance of
+<code>foolscap.logging.LogMessage</code>, and its properties are available as
+attributes.</p>
+
+<pre class="python">
+def observe(event):
+    print strftime(fmt, event.timestamp)
+    print event.severity # a string like "CURIOUS"
+    print event.facility # a string like "ui"
+    print event.text  # a unicode object with the actual event text
+
+tub.getLogger().addLogObserver(observe)
+</pre>
+
+<h2>Python <code>logging</code> module</h2>
+
+<p>(NOTE: this section is incomplete and has not been implemented. In
+addition is may be entirely false and misleading.)</p>
+
+<p>The Python stdlib <code>logging</code> module offers portions of the
+desired functionality. The Foolscap logging framework is built as an
+extension to the native Python facilities.</p>
+
+<p>The <code>logging</code> module provides a tree of facilities, one
+<code>Logger</code> instance per facility (in which the child path names are
+joined with periods to form the Logger's name). Each <code>Logger</code> gets
+a set of <code>Handlers</code> which receive all messages sent to that
+<code>Logger</code> or below; the <code>Handlers</code> attached to the root
+<code>Logger</code> see all messages. Each message arrives as a
+<code>LogRecord</code> instance, and handlers are responsible for formatting
+them into text or a record on disk or whatever is necessary. Each log message
+has a severity (from DEBUG at 10 up to CRITICAL at 50), and both
+<code>Loggers</code> and <code>Handlers</code> have thresholds to discard
+low-severity messages.</p>
+
+<p><code>logging</code></p>
+
+Plan of attack:
+
+<p> foolscap installs a root Logger handler, with a threshold set very low
+(0), so it gets everything. The root Logger is set to a low threshold (since
+it defaults to WARNING=30), to make sure that all events are passed through
+to its handlers. Foolscap's handler splits the events it receives out by
+facility (Logger name) and severity level, and appends them to a
+space-limited buffer (probably a dequeue). </p>
+
+<p>That covers all native users of logging.py . Foolscap users deal with
+foolscap.log.msg(), which massages the arguments before passing them through
+to logging.log(). In particular, each log message processed by the foolscap
+handler gets a serial number assigned to it. This number is used as a marker,
+which can be passed to later msg() calls. The foolscap.log.msg code manages
+these serial numbers and uses them to construct the call to logging.log(),
+then the foolscap handler pulls the serial number out of the event and
+records it.</p>
+
+</body></html>

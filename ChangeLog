@@ -2,6 +2,13 @@
 
 	* Makefile: misc new targets, parameterize $(TRIAL)
 
+	* doc/logging.xhtml: document new logging scheme, some of this is
+	still speculative, unimplemented, or just plain wrong
+	* foolscap/logging/log.py: frontend for logging scheme
+	* foolscap/pb.py: partial API support for logging
+	* foolscap/test/test_logging.py: tests for new code, partially adapted
+	from Petmail log tests
+
 2007-11-27  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/*: new logging support, including hierarchical

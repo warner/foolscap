@@ -6,7 +6,7 @@ from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.python import log as twisted_log
 import foolscap
-from foolscap.logging import publish, gatherer
+from foolscap.logging import publish, gatherer, log
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
@@ -24,6 +24,115 @@ GoodEnoughTub = UnauthenticatedTub
 if crypto_available:
     GoodEnoughTub = Tub
 
+
+class Basic(unittest.TestCase):
+    def testLog(self):
+        l = log.FoolscapLogger()
+        l.explain_facility("ui", "this terse string fully describes the gui")
+        l.msg("one")
+        l.msg("two")
+        l.msg("three")
+        l.msg("ui message", facility="ui")
+        l.msg("blah blah", level=log.NOISY)
+        l.msg("opening file", level=log.OPERATIONAL)
+        l.msg("funny, that doesn't usually happen", level=log.UNUSUAL)
+        l.msg("configuration change noticed", level=log.INFREQUENT)
+        l.msg("error, but recoverable", level=log.CURIOUS)
+        l.msg("ok, that shouldn't have happened", level=log.WEIRD)
+        l.msg("hash doesn't match.. what the hell?", level=log.SCARY)
+        l.msg("I looked into the trap, ray", level=log.BAD)
+
+    def testStacktrace(self):
+        l = log.FoolscapLogger()
+        l.msg("how did we get here?", stacktrace=True)
+
+    def testParent(self):
+        l = log.FoolscapLogger()
+        p1 = l.msg("operation requested", level=log.OPERATIONAL)
+        l.msg("first step", level=log.NOISY, parent=p1)
+        l.msg("second step", level=log.NOISY, parent=p1)
+        l.msg("second step EXPLODED", level=log.WEIRD, parent=p1)
+        p2 = l.msg("third step", parent=p1)
+        l.msg("fourth step", parent=p1)
+        l.msg("third step deferred activity finally completed", parent=p2)
+        l.msg("operation complete", level=log.OPERATIONAL, parent=p1)
+
+    def testTheLogger(self):
+        log.msg("This goes to the One True Logger")
+
+class Advanced(unittest.TestCase):
+
+    def testDisplace(self):
+        l = log.FoolscapLogger()
+        l.set_buffer_size(log.NOISY, 3)
+        l.msg("one")
+        l.msg("two")
+        l.msg("three")
+        items = l.buffers[None][log.NOISY]
+        self.failUnlessEqual(len(items), 3)
+        l.msg("four") # should displace "one"
+        self.failUnlessEqual(len(items), 3)
+        m0 = items[0]
+        self.failUnlessEqual(type(m0), dict)
+        self.failUnlessEqual(m0['message'], "two")
+        self.failUnlessEqual(items[-1]['message'], "four")
+
+    def testFacilities(self):
+        l = log.FoolscapLogger()
+        l.explain_facility("ui", "This is the UI.")
+        l.msg("one", facility="ui")
+        l.msg("two")
+
+        items = l.buffers["ui"][log.NOISY]
+        self.failUnlessEqual(len(items), 1)
+        self.failUnlessEqual(items[0]["message"], "one")
+
+    def testOnePriority(self):
+        l = log.FoolscapLogger()
+        l.msg("one", level=log.NOISY)
+        l.msg("two", level=log.WEIRD)
+        l.msg("three", level=log.NOISY)
+
+        items = l.buffers[None][log.NOISY]
+        self.failUnlessEqual(len(items), 2)
+        self.failUnlessEqual(items[0]['message'], "one")
+        self.failUnlessEqual(items[1]['message'], "three")
+
+        items = l.buffers[None][log.WEIRD]
+        self.failUnlessEqual(len(items), 1)
+        self.failUnlessEqual(items[0]['message'], "two")
+
+    def testPriorities(self):
+        l = log.FoolscapLogger()
+        l.set_buffer_size(log.NOISY, 3)
+        l.set_buffer_size(log.WEIRD, 3)
+
+        l.msg("one", level=log.WEIRD)
+        l.msg("two", level=log.NOISY)
+        l.msg("three", level=log.NOISY)
+        l.msg("four", level=log.WEIRD)
+        l.msg("five", level=log.NOISY)
+        l.msg("six", level=log.NOISY)
+        l.msg("seven", level=log.NOISY)
+
+        items = l.buffers[None][log.NOISY]
+        self.failUnlessEqual(len(items), 3)
+        self.failUnlessEqual(items[0]['message'], "five")
+        self.failUnlessEqual(items[-1]['message'], "seven")
+
+        items = l.buffers[None][log.WEIRD]
+        self.failUnlessEqual(len(items), 2)
+        self.failUnlessEqual(items[0]['message'], "one")
+        self.failUnlessEqual(items[-1]['message'], "four")
+
+    def testHierarchy(self):
+        l = log.FoolscapLogger()
+
+        n = l.msg("one")
+        n2 = l.msg("two", parent=n)
+        l.msg("three", parent=n2)
+
+
 class Observer(Referenceable):
     implements(RILogObserver)
     def __init__(self):
@@ -39,7 +148,7 @@ class MyGatherer(gatherer.LogGatherer):
         gatherer.LogGatherer.remote_logport(self, nodeid, publisher)
         self.d.callback(publisher)
 
-class Logging(unittest.TestCase):
+class Publish(unittest.TestCase):
     def setUp(self):
         self.parent = service.MultiService()
         self.parent.startService()
@@ -185,4 +294,5 @@ class Logging(unittest.TestCase):
         lp.setServiceParent(t2)
 
         return self._test_gatherer(basedir, gatherer, t2)
+
 

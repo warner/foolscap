@@ -10,6 +10,7 @@ from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError
 from foolscap.reconnector import Reconnector
+from foolscap.logging import log as flog
 
 crypto_available = False
 try:
@@ -252,6 +253,10 @@ class Tub(service.MultiService):
 
         self._pending_getReferences = [] # list of (d, furl) pairs
 
+        self._logport = flog.theLogPort
+        self._logport_furl = None
+        self._logport_furlfile = None
+
     def setOption(self, name, value):
         if name == "logLocalFailures":
             # log (with log.err) any exceptions that occur during the
@@ -277,8 +282,43 @@ class Tub(service.MultiService):
             self.keepaliveTimeout = value
         elif name == "disconnectTimeout":
             self.disconnectTimeout = value
+        elif name == "logport-furlfile":
+            self.setLogPortFurlFile(value)
+        elif name == "log-gatherer":
+            self.setLogGatherer(value)
+        elif name == "log-gatherer-furlfile":
+            self.setLogGatherer(value)
+        elif name == "bridge-twisted-logs":
+            if value:
+                tlb = flog.TwistedLogBridge(self.tubID)
+                flog.setTwistedLogBridge(tlb)
+            else:
+                flog.setTwistedLogBridge(None)
         else:
             raise KeyError("unknown option name '%s'" % name)
+
+    def setLogPortFurlFile(self, furlfile):
+        self._logport_furlfile = furlfile
+    def setLogGatherer(self, gatherer_furl):
+        self._log_gatherer_furl = gatherer_furl
+        self._maybeConnectToGatherer()
+
+    def _maybeConnectToGatherer(self):
+        raise NotImplementedError
+
+    def setLogGathererFurlFile(self, gatherer_furlfile):
+        self._log_gatherer_furlfile = gatherer_furlfile
+        self._maybeConnectToGatherer()
+
+    def getLogPort(self):
+        return self._logport
+    def getLogPortFURL(self):
+        if not self._logport_furl:
+            furlfile = self._logport_furlfile
+            self._logport_furl = self.registerReference(self.getLogPort(),
+                                                        furlFile=furlfile)
+        return self._logport_furl
+        
 
     def createCertificate(self):
         # this is copied from test_sslverify.py
