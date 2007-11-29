@@ -1,3 +1,7 @@
+2007-11-28  Brian Warner  <warner@lothar.com>
+
+	* Makefile: misc new targets, parameterize $(TRIAL)
+
 2007-11-27  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/*: new logging support, including hierarchical

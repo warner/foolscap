@@ -5,9 +5,10 @@
 build:
 	python setup.py build
 
+TRIAL=trial
 TEST=foolscap
 test:
-	trial $(TEST)
+	$(TRIAL) $(TEST)
 
 test-figleaf:
 	rm -f .figleaf
@@ -59,7 +60,17 @@ docs:
 	lore -p --config template=$(DOC_TEMPLATE) --config ext=.html \
 	--config baseurl='api/%s-class.html' \
 	`find doc -name '*.xhtml'`
+doc/%.html: doc/%.xhtml
+	lore -p --config template=$(DOC_TEMPLATE) --config ext=.html \
+	--config baseurl='api/%s-class.html' \
+	$<
 
 api-docs:
 	rm -rf doc/api
 	PYTHONPATH=. epydoc -v -o doc/api --html -n Foolscap -u http://foolscap.lothar.com --exclude foolscap.test foolscap
+
+pyflakes:
+	pyflakes bin foolscap
+
+find-trailing-spaces:
+	find-trailing-spaces -r bin foolscap
