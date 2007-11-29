@@ -165,6 +165,13 @@ to each event as a filter, and the expression can do arbitrary comparison of
 event parameters (e.g. "show me all events related to failing uploads of
 files larger than 20MB").</p>
 
+<p>TODO: to accomplish this, all unrecognized keyword arguments to the
+<code>log.msg</code> call are recorded as additional keys in the log event.
+To encourage structured usage, the message string is treated as a format
+string, using the keyword args as a formatting dictionary. Any time the
+string is displayed to a human, the keyword args are interpolated into the
+format string first.</p>
+
 <p>(in compiled languages, it would be useful and cheap to embed the source
 file and line number of the log() call inside the log event. Unfortunately,
 in Python, this would require expensive stack crawling, so developers are
