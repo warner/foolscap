@@ -71,7 +71,7 @@ class PBRootUnslicer(RootUnslicer):
                               ord(typebyte))
             raise BananaError("index token 0x%02x not STRING or VOCAB" % \
                               ord(typebyte))
-        
+
     def open(self, opentype):
         # used for lower-level objects, delegated up from childunslicer.open
         child = RootUnslicer.open(self, opentype)
@@ -300,7 +300,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         they will give us an interface name too, and possibly a global URL
         for it. Obtain a RemoteReference object (creating it if necessary) to
         give to the local recipient.
-        
+
         The sender remembers that we hold a reference to their object. When
         our RemoteReference goes away, we send a decref message to them, so
         they can possibly free their object. """
@@ -320,7 +320,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             if url:
                 self.yourReferenceByURL[url] = tracker
         return tracker
-        
+
     def freeYourReference(self, tracker, count):
         # this is called when the RemoteReference is deleted
         if not self.remote_broker: # tests do not set this up

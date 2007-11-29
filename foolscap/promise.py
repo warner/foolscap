@@ -278,6 +278,6 @@ def when(p):
     when it is ready. Use this when you actually need to schedule something
     to happen in a synchronous fashion. Most of the time, you can just invoke
     methods on the Promise as if it were immediately available."""
-    
+
     assert isinstance(p, Promise)
     return p._wait_for_resolution()

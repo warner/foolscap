@@ -111,7 +111,7 @@ class ScopedSlicer(BaseSlicer):
         # different branches of the object graph at different points in time)
         # rather than the blatantly wrong mangling that would occur with
         # re-used id(obj) values.
-        
+
         self.references[id(obj)] = (obj,refid)
 
     def slicerForObject(self, obj):
@@ -183,7 +183,7 @@ class BaseUnslicer:
 
     def doOpen(self, opentype):
         """Return an IUnslicer object based upon the 'opentype' tuple. This
-        object will receive all tokens destined for the subnode. 
+        object will receive all tokens destined for the subnode.
 
         If you want to enforce a constraint, you must override this method
         and do two things: make sure your constraint accepts the opentype,

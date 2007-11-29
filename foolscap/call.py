@@ -467,7 +467,7 @@ class CallUnslicer(slicer.ScopedUnslicer):
             # exception for unknown methods
 
             # must find the schema, using the interfaces
-            
+
             # TODO: getSchema should probably be in an adapter instead of in
             # a pb.Referenceable base class. Old-style (unconstrained)
             # flavors.Referenceable should be adapted to something which
@@ -746,7 +746,7 @@ class FailureSlicer(slicer.BaseSlicer):
             yield v
     def describe(self):
         return "<%s>" % self.classname
-        
+
     def getStateToCopy(self, obj, broker):
         #state = obj.__dict__.copy()
         #state['tb'] = None

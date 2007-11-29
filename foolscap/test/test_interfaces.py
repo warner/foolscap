@@ -52,7 +52,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
         self.failUnlessEqual(iname, "RIMyTarget")
         self.failUnlessIdentical(RemoteInterfaceRegistry["RIMyTarget"],
                                  RIMyTarget)
-        
+
         rr, target = self.setupTarget(Target2())
         iname = getRemoteInterfaceName(target)
         self.failUnlessEqual(iname, "RIMyTargetInterface2")

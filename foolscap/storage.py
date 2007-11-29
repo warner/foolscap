@@ -132,7 +132,7 @@ class InstanceUnslicer(slicer.BaseUnslicer):
     # DANGEROUS!
     opentype = ('instance',)
     unslicerRegistry = UnsafeUnslicerRegistry
-    
+
     # danger: instances are mutable containers. If an attribute value is not
     # yet available, __dict__ will hold a Deferred until it is. Other
     # objects might be created and use our object before this is fixed.

@@ -318,7 +318,7 @@ class Tub(service.MultiService):
             self._logport_furl = self.registerReference(self.getLogPort(),
                                                         furlFile=furlfile)
         return self._logport_furl
-        
+
 
     def createCertificate(self):
         # this is copied from test_sslverify.py

@@ -24,7 +24,7 @@ class RemoteInterfaceClass(interface.InterfaceClass):
 
     RIFoo['bar'] is still used to get information about method 'bar', however
     it returns a RemoteMethodSchema instead of a z.i Method instance.
-    
+
     """
 
     def __init__(self, iname, bases=(), attrs=None, __module__=None):

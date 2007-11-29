@@ -178,7 +178,7 @@ class RemoteCopyUnslicer(slicer.BaseUnslicer):
             return "%s.attrname??" % me
         else:
             return "%s.%s" % (me, self.attrname)
-    
+
 
 class NonCyclicRemoteCopyUnslicer(RemoteCopyUnslicer):
     # The Deferred used in RemoteCopyUnslicer (used in case the RemoteCopy
@@ -224,7 +224,7 @@ class IRemoteCopy(Interface):
         those Deferreds fire, but until that point their state is still
         subject to change. Therefore you must be careful about how much state
         inspection you perform within this method."""
-        
+
     stateSchema = interface.Attribute("""I return an AttributeDictConstraint
     object which places restrictions on incoming attribute values. These
     restrictions are enforced as the tokens are received, before the state is
@@ -303,7 +303,7 @@ def registerRemoteCopy(typename, remote_copy_class, registry=None):
         return obj
 
     registerRemoteCopyFactory(typename, _RemoteCopyFactory,
-                              remote_copy_class.stateSchema, 
+                              remote_copy_class.stateSchema,
                               not remote_copy_class.nonCyclic,
                               registry)
 

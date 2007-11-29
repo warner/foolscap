@@ -51,7 +51,6 @@ modifiers:
    - Optional(name, constraint, default=None): key is not required. If not
             provided and default is None, key/attribute will not be created
             Only valid inside DictOf and AttributeDict.
-   
 
 """
 

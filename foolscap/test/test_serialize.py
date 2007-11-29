@@ -132,7 +132,7 @@ class Serialize(unittest.TestCase):
                       "instance",
                       foolscap.serialize, obj2)
         return d
-        
+
 
     def test_referenceable(self):
         t1 = GoodEnoughTub()

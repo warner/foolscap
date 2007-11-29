@@ -157,7 +157,7 @@ class UnbananaTestMixin:
             self.failUnless(len(self.banana.receiveStack) == 1)
             self.failUnless(isinstance(self.banana.receiveStack[0],
                                        storage.UnsafeStorageRootUnslicer))
-            
+
     def do(self, tokens):
         self.banana.violation = None
         self.banana.disconnectReason = None
@@ -392,7 +392,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
 
     def test_aborted_list3(self):
         "aborted list3"
-        f = self.shouldFail([tOPEN(0),'list', 1, 
+        f = self.shouldFail([tOPEN(0),'list', 1,
                               tOPEN(1),'list', 2, 3, 4,
                                tOPEN(2),'list', 5, 6, tABORT, tCLOSE(2),
                               tCLOSE(1),
@@ -436,14 +436,14 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
                         "b", tOPEN(1),'list', 2, 3, tCLOSE(1),
                        tCLOSE(0)])
         self.failUnlessEqual(res, {'a':1, 'b':[2,3]})
-        
+
     def test_dict_with_tuple_as_key(self):
         "dict with tuple as key"
         res = self.do([tOPEN(0),'dict',
                         tOPEN(1),'tuple', 1, 2, tCLOSE(1), "a",
                        tCLOSE(0)])
         self.failUnlessEqual(res, {(1,2):'a'})
-        
+
     def test_dict_with_mutable_key(self):
         "dict with mutable key"
         f = self.shouldDropConnection([tOPEN(0),'dict',
@@ -465,7 +465,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
                              tCLOSE(2),
                        tCLOSE(0)])
         self.failUnlessEqual(res, f1)
-        
+
     def test_instance_bad1(self):
         "subinstance with numeric classname"
         tokens = [tOPEN(0),'instance', "Foo",
@@ -608,7 +608,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         # tuple[0] becomes available before tuple[2] is inserted. Not sure
         # this is possible, but it would improve test coverage in
         # TupleUnslicer
-        
+
     def test_failed_dict1(self):
         # dies during open because of bad opentype
         f = self.shouldFail([tOPEN(0),'list', 1,
@@ -657,7 +657,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         self.failUnless(f.check(Violation))
         self.failUnlessEqual(f.value.where, "<RootUnslicer>.[1].{}[b]")
         self.failUnlessEqual(f.value.args[0], "aaaaaaaaargh")
-        
+
     def test_failed_dict5(self):
         # dies during finish
         f = self.shouldFail([tOPEN(0),'list', 1,
@@ -679,7 +679,7 @@ class Bar:
                    (them.__class__, them.__dict__))
 class Foo(Bar):
     pass
-        
+
 class EncodeTest(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
@@ -829,7 +829,7 @@ class EncodeTest(unittest.TestCase):
                            "d", 4,
                           tCLOSE(2),
                        tCLOSE(0)])
-        
+
 
 
 class ErrorfulSlicer(slicer.BaseSlicer):
@@ -950,7 +950,7 @@ class EncodeFailureTest(unittest.TestCase):
         self.failUnlessEqual(self.banana.tokens,
                              [('OPEN', 0), 1, ('ABORT',), ('CLOSE', 0)])
 
-    def test3(self):        
+    def test3(self):
         # .slice.next returning Deferred when streaming isn't allowed
         self.banana.rootSlicer.allowStreaming(False)
         s = ErrorfulSlicer("deferred-bad", False)
@@ -1071,7 +1071,7 @@ class ErrorfulUnslicer(slicer.BaseUnslicer):
         if self.ignoreChildDeath:
             return None
         return why
-        
+
     def receiveClose(self):
         if self.debug: print "ErrorfulUnslicer.receiveClose"
         if self.protocol.mode == "receiveClose":
@@ -1448,7 +1448,7 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
 
         def OPENweird(count, weird):
             return chr(count) + "\x88" + weird
-        
+
         self.violate2(join(bOPEN('list',1),
                            bOPEN('list',2),
                            OPENweird(3, bINT(64)),
@@ -1608,7 +1608,7 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                       schema.BooleanConstraint())
 
         # booleans have ints, not strings. To do otherwise is a protocol
-        # error, not a schema Violation. 
+        # error, not a schema Violation.
         f = self.shouldDropConnection(join(bOPEN("boolean",1),
                                             bSTR("vrai"),
                                            bCLOSE(1)))
@@ -1643,7 +1643,7 @@ class B(object):
         if not type(other) == type(self):
             return -1
         return cmp(self.__dict__, other.__dict__)
-    
+
 def afunc(self):
     pass
 
@@ -1853,7 +1853,7 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
     del test_cycles_3
 
 
-        
+
 class VocabTest1(unittest.TestCase):
     def test_incoming1(self):
         b = TokenBanana()
@@ -1891,7 +1891,7 @@ class VocabTest2(TestBananaMixin, unittest.TestCase):
     def vbOPEN(self, count, opentype):
         num = self.invdict[opentype]
         return chr(count) + "\x88" + chr(num) + "\x87"
-    
+
     def test_loop(self):
         strings = ["list", "tuple", "dict"]
         vdict = {0: 'list', 1: 'tuple', 2: 'dict'}

@@ -141,7 +141,7 @@ from within the slice() generator at any time as long as this restriction is
 obeyed.
 
 This attribute is read when each child Slicer is started.""")
-        
+
 
     def slice(streamable, banana):
         """Return an iterator which provides Index Tokens and the Body
@@ -224,7 +224,7 @@ class IUnslicer(Interface):
     # all its remaining tokens should be discarded. The failure will be
     # given to the late unslicer's parent in lieu of the object normally
     # returned by receiveClose.
-    
+
     # start/receiveChild/receiveClose/finish may raise a Violation
     # exception, which tells the protocol that this object is contaminated
     # and should be abandoned. An BananaFailure will be passed to its

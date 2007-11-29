@@ -290,7 +290,7 @@ class Banana(protocol.Protocol):
             # now inform the parent. If they also give up, we will
             # loop, popping more Slicers off the stack until the
             # RootSlicer ignores the error
-            
+
             if self.debugSend:
                 print "  notifying parent", top
             f = top.childAborted(f)
@@ -301,10 +301,10 @@ class Banana(protocol.Protocol):
                 continue
             else:
                 break
-        
+
 
         # the parent wants to forge ahead
-        
+
     def newSlicerFor(self, obj):
         if tokens.ISlicer.providedBy(obj):
             return obj
@@ -1098,7 +1098,7 @@ class Banana(protocol.Protocol):
 
     def handleViolation(self, f, methname, inOpen=False, inClose=False):
         """An Unslicer has decided to give up, or we have given up on it
-        (because we received an ABORT token). 
+        (because we received an ABORT token).
         """
 
         where = self.describeReceive()

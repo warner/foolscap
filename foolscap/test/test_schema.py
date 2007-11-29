@@ -160,7 +160,7 @@ class ConformTest(unittest.TestCase):
         self.violates(c, "vrai")
         self.violates(c, Dummy())
         self.violates(c, None)
-        
+
     def testPoly(self):
         c = schema.PolyConstraint(schema.ByteStringConstraint(100),
                                   schema.IntegerConstraint())
@@ -236,7 +236,7 @@ class ConformTest(unittest.TestCase):
         self.conforms(mapping, ("name", "key"))
         self.conforms(mapping, ("name", 123))
         value.alternatives = value.alternatives + (mapping,)
-        
+
         self.assertUnboundedSize(value)
         self.assertUnboundedDepth(value)
         self.assertUnboundedSize(mapping)
@@ -355,7 +355,7 @@ class ConformTest(unittest.TestCase):
         d = schema.DictOf(schema.ByteStringConstraint(10),
                           schema.IntegerConstraint(),
                           maxKeys=4)
-        
+
         self.assertDepth(d, 2)
         self.conforms(d, {"a": 1, "b": 2})
         self.conforms(d, {"foo": 123, "bar": 345, "blah": 456, "yar": 789})

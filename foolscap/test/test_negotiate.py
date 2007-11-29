@@ -374,7 +374,7 @@ class Parallel(BaseMixin, unittest.TestCase):
     #     (sent GET, waiting for the 101 Switching Protocols)
     #  4: still in ENCRYPTED phase: sent Hello, waiting for their Hello
     #  5: in DECIDING phase (non-master), waiting for their decision
-    #   
+    #
 
     def makeServers(self, tubopts={}, lo1={}, lo2={}):
         self.requireCrypto()
@@ -772,7 +772,7 @@ class Future(BaseMixin, unittest.TestCase):
         # negotiation decision
         self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high)
-        # the client 
+        # the client
         client = Tub(certData=certData_low)
         client.negotiationClass = NegotiationVbig
         client.startService()
@@ -790,7 +790,7 @@ class Future(BaseMixin, unittest.TestCase):
         # and thus make the negotiation decision
         self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low)
-        # the client 
+        # the client
         client = Tub(certData=certData_high)
         client.negotiationClass = NegotiationVbig
         client.startService()
@@ -824,7 +824,7 @@ class Future(BaseMixin, unittest.TestCase):
         # understands [1,2]
         self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low, NegotiationVbig)
-        # the client 
+        # the client
         client = Tub(certData=certData_high)
         client.startService()
         self.services.append(client)
@@ -844,7 +844,7 @@ class Future(BaseMixin, unittest.TestCase):
         # negotiation decision
         self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high)
-        # the client 
+        # the client
         client = Tub(certData=certData_low)
         client.negotiationClass = NegotiationVbigOnly
         client.startService()

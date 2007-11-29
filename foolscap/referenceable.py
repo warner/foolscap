@@ -151,7 +151,7 @@ class ReferenceableSlicer(slicer.BaseSlicer):
             yield 'their-reference'
             yield 0 # giftID==0 tells the recipient to not try to ack it
             yield tracker.getURL()
-            
+
 
 registerAdapter(ReferenceableSlicer, Referenceable, ipb.ISlicer)
 
@@ -757,7 +757,7 @@ class SturdyRef(Copyable, RemoteCopy):
             #
             # there is also an unauthenticated form, which is indexed by the
             # single locationHint, because it does not have a TubID
-            
+
             if url.startswith("pb://"):
                 self.encrypted = True
                 url = url[len("pb://"):]
