@@ -47,6 +47,11 @@ class FoolscapLogger:
         sequential = None
         return (unique, sequential)
 
+    def addObserver(self, observer):
+        self._observers.append(observer)
+    def removeObserver(self, observer):
+        self._observers.remove(observer)
+
     def setLogDir(self, directory):
         # TODO: not implemented yet
         # TODO: change self.incarnation to reflect next seqnum
@@ -88,6 +93,10 @@ class FoolscapLogger:
         # send to observers
         for o in self._observers:
             o.callRemoteOnly("msg", event)
+            #d = o.callRemote("msg", d)
+            #def _oops(f):
+            #    print "PUBLISH FAILED: %s" % f
+            #d.addErrback(_oops)
 
         # buffer locally
         d1 = self.buffers.get(facility)
@@ -107,13 +116,13 @@ class FoolscapLogger:
         while len(buffer) > sizelimit:
             buffer.popleft()
 
-class LogPort:
-    # TODO
-    def __init__(self, logger):
-        self._logger = logger
+    def setLogPort(self, logport):
+        self._logport = logport
+    def getLogPort(self):
+        return self._logport
+
 
 theLogger = FoolscapLogger()
-theLogPort = LogPort(theLogger)
 
 # def msg(stuff):
 msg = theLogger.msg
@@ -143,6 +152,7 @@ class TwistedLogBridge:
 theTwistedLogBridge = None
 
 def setTwistedLogBridge(bridge):
+    global theTwistedLogBridge
     if theTwistedLogBridge:
         twisted_log.removeObserver(theTwistedLogBridge._twisted_log_observer)
     if bridge:

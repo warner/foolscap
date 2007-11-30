@@ -416,9 +416,10 @@ The <code>logport-furlfile</code> option is used to identify this file. If
 the file exists, the desired FURL will be read out of it. If it does not, the
 newly-generated FURL will be written into it.</p>
 
-<p>Note that this option must be set before you call <code>getLogPort</code>
-or <code>getLogPortFURL</code>, otherwise an ephemeral name will have already
-been registered.</p>
+<p>Note that this option must be set before you call
+<code>getLogPortFURL</code> (and also before you pass the result of
+<code>getLogPort</code> over the wire), otherwise an ephemeral name will have
+already been registered.</p>
 
 <pre class="python">
 tub.setOption("logport-furlfile", "~/logport.furl")
@@ -441,14 +442,14 @@ the application itself) should get access to the logs.</p>
 either tell the Tub a specific gatherer to use, or give it a filename where
 the FURL of a log gatherer is stored.</p>
 
-<p>The <code>tub.setOption("log-gatherer", gatherer_FURL)</code> call can be
-used to have the Tub automatically connect to the log gatherer and offer its
-logport. The Tub uses a Reconnector to make sure the gatherer connection is
-reestablished each time it gets dropped.</p>
+<p>The <code>tub.setOption("log-gatherer-furl", gatherer_FURL)</code> call
+can be used to have the Tub automatically connect to the log gatherer and
+offer its logport. The Tub uses a Reconnector to make sure the gatherer
+connection is reestablished each time it gets dropped.</p>
 
 <pre class="python">
 t = Tub()
-t.setOption("log-gatherer", gatherer_FURL)
+t.setOption("log-gatherer-furl", gatherer_FURL)
 </pre>
 
 

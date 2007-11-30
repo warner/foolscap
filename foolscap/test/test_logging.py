@@ -60,6 +60,10 @@ class Basic(unittest.TestCase):
     def testTheLogger(self):
         log.msg("This goes to the One True Logger")
 
+    def testTubLogger(self):
+        t = GoodEnoughTub()
+        t.log("this goes into the tub")
+
 class Advanced(unittest.TestCase):
 
     def testDisplace(self):
@@ -154,6 +158,7 @@ class Publish(unittest.TestCase):
         self.parent.startService()
 
     def tearDown(self):
+        log.setTwistedLogBridge(None) # disable any bridge still in place
         d = defer.succeed(None)
         d.addCallback(lambda res: self.parent.stopService())
         d.addCallback(flushEventualQueue)
@@ -168,12 +173,11 @@ class Publish(unittest.TestCase):
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
-        lp = publish.LogPublisher(furlfile)
-        lp.setServiceParent(t)
-
-        logport_furl = lp.getLogport()
+        t.setOption("logport-furlfile", furlfile)
+        logport_furl = t.getLogPortFURL()
         logport_furl2 = open(furlfile, "r").read().strip()
         self.failUnlessEqual(logport_furl, logport_furl2)
+        t.setOption("bridge-twisted-logs", True)
 
         t2 = GoodEnoughTub()
         t2.setServiceParent(self.parent)
@@ -190,7 +194,11 @@ class Publish(unittest.TestCase):
                           logport.callRemote("subscribe_to_all", ob))
             def _emit(subscription):
                 self._subscription = subscription
-                twisted_log.msg("message here")
+                log.msg("message 1 here")
+                twisted_log.msg("message 2 here")
+                # switch to generic (no tubid) bridge
+                log.bridgeTwistedLogs()
+                twisted_log.msg("message 3 here")
             d.addCallback(_emit)
             d.addCallback(self.stall, 1.0)
             # TODO: I'm not content with that absolute-time stall, and would
@@ -199,9 +207,15 @@ class Publish(unittest.TestCase):
             #d.addCallback(fireEventually)
             def _check_observer(res):
                 msgs = ob.messages
-                self.failUnlessEqual(len(msgs), 1)
+                self.failUnlessEqual(len(msgs), 3)
                 #print msgs
-                self.failUnlessEqual(msgs[0]["message"], ("message here",) )
+                self.failUnlessEqual(msgs[0]["message"], "message 1 here")
+                # twisted's log.msg records a tuple of args, whereas
+                # foolscap's log.msg only records a single string
+                self.failUnlessEqual(msgs[1]["message"], ("message 2 here",) )
+                self.failUnlessEqual(msgs[1]["tubID"], t.tubID)
+                self.failUnlessEqual(msgs[2]["message"], ("message 3 here",) )
+                self.failUnlessEqual(msgs[2]["tubID"], None)
             d.addCallback(_check_observer)
             def _done(res):
                 return logport.callRemote("unsubscribe", self._subscription)
@@ -222,7 +236,7 @@ class Publish(unittest.TestCase):
         d = gatherer.d
         d.addCallback(self.stall, 1.0) # give subscribe_to_all() a chance
         def _go(res):
-            twisted_log.msg("message here")
+            log.msg("gathered message here")
         d.addCallback(_go)
         d.addCallback(self.stall, 1.0)
         d.addCallback(lambda res: t2.disownServiceParent())
@@ -235,8 +249,7 @@ class Publish(unittest.TestCase):
             data = pickle.load(open(fn, "r"))
             self.failUnless(isinstance(data, dict))
             self.failUnlessEqual(data['from'], t2.tubID)
-            self.failUnlessEqual(data['d']['message'],
-                                 ("message here",) )
+            self.failUnlessEqual(data['d']['message'], "gathered message here")
         d.addCallback(_check)
         return d
 
@@ -260,8 +273,7 @@ class Publish(unittest.TestCase):
         t2.setServiceParent(self.parent)
         l = t2.listenOn("tcp:0:interface=127.0.0.1")
         t2.setLocation("127.0.0.1:%d" % l.getPortnum())
-        lp = publish.LogPublisher(gathererFurl=gatherer_furl)
-        lp.setServiceParent(t2)
+        t2.setOption("log-gatherer-furl", gatherer_furl)
 
         return self._test_gatherer(basedir, gatherer, t2)
 
@@ -290,9 +302,25 @@ class Publish(unittest.TestCase):
         t2.setServiceParent(self.parent)
         l = t2.listenOn("tcp:0:interface=127.0.0.1")
         t2.setLocation("127.0.0.1:%d" % l.getPortnum())
-        lp = publish.LogPublisher(gathererFurlFile=gatherer_fn)
-        lp.setServiceParent(t2)
+        t2.setOption("log-gatherer-furlfile", gatherer_fn)
 
         return self._test_gatherer(basedir, gatherer, t2)
+
+    def test_log_gatherer_empty_furlfile(self):
+        basedir = "test_logging/test_log_gatherer_empty_furlfile"
+        os.makedirs(basedir)
+
+        gatherer_fn = os.path.join(basedir, "log_gatherer.furl")
+        # leave the furlfile blank: use no gatherer
+
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.parent)
+        l = t2.listenOn("tcp:0:interface=127.0.0.1")
+        t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t2.setOption("log-gatherer-furlfile", gatherer_fn)
+
+        lp_furl = t2.getLogPortFURL()
+        t2.log("this message shouldn't make anything explode")
+
 
 

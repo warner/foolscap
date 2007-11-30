@@ -1,3 +1,13 @@
+2007-11-29  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/log.py: get logport/gatherers working the way
+	they're described in the docs
+	* foolscap/logging/publish.py: merge into log.py
+	* foolscap/logging/interfaces.py: improve imports
+	* foolscap/pb.py: fix API for access to this stuff
+	* foolscap/test/test_logging.py: fix up tests to match
+	* doc/logging.xhtml: more cleanup
+
 2007-11-28  Brian Warner  <warner@lothar.com>
 
 	* Makefile: misc new targets, parameterize $(TRIAL)

@@ -1,5 +1,5 @@
 
-from foolscap import RemoteInterface
+from foolscap.remoteinterface import RemoteInterface
 from foolscap.schema import DictOf, ListOf, Any
 
 

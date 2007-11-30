@@ -11,6 +11,7 @@ from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError
 from foolscap.reconnector import Reconnector
 from foolscap.logging import log as flog
+from foolscap.logging import publish as flog_publish
 
 crypto_available = False
 try:
@@ -253,9 +254,12 @@ class Tub(service.MultiService):
 
         self._pending_getReferences = [] # list of (d, furl) pairs
 
-        self._logport = flog.theLogPort
+        self._logport = None
         self._logport_furl = None
         self._logport_furlfile = None
+
+        self._log_gatherer_furl = None
+        self._log_gatherer_furlfile = None
 
     def setOption(self, name, value):
         if name == "logLocalFailures":
@@ -283,11 +287,11 @@ class Tub(service.MultiService):
         elif name == "disconnectTimeout":
             self.disconnectTimeout = value
         elif name == "logport-furlfile":
-            self.setLogPortFurlFile(value)
-        elif name == "log-gatherer":
-            self.setLogGatherer(value)
+            self.setLogPortFURLFile(value)
+        elif name == "log-gatherer-furl":
+            self.setLogGathererFURL(value)
         elif name == "log-gatherer-furlfile":
-            self.setLogGatherer(value)
+            self.setLogGathererFURLFile(value)
         elif name == "bridge-twisted-logs":
             if value:
                 tlb = flog.TwistedLogBridge(self.tubID)
@@ -297,28 +301,56 @@ class Tub(service.MultiService):
         else:
             raise KeyError("unknown option name '%s'" % name)
 
-    def setLogPortFurlFile(self, furlfile):
-        self._logport_furlfile = furlfile
-    def setLogGatherer(self, gatherer_furl):
+    def setLogGathererFURL(self, gatherer_furl):
+        assert not self._log_gatherer_furl and not self._log_gatherer_furlfile
         self._log_gatherer_furl = gatherer_furl
         self._maybeConnectToGatherer()
 
-    def _maybeConnectToGatherer(self):
-        raise NotImplementedError
-
-    def setLogGathererFurlFile(self, gatherer_furlfile):
+    def setLogGathererFURLFile(self, gatherer_furlfile):
+        assert not self._log_gatherer_furl and not self._log_gatherer_furlfile
         self._log_gatherer_furlfile = gatherer_furlfile
         self._maybeConnectToGatherer()
 
+    def _maybeConnectToGatherer(self):
+        furl = self._log_gatherer_furl
+        if not furl and self._log_gatherer_furlfile:
+            try:
+                furl = open(self._log_gatherer_furlfile, "r").read().strip()
+            except EnvironmentError:
+                pass
+        if furl:
+            connector = self.connectTo(furl, self._log_gatherer_connected)
+
+    def _log_gatherer_connected(self, rref):
+        # we want the logport's furl to be nailed down now, so we'll use the
+        # right (persistent) name even if the user never calls
+        # tub.getLogPortFURL() directly.
+        ignored = self.getLogPortFURL()
+        rref.callRemote('logport', self.tubID, self.getLogPort())
+
+
+    def setLogPortFURLFile(self, furlfile):
+        self._logport_furlfile = furlfile
+
     def getLogPort(self):
+        return self._maybeCreateLogPort()
+
+    def _maybeCreateLogPort(self):
+        if not self._logport:
+            self._logport = flog_publish.LogPublisher(flog.theLogger)
         return self._logport
+
     def getLogPortFURL(self):
         if not self._logport_furl:
             furlfile = self._logport_furlfile
+            # the Tub must be running and configured (setLocation) by now
             self._logport_furl = self.registerReference(self.getLogPort(),
                                                         furlFile=furlfile)
         return self._logport_furl
 
+    def log(self, *args, **kwargs):
+        kwargs['tubID'] = self.tubID
+        return flog.msg(*args, **kwargs)
 
     def createCertificate(self):
         # this is copied from test_sslverify.py
@@ -540,7 +572,10 @@ class Tub(service.MultiService):
             self.strongReferences.append(ref)
         furl = self.buildURL(name)
         if furlFile:
+            need_to_chmod = not os.path.exists(furlFile)
             open(furlFile, "w").write(furl + "\n")
+            if need_to_chmod:
+                os.chmod(furlFile, 0600)
         return furl
 
     # this is called by either registerReference or by
