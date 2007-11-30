@@ -1,5 +1,7 @@
 2007-11-29  Brian Warner  <warner@lothar.com>
 
+	* foolscap/constraint.py: improve various Violation messages
+
 	* foolscap/logging/log.py: get logport/gatherers working the way
 	they're described in the docs
 	* foolscap/logging/publish.py: merge into log.py

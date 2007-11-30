@@ -108,10 +108,11 @@ class Constraint:
                 raise BananaError("invalid token type: %s" %
                                   tokenNames[typebyte])
             else:
-                raise Violation("%s token rejected by %s" % \
+                raise Violation("%s token rejected by %s" %
                                 (tokenNames[typebyte], self.name))
         if limit and size > limit:
-            raise Violation("token too large: %d>%d" % (size, limit))
+            raise Violation("%s token too large: %d>%d" %
+                            (tokenNames[typebyte], size, limit))
 
     def setNumberTaster(self, maxValue):
         self.taster = {INT: None,
@@ -137,7 +138,7 @@ class Constraint:
                 if opentype == o[:len(opentype)]:
                     return # still in the running
         print "opentype %s, self.opentypes %s" % (opentype, self.opentypes)
-        raise Violation, "unacceptable OPEN type '%s'" % (opentype,)
+        raise Violation("unacceptable OPEN type '%s'" % (opentype,))
 
     def checkObject(self, obj, inbound):
         """Validate an existing object. Usually objects are validated as
@@ -240,7 +241,7 @@ class ByteStringConstraint(Constraint):
 
     def checkObject(self, obj, inbound):
         if not isinstance(obj, str):
-            raise Violation("not a bytestring")
+            raise Violation("'%r' is not a bytestring" % (obj,))
         if self.maxLength != None and len(obj) > self.maxLength:
             raise Violation("string too long (%d > %d)" %
                             (len(obj), self.maxLength))
@@ -275,7 +276,7 @@ class IntegerConstraint(Constraint):
 
     def checkObject(self, obj, inbound):
         if not isinstance(obj, (int, long)):
-            raise Violation("not a number")
+            raise Violation("'%r' is not a number" % (obj,))
         if self.maxBytes == -1:
             if obj >= 2**31 or obj < -2**31:
                 raise Violation("number too large")
