@@ -6,7 +6,7 @@ from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.python import log as twisted_log
 import foolscap
-from foolscap.logging import publish, gatherer, log
+from foolscap.logging import gatherer, log
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
