@@ -2,6 +2,7 @@
 from foolscap.remoteinterface import RemoteInterface
 from foolscap.schema import DictOf, ListOf, Any
 
+TubID = str
 
 class RILogObserver(RemoteInterface):
     def msg(logmsg=DictOf(str, Any())):
@@ -16,7 +17,7 @@ class RILogFile(RemoteInterface):
         #  num_events,
         #  level_map, # maps string severity to count of messages
         # )
-        return (str, int, (int, int), (int, int), int, DictOf(str, int))
+        return (TubID, int, (int, int), (int, int), int, DictOf(str, int))
     def get_events(receiver=RILogObserver):
         """The designated receiver will be sent every event in the logfile,
         followed by a done() call."""
@@ -39,6 +40,6 @@ class RILogPublisher(RemoteInterface):
         return ListOf(RILogFile)
 
 class RILogGatherer(RemoteInterface):
-    def logport(nodeid=str, logport=RILogPublisher):
+    def logport(nodeid=TubID, logport=RILogPublisher):
         return None
 

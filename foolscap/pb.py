@@ -326,7 +326,11 @@ class Tub(service.MultiService):
         # right (persistent) name even if the user never calls
         # tub.getLogPortFURL() directly.
         ignored = self.getLogPortFURL()
-        rref.callRemote('logport', self.tubID, self.getLogPort())
+        tubID = self.tubID
+        if tubID is None:
+            # RILogGatherer.logport requires a string for nodeid=
+            tubID = '<unauth>'
+        rref.callRemote('logport', tubID, self.getLogPort())
 
 
     def setLogPortFURLFile(self, furlfile):

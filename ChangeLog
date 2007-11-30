@@ -1,5 +1,15 @@
 2007-11-29  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub._log_gatherer_connected): for
+	UnauthenticatedTubs, send tubid="<unauth>" instead of tubid=None,
+	since RILogGatherer.logport is expecting a string. Ideally I'd
+	like this to be ChoiceOf(str,None), but ChoiceOf doesn't work. In
+	the long run UnauthenticatedTubs will acquire normal (but
+	distinct) tubids, so this issue will go away.
+	* foolscap/logging/interfaces.py: minor cleanup
+	* foolscap/test/test_logging.py (Publish._test_gatherer._check):
+	update to match
+
 	* foolscap/constraint.py: improve various Violation messages
 
 	* foolscap/logging/log.py: get logport/gatherers working the way

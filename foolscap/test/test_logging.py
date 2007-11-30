@@ -248,7 +248,10 @@ class Publish(unittest.TestCase):
             # grab the first event from the log
             data = pickle.load(open(fn, "r"))
             self.failUnless(isinstance(data, dict))
-            self.failUnlessEqual(data['from'], t2.tubID)
+            expected_tubid = t2.tubID
+            if t2.tubID is None:
+                expected_tubid = "<unauth>"
+            self.failUnlessEqual(data['from'], expected_tubid)
             self.failUnlessEqual(data['d']['message'], "gathered message here")
         d.addCallback(_check)
         return d
@@ -276,6 +279,7 @@ class Publish(unittest.TestCase):
         t2.setOption("log-gatherer-furl", gatherer_furl)
 
         return self._test_gatherer(basedir, gatherer, t2)
+    test_log_gatherer.timeout = 20
 
     def test_log_gatherer_furlfile(self):
         basedir = "test_logging/test_log_gatherer_furlfile"
@@ -305,6 +309,7 @@ class Publish(unittest.TestCase):
         t2.setOption("log-gatherer-furlfile", gatherer_fn)
 
         return self._test_gatherer(basedir, gatherer, t2)
+    test_log_gatherer_furlfile.timeout = 20
 
     def test_log_gatherer_empty_furlfile(self):
         basedir = "test_logging/test_log_gatherer_empty_furlfile"
@@ -321,6 +326,7 @@ class Publish(unittest.TestCase):
 
         lp_furl = t2.getLogPortFURL()
         t2.log("this message shouldn't make anything explode")
+    test_log_gatherer_empty_furlfile.timeout = 20
 
 
 
