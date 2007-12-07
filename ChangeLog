@@ -1,3 +1,10 @@
+2007-12-07  Brian Warner  <warner@allmydata.com>
+
+	* misc/testutils/figleaf_htmlizer.py: emit lines *not* covered in a
+	separate column, and sort by that: this makes it a lot easier to
+	pay attention to the places that need work. Code copied over
+	from Tahoe.
+
 2007-12-06  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/broker.py (Broker.shutdown): refactor shutdown code, to
