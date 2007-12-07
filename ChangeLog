@@ -1,5 +1,23 @@
 2007-12-06  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/broker.py (Broker.shutdown): refactor shutdown code, to
+	make it safer to replace one connection with another.
+	(Broker.abandonAllRequests): use an eventual-send for each
+	flunking, to make sure the connection is completely gone by the
+	time application code gets to run in the errbacks.
+	* foolscap/pb.py (Tub.stopService): give a reason for the
+	shutdown. Keep it a ConnectionDone (so we don't need to update
+	other code that wouldn't expect a new exception type), but mention
+	Tub.stopService in the arguments.
+	(Tub.brokerAttached): add assert self.running.. this should never
+	be called on a Tub that's already been shutdown.
+	(Tub.brokerDetached): fix last-broker-detached detection, since
+	the sequencing changed a bit. Make sure we don't fire the
+	observerlist twice, by only firing it when we actually remove a
+	broker and it was the last one (i.e. we started with some brokers,
+	and finished with none).
+	(Tub.__repr__): add the TubID to the repr
+
 	* foolscap/call.py (FailureSlicer.getStateToCopy): truncate
 	.value, .type, and .parents to the lengths defined in
 	FailureConstraint. Unfortunately we don't seem to impose these

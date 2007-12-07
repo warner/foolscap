@@ -211,13 +211,28 @@ class Broker(banana.Banana, referenceable.Referenceable):
     # the lack of connection activity
 
     def connectionTimedOut(self):
-        self.shutdown()
+        err = error.ConnectionLost("banana timeout: connection dropped")
+        self.shutdown(err)
 
-    def shutdown(self):
-        self.disconnectWatchers = []
+    def shutdown(self, why, fireDisconnectWatchers=True):
+        """Stop using this connection. If fireDisconnectWatchers is False,
+        all disconnect watchers are removed before shutdown, so they will not
+        be called (this is appropriate when the Broker is shutting down
+        because the whole Tub is being shut down). We terminate the
+        connection quickly, rather than waiting for the transmit queue to
+        drain.
+        """
+        if not fireDisconnectWatchers:
+            self.disconnectWatchers = []
+        self.finish(why)
         self.transport.loseConnection()
 
     def connectionLost(self, why):
+        self.finish(why)
+
+    def finish(self, why):
+        if self.disconnected:
+            return
         self.disconnected = True
         self.remote_broker = None
         self.abandonAllRequests(why)
@@ -460,8 +475,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def abandonAllRequests(self, why):
         for req in self.waitingForAnswers.values():
-            req.fail(why)
-        self.waitingForAnswers = {}
+            eventually(req.fail, why)
 
     # target-side, invoked by CallUnslicer
 

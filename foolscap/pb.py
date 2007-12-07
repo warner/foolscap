@@ -2,7 +2,7 @@
 
 import os.path, weakref
 from zope.interface import implements
-from twisted.internet import defer, protocol
+from twisted.internet import defer, protocol, error
 from twisted.application import service, strports
 from twisted.python import log
 
@@ -196,6 +196,7 @@ class Tub(service.MultiService):
     brokerClass = broker.Broker
     keepaliveTimeout = 4*60 # ping when connection has been idle this long
     disconnectTimeout = None # disconnect after this much idle time
+    tubID = None
 
     def __init__(self, certData=None, certFile=None, options={}):
         service.MultiService.__init__(self)
@@ -204,6 +205,9 @@ class Tub(service.MultiService):
             self.setupEncryptionFile(certFile)
         else:
             self.setupEncryption(certData)
+
+    def __repr__(self):
+        return "<Tub id=%s>" % self.tubID
 
     def setupEncryptionFile(self, certFile):
         try:
@@ -510,10 +514,11 @@ class Tub(service.MultiService):
 
         if self.brokers or self.unauthenticatedBrokers:
             dl.append(self._allBrokersAreDisconnected.whenFired())
+        why = error.ConnectionDone("Tub.stopService was called")
         for b in self.brokers.values():
-            b.shutdown()
+            b.shutdown(why, fireDisconnectWatchers=False)
         for b in self.unauthenticatedBrokers:
-            b.shutdown()
+            b.shutdown(why, fireDisconnectWatchers=False)
 
         return defer.DeferredList(dl)
 
@@ -854,6 +859,7 @@ class Tub(service.MultiService):
                 d.errback(why)
 
     def brokerAttached(self, tubref, broker, isClient):
+        assert self.running
         if not tubref:
             # this is an inbound connection from an unauthenticated Tub
             assert not isClient
@@ -886,6 +892,11 @@ class Tub(service.MultiService):
                 d.callback(broker)
 
     def brokerDetached(self, broker, why):
+        # a loopback connection will produce two Brokers that both use the
+        # same tubref. Both will shut down about the same time. Make sure
+        # this doesn't confuse us.
+        had_connections = (bool(self.brokers) or
+                           bool(self.unauthenticatedBrokers))
         # the Broker will have already severed all active references
         for tubref in self.brokers.keys():
             if self.brokers[tubref] is broker:
@@ -893,8 +904,12 @@ class Tub(service.MultiService):
         if broker in self.unauthenticatedBrokers:
             self.unauthenticatedBrokers.remove(broker)
         # if the Tub has already shut down, we may need to notify observers
-        # who are waiting for all of our connections to finish shutting down
+        # who are waiting for all of our connections to finish shutting down.
+        # Only do this if we actually transitioned from having some
+        # connections to not having any connections.
+
         if (not self.running
+            and had_connections
             and not self.brokers
             and not self.unauthenticatedBrokers):
             self._allBrokersAreDisconnected.fire(self)
