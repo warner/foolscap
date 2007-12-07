@@ -1,3 +1,17 @@
+2007-12-06  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/call.py (FailureSlicer.getStateToCopy): truncate
+	.value, .type, and .parents to the lengths defined in
+	FailureConstraint. Unfortunately we don't seem to impose these
+	constraints during serialization, so if some exception happens to
+	have a really long name or arguments, it's the recipient of the
+	CopiedFailure who will complain, making it hard to figure out
+	where the real problem lies. The fact that the Violation doesn't
+	seem to specify which attribute was in violation only adds
+	confusion: it said <RootUnslicer>.<error-2>.??? for a 'token too
+	large: 1819>1000', in RemoteCopyUnslicer.checkToken, which was
+	probably f.value since that's the only 1000byte constraint.
+	
 2007-11-29  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py (Tub._log_gatherer_connected): for

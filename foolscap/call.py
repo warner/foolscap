@@ -731,6 +731,12 @@ class ErrorUnslicer(slicer.ScopedUnslicer):
         return "<error-%s>" % self.request.reqID
 
 
+def truncate(s, limit):
+    assert limit > 3
+    if s and len(s) > limit:
+        s = s[:limit-3] + ".."
+    return s
+
 # failures are sent as Copyables
 class FailureSlicer(slicer.BaseSlicer):
     slices = failure.Failure
@@ -769,6 +775,12 @@ class FailureSlicer(slicer.BaseSlicer):
         else:
             state['value'] = str(obj.value) # Exception instance
             state['type'] = reflect.qual(obj.type) # Exception class
+        # TODO: I suspect that f.value may be getting a copy of the
+        # traceback, because I've seen it be 1819 bytes at one point. I had
+        # assumed that it was just the exception name plus args: whatever
+        # Exception.__repr__ returns.
+        state['value'] = truncate(state['value'], 1000)
+        state['type'] = truncate(state['type'], 200)
 
         if broker.unsafeTracebacks:
             if isinstance(obj.type, str):
@@ -789,7 +801,12 @@ class FailureSlicer(slicer.BaseSlicer):
                                   "\n\n-- TRACEBACK ELIDED --\n\n"
                                   + state['traceback'][-1200:])
 
-        state['parents'] = obj.parents
+        parents = obj.parents[:]
+        if parents:
+            for i,value in enumerate(parents):
+                parents[i] = truncate(value, 200)
+        state['parents'] = parents
+
         return state
 
 class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
@@ -868,7 +885,7 @@ copyable.registerRemoteCopy(FailureSlicer.classname, CopiedFailure)
 class CopiedFailureSlicer(FailureSlicer):
     # A calls B. B calls C. C fails and sends a Failure to B. B gets a
     # CopiedFailure and sends it to A. A should get a CopiedFailure too. This
-    # class lives on B and slicers the CopiedFailure as it is sent to A.
+    # class lives on B and slices the CopiedFailure as it is sent to A.
     slices = CopiedFailure
 
     def getStateToCopy(self, obj, broker):
