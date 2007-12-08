@@ -6,3 +6,9 @@
 ^doc/.*\.html$
 ^doc/specifications/.*\.html$
 ^doc/api
+
+^\.figleaf$
+^\.figleaf\.el$
+^misc/testutils/twisted/plugins/dropin\.cache$
+^coverage-html
+
