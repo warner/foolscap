@@ -1,5 +1,33 @@
 2007-12-07  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/negotiate.py (Negotiation.compareOfferAndExisting): new
+	duplicate-connection-handling, for ticket #28. Details in the
+	ticket, and need to be put in the docs. Each end stores and sends
+	more information to give the master a better chance of detecting
+	race conditions correctly. The end result is that silently-lost
+	TCP connections (due to NAT timeouts or laptops being yanked from
+	one network to another) should not cause 35-minute reconnector
+	delays any longer. Many many thanks to Rob Kinninmont and Zooko
+	for their invaluable help in finding a good solution to this
+	problem. Hopefully this closes #28.
+	(Negotiation.handle_old): placeholder method for the code to
+	handle <=0.1.7 clients, not yet written.
+	(Negotiation.acceptDecisionVersion1): record information from the
+	decision in the Broker, so we can compare against it later
+	* foolscap/broker.py (Broker.__init__): same
+	* foolscap/pb.py (Tub.setup): record an "Incarnation Record", just
+	a unique (random) string, so that remote servers can tell if we
+	ought to remember them or not.
+	(Tub.setOption): add new 'handle-old-duplicate-connections' option,
+	for the <=0.1.7-client-handler code (not yet written). This option
+	name might change.
+
+	* foolscap/test/test_negotiate.py (Replacement): test much of the
+	new code, probably covers 60% of the code paths. Still need to
+	test the opposite direction (client==master) to make sure I didn't
+	break anything.
+
+
 	* Makefile (.figleaf.el): copy more tools from Tahoe: convert figleaf
 	coverage data into an emacs-lisp -parseable format
 	* misc/testutils/figleaf.el: elisp code to highlight uncovered lines

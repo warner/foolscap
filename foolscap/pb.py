@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import os.path, weakref
+import os.path, weakref, binascii
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
 from twisted.application import service, strports
@@ -233,10 +233,33 @@ class Tub(service.MultiService):
         self.myCertificate = cert
         self.tubID = crypto.digest32(cert.digest("sha1"))
 
+    def make_incarnation(self):
+        unique = os.urandom(8)
+        # TODO: it'd be nice to have a sequential component, so incarnations
+        # could be ordered, but it requires disk space
+        sequential = None
+        self.incarnation = (unique, sequential)
+        self.incarnation_string = binascii.b2a_hex(unique)
+
+    def getIncarnationString(self):
+        return self.incarnation_string
+
     def setup(self, options):
         self.options = options
         self.listeners = []
         self.locationHints = []
+
+        # duplicate-connection management
+        self.make_incarnation()
+
+        # the master_table records the master-seqnum we used for the last
+        # established connection with the given tubid. It only contains
+        # entries for which we were the master.
+        self.master_table = {} # k:tubid, v:seqnum
+        # the slave_table records the (master-IR,master-seqnum) pair for the
+        # last established conenction with the given tubid. It only contains
+        # entries for which we were the slave.
+        self.slave_table = {} # k:tubid, v:(master-IR,seqnum)
 
         # local Referenceables
         self.nameToReference = weakref.WeakValueDictionary()
@@ -264,6 +287,8 @@ class Tub(service.MultiService):
 
         self._log_gatherer_furl = None
         self._log_gatherer_furlfile = None
+
+        self._handle_old_duplicate_connections = False
 
     def setOption(self, name, value):
         if name == "logLocalFailures":
@@ -302,6 +327,8 @@ class Tub(service.MultiService):
                 flog.setTwistedLogBridge(tlb)
             else:
                 flog.setTwistedLogBridge(None)
+        elif name == "handle-old-duplicate-connections":
+            self._handle_old_duplicate_connections = True
         else:
             raise KeyError("unknown option name '%s'" % name)
 
@@ -879,8 +906,9 @@ class Tub(service.MultiService):
             del self.tubConnectors[tubref]
 
         if tubref in self.brokers:
-            # oops, this shouldn't happen but it isn't fatal. Raise
-            # BananaError so the Negotiation will drop the connection
+            # this shouldn't happen: acceptDecision is supposed to drop any
+            # existing old connection first.
+            self.log("ERROR: unexpected duplicate connection from %s" % tubref)
             raise BananaError("unexpected duplicate connection")
         self.brokers[tubref] = broker
 

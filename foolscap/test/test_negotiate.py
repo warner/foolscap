@@ -3,7 +3,7 @@ from twisted.trial import unittest
 
 from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
-from foolscap import pb, negotiate, tokens
+from foolscap import pb, negotiate, tokens, eventual
 from foolscap import Referenceable, Tub, UnauthenticatedTub, BananaError
 from foolscap.eventual import flushEventualQueue
 crypto_available = False
@@ -160,6 +160,17 @@ class BaseMixin:
         tub.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.target = Target()
         return tub.registerReference(self.target), l.getPortnum()
+
+    def createSpecificServer(self, certData,
+                             negotiationClass=negotiate.Negotiation):
+        tub = Tub(certData=certData)
+        tub.negotiationClass = negotiationClass
+        tub.startService()
+        self.services.append(tub)
+        l = tub.listenOn("tcp:0")
+        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
+        target = Target()
+        return tub, target, tub.registerReference(target), l.getPortnum()
 
     def makeNullServer(self):
         f = protocol.Factory()
@@ -911,6 +922,186 @@ class Future(BaseMixin, unittest.TestCase):
         d.addCallbacks(_oops_succeeded, _check_failure)
         return d
     testTooFarInFuture4.timeout = 10
+
+
+class Replacement(BaseMixin, unittest.TestCase):
+    # in certain circumstances, a new connection is supposed to replace an
+    # existing one.
+
+    def createDuplicateServer(self, oldtub):
+        tub = Tub(certData=oldtub.getCertData())
+        tub.startService()
+        self.services.append(tub)
+        tub.incarnation = oldtub.incarnation
+        tub.incarnation_string = oldtub.incarnation_string
+        tub.slave_table = oldtub.slave_table.copy()
+        tub.master_table = oldtub.master_table.copy()
+        l = tub.listenOn("tcp:0")
+        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
+        target = Target()
+        return tub, target, tub.registerReference(target), l.getPortnum()
+
+    def setUp(self):
+        BaseMixin.setUp(self)
+        self.requireCrypto()
+        (self.tub1, self.target1, self.furl1, l1) = \
+                    self.createSpecificServer(certData_low)
+        (self.tub2, self.target2, self.furl2, l2) = \
+                    self.createSpecificServer(certData_high)
+        # self.tub1 is the slave, self.tub2 is the master
+        assert self.tub2.tubID > self.tub1.tubID
+
+    def clone_servers(self):
+        (self.tub1a, self.target1a, self.furl1a, l1a) = \
+                     self.createDuplicateServer(self.tub1)
+        (self.tub2a, self.target2a, self.furl2a, l2a) = \
+                     self.createDuplicateServer(self.tub2)
+
+    def testBouncedClient(self):
+        # self.tub1 is the slave, self.tub2 is the master
+        
+        d = self.tub1.getReference(self.furl2)
+        d2 = defer.Deferred()
+        def _connected(rref):
+            self.clone_servers()
+            # our tub1a is not the same incarnation as tub1
+            self.tub1a.make_incarnation()
+
+            # a new incarnation of the slave should replace the old connection
+            rref.notifyOnDisconnect(d2.callback, None)
+            return self.tub1a.getReference(self.furl2)
+        d.addCallback(_connected)
+        # the old rref should be broken (eventually)
+        d.addCallback(lambda res: d2)
+        return d
+
+    def shouldFail(self, expected_failure, which, substring=None,
+                   func=None, *args, **kwargs):
+        assert func
+        d = defer.maybeDeferred(func, *args, **kwargs)
+        def _pass(res):
+            self.fail("expected to see failure (%s), not success (%s), at %s"
+                      % (expected_failure, res, which))
+        def _fail(f):
+            f.trap(expected_failure)
+            if substring:
+                self.failUnless(substring in str(f),
+                                "substring '%s' not in '%s' at %s" %
+                                (substring, str(f), which))
+        d.addCallbacks(_pass, _fail)
+        return d
+
+    def testAncientClient(self):
+        disconnects = []
+        d = self.tub1.getReference(self.furl2)
+        def _connected(rref):
+            self.clone_servers()
+            # old clients (foolscap-0.1.7 or earlier) don't send a
+            # my-incarnation header, so we're supposed to reject their
+            # connection offer
+            self.tub1a.incarnation_string = ""
+
+            # this new connection attempt will be rejected
+            rref.notifyOnDisconnect(disconnects.append, 1)
+            return self.shouldFail(tokens.RemoteNegotiationError,
+                                   "testAncientClient",
+                                   "Duplicate connection",
+                                   self.tub1a.getReference, self.furl2)
+        d.addCallback(_connected)
+        def _stall(res):
+            return eventual.fireEventually(res)
+        d.addCallback(_stall)
+        def _check(res):
+            self.failIf(disconnects)
+        d.addCallback(_check)
+        return d
+        
+
+    def testLostDecisionMessage_NewServer(self):
+        # doctor the client's memory, make it think that it had a connection
+        # to a different incarnation of the server
+
+        d = self.tub1.getReference(self.furl2)
+        d2 = defer.Deferred()
+        def _connected(rref):
+            # if the slave thinks it was connected to an earlier master, we
+            # accept the new connection
+            self.clone_servers()
+            oldrecord = self.tub1.slave_table[self.tub2.tubID]
+            self.tub1a.slave_table[self.tub2.tubID] = ("figment", oldrecord[1])
+            rref.notifyOnDisconnect(d2.callback, None)
+            return self.tub1a.getReference(self.furl2)
+        d.addCallback(_connected)
+        # the old rref should be broken (eventually)
+        d.addCallback(lambda res: d2)
+        return d
+
+    def testLostDecisionMessage(self):
+        # when a client connects, the server accepts, but the decision
+        # message gets lost, the client's second attempt will look a lot like
+        # the first (but with a different attempt_id). This second attempt
+        # should be accepted.
+
+        d = self.tub1.getReference(self.furl2)
+        d2 = defer.Deferred()
+        def _connected(rref):
+            self.clone_servers()
+            del self.tub1a.slave_table[self.tub2.tubID]
+            rref.notifyOnDisconnect(d2.callback, None)
+            return self.tub1a.getReference(self.furl2)
+        d.addCallback(_connected)
+        # the old rref should be broken (eventually)
+        d.addCallback(lambda res: d2)
+        return d
+
+    def testNATEntryDropped(self):
+        # a client connects successfully, and receives the decision, but then
+        # the connection goes away such that the client sees it but the
+        # server does not. The new connection should be accepted.
+
+        d = self.tub1.getReference(self.furl2)
+        d2 = defer.Deferred()
+        def _connected(rref):
+            self.clone_servers()
+            # leave the slave_table entry intact
+            rref.notifyOnDisconnect(d2.callback, None)
+            return self.tub1a.getReference(self.furl2)
+        d.addCallback(_connected)
+        # the old rref should be broken (eventually)
+        d.addCallback(lambda res: d2)
+        return d
+
+    def testConnectionHintRace(self):
+        # doctor the client to make the second connection look like it came
+        # from the same batch as the existing one. This should be rejected:
+        # this is the multiple-connection-hints case.
+
+        disconnects = []
+        d = self.tub1.getReference(self.furl2)
+        def _connected(rref):
+            self.clone_servers()
+            assert len(self.tub2.brokers.values()) == 1
+            cid = self.tub2.brokers.values()[0].current_attempt_id
+            self.tub1a.options = self.tub1a.options.copy()
+            self.tub1a.options['debug_fixed_connection_id'] = cid
+            del self.tub1a.slave_table[self.tub2.tubID]
+            # this new connection attempt will be rejected
+            rref.notifyOnDisconnect(disconnects.append, 1)
+            return self.shouldFail(tokens.RemoteNegotiationError,
+                                   "testSimultaneousClient",
+                                   "Duplicate connection",
+                                   self.tub1a.getReference, self.furl2)
+        d.addCallback(_connected)
+        def _stall(res):
+            return eventual.fireEventually(res)
+        d.addCallback(_stall)
+        def _check(res):
+            self.failIf(disconnects)
+        d.addCallback(_check)
+        return d
+
+
+
 
 # disable all tests unless NEWPB_TEST_NEGOTIATION is set in the environment.
 # The negotiation tests are sensitive to system load, and the intermittent

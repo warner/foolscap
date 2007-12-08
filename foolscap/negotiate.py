@@ -1,8 +1,10 @@
 # -*- test-case-name: foolscap.test.test_negotiate -*-
 
+import os, binascii
 from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor
+from twisted.internet.error import ConnectionDone
 
 from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
@@ -212,6 +214,14 @@ class Negotiation(protocol.Protocol):
         self.wantEncryption = bool(self.target.encrypted
                                    or self.tub.myCertificate)
         self.options = self.tub.options.copy()
+        IR = self.tub.getIncarnationString()
+        self.negotiationOffer['my-incarnation'] = IR
+        self.negotiationOffer['this-connection'] = connector.connection_id
+        tubID = self.target.getTubID()
+        # note that UnauthenticatedTubs will never have a record here
+        slave_record = self.tub.slave_table.get(tubID, ("none",0))
+        assert isinstance(slave_record, tuple), slave_record
+        self.negotiationOffer['last-connection'] = "%s %s" % slave_record
 
     def initServer(self, listener):
         # servers do listenTCP and respond to the GET
@@ -743,17 +753,51 @@ class Negotiation(protocol.Protocol):
             # a decision block.
             self.send_phase = DECIDING
             decision = {}
+            params = {}
             # combine their 'offer' and our own self.negotiationOffer to come
             # up with a 'decision' to be sent back to the other end, and the
             # 'params' to be used on our connection
 
-            # first, do we continue with this connection? we might
-            # have an existing connection for this particular tub
+            # first, do we continue with this connection? we might have an
+            # existing connection for this particular tub
+
             if theirTubRef and theirTubRef in self.tub.brokers:
-                # there is an existing connection, so drop this one
-                if self.debugNegotiation:
-                    log.msg(" abandoning the connection: we already have one")
-                raise NegotiationError("Duplicate connection")
+                # there is an existing connection.. we might want to prefer
+                # this new offer, because the old connection might be stale
+                # (NAT boxes and laptops that disconnect abruptly are two
+                # ways for a single process to disappear silently and then
+                # reappear with a different IP address).
+                log.msg("UNUSUAL: got offer for an existing connection")
+                existing = self.tub.brokers[theirTubRef]
+                acceptOffer = self.compareOfferAndExisting(offer, existing)
+                if acceptOffer:
+                    # drop the old one
+                    log.msg(" accepting new offer, dropping existing connection")
+                    why = ConnectionDone("replaced by a new connection")
+                    existing.shutdown(why)
+                else:
+                    # reject the new one
+                    log.msg(" rejecting the offer: we already have one")
+                    raise NegotiationError("Duplicate connection")
+
+            if theirTubRef:
+                # generate a new seqnum, one higher than the last one we've
+                # used. Note that UnauthenticatedTubs all share the same
+                # index, so we leak certain information about how many
+                # connections we've established.
+                old_seqnum = self.tub.master_table.get(theirTubRef.getTubID(),
+                                                       0)
+                new_seqnum = old_seqnum + 1
+                new_slave_IR = offer.get('my-incarnation', None)
+                self.tub.master_table[theirTubRef.getTubID()] = new_seqnum
+                my_IR = self.tub.getIncarnationString()
+                decision['current-connection'] = "%s %s" % (my_IR, new_seqnum)
+                # these params will be copied into the Broker where we can
+                # retrieve them later, when we need to compare it against a new
+                # offer.
+                params['current-slave-IR'] = new_slave_IR
+                params['current-seqnum'] = new_seqnum
+                params['current-attempt-id'] = offer.get('this-connection')
 
             # what initial vocab set should we use?
             theirVocabRange_s = offer.get("initial-vocab-table-range", "0 0")
@@ -771,9 +815,8 @@ class Negotiation(protocol.Protocol):
             decision['banana-decision-version'] = str(self.decision_version)
 
             # v1: handle vocab table index
-            params = { 'banana-decision-version': self.decision_version,
-                       'initial-vocab-table-index': vocab_index,
-                       }
+            params['banana-decision-version'] = self.decision_version
+            params['initial-vocab-table-index'] = vocab_index
 
         else:
             # otherwise, the other side gets to decide. The next thing they
@@ -804,6 +847,100 @@ class Negotiation(protocol.Protocol):
         # idle-disconnect. No other protocol changes were made, and no
         # changes were made to the offer or decision blocks.
         return self.evaluateNegotiationVersion1(offer)
+
+    def compareOfferAndExisting(self, offer, existing):
+        """Compare the new offer against the existing connection, and
+        decide which to keep.
+
+        @return: True to accept the new offer, False to stick with the
+                 existing connection.
+        """
+        # step one: does the inbound offer have a my-incarnation header? If
+        # not, this is an older peer (<foolscap-0.1.7). We use
+        # offer.get("my-incarnation") instead of "my-incarnation" in offer
+        # so that unit tests can cause a client to send an empty string to
+        # simulate the earlier version.
+        if not offer.get("my-incarnation") or "last-connection" not in offer:
+            # this is an old peer (foolscap 0.1.7 or earlier), which won't
+            # give us enough information to make some of the decisions below.
+            # We reject the offer to avoid connection flap, and the
+            # situtation won't be worse than it was in 0.1.7 .
+            if self.tub._handle_old_duplicate_connections:
+                # but if we've been configured to do better (with the
+                # 60-second age heuristic), do that.
+                return self.handle_old(offer, existing)
+            return False # reject the offer
+
+        existing_slave_IR = existing.current_slave_IR
+        existing_seqnum = existing.current_seqnum
+        existing_attempt_id = existing.current_attempt_id
+
+        if offer["my-incarnation"] != existing_slave_IR:
+            # this offer is from a different invocation of the peer than we
+            # think we're currently talking to. That means the slave has
+            # restarted since we made our connection, so clearly our
+            # connection is stale. Accept the offer.
+            return True
+        pieces = offer['last-connection'].split()
+        offer_master_IR = pieces[0]
+        offer_master_seqnum = int(pieces[1])
+        offer_attempt_id = offer['this-connection']
+
+        if offer_attempt_id == existing_attempt_id:
+            # this offer is part of the same connection attempt that created
+            # our existing connection. We've sent a decision that ought to
+            # cause this TubConnector to finish, and they didn't receive that
+            # decision before they sent this offer. This is a normal race
+            # between simultaneous connection hints, and we should reject
+            # this offer in favor of the winning hint.
+            return False
+
+        if offer_master_IR == "none":
+            # the peer doesn't remember talking to anybody: they don't think
+            # they've ever been connected to us. We disagree, and we remember
+            # their incarnation record. So they must have made an initial
+            # attempt to connect to us (their first), we accepted their
+            # connection, and the decision message got lost. The client is
+            # now trying to connect a second time. Accept the new offer
+            return True
+
+        if offer_master_IR != self.tub.getIncarnationString():
+            # the peer doesn't remember talking to us at all: they remember
+            # talking to a past life. That means our last decision message
+            # didn't make it to them, and the last connection they *did* hear
+            # about was from one of our previous runs. Therefore our existing
+            # connection isn't viable, and we should accept their offer.
+            #
+            # Or, offer_master_IR=none, because they don't remember ever
+            # having a connection to us. Again, our existing connection isn't
+            # viable, and we should accept their offer.
+            return True
+        # at this point, the offer's IR matches our own, so the seqnum is
+        # worth comparing
+        if offer_master_seqnum == existing_seqnum:
+            # the offer demonstrates that the client knows about the same
+            # connection that we do, and they made a new connection anyways.
+            # From this we can conclude that our connection is stale, so we
+            # should accept the offer.
+            return True
+        if offer_master_seqnum < existing_seqnum:
+            # the offer was delayed, or (more likely) it was part of a set of
+            # offers sent to multiple connection hints at the same time, one
+            # of which has already completed negotiation. To avoid connection
+            # flap, we reject the offer.
+            return False
+        # offer_master_seqnum > existing_seqnum indicates something really
+        # weird has taken place.
+        log.msg("WEIRD: offer_master_seqnum %d > existing_seqnum %d" %
+                (offer_master_seqnum, existing_seqnum))
+        return False # reject weirdness
+
+    def handle_old(self, offer, existing):
+        # TODO: determine the age of the existing broker
+        age = 0
+        if age < 60:
+            return False # reject the offer
+        return True # accept the offer
 
     def sendDecision(self, decision, params):
         if self.debug_doTimer("sendDecision", 1,
@@ -872,6 +1009,24 @@ class Negotiation(protocol.Protocol):
             msg = ("Our hash for vocab-table-index %d (%s) does not match "
                    "your hash (%s)" % (vocab_index, our_hash, vocab_hash))
             raise NegotiationError(msg)
+
+        if self.theirTubRef in self.tub.brokers:
+            # we're the slave, so we need to drop our existing connection and
+            # use the one picked by the master
+            log.msg("UNUSUAL: master told us to use a new connection, "
+                    "so we must drop the existing one")
+            why = ConnectionDone("replaced by a new connection")
+            self.tub.brokers[self.theirTubRef].shutdown(why)
+
+        current_connection = decision.get('current-connection')
+        if current_connection:
+            tubID = self.theirTubRef.getTubID()
+            if tubID != "<unauth>":
+                self.tub.slave_table[tubID] = tuple(current_connection.split())
+        else:
+            log.msg("UNUSUAL: no current-connection in decision from %s" %
+                    self.theirTubRef)
+
         params = { 'banana-decision-version': ver,
                    'initial-vocab-table-index': vocab_index,
                    }
@@ -1042,6 +1197,9 @@ class TubConnector:
     def __init__(self, parent, tubref):
         self.tub = parent
         self.target = tubref
+        self.connection_id = binascii.b2a_hex(os.urandom(8))
+        if "debug_fixed_connection_id" in self.tub.options:
+            self.connection_id = self.tub.options['debug_fixed_connection_id']
         self.remainingLocations = self.target.getLocations()
         # attemptedLocations keeps track of where we've already tried to
         # connect, so we don't try them twice.

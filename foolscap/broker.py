@@ -157,6 +157,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
             table = vocab.INITIAL_VOCAB_TABLES[vocab_table_index]
             self.populateVocabTable(table)
         self.initBroker()
+        self.current_slave_IR = params.get('current-slave-IR')
+        self.current_seqnum = params.get('current-seqnum')
+        self.current_attempt_id = params.get('current-attempt-id')
 
     def initBroker(self):
 
