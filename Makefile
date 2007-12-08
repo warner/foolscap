@@ -18,6 +18,8 @@ figleaf-output:
 	rm -rf coverage-html
 	PYTHONPATH=misc/testutils python misc/testutils/figleaf2html -d coverage-html -r .
 	@echo "now point your browser at coverage-html/index.html"
+.figleaf.el: .figleaf
+	PYTHONPATH=misc/testutils python misc/testutils/figleaf2el.py .figleaf .
 
 debian-sid:
 	rm -f debian
