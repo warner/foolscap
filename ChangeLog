@@ -1,5 +1,7 @@
 2007-12-10  Brian Warner  <warner@allmydata.com>
 
+	* NEWS: update for upcoming release
+
 	* foolscap/negotiate.py (Negotiation.handle_old): finally
 	implement this: if enabled, "old" brokers (older than 60 seconds)
 	will be replaced by new offers, but "new" ones are not. The

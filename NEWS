@@ -1,5 +1,65 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.2.0 (10 Dec 2007)
+
+** Compatibilty
+
+All releases between 0.1.3 and 0.2.0 (inclusive) are fully wire-compatible.
+0.2.0 introduces some new negotiation parameters (to handle duplicate
+connections better), but these are ignored by older versions, and their lack
+is tolerated by 0.2.0 .
+
+** New Features
+
+*** new logging support
+
+Foolscap is slowly acquiring advanced diagnostic event-logging features. See
+doc/logging.xhtml for the philosophy and design of this logging system. 0.2.0
+contains the first few pieces, including a tool named bin/flogtool that can
+be used to watch events on a running system, or gather events from multiple
+applications into a single place for later analysis. This support is still
+preliminary, and many of the controls and interfaces described in that
+document are not yet implemented.
+
+*** better handling of duplicate connections / NAT problems
+
+The connection-management code in 0.1.7 and earlier interacted badly with
+programs that run behind NAT boxes (especially those with aggressive
+connection timeouts) or on laptops which get unplugged from the network
+abruptly. Foolscap seeks to avoid duplicate connections, and various
+situtations could cause the two ends to disagree about the viability of any
+given connection. The net result (no pun intended) was that a client might
+have to wait up to 35 minutes (depending upon various timeout values) before
+being able to reestablish a connection, and the Reconnector's exponential
+backoff strategy could easily push this into 90 minutes of downtime.
+
+0.2.0 uses a different approach to accomplish duplicate-suppression, and
+should provide much faster reconnection after netquakes. To benefit from
+this, both ends must be running foolscap-0.2.0 or newer, however there is an
+additional setting (not enabled by default) to improve the behavior of
+pre-0.2.0 clients: tub.setOption("handle-old-duplicate-connections", True).
+
+*** new Reconnector methods
+
+The Reconnector object (as returned by Tub.connectTo) now has three utility
+methods that may be useful during debugging. reset() drops the backoff timer
+down to one second, causing the Reconnector to reconnect quickly: you could
+use this to avoid an hour-long delay if you've just restarted the server or
+re-enabled a network connection that was the cause of the earlier connection
+failures. getDelayUntilNextAttempt() returns the number of seconds remaining
+until the next connection attempt. And getLastFailure() returns a Failure
+object explaining why the last connection attempt failed, which may be a
+useful diagnostic in trying to resolve the connection problems.
+
+** Bug Fixes
+
+There were other minor changes: an OS-X unit test failure was resolved,
+CopiedFailures are serialized in a way that doesn't cause constraint
+violations, and the figleaf code-coverage tools (used by foolscap developers
+to measure how well the unit tests exercise the code base) have been improved
+(including an emacs code-used/unused annotation tool).
+
+
 * Release 0.1.7 (24 Sep 2007)
 
 ** Compatibility
