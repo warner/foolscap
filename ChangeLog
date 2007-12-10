@@ -1,5 +1,14 @@
 2007-12-10  Brian Warner  <warner@lothar.com>
 
+	* foolscap/reconnector.py (Reconnector.reset): add a utility
+	method to manually force a Reconnector to reconnect, most useful
+	from a manhole or other in-process eval loop. Closes #30.
+	(Reconnector.getDelayUntilNextAttempt): another to query the delay
+	until the next connection attempt will be made. Returns None if no
+	attempt is currently scheduled.
+	(Reconnector.getLastFailure): and another to provide the last
+	failure, useful if you want to find out why it keeps reconnecting.
+
 	* foolscap/negotiate.py (Negotiation.compareOfferAndExisting): if
 	the seqnum is too old, accept the offer anyways: this handles the
 	lost-a-decision-message case better at the expense of worse

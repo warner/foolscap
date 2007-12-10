@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_reconnector -*-
 
-import random
+import random, time
 from twisted.internet import reactor
 from twisted.python import log
 from foolscap.tokens import NegotiationError, RemoteNegotiationError
@@ -47,9 +47,9 @@ class Reconnector:
         self._active = False
         self._observer = (cb, args, kwargs)
         self._delay = self.initialDelay
-        self._retries = 0
         self._timer = None
         self._tub = None
+        self._last_failure = None
 
     def startConnecting(self, tub):
         self._tub = tub
@@ -68,6 +68,20 @@ class Reconnector:
         if self._tub:
             self._tub._removeReconnector(self)
 
+    def reset(self):
+        """Reset the connection timer and try again very soon."""
+        self._delay = self.initialDelay
+        if self._timer:
+            self._timer.reset(1.0)
+
+    def getDelayUntilNextAttempt(self):
+        if not self._timer:
+            return None
+        return self._timer.getTime() - time.time()
+
+    def getLastFailure(self):
+        return self._last_failure
+
     def _connect(self):
         d = self._tub.getReference(self._url)
         d.addCallbacks(self._connected, self._failed)
@@ -75,11 +89,14 @@ class Reconnector:
     def _connected(self, rref):
         if not self._active:
             return
+        self._last_failure = None
         rref.notifyOnDisconnect(self._disconnected)
         cb, args, kwargs = self._observer
         cb(rref, *args, **kwargs)
 
     def _failed(self, f):
+        self._last_failure = f
+
         # I'd like to quietly handle "normal" problems (basically TCP
         # failures and NegotiationErrors that result from the target either
         # not speaking Foolscap or not hosting the Tub that we want), but not
@@ -107,7 +124,6 @@ class Reconnector:
 
     def _disconnected(self):
         self._delay = self.initialDelay
-        self._retries = 0
         self._retry()
 
     def _retry(self):

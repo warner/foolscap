@@ -4,7 +4,7 @@ from twisted.trial import unittest
 from foolscap import UnauthenticatedTub
 from foolscap.test.common import HelperTarget
 from twisted.internet.main import CONNECTION_LOST
-from twisted.internet import defer, reactor
+from twisted.internet import defer, reactor, error
 from foolscap.eventual import eventually, flushEventualQueue
 from foolscap import negotiate
 
@@ -193,9 +193,18 @@ class Reconnector(unittest.TestCase):
         d.addCallback(_start_connecting)
         def _stop_trying(res):
             self.failUnlessEqual(len(connects), 0)
+            f = self.rc.getLastFailure()
+            self.failUnless(f.check(error.ConnectionRefusedError))
+            delay = self.rc.getDelayUntilNextAttempt()
+            self.failUnless(delay > 0, delay)
+            self.failUnless(delay < 60, delay)
+            self.rc.reset()
+            delay = self.rc.getDelayUntilNextAttempt()
+            self.failUnless(delay < 2)
             # this stopConnecting occurs while the reconnector's timer is
             # active
             self.rc.stopConnecting()
+            self.failUnlessEqual(self.rc.getDelayUntilNextAttempt(), None)
         d.addCallback(_stop_trying)
         # if it keeps trying, we'll see a dirty reactor
         return d
