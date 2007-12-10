@@ -1016,6 +1016,46 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(_check)
         return d
 
+    def testAncientClientWorkaround(self):
+        self.tub2.setOption("handle-old-duplicate-connections", True)
+        # the second connection will be dropped, because it shows up too
+        # quickly.
+        disconnects = []
+        d2 = defer.Deferred()
+        d = self.tub1.getReference(self.furl2)
+        def _connected(rref):
+            self.clone_servers()
+            # old clients (foolscap-0.1.7 or earlier) don't send a
+            # my-incarnation header, so we're supposed to reject their
+            # connection offer
+            self.tub1a.incarnation_string = ""
+
+            # this new connection attempt will be rejected
+            rref.notifyOnDisconnect(disconnects.append, 1)
+            rref.notifyOnDisconnect(d2.callback, None)
+            return self.shouldFail(tokens.RemoteNegotiationError,
+                                   "testAncientClientWorkaround",
+                                   "Duplicate connection",
+                                   self.tub1a.getReference, self.furl2)
+        d.addCallback(_connected)
+        def _stall(res):
+            return eventual.fireEventually(res)
+        d.addCallback(_stall)
+        def _check(res):
+            self.failIf(disconnects)
+        d.addCallback(_check)
+
+        # now we tweak the connection-is-old threshold to allow the third
+        # connection to succeed.
+        def _reconnect(rref):
+            self.tub2._handle_old_duplicate_connections = -10
+            return self.tub1a.getReference(self.furl2)
+        d.addCallback(_reconnect)
+        # the old rref should be broken (eventually)
+        d.addCallback(lambda res: d2)
+
+        return d
+
 
     def testLostDecisionMessage_NewServer(self):
         # doctor the client's memory, make it think that it had a connection

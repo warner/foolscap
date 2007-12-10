@@ -1,3 +1,16 @@
+2007-12-10  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/negotiate.py (Negotiation.handle_old): finally
+	implement this: if enabled, "old" brokers (older than 60 seconds)
+	will be replaced by new offers, but "new" ones are not. The
+	default timeout is 60 seconds, but you can set it to something
+	else by calling tub.setOption("handle-old-duplicate-connections",
+	120) instead of using 'True'. Closes #34.
+	* foolscap/pb.py (Tub.setOption): same
+	* foolscap/broker.py (Broker.__init__): record creation timestamp
+	* foolscap/test/test_negotiate.py 
+	(Replacement.testAncientClientWorkaround): test it
+
 2007-12-10  Brian Warner  <warner@lothar.com>
 
 	* doc/logging.xhtml: updates

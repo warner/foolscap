@@ -2,7 +2,7 @@
 
 # This module is responsible for the per-connection Broker object
 
-import types
+import types, time
 from itertools import count
 
 from zope.interface import implements
@@ -160,6 +160,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.current_slave_IR = params.get('current-slave-IR')
         self.current_seqnum = params.get('current-seqnum')
         self.current_attempt_id = params.get('current-attempt-id')
+        self.creation_timestamp = time.time()
 
     def initBroker(self):
 

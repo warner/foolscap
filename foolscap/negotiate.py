@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_negotiate -*-
 
-import os, binascii
+import os, binascii, time
 from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor
@@ -865,10 +865,11 @@ class Negotiation(protocol.Protocol):
             # give us enough information to make some of the decisions below.
             # We reject the offer to avoid connection flap, and the
             # situtation won't be worse than it was in 0.1.7 .
-            if self.tub._handle_old_duplicate_connections:
+            if self.tub._handle_old_duplicate_connections is not False:
                 # but if we've been configured to do better (with the
                 # 60-second age heuristic), do that.
-                return self.handle_old(offer, existing)
+                threshold = self.tub._handle_old_duplicate_connections
+                return self.handle_old(offer, existing, threshold)
             return False # reject the offer
 
         existing_slave_IR = existing.current_slave_IR
@@ -966,10 +967,10 @@ class Negotiation(protocol.Protocol):
                 (offer_master_seqnum, existing_seqnum))
         return False # reject weirdness
 
-    def handle_old(self, offer, existing):
-        # TODO: determine the age of the existing broker
-        age = 0
-        if age < 60:
+    def handle_old(self, offer, existing, threshold):
+        # determine the age of the existing broker
+        age = time.time() - existing.creation_timestamp
+        if age < threshold:
             return False # reject the offer
         return True # accept the offer
 

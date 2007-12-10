@@ -328,7 +328,9 @@ class Tub(service.MultiService):
             else:
                 flog.setTwistedLogBridge(None)
         elif name == "handle-old-duplicate-connections":
-            self._handle_old_duplicate_connections = True
+            if value is True:
+                value = 60
+            self._handle_old_duplicate_connections = int(value)
         else:
             raise KeyError("unknown option name '%s'" % name)
 
