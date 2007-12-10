@@ -924,11 +924,42 @@ class Negotiation(protocol.Protocol):
             # should accept the offer.
             return True
         if offer_master_seqnum < existing_seqnum:
-            # the offer was delayed, or (more likely) it was part of a set of
-            # offers sent to multiple connection hints at the same time, one
-            # of which has already completed negotiation. To avoid connection
-            # flap, we reject the offer.
-            return False
+            # I can think of two ways to get here. The first (which seems
+            # more likely by far) is that the client connects successfully,
+            # then the client thinks the connection has been lost (but the
+            # server thinks it's still good), so the client reconnects, and
+            # this connection gets as far as the master making a decision,
+            # but the decision message is lost before it gets to the client.
+            # Then the client connects a third time, and now we're
+            # considering the third offer: the IRs are all the same, the
+            # attempt_id is different than our existing (2nd) connection, but
+            # the seqnum is older. In this case, we want to accept the new
+            # offer.
+            #
+            # The second case is more rare: the client connects and loses the
+            # connection (as before), then the client connects a second time
+            # and gets as far as sending the offer when they time out,
+            # cancelling the negotiation already in progress (sending a FIN
+            # after the offer message) and triggering a third connection. The
+            # third connection somehow races ahead and completes negotiation
+            # before the 2nd-connection offer+FIN make it to the server. Now,
+            # finally, the offer arrives: we're now evaluating an
+            # out-of-order offer on a socket that's about to be closed.
+            # Ideally we'd like to reject this offer.
+            #
+            # We are going to accept this offer, for two reasons. Reason 1 is
+            # that the first case seems much more likely than the second.
+            # Reason 2 is that the worst-case behavior is better: accepting
+            # the offer in the second case will result in connection flap,
+            # but rejecting the offer in the first case will result in a
+            # client being unable to connect for the up-to-35-minutes it
+            # takes for the server to recognize that the old connection has
+            # truly been lost.
+            return True
+
+        # it is entirely fair to ask what the point of the seqnum is. I think
+        # the attempt_id kind of displaced it. More analysis is necessary.
+
         # offer_master_seqnum > existing_seqnum indicates something really
         # weird has taken place.
         log.msg("WEIRD: offer_master_seqnum %d > existing_seqnum %d" %

@@ -959,7 +959,7 @@ class Replacement(BaseMixin, unittest.TestCase):
 
     def testBouncedClient(self):
         # self.tub1 is the slave, self.tub2 is the master
-        
+
         d = self.tub1.getReference(self.furl2)
         d2 = defer.Deferred()
         def _connected(rref):
@@ -1015,7 +1015,7 @@ class Replacement(BaseMixin, unittest.TestCase):
             self.failIf(disconnects)
         d.addCallback(_check)
         return d
-        
+
 
     def testLostDecisionMessage_NewServer(self):
         # doctor the client's memory, make it think that it had a connection
@@ -1052,6 +1052,61 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(_connected)
         # the old rref should be broken (eventually)
         d.addCallback(lambda res: d2)
+        return d
+
+    def testTwoLostDecisionMessages(self):
+        # the client connects successfully with seqnum=1. Then the client
+        # thinks the connection is lost, so it tries to reconnect, the server
+        # accepts (seqnum=2), but the decision message gets lost. Then the
+        # client tries to connect a third time: the client says it knows
+        # about seqnum=1, which is older than the current one. We should
+        # accept the third attempt: for details, see the comments in
+        # negotiate.py .
+
+        # we represent this case by connecting once, then having the second
+        # tub connect with an artificially-decremented seqnum.
+
+        d = self.tub1.getReference(self.furl2)
+        d2 = defer.Deferred()
+        def _connected(rref):
+            self.clone_servers()
+            old_record = self.tub1a.slave_table[self.tub2.tubID]
+            (old_IR, old_seqnum) = old_record
+            new_record = (old_IR, str(int(old_seqnum)-1))
+            self.tub1a.slave_table[self.tub2.tubID] = new_record
+            rref.notifyOnDisconnect(d2.callback, None)
+            return self.tub1a.getReference(self.furl2)
+        d.addCallback(_connected)
+        # the old rref should be broken (eventually)
+        d.addCallback(lambda res: d2)
+        return d
+
+    def testWeirdSeqnum(self):
+        # if the client sends a seqnum that's too far into the future,
+        # something weird is going on, and we should reject the offer.
+
+        disconnects = []
+        d = self.tub1.getReference(self.furl2)
+        def _connected(rref):
+            self.clone_servers()
+            old_record = self.tub1a.slave_table[self.tub2.tubID]
+            (old_IR, old_seqnum) = old_record
+            new_record = (old_IR, str(int(old_seqnum)+10))
+            self.tub1a.slave_table[self.tub2.tubID] = new_record
+            # this new connection attempt will be rejected
+            rref.notifyOnDisconnect(disconnects.append, 1)
+            return self.shouldFail(tokens.RemoteNegotiationError,
+                                   "testSimultaneousClient",
+                                   "Duplicate connection",
+                                   self.tub1a.getReference, self.furl2)
+            return self.tub1a.getReference(self.furl2)
+        d.addCallback(_connected)
+        def _stall(res):
+            return eventual.fireEventually(res)
+        d.addCallback(_stall)
+        def _check(res):
+            self.failIf(disconnects)
+        d.addCallback(_check)
         return d
 
     def testNATEntryDropped(self):
@@ -1098,6 +1153,24 @@ class Replacement(BaseMixin, unittest.TestCase):
         def _check(res):
             self.failIf(disconnects)
         d.addCallback(_check)
+        return d
+
+    def testBouncedClient_Reverse(self):
+        # self.tub1 is the master, self.tub2 is the slave
+
+        d = self.tub2.getReference(self.furl1)
+        d2 = defer.Deferred()
+        def _connected(rref):
+            self.clone_servers()
+            # our tub2a is not the same incarnation as tub2
+            self.tub2a.make_incarnation()
+
+            # a new incarnation of the master should replace the old connection
+            rref.notifyOnDisconnect(d2.callback, None)
+            return self.tub2a.getReference(self.furl1)
+        d.addCallback(_connected)
+        # the old rref should be broken (eventually)
+        d.addCallback(lambda res: d2)
         return d
 
 

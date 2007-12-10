@@ -1,5 +1,13 @@
 2007-12-10  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation.compareOfferAndExisting): if
+	the seqnum is too old, accept the offer anyways: this handles the
+	lost-a-decision-message case better at the expense of worse
+	handling of offers-delivered-out-of-order case (which is far less
+	likely to occur than a lost decision message)
+	* foolscap/test/test_negotiate.py (Replacement): more tests
+	(Replacement.testBouncedClient_Reverse): same
+
 	* foolscap/logging/log.py (FoolscapLogger.msg): handle two kinds
 	of argument formatting: log.msg("%d>%d", a, b), and
 	log.msg("%(foo)s!", foo=something). Also handle the twisted_log
