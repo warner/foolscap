@@ -1,5 +1,7 @@
 2007-12-10  Brian Warner  <warner@allmydata.com>
 
+	* setup.py: add the foolscap/logging package
+
 	* NEWS: update for upcoming release
 
 	* foolscap/negotiate.py (Negotiation.handle_old): finally
