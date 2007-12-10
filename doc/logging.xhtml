@@ -87,7 +87,7 @@ Likewise, the series of input messages <b>would</b> be interesting to know
 if, at some point in the near future, an invalid protocol state is
 reached.</p>
 
-<p>The thing to note about these patterns is that at event at time T
+<p>The thing to note about these patterns is that an event at time T
 <b>causes</b> events before time T to become interesting. Interesting
 messages are worth keeping (and storing, and examining). Non-interesting
 messages are not worth as much, but there are different kinds of costs, and
@@ -165,7 +165,7 @@ to each event as a filter, and the expression can do arbitrary comparison of
 event parameters (e.g. "show me all events related to failing uploads of
 files larger than 20MB").</p>
 
-<p>TODO: to accomplish this, all unrecognized keyword arguments to the
+<p>To accomplish this, all unrecognized keyword arguments to the
 <code>log.msg</code> call are recorded as additional keys in the log event.
 To encourage structured usage, the message string is treated as a format
 string, using the keyword args as a formatting dictionary. Any time the
@@ -269,6 +269,27 @@ from foolscap.logging import log
 
 log.msg("hello world")
 </pre>
+
+<p>You can add arguments that will be lazily evaluated and stringified by
+treating the log message as a normal format string:</p>
+
+<pre class="python">
+log.msg("queue depth %d exceeds limit %d", current_depth, limit)
+</pre>
+
+<p>Or you can use keyword arguments instead. You can either provide
+positional parameters, or keyword arguments, but not both.</p>
+
+<pre class="python">
+log.msg("Danger %(name)s %(surname)s", name="Will", surname="Robinson")
+</pre>
+
+<p>Passing arguments as separate parameters (instead of interpolating them
+before calling <code>log.msg</code> has the benefit of preserving more
+information: later, when you view the log messages, you can apply python
+filter expressions that use these parameters as search criteria.</p>
+
+<h4>Modifying Log Messages</h4>
 
 <p>There are a number of arguments you can add:</p>
 
@@ -603,6 +624,9 @@ print log.get_generation_threshold(facility="web")
 
 <h2>Viewing Log Messages</h2>
 
+<p>(NOTE: this section is incomplete and some tools/options have not yet been
+implemented)</p>
+
 <p>There are a variety of ways for humans (and their tools) to read and
 analyze log messages. The <code>flogtool</code> program, provided with
 Foolscap, provides access to many of them.</p>
@@ -669,7 +693,7 @@ tub.getLogger().addLogObserver(observe)
 <h2>Python <code>logging</code> module</h2>
 
 <p>(NOTE: this section is incomplete and has not been implemented. In
-addition is may be entirely false and misleading.)</p>
+addition it may be entirely false and misleading.)</p>
 
 <p>The Python stdlib <code>logging</code> module offers portions of the
 desired functionality. The Foolscap logging framework is built as an

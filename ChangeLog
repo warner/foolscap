@@ -1,5 +1,7 @@
 2007-12-10  Brian Warner  <warner@lothar.com>
 
+	* doc/logging.xhtml: updates
+
 	* foolscap/reconnector.py (Reconnector.reset): add a utility
 	method to manually force a Reconnector to reconnect, most useful
 	from a manhole or other in-process eval loop. Closes #30.
