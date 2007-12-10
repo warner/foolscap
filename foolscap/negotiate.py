@@ -971,7 +971,10 @@ class Negotiation(protocol.Protocol):
         # determine the age of the existing broker
         age = time.time() - existing.creation_timestamp
         if age < threshold:
+            log.msg(" the existing broker is too new (%d<%d), rejecting offer"
+                    % (age, threshold))
             return False # reject the offer
+        log.msg(" the existing broker is old enough to replace")
         return True # accept the offer
 
     def sendDecision(self, decision, params):
