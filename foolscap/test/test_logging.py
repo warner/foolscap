@@ -32,6 +32,9 @@ class Basic(unittest.TestCase):
         l.msg("one")
         l.msg("two")
         l.msg("three")
+        l.msg("one=%d, two=%d", 1, 2)
+        l.msg("foo=%(foo)s, bar=%(bar)s", foo="foo", bar="bar")
+        l.msg() # useless, but make sure it doesn't crash
         l.msg("ui message", facility="ui")
         l.msg("blah blah", level=log.NOISY)
         l.msg("opening file", level=log.OPERATIONAL)
@@ -199,6 +202,7 @@ class Publish(unittest.TestCase):
                 # switch to generic (no tubid) bridge
                 log.bridgeTwistedLogs()
                 twisted_log.msg("message 3 here")
+                twisted_log.msg(format="%(foo)s is foo", foo="foo")
             d.addCallback(_emit)
             d.addCallback(self.stall, 1.0)
             # TODO: I'm not content with that absolute-time stall, and would
@@ -207,15 +211,15 @@ class Publish(unittest.TestCase):
             #d.addCallback(fireEventually)
             def _check_observer(res):
                 msgs = ob.messages
-                self.failUnlessEqual(len(msgs), 3)
+                self.failUnlessEqual(len(msgs), 4)
                 #print msgs
                 self.failUnlessEqual(msgs[0]["message"], "message 1 here")
-                # twisted's log.msg records a tuple of args, whereas
-                # foolscap's log.msg only records a single string
-                self.failUnlessEqual(msgs[1]["message"], ("message 2 here",) )
+                self.failUnlessEqual(msgs[1]["message"], "message 2 here")
                 self.failUnlessEqual(msgs[1]["tubID"], t.tubID)
-                self.failUnlessEqual(msgs[2]["message"], ("message 3 here",) )
+                self.failUnlessEqual(msgs[2]["message"], "message 3 here")
                 self.failUnlessEqual(msgs[2]["tubID"], None)
+                self.failUnlessEqual(msgs[3]["message"], "%(foo)s is foo")
+                self.failUnlessEqual(msgs[3]["foo"], "foo")
             d.addCallback(_check_observer)
             def _done(res):
                 return logport.callRemote("unsubscribe", self._subscription)

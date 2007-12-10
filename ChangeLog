@@ -1,3 +1,12 @@
+2007-12-10  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/log.py (FoolscapLogger.msg): handle two kinds
+	of argument formatting: log.msg("%d>%d", a, b), and
+	log.msg("%(foo)s!", foo=something). Also handle the twisted_log
+	equivalent of the dict case: log.msg(format="%(foo)s", foo=blah).
+	* foolscap/test/test_logging.py (Basic.testLog): test it
+	(Publish.test_logpublisher._got_logport._check_observer): same
+
 2007-12-07  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/negotiate.py (Negotiation.compareOfferAndExisting): new

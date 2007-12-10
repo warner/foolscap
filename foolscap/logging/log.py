@@ -65,7 +65,7 @@ class FoolscapLogger:
             self.buffer_sizes[facility] = {}
         self.buffer_sizes[facility][level] = sizelimit
 
-    def msg(self, message, stacktrace=None, **kwargs):
+    def msg(self, *args, **kwargs):
         """
         @param parent: the event number of the most direct parent of this
                        event
@@ -76,16 +76,25 @@ class FoolscapLogger:
                   to parent= in a subsequent call to msg()
         """
 
-        if "num" not in kwargs:
-            kwargs['num'] = num = self.seqnum.next()
-        if stacktrace is True:
-            stacktrace = traceback.format_stack()
-        kwargs['stacktrace'] = stacktrace
-        facility = kwargs.get("facility")
-        level = kwargs.get("level", NOISY)
-        kwargs['incarnation'] = self.incarnation
-        kwargs['message'] = message
+        if not args:
+            message, args = "", ()
+        else:
+            message, args = args[0], args[1:]
         event = kwargs
+        event['message'] = message
+        event['args'] = args
+        # verify that we can stringify the event correctly
+        if args:
+            s = message % args
+        else:
+            s = message % kwargs
+        if "num" not in event:
+            event['num'] = num = self.seqnum.next()
+        if event.get('stacktrace', False) is True:
+            event['stacktrace'] = traceback.format_stack()
+        facility = kwargs.get("facility")
+        level = event.get("level", NOISY)
+        event['incarnation'] = self.incarnation
         self.add_event(facility, level, event)
         return event['num']
 
@@ -130,34 +139,64 @@ setLogDir = theLogger.setLogDir
 explain_facility = theLogger.explain_facility
 set_buffer_size = theLogger.set_buffer_size
 
+# code to bridge twisted.python.log.msg() to foolscap
+
 class TwistedLogBridge:
     def __init__(self, tubID=None):
         self.tubID = tubID
 
-    def _twisted_log_observer(self, d):
-        # Twisted will remove this for us if it fails.
+        # newer versions of Twisted have a function called
+        # textFromEventDict() that we can use to format the message. Older
+        # versions (twisted-2.5.0 and earlier) have this functionality buried
+        # in the FileLogObserver where it isn't very easy to get to.
+        if hasattr(twisted_log, "textFromEventDict"):
+            self.observer = self._new_twisted_log_observer
+        else:
+            self.observer = self._old_twisted_log_observer
 
+    def _new_twisted_log_observer(self, d):
+        # Twisted will remove this for us if it fails.
         # keys:
         #  ['message']: *args
         #  ['time']: float
         #  ['isError']: bool, usually False
         #  ['system']: string
 
-        # note that this modifies the event that any other twisted observers
-        # will see, however for right now I prefer that to the slowdown that
-        # copying the dictionary would require.
-        d['tubID'] = self.tubID
-        msg(**d)
+        event = d.copy()
+        event['tubID'] = self.tubID
+        message = twisted_log.textFromEventDict(d)
+        event.pop('message', None)
+        msg(message, **event)
+
+    def _old_twisted_log_observer(self, d):
+        event = d.copy()
+        if "format" in d:
+            # 'message' will be treated as a format string, with the rest of
+            # the arguments as its % dictionary.
+            message = d['format']
+            del event['format']
+        else:
+            # put empty ['args'] in the event to trigger tuple-interpolation
+            # instead of dictionary-interpolation. The message text is in
+            # ['message']
+            message = " ".join(d['message'])
+            event.pop('message', None)
+        event.pop('args', None)
+        event['tubID'] = self.tubID
+        msg(message, **event)
 
 theTwistedLogBridge = None
 
 def setTwistedLogBridge(bridge):
     global theTwistedLogBridge
     if theTwistedLogBridge:
-        twisted_log.removeObserver(theTwistedLogBridge._twisted_log_observer)
+        try:
+            twisted_log.removeObserver(theTwistedLogBridge.observer)
+        except ValueError:
+            pass
     if bridge:
         theTwistedLogBridge = bridge
-        twisted_log.addObserver(bridge._twisted_log_observer)
+        twisted_log.addObserver(bridge.observer)
 
 def bridgeTwistedLogs():
     setTwistedLogBridge(TwistedLogBridge())

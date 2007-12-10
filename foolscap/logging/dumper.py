@@ -11,7 +11,12 @@ class LogDumper:
         for e in self.get_events(options):
             short = short_tubid_b2a(e['from'])
             when = e['rx_time']
-            print "%s %r: %r" % (short, when, e['d'])
+            d = e['d']
+            if d['args']:
+                text = d['message'] % d['args']
+            else:
+                text = d['message'] % d
+            print "%s %r: %s" % (short, when, text)
 
     def get_events(self, options):
         fn = options.dumpfile
