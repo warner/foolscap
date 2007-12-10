@@ -1,3 +1,8 @@
+2007-12-10  Brian Warner  <warner@lothar.com>
+
+	* foolscap/__init__.py: release 0.2.0
+	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
+
 2007-12-10  Brian Warner  <warner@allmydata.com>
 
 	* setup.py: add the foolscap/logging package
