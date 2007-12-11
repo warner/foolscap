@@ -1,3 +1,16 @@
+2007-12-10  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/broker.py (Broker.connectionTimedOut): sigh, brown
+	paper bag bug: broker.shutdown() requires a Failure, not an
+	exception. Unfortunately the unit tests didn't catch this.
+	* foolscap/pb.py (Tub.stopService): same
+	* foolscap/negotiate.py (Negotiation.evaluateNegotiationVersion1):
+	same
+
+	* foolscap/logging/interfaces.py: give fully-qualified
+	__remote_name__ strings to all RemoteInterfaces, to avoid
+	collision with other code that might use these names.
+
 2007-12-10  Brian Warner  <warner@lothar.com>
 
 	* foolscap/__init__.py: release 0.2.0

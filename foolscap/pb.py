@@ -5,6 +5,7 @@ from zope.interface import implements
 from twisted.internet import defer, protocol, error
 from twisted.application import service, strports
 from twisted.python import log
+from twisted.python.failure import Failure
 
 from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
 from foolscap.referenceable import SturdyRef
@@ -543,7 +544,7 @@ class Tub(service.MultiService):
 
         if self.brokers or self.unauthenticatedBrokers:
             dl.append(self._allBrokersAreDisconnected.whenFired())
-        why = error.ConnectionDone("Tub.stopService was called")
+        why = Failure(error.ConnectionDone("Tub.stopService was called"))
         for b in self.brokers.values():
             b.shutdown(why, fireDisconnectWatchers=False)
         for b in self.unauthenticatedBrokers:

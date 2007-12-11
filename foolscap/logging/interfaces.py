@@ -5,12 +5,14 @@ from foolscap.schema import DictOf, ListOf, Any
 TubID = str
 
 class RILogObserver(RemoteInterface):
+    __remote_name__ = "RILogObserver.foolscap.lothar.com"
     def msg(logmsg=DictOf(str, Any())):
         return None
     def done():
         return None
 
 class RILogFile(RemoteInterface):
+    __remote_name__ = "RILogFile.foolscap.lothar.com"
     def get_header():
         # (tubid, incarnation,
         #  (first_event: number, time), (last_event: number, time),
@@ -24,9 +26,11 @@ class RILogFile(RemoteInterface):
         return None
 
 class RISubscription(RemoteInterface):
+    __remote_name__ = "RISubscription.foolscap.lothar.com"
     pass
 
 class RILogPublisher(RemoteInterface):
+    __remote_name__ = "RILogPublisher.foolscap.lothar.com"
     def get_versions():
         return DictOf(str, str)
     def subscribe_to_all(observer=RILogObserver):
@@ -40,6 +44,7 @@ class RILogPublisher(RemoteInterface):
         return ListOf(RILogFile)
 
 class RILogGatherer(RemoteInterface):
+    __remote_name__ = "RILogGatherer.foolscap.lothar.com"
     def logport(nodeid=TubID, logport=RILogPublisher):
         return None
 

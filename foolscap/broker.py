@@ -6,7 +6,7 @@ import types, time
 from itertools import count
 
 from zope.interface import implements
-from twisted.python import log
+from twisted.python import log, failure
 from twisted.internet import defer, error
 from twisted.internet import interfaces as twinterfaces
 from twisted.internet.protocol import connectionDone
@@ -216,7 +216,8 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def connectionTimedOut(self):
         err = error.ConnectionLost("banana timeout: connection dropped")
-        self.shutdown(err)
+        why = failure.Failure(err)
+        self.shutdown(why)
 
     def shutdown(self, why, fireDisconnectWatchers=True):
         """Stop using this connection. If fireDisconnectWatchers is False,

@@ -773,7 +773,8 @@ class Negotiation(protocol.Protocol):
                 if acceptOffer:
                     # drop the old one
                     log.msg(" accepting new offer, dropping existing connection")
-                    why = ConnectionDone("replaced by a new connection")
+                    err = ConnectionDone("replaced by a new connection")
+                    why = Failure(err)
                     existing.shutdown(why)
                 else:
                     # reject the new one
