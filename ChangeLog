@@ -1,5 +1,13 @@
 2007-12-11  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/banana.py (Banana.handleError): loseConnection takes a
+	Failure, not an exception. Addresses #36.
+	* foolscap/negotiate.py (Negotiation.acceptDecisionVersion1): same
+	* foolscap/test/test_call.py: same
+	* foolscap/test/test_reconnector.py (Reconnector._got_ref): same
+	* foolscap/broker.py (Broker.shutdown): assert that we get a Failure
+	* foolscap/test/common.py (Loopback.loseConnection): same
+
 	* foolscap/__init__.py: bump revision to 0.2.1+ while between releases
 	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
 

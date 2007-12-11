@@ -1162,7 +1162,8 @@ class Banana(protocol.Protocol):
 
     def handleError(self, msg):
         log.msg("got banana ERROR from remote side: %s" % msg)
-        self.transport.loseConnection(BananaError("remote error: %s" % msg))
+        e = BananaError("remote error: %s" % msg)
+        self.transport.loseConnection(Failure(e))
 
 
     def describeReceive(self):

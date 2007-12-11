@@ -227,6 +227,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         connection quickly, rather than waiting for the transmit queue to
         drain.
         """
+        assert isinstance(why, failure.Failure)
         if not fireDisconnectWatchers:
             self.disconnectWatchers = []
         self.finish(why)
@@ -238,6 +239,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def finish(self, why):
         if self.disconnected:
             return
+        assert isinstance(why, failure.Failure), why
         self.disconnected = True
         self.remote_broker = None
         self.abandonAllRequests(why)

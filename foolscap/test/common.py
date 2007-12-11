@@ -45,12 +45,14 @@ class Loopback:
             self.loseConnection(f)
 
     def loseConnection(self, why=failure.Failure(CONNECTION_DONE)):
+        assert isinstance(why, failure.Failure), why
         if self.connected:
             self.connected = False
             # this one is slightly weird because 'why' is a Failure
             eventually(self._loseConnection, why)
 
     def _loseConnection(self, why):
+        assert isinstance(why, failure.Failure), why
         self.protocol.connectionLost(why)
         self.peer.connectionLost(why)
 

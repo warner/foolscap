@@ -8,9 +8,10 @@ if False:
     from twisted.python import log
     log.startLogging(sys.stderr)
 
-from twisted.python import failure, log
+from twisted.python import log
 from twisted.trial import unittest
 from twisted.internet.main import CONNECTION_LOST
+from twisted.python.failure import Failure
 
 from foolscap.tokens import Violation
 from foolscap.eventual import flushEventualQueue
@@ -86,7 +87,7 @@ class TestCall(TargetMixin, unittest.TestCase):
     testFail1.timeout = 2
     def _testFail1_1(self, f):
         # f should be a CopiedFailure
-        self.failUnless(isinstance(f, failure.Failure),
+        self.failUnless(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
         self.failUnless(f.check(ValueError),
                         "wrong exception type: %s" % f)
@@ -102,7 +103,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         return d
     testFail2.timeout = 2
     def _testFail2_1(self, f):
-        self.failUnless(isinstance(f, failure.Failure),
+        self.failUnless(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
         self.failUnless(f.check(TypeError),
                         "wrong exception type: %s" % f.type)
@@ -119,7 +120,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         return d
     testFail3.timeout = 2
     def _testFail3_1(self, f):
-        self.failUnless(isinstance(f, failure.Failure),
+        self.failUnless(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
         self.failUnless(f.check(AttributeError),
                         "wrong exception type: %s" % f.type)
@@ -139,7 +140,7 @@ class TestCall(TargetMixin, unittest.TestCase):
     testFailStringException.timeout = 2
     def _testFailStringException_1(self, f):
         # f should be a CopiedFailure
-        self.failUnless(isinstance(f, failure.Failure),
+        self.failUnless(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
         self.failUnless(f.check("string exceptions are annoying"),
                         "wrong exception type: %s" % f)
@@ -151,7 +152,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         d = rr.callRemote("fail_remotely", target)
         def _check(f):
             # f should be a CopiedFailure
-            self.failUnless(isinstance(f, failure.Failure),
+            self.failUnless(isinstance(f, Failure),
                             "Hey, we didn't fail: %s" % f)
             self.failUnless(f.check(ValueError),
                             "wrong exception type: %s" % f)
@@ -208,7 +209,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         return d
 
     def shouldFail(self, res, expected_failure, which, substring=None):
-        if isinstance(res, failure.Failure):
+        if isinstance(res, Failure):
             res.trap(expected_failure)
             if substring:
                 self.failUnless(substring in str(res),
@@ -394,7 +395,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("hang")
         e = RuntimeError("lost connection")
-        rr.tracker.broker.transport.loseConnection(e)
+        rr.tracker.broker.transport.loseConnection(Failure(e))
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        lambda why: why.trap(RuntimeError) and None)
         return d
@@ -407,7 +408,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
         rr.notifyOnDisconnect(self.disconnected)
-        rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
+        rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
         d = flushEventualQueue()
         def _check(res):
             self.failUnless(self.lost)
@@ -427,7 +428,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         # unregisters, because otherwise it is hard to avoid race conditions.
         # Validate that we can unregister something multiple times.
         rr.dontNotifyOnDisconnect(m)
-        rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
+        rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
         d = flushEventualQueue()
         d.addCallback(lambda res: self.failIf(self.lost))
         return d
@@ -436,7 +437,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
         rr.notifyOnDisconnect(self.disconnected, "arg", foo="kwarg")
-        rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
+        rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
         d = flushEventualQueue()
         def _check(res):
             self.failUnless(self.lost)
@@ -450,7 +451,7 @@ class TestCall(TargetMixin, unittest.TestCase):
         # broken
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
-        rr.tracker.broker.transport.loseConnection(CONNECTION_LOST)
+        rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
         d = flushEventualQueue()
         d.addCallback(lambda res: rr.notifyOnDisconnect(self.disconnected))
         d.addCallback(lambda res: flushEventualQueue())

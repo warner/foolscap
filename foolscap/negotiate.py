@@ -1051,7 +1051,8 @@ class Negotiation(protocol.Protocol):
             # use the one picked by the master
             log.msg("UNUSUAL: master told us to use a new connection, "
                     "so we must drop the existing one")
-            why = ConnectionDone("replaced by a new connection")
+            err = ConnectionDone("replaced by a new connection")
+            why = Failure(err)
             self.tub.brokers[self.theirTubRef].shutdown(why)
 
         current_connection = decision.get('current-connection')

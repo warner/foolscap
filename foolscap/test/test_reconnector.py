@@ -5,6 +5,7 @@ from foolscap import UnauthenticatedTub
 from foolscap.test.common import HelperTarget
 from twisted.internet.main import CONNECTION_LOST
 from twisted.internet import defer, reactor, error
+from twisted.python.failure import Failure
 from foolscap.eventual import eventually, flushEventualQueue
 from foolscap import negotiate
 
@@ -50,7 +51,7 @@ class Reconnector(unittest.TestCase):
         if self.count < 2:
             # forcibly disconnect it
             eventually(rref.tracker.broker.transport.loseConnection,
-                       CONNECTION_LOST)
+                       Failure(CONNECTION_LOST))
         else:
             self.done.callback("done")
 
