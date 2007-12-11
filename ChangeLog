@@ -1,4 +1,7 @@
-2007-12-10  Brian Warner  <warner@allmydata.com>
+2007-12-10  Brian Warner  <warner@lothar.com>
+
+	* foolscap/__init__.py: release 0.2.1
+	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
 
 	* foolscap/broker.py (Broker.connectionTimedOut): sigh, brown
 	paper bag bug: broker.shutdown() requires a Failure, not an
