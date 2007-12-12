@@ -1,3 +1,10 @@
+2007-12-12  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Tub.brokerAttached): use an eventual-send when
+	informing everyone in waitingForBrokers, to match the
+	asynchronicity of disconnection notifications delivered in
+	Broker.finish()
+
 2007-12-11  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/call.py (PendingRequest.fail): tolerate pass-then-fail,

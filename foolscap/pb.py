@@ -917,10 +917,9 @@ class Tub(service.MultiService):
 
         # now inform everyone who's been waiting on it
         if tubref in self.waitingForBrokers:
-            waiting = self.waitingForBrokers[tubref]
+            for d in self.waitingForBrokers[tubref]:
+                eventual.eventually(d.callback, broker)
             del self.waitingForBrokers[tubref]
-            for d in waiting:
-                d.callback(broker)
 
     def brokerDetached(self, broker, why):
         # a loopback connection will produce two Brokers that both use the
