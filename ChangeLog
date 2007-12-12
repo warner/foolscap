@@ -1,5 +1,10 @@
 2007-12-11  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/call.py (PendingRequest.fail): tolerate pass-then-fail,
+	which is just as weird of an error case but shouldn't cause an
+	exception. The fact that this is necessary indicates significant
+	problems in the new connection-management code. Sigh.
+
 	* foolscap/banana.py (Banana.handleError): loseConnection takes a
 	Failure, not an exception. Addresses #36.
 	* foolscap/negotiate.py (Negotiation.acceptDecisionVersion1): same

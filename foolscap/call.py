@@ -39,6 +39,7 @@ class PendingRequest(object):
         self.broker = None # if set, the broker knows about us
         self.deferred = defer.Deferred()
         self.constraint = None # this constrains the results
+        self.failure = None
 
     def setConstraint(self, constraint):
         self.constraint = constraint
@@ -82,10 +83,12 @@ class PendingRequest(object):
                 log.msg(stack)
             self.deferred.errback(why)
         else:
-            log.msg("multiple failures")
-            log.msg("first one was:", self.failure)
-            log.msg("this one was:", why)
-            log.err("multiple failures indicate a problem")
+            log.msg("WEIRD: fail() on an inactive request", traceback=True)
+            if self.failure:
+                log.msg("multiple failures")
+                log.msg("first one was:", self.failure)
+                log.msg("this one was:", why)
+                log.err("multiple failures indicate a problem")
 
 class ArgumentSlicer(slicer.ScopedSlicer):
     opentype = ('arguments',)
