@@ -1,8 +1,8 @@
-foolscap (0.2.1+) unstable; urgency=low
+foolscap (0.2.2) unstable; urgency=low
 
-  * bump revision while between releases
+  * new release, hopefully connection-negotiation is fixed now
 
- -- Brian Warner <warner@allmydata.com>  Tue, 11 Dec 2007 11:48:46 -0800
+ -- Brian Warner <warner@lothar.com>  Wed, 12 Dec 2007 18:12:25 -0800
 
 foolscap (0.2.1) unstable; urgency=low
 
