@@ -1,5 +1,21 @@
 2007-12-12  Brian Warner  <warner@lothar.com>
 
+	* bin/flogtool: move all usage.Options into the file that contains
+	the implementations: TailOptions are moved to
+	foolscap.logging.tail, etc.
+	* foolscap/logging/gatherer.py: same
+	* foolscap/logging/tail.py (TailOptions): same
+	* foolscap/logging/dumper.py: same
+	(DumpOptions.optFlags): add --verbose (show all event keys),
+	--just-numbers.
+	(LogDumper.print_event): change event printing to handle funny
+	messages
+	* foolscap/logging/web.py (WebViewerOptions.optParameters): same
+	(FLOG_CSS): colorize the background of unusual messages
+	(LogEvent): improve stringification, add better timestamps,
+	event numbers, escape HTML better, display Failure instances better,
+	(WebViewer.process_logfiles): event numbers use 'num', not 'number'
+
 	* foolscap/logging/log.py (FoolscapLogger.set_generation_threshold):
 	implement generation thresholds: don't even record messages if
 	they fall below this threshold. Still needs a lot of usability work.

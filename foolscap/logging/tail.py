@@ -1,10 +1,26 @@
 
+import os
 from zope.interface import implements
 from twisted.internet import reactor
+from twisted.python import usage
 import foolscap
 from foolscap import base32
 from foolscap.eventual import fireEventually
 from interfaces import RILogObserver
+
+class TailOptions(usage.Options):
+    synopsis = "Usage: flogtool tail (LOGPORT.furl/furlfile/nodedir)"
+
+    def parseArgs(self, target):
+        if target.startswith("pb:"):
+            self.target_furl = target
+        elif os.path.isfile(target):
+            self.target_furl = open(target, "r").read().strip()
+        elif os.path.isdir(target):
+            fn = os.path.join(target, "logport.furl")
+            self.target_furl = open(fn, "r").read().strip()
+        else:
+            raise RuntimeError("Can't use tail target: %s" % target)
 
 class LogPrinter(foolscap.Referenceable):
     implements(RILogObserver)

@@ -2,8 +2,55 @@
 import pickle, time
 from twisted.internet import reactor
 from twisted.application import strports
+from twisted.python import usage
 from foolscap.eventual import fireEventually
+from foolscap.logging import log
 from twisted.web import server, static, html, resource
+
+class WebViewerOptions(usage.Options):
+    synopsis = "Usage: flogtool web-viewer DUMPFILE.pickle"
+
+    optParameters = [
+        ["port", "p", "tcp:0",
+         "strports specification of where the web server should listen."],
+        ]
+
+    def parseArgs(self, dumpfile):
+        self.dumpfile = dumpfile
+
+FLOG_CSS = """
+span.NOISY {
+ color: #000080;
+}
+span.OPERATIONAL {
+ color: #000000;
+}
+span.UNUSUAL {
+ color: #000000;
+ background-color: #ff8080;
+}
+span.INFREQUENT {
+ color: #000000;
+ background-color: #ff8080;
+}
+span.CURIOUS {
+ color: #000000;
+ background-color: #ff8080;
+}
+span.WEIRD {
+ color: #000000;
+ background-color: #ff4040;
+}
+span.SCARY {
+ color: #000000;
+ background-color: #ff4040;
+}
+span.BAD {
+ color: #000000;
+ background-color: #ff0000;
+}
+
+"""
 
 class Welcome(resource.Resource):
     def __init__(self, viewer):
@@ -59,7 +106,9 @@ class EventView(resource.Resource):
 
     def render(self, req):
         data = "<html>"
-        data += "<head><title>Foolscap Log Viewer</title></head>\n"
+        data += "<head><title>Foolscap Log Viewer</title>\n"
+        data += '<link href="flog.css" rel="stylesheet" type="text/css" />'
+        data += "</head>\n"
         data += "<body>\n"
         data += "<h1>Event Log</h1>\n"
 
@@ -74,7 +123,11 @@ class EventView(resource.Resource):
 
     def _emit_events(self, indent, event):
         indent_s = " " * indent
-        data = indent_s + "<li>" + html.escape(event.to_string()) + "</li>\n"
+        data = (indent_s
+                + "<li><span class='%s'>" % event.level_class()
+                + event.to_html()
+                + "</span></li>\n"
+                )
         if event.children:
             data += indent_s + "<ul>\n"
             for child in event.children:
@@ -89,15 +142,49 @@ class LogEvent:
         self.parent = None
         self.children = []
         self.index = None
-        if 'number' in e['d']:
-            self.index = (e['from'], e['d']['number'])
+        if 'num' in e['d']:
+            self.index = (e['from'], e['d']['num'])
         self.parent_index = None
         if 'parent' in e['d']:
             self.parent_index = (e['from'], e['d']['parent'])
 
-    def to_string(self):
-        time_s = time.strftime("%H:%M:%S", time.localtime(self.e['d']['time']))
-        return time_s + " : " + " ".join(self.e['d']['message'])
+    LEVELMAP = {
+        log.NOISY: "NOISY",
+        log.OPERATIONAL: "OPERATIONAL",
+        log.UNUSUAL: "UNUSUAL",
+        log.INFREQUENT: "INFREQUENT",
+        log.CURIOUS: "CURIOUS",
+        log.WEIRD: "WEIRD",
+        log.SCARY: "SCARY",
+        log.BAD: "BAD",
+        }
+
+    def level_class(self):
+        level = self.e['d'].get('level', log.OPERATIONAL)
+        return self.LEVELMAP.get(level, "UNKNOWN")
+
+    def to_html(self):
+        d = self.e['d']
+        time_s = time.strftime("%H:%M:%S", time.localtime(d['time']))
+        time_s = time_s + " %.4f" % (d['time'] - int(d['time']))
+        try:
+            if d['args']:
+                msg = d['message'] % d['args']
+            else:
+                msg = d['message'] % d
+        except (ValueError, TypeError):
+            msg = d['message'] + " [formatting failed]"
+        msg = html.escape(msg)
+        if 'failure' in d:
+            lines = str(d['failure']).split("\n")
+            html_lines = [html.escape(line) for line in lines]
+            f_html = "\n".join(html_lines)
+            msg += " FAILURE:<pre>%s</pre>" % f_html
+        level = d.get('level', log.OPERATIONAL)
+        level_s = ""
+        if level >= log.UNUSUAL:
+            level_s = self.LEVELMAP.get(level, "") + " "
+        return "%s [%d]: %s%s" % (time_s, d['num'], level_s, msg)
 
 
 class WebViewer:
@@ -118,6 +205,7 @@ class WebViewer:
         welcome = Welcome(self)
         root.putChild("welcome", welcome)
         root.putChild("all-events", EventView(self))
+        root.putChild("flog.css", static.Data(FLOG_CSS, "text/css"))
         s = server.Site(root)
         self.serv = strports.service(options['port'], s)
         self.serv.startService()
@@ -160,7 +248,7 @@ class WebViewer:
                     roots.append(le)
                 d = e['d']
                 level = d.get("level", "NORMAL")
-                number = d.get("number", None)
+                number = d.get("num", None)
                 when = d.get("time")
 
                 if False:

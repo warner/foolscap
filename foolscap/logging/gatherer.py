@@ -2,10 +2,14 @@
 import time, pickle
 from zope.interface import implements
 from twisted.internet import reactor, defer
+from twisted.python import usage
 import foolscap
 from foolscap.eventual import fireEventually
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.logging.tail import short_tubid_b2a
+
+class GatherOptions(usage.Options):
+    pass
 
 class LogSaver(foolscap.Referenceable):
     implements(RILogObserver)
