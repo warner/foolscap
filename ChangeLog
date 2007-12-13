@@ -1,5 +1,7 @@
 2007-12-12  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for new release
+
 	* foolscap/negotiate.py (Negotiation): fix duplicate-connection
 	handling logic. Simplify by removing the attempt-id information,
 	and thus reject any connections with old seqnums (to prevent

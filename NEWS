@@ -1,5 +1,38 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.2.2 (12 Dec 2007)
+
+** Compatibilty
+
+All releases between 0.1.3 and 0.2.2 (inclusive) are fully wire-compatible.
+New (optional) negotiation parameters were added in 0.2.1 (really in 0.2.0).
+
+** Bug Fixes
+
+The new duplicate-connection handling code in 0.2.1 was broken. This release
+probably fixes it.
+
+There were other bugs in 0.2.1 which were triggered when a duplicate
+connection was shut down, causing remote calls to never be retired, which
+would also prevent the Reconnector from doing its job. These should be fixed
+now.
+
+** Other Changes
+
+Foolscap's connection-negotiation mechanism has been modified to use foolscap
+logging ("flog") instead of twisted.log .
+
+Setting the FLOGFILE= environment variable will cause a Foolscap-using
+program to write pickled log events to a file of that name. This is
+particularly useful when you want to record log events during 'trial' unit
+test run. The normal API for setting this file will be added later. The
+FLOGTWISTED= environment variable will cause the creation of a twisted.log
+bridge, to copy all events from the twisted log into the foolscap log.
+
+The 'flogtool web-view' mode has been enhanced to color-code events according
+to their severity, and to format Failure tracebacks in a more-readable way.
+
+
 * Release 0.2.1 (10 Dec 2007)
 
 ** Compatibilty
