@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_negotiate -*-
 
-import os, binascii, time
+import time
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor
 from twisted.internet.error import ConnectionDone
@@ -213,7 +213,6 @@ class Negotiation(protocol.Protocol):
     def initClient(self, connector, targetHost):
         # clients do connectTCP and speak first with a GET
         self.log("initClient: to target %s" % connector.target,
-                 connection_id=connector.connection_id,
                  target=connector.target.getTubID())
         self.isClient = True
         self.tub = connector.tub
@@ -225,9 +224,6 @@ class Negotiation(protocol.Protocol):
         self.wantEncryption = bool(self.target.encrypted
                                    or self.tub.myCertificate)
         self.options = self.tub.options.copy()
-        IR = self.tub.getIncarnationString()
-        self.negotiationOffer['my-incarnation'] = IR
-        self.negotiationOffer['this-connection'] = connector.connection_id
         tubID = self.target.getTubID()
         # note that UnauthenticatedTubs will never have a record here
         slave_record = self.tub.slave_table.get(tubID, ("none",0))
@@ -607,6 +603,10 @@ class Negotiation(protocol.Protocol):
             # identity.
             hello['my-tub-id'] = self.myTubID
 
+        if self.tub:
+            IR = self.tub.getIncarnationString()
+            hello['my-incarnation'] = IR
+
         self.log("Negotiate.sendHello (isClient=%s): %s" %
                  (self.isClient, hello), level=NOISY)
         self.sendBlock(hello)
@@ -805,7 +805,6 @@ class Negotiation(protocol.Protocol):
                 # offer.
                 params['current-slave-IR'] = new_slave_IR
                 params['current-seqnum'] = new_seqnum
-                params['current-attempt-id'] = offer.get('this-connection')
 
             # what initial vocab set should we use?
             theirVocabRange_s = offer.get("initial-vocab-table-range", "0 0")
@@ -871,13 +870,9 @@ class Negotiation(protocol.Protocol):
 
         existing_slave_IR = existing.current_slave_IR
         existing_seqnum = existing.current_seqnum
-        existing_attempt_id = existing.current_attempt_id
 
-        log("existing connection has attempt_id=%(attempt_id)s, "
-            "slave_IR=%(slave_IR)s, seqnum=%(seqnum)s",
-            attempt_id=existing_attempt_id,
-            slave_IR=existing_slave_IR,
-            seqnum=existing_seqnum)
+        log("existing connection has slave_IR=%(slave_IR)s, seqnum=%(seqnum)s",
+            slave_IR=existing_slave_IR, seqnum=existing_seqnum)
 
         # TESTING: force handle-old stuff
         #lp2 = log("TESTING: forcing use of handle-old logic")
@@ -909,44 +904,37 @@ class Negotiation(protocol.Protocol):
             # restarted since we made our connection, so clearly our
             # connection is stale. Accept the offer.
             log("offer is from different peer incarnation than existing")
-            return True
+            return True # accept
+
         pieces = offer['last-connection'].split()
         offer_master_IR = pieces[0]
         offer_master_seqnum = int(pieces[1])
-        offer_attempt_id = offer['this-connection']
-
-        if offer_attempt_id == existing_attempt_id:
-            # this offer is part of the same connection attempt that created
-            # our existing connection. We've sent a decision that ought to
-            # cause this TubConnector to finish, and they didn't receive that
-            # decision before they sent this offer. This is a normal race
-            # between simultaneous connection hints, and we should reject
-            # this offer in favor of the winning hint.
-            log("offer is part of same connection attempt as existing")
-            return False
 
         if offer_master_IR == "none":
             # the peer doesn't remember talking to anybody: they don't think
             # they've ever been connected to us. We disagree, and we remember
             # their incarnation record. So they must have made an initial
             # attempt to connect to us (their first), we accepted their
-            # connection, and the decision message got lost. The client is
-            # now trying to connect a second time. Accept the new offer
+            # connection, and the decision message got lost or hasn't arrived
+            # yet. The most likely situation is that this is one of the
+            # parallel connections (one per hint), for which we want to
+            # reject their offer. The less likely situation is that they
+            # heard our initial connection setup but the decision message got
+            # lost, in which case we entry the "no reconnects until TCP gives
+            # up" state.
             log("peer doesn't remember talking to us")
-            return True
+            return False # reject
 
         if offer_master_IR != self.tub.getIncarnationString():
-            # the peer doesn't remember talking to us at all: they remember
-            # talking to a past life. That means our last decision message
-            # didn't make it to them, and the last connection they *did* hear
-            # about was from one of our previous runs. Therefore our existing
-            # connection isn't viable, and we should accept their offer.
+            # the peer doesn't remember talking to us specifically, but they
+            # remember talking to one of our past lives. That means our last
+            # decision message didn't make it to them, and the last
+            # connection they *did* hear about was from one of our previous
+            # runs. Therefore our existing connection isn't viable, and we
+            # should accept their offer.
             #
-            # Or, offer_master_IR=none, because they don't remember ever
-            # having a connection to us. Again, our existing connection isn't
-            # viable, and we should accept their offer.
-            log("pper remembers talking to our past life")
-            return True
+            log("peer remembers talking to our past life")
+            return True # accept
 
         # at this point, the offer's IR matches our own, so the seqnum is
         # worth comparing
@@ -959,21 +947,30 @@ class Negotiation(protocol.Protocol):
             return True
 
         if offer_master_seqnum < existing_seqnum:
-            # I can think of two ways to get here. The first (which seems
-            # more likely by far) is that the client connects successfully,
-            # then the client thinks the connection has been lost (but the
-            # server thinks it's still good), so the client reconnects, and
-            # this connection gets as far as the master making a decision,
-            # but the decision message is lost before it gets to the client.
-            # Then the client connects a third time, and now we're
-            # considering the third offer: the IRs are all the same, the
-            # attempt_id is different than our existing (2nd) connection, but
-            # the seqnum is older. In this case, we want to accept the new
-            # offer.
-            #
-            # The second case is more rare: the client connects and loses the
-            # connection (as before), then the client connects a second time
-            # and gets as far as sending the offer when they time out,
+            # Possible ways to get here, most likely first
+            #  1: simultaneous parallel connections (multiple hints),
+            #     from a client who used to have an established connection
+            #     with us (so they're sending the right offer_master_IR).
+            #     Reject the offer to avoid connection flap.
+            #  2: client connected, but our decision got lost, they're still
+            #     living in the past. Reject the offer, we'll enter the
+            #     no-reconnect-until-TCP-gives-up state
+            #  3: crazy stalled message case, again we wait for TCP to expire
+
+            # more details on #2: the client connects successfully, then the
+            # client thinks the connection has been lost (but the server
+            # thinks it's still good), so the client reconnects, and this
+            # connection gets as far as the master making a decision, but the
+            # decision message is lost before it gets to the client. Then the
+            # client connects a third time, and now we're considering the
+            # third offer: the IRs are all the same, the attempt_id is
+            # different than our existing (2nd) connection, but the seqnum is
+            # older. In this case, we want to accept the new offer.
+
+
+            # more details on #3 (more rare): the client connects and loses
+            # the connection (as before), then the client connects a second
+            # time and gets as far as sending the offer when they time out,
             # cancelling the negotiation already in progress (sending a FIN
             # after the offer message) and triggering a third connection. The
             # third connection somehow races ahead and completes negotiation
@@ -981,20 +978,9 @@ class Negotiation(protocol.Protocol):
             # finally, the offer arrives: we're now evaluating an
             # out-of-order offer on a socket that's about to be closed.
             # Ideally we'd like to reject this offer.
-            #
-            # We are going to accept this offer, for two reasons. Reason 1 is
-            # that the first case seems much more likely than the second.
-            # Reason 2 is that the worst-case behavior is better: accepting
-            # the offer in the second case will result in connection flap,
-            # but rejecting the offer in the first case will result in a
-            # client being unable to connect for the up-to-35-minutes it
-            # takes for the server to recognize that the old connection has
-            # truly been lost.
-            log("peer knows about old seqnum")
-            return True
 
-        # it is entirely fair to ask what the point of the seqnum is. I think
-        # the attempt_id kind of displaced it. More analysis is necessary.
+            log("peer knows about old seqnum")
+            return False # reject
 
         # offer_master_seqnum > existing_seqnum indicates something really
         # weird has taken place.
@@ -1288,9 +1274,6 @@ class TubConnector:
                                   level=OPERATIONAL)
         self.tub = parent
         self.target = tubref
-        self.connection_id = binascii.b2a_hex(os.urandom(8))
-        if "debug_fixed_connection_id" in self.tub.options:
-            self.connection_id = self.tub.options['debug_fixed_connection_id']
         self.remainingLocations = self.target.getLocations()
         # attemptedLocations keeps track of where we've already tried to
         # connect, so we don't try them twice.

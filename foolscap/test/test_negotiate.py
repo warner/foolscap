@@ -1061,6 +1061,8 @@ class Replacement(BaseMixin, unittest.TestCase):
         # doctor the client's memory, make it think that it had a connection
         # to a different incarnation of the server
 
+        # this test exercises the offer_master_IR != self.tub..IR case
+
         d = self.tub1.getReference(self.furl2)
         d2 = defer.Deferred()
         def _connected(rref):
@@ -1076,54 +1078,58 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(lambda res: d2)
         return d
 
-    def testLostDecisionMessage(self):
-        # when a client connects, the server accepts, but the decision
-        # message gets lost, the client's second attempt will look a lot like
-        # the first (but with a different attempt_id). This second attempt
-        # should be accepted.
-
-        d = self.tub1.getReference(self.furl2)
-        d2 = defer.Deferred()
-        def _connected(rref):
-            self.clone_servers()
-            del self.tub1a.slave_table[self.tub2.tubID]
-            rref.notifyOnDisconnect(d2.callback, None)
-            return self.tub1a.getReference(self.furl2)
-        d.addCallback(_connected)
-        # the old rref should be broken (eventually)
-        d.addCallback(lambda res: d2)
-        return d
-
     def testTwoLostDecisionMessages(self):
         # the client connects successfully with seqnum=1. Then the client
         # thinks the connection is lost, so it tries to reconnect, the server
         # accepts (seqnum=2), but the decision message gets lost. Then the
         # client tries to connect a third time: the client says it knows
         # about seqnum=1, which is older than the current one. We should
-        # accept the third attempt: for details, see the comments in
-        # negotiate.py .
+        # reject the third attempt.
 
-        # we represent this case by connecting once, then having the second
-        # tub connect with an artificially-decremented seqnum.
+        # we represent this case by connecting once, disconnecting,
+        # reconnecting, then having the second tub connect with an
+        # artificially-decremented seqnum.
 
+        # this test exercises the offer_master_seqnum < existing_seqnum case
+
+        disconnects = []
         d = self.tub1.getReference(self.furl2)
-        d2 = defer.Deferred()
-        def _connected(rref):
+        def _connect1(rref):
+            d2 = defer.Deferred()
+            rref.notifyOnDisconnect(d2.callback, None)
+            rref.tracker.broker.transport.loseConnection()
+            return d2
+        d.addCallback(_connect1)
+        def _reconnect(res):
+            return self.tub1.getReference(self.furl2)
+        d.addCallback(_reconnect)
+        def _connect2(rref):
             self.clone_servers()
             old_record = self.tub1a.slave_table[self.tub2.tubID]
             (old_IR, old_seqnum) = old_record
             new_record = (old_IR, str(int(old_seqnum)-1))
             self.tub1a.slave_table[self.tub2.tubID] = new_record
-            rref.notifyOnDisconnect(d2.callback, None)
-            return self.tub1a.getReference(self.furl2)
-        d.addCallback(_connected)
-        # the old rref should be broken (eventually)
-        d.addCallback(lambda res: d2)
+
+            # this new connection attempt will be rejected
+            rref.notifyOnDisconnect(disconnects.append, 1)
+            return self.shouldFail(tokens.RemoteNegotiationError,
+                                   "testTwoLostDecisionMessages",
+                                   "Duplicate connection",
+                                   self.tub1a.getReference, self.furl2)
+        d.addCallback(_connect2)
+        def _stall(res):
+            return eventual.fireEventually(res)
+        d.addCallback(_stall)
+        def _check(res):
+            self.failIf(disconnects)
+        d.addCallback(_check)
         return d
 
     def testWeirdSeqnum(self):
         # if the client sends a seqnum that's too far into the future,
         # something weird is going on, and we should reject the offer.
+
+        # this test exercises the offer_master_seqnum > existing_seqnum case
 
         disconnects = []
         d = self.tub1.getReference(self.furl2)
@@ -1139,7 +1145,6 @@ class Replacement(BaseMixin, unittest.TestCase):
                                    "testSimultaneousClient",
                                    "Duplicate connection",
                                    self.tub1a.getReference, self.furl2)
-            return self.tub1a.getReference(self.furl2)
         d.addCallback(_connected)
         def _stall(res):
             return eventual.fireEventually(res)
@@ -1153,6 +1158,8 @@ class Replacement(BaseMixin, unittest.TestCase):
         # a client connects successfully, and receives the decision, but then
         # the connection goes away such that the client sees it but the
         # server does not. The new connection should be accepted.
+
+        # this test exercises the offer_master_seqnum == existing_seqnum case
 
         d = self.tub1.getReference(self.furl2)
         d2 = defer.Deferred()
@@ -1171,14 +1178,15 @@ class Replacement(BaseMixin, unittest.TestCase):
         # from the same batch as the existing one. This should be rejected:
         # this is the multiple-connection-hints case.
 
+        # This is also what happens when a decision message is droped.
+
+        # since this is the first time the slave tried to connect, this test
+        # exercises the offer_master_IR == "none" case
+
         disconnects = []
         d = self.tub1.getReference(self.furl2)
         def _connected(rref):
             self.clone_servers()
-            assert len(self.tub2.brokers.values()) == 1
-            cid = self.tub2.brokers.values()[0].current_attempt_id
-            self.tub1a.options = self.tub1a.options.copy()
-            self.tub1a.options['debug_fixed_connection_id'] = cid
             del self.tub1a.slave_table[self.tub2.tubID]
             # this new connection attempt will be rejected
             rref.notifyOnDisconnect(disconnects.append, 1)

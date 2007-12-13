@@ -159,7 +159,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.initBroker()
         self.current_slave_IR = params.get('current-slave-IR')
         self.current_seqnum = params.get('current-seqnum')
-        self.current_attempt_id = params.get('current-attempt-id')
         self.creation_timestamp = time.time()
 
     def initBroker(self):

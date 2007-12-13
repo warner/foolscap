@@ -1,10 +1,21 @@
 2007-12-12  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation): fix duplicate-connection
+	handling logic. Simplify by removing the attempt-id information,
+	and thus reject any connections with old seqnums (to prevent
+	connection flap for parallel (connection-hint) offers). Reject
+	connections from master_IR=None. Send the 'my-incarnation' field
+	with all offers (both client and server), so that it will be
+	available to whomever the master happens to be.
+	* foolscap/broker.py (Broker.__init__): remove attempt-id
+	* foolscap/test/test_negotiate.py (Replacement): update to match
+
 	* foolscap/negotiate.py: covert logging to flogging (i.e. call
 	foolscap.logging.log.msg instead of twisted.log.msg). This gives
 	us parent/child structure, more useful severity levels, improves
 	display of Failure instances, and will give us more data to work
 	with in the future as the foolscap.logging tools mature.
+
 	* foolscap/pb.py: same
 	* foolscap/test/test_negotiate.py: same
 
