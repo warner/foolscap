@@ -129,7 +129,7 @@ class Listener(protocol.ServerFactory):
     def stopFactory(self):
         log.msg("Stopping factory %r" % self)
         return protocol.ServerFactory.stopFactory(self)
-        
+
 
     def buildProtocol(self, addr):
         """Return a Broker attached to me (as the service provider).
