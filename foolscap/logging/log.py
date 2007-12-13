@@ -1,5 +1,5 @@
 
-import os
+import os, time, pickle
 import itertools
 import logging
 import traceback
@@ -31,6 +31,7 @@ levelmap = {
 
 class FoolscapLogger:
     DEFAULT_SIZELIMIT = 100
+    DEFAULT_THRESHOLD = NOISY
 
     def __init__(self):
         self.incarnation = self.get_incarnation()
@@ -40,12 +41,17 @@ class FoolscapLogger:
         self.buffer_sizes[None] = {}
         self.buffers = {} # k: facility or None, v: dict(level->deque)
         self.buffer = collections.deque()
+        self.thresholds = {}
         self._observers = []
+        self._logFile = None
 
     def get_incarnation(self):
         unique = os.urandom(8)
         sequential = None
         return (unique, sequential)
+
+    def logTo(self, flogfile):
+        self._logFile = open(flogfile, "ab")
 
     def addObserver(self, observer):
         self._observers.append(observer)
@@ -65,6 +71,11 @@ class FoolscapLogger:
             self.buffer_sizes[facility] = {}
         self.buffer_sizes[facility][level] = sizelimit
 
+    def set_generation_threshold(self, level, facility=None):
+        self.thresholds[facility] = level
+    def get_generation_threshold(self, facility=None):
+        return self.thresholds.get(facility, self.DEFAULT_THRESHOLD)
+
     def msg(self, *args, **kwargs):
         """
         @param parent: the event number of the most direct parent of this
@@ -76,27 +87,41 @@ class FoolscapLogger:
                   to parent= in a subsequent call to msg()
         """
 
+        if "num" not in kwargs:
+            num = self.seqnum.next()
+        else:
+            num = kwargs['num']
+        facility = kwargs.get('facility')
+        level = kwargs.get("level", OPERATIONAL)
+        threshold = self.get_generation_threshold(facility)
+        if level < threshold:
+            return # not worth logging
+
         if not args:
             message, args = "", ()
         else:
             message, args = args[0], args[1:]
+        message = str(message)
         event = kwargs
+        if "time" not in event:
+            event['time'] = time.time()
         event['message'] = message
         event['args'] = args
         # verify that we can stringify the event correctly
-        if args:
-            s = message % args
-        else:
-            s = message % kwargs
-        if "num" not in event:
-            event['num'] = num = self.seqnum.next()
+        try:
+            if args:
+                s = message % args
+            else:
+                s = message % kwargs
+        except (ValueError, TypeError), ex:
+            #print "problem in log message: %s" % (message,)
+            pass
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
-        facility = kwargs.get("facility")
-        level = event.get("level", NOISY)
         event['incarnation'] = self.incarnation
+        event['num'] = num
         self.add_event(facility, level, event)
-        return event['num']
+        return num
 
     def add_event(self, facility, level, event):
         # send to observers
@@ -125,6 +150,14 @@ class FoolscapLogger:
         while len(buffer) > sizelimit:
             buffer.popleft()
 
+        if self._logFile:
+            e = {"from": "local",
+                 "rx_time": time.time(),
+                 "d": event,
+                 }
+            pickle.dump(e, self._logFile)
+
+
     def setLogPort(self, logport):
         self._logport = logport
     def getLogPort(self):
@@ -138,6 +171,8 @@ msg = theLogger.msg
 setLogDir = theLogger.setLogDir
 explain_facility = theLogger.explain_facility
 set_buffer_size = theLogger.set_buffer_size
+set_generation_threshold = theLogger.set_generation_threshold
+get_generation_threshold = theLogger.get_generation_threshold
 
 # code to bridge twisted.python.log.msg() to foolscap
 
@@ -179,7 +214,7 @@ class TwistedLogBridge:
             # put empty ['args'] in the event to trigger tuple-interpolation
             # instead of dictionary-interpolation. The message text is in
             # ['message']
-            message = " ".join(d['message'])
+            message = " ".join([str(m) for m in d['message']])
             event.pop('message', None)
         event.pop('args', None)
         event['tubID'] = self.tubID
@@ -201,3 +236,9 @@ def setTwistedLogBridge(bridge):
 def bridgeTwistedLogs():
     setTwistedLogBridge(TwistedLogBridge())
 
+
+if "FLOGFILE" in os.environ:
+    theLogger.logTo(os.environ["FLOGFILE"])
+
+if "FLOGTWISTED" in os.environ:
+    bridgeTwistedLogs()

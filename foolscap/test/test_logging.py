@@ -71,11 +71,11 @@ class Advanced(unittest.TestCase):
 
     def testDisplace(self):
         l = log.FoolscapLogger()
-        l.set_buffer_size(log.NOISY, 3)
+        l.set_buffer_size(log.OPERATIONAL, 3)
         l.msg("one")
         l.msg("two")
         l.msg("three")
-        items = l.buffers[None][log.NOISY]
+        items = l.buffers[None][log.OPERATIONAL]
         self.failUnlessEqual(len(items), 3)
         l.msg("four") # should displace "one"
         self.failUnlessEqual(len(items), 3)
@@ -90,7 +90,7 @@ class Advanced(unittest.TestCase):
         l.msg("one", facility="ui")
         l.msg("two")
 
-        items = l.buffers["ui"][log.NOISY]
+        items = l.buffers["ui"][log.OPERATIONAL]
         self.failUnlessEqual(len(items), 1)
         self.failUnlessEqual(items[0]["message"], "one")
 

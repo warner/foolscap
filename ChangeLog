@@ -1,5 +1,21 @@
 2007-12-12  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (FoolscapLogger.set_generation_threshold):
+	implement generation thresholds: don't even record messages if
+	they fall below this threshold. Still needs a lot of usability work.
+	The default is level>=NOISY, which records everything.
+	(FoolscapLogger.logTo): give this a filename, and all log messages
+	will be pickled and written to the given file. Messages are
+	written with the same dict wrapper as 'flogtool gather' uses, so
+	they are displayable by 'flogtool dump' or 'flogtool web-view'.
+	Still needs work, ideally this would be a file to which we dump
+	buffered messages once a problem is detected. To enable this from,
+	say, trial, set os.environ['FLOGFILE'] to a filename. Also, set
+	FLOGTWISTED to enable a twisted.log-to-flog bridge.
+	(FoolscapLogger.msg): implement generation_threshold, also change
+	stringification to survive things like "100%" in the log message.
+	This needs work too, the 'except ValueError' clause is icky.
+
 	* foolscap/pb.py (Tub.brokerAttached): use an eventual-send when
 	informing everyone in waitingForBrokers, to match the
 	asynchronicity of disconnection notifications delivered in
