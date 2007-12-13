@@ -1,7 +1,6 @@
 # -*- test-case-name: foolscap.test.test_negotiate -*-
 
 import os, binascii, time
-from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor
 from twisted.internet.error import ConnectionDone
@@ -11,6 +10,8 @@ from foolscap.eventual import eventually
 from foolscap.tokens import SIZE_LIMIT, ERROR, \
      BananaError, NegotiationError, RemoteNegotiationError
 from foolscap.banana import int2b128
+from foolscap.logging import log
+from foolscap.logging.log import NOISY, OPERATIONAL, WEIRD, UNUSUAL, CURIOUS
 
 crypto_available = False
 try:
@@ -162,7 +163,9 @@ class Negotiation(protocol.Protocol):
     SERVER_TIMEOUT = 60 # you have 60 seconds to complete negotiation, or else
     negotiationTimer = None
 
-    def __init__(self):
+    def __init__(self, logparent=None):
+        self._logparent = log.msg("Negotiation started", level=OPERATIONAL,
+                                  parent=logparent)
         for i in range(self.minVersion, self.maxVersion+1):
             assert hasattr(self, "evaluateNegotiationVersion%d" % i), i
             assert hasattr(self, "acceptDecisionVersion%d" % i), i
@@ -202,8 +205,16 @@ class Negotiation(protocol.Protocol):
         # connectionLost() message is finally delivered.
         self.failureReason = None
 
+    def log(self, *args, **kwargs):
+        if 'parent' not in kwargs:
+            kwargs['parent'] = self._logparent
+        return log.msg(*args, **kwargs)
+
     def initClient(self, connector, targetHost):
         # clients do connectTCP and speak first with a GET
+        self.log("initClient: to target %s" % connector.target,
+                 connection_id=connector.connection_id,
+                 target=connector.target.getTubID())
         self.isClient = True
         self.tub = connector.tub
         self.brokerClass = self.tub.brokerClass
@@ -225,6 +236,7 @@ class Negotiation(protocol.Protocol):
 
     def initServer(self, listener):
         # servers do listenTCP and respond to the GET
+        self.log("initServer", listener=repr(listener))
         self.isClient = False
         self.listener = listener
         self.options = self.listener.options.copy()
@@ -250,7 +262,7 @@ class Negotiation(protocol.Protocol):
     def debug_doTimer(self, name, timeout, call, *args):
         if (self.options.has_key("debug_slow_%s" % name) and
             not self.debugTimers.has_key(name)):
-            log.msg("debug_doTimer(%s)" % name)
+            self.log("debug_doTimer(%s)" % name)
             t = reactor.callLater(timeout, self.debug_fireTimer, name)
             self.debugTimers[name] = (t, [(call, args)])
             cb = self.options["debug_slow_%s" % name]
@@ -316,18 +328,15 @@ class Negotiation(protocol.Protocol):
         # Hello block.
         req = []
         if self.target.encrypted:
-            if self.debugNegotiation:
-                log.msg("sendPlaintextClient: GET for tubID %s"
-                        % self.target.tubID)
+            self.log("sendPlaintextClient: GET for tubID %s" %
+                     self.target.tubID, level=NOISY)
             req.append("GET /id/%s HTTP/1.1" % self.target.tubID)
         else:
-            if self.debugNegotiation:
-                log.msg("sendPlaintextClient: GET for no tubID")
+            self.log("sendPlaintextClient: GET for no tubID", level=NOISY)
             req.append("GET /id/ HTTP/1.1")
         req.append("Host: %s" % self.targetHost)
-        if self.debugNegotiation:
-            log.msg("sendPlaintextClient: wantEncryption=%s" %
-                    self.wantEncryption)
+        self.log("sendPlaintextClient: wantEncryption=%s" %
+                 self.wantEncryption, level=NOISY)
         if self.wantEncryption:
             req.append("Upgrade: TLS/1.0")
         else:
@@ -365,9 +374,9 @@ class Negotiation(protocol.Protocol):
             del self.negotiationTimer
 
     def dataReceived(self, chunk):
-        if self.debugNegotiation:
-            log.msg("dataReceived(isClient=%s,phase=%s,options=%s): '%s'"
-                    % (self.isClient, self.receive_phase, self.options, chunk))
+        self.log("dataReceived(isClient=%s,phase=%s,options=%s): %r"
+                 % (self.isClient, self.receive_phase, self.options, chunk),
+                 level=NOISY)
         if self.receive_phase == ABANDONED:
             return
 
@@ -404,8 +413,7 @@ class Negotiation(protocol.Protocol):
 
         except Exception, e:
             why = Failure()
-            if self.debugNegotiation:
-                log.msg("negotiation had exception: %s" % why)
+            self.log("negotiation had exception", failure=why, level=NOISY)
             if isinstance(e, RemoteNegotiationError):
                 pass # they've already hung up
             else:
@@ -414,8 +422,8 @@ class Negotiation(protocol.Protocol):
                 if isinstance(e, NegotiationError):
                     errmsg = str(e)
                 else:
-                    log.msg("negotiation had internal error:")
-                    log.msg(why)
+                    self.log("negotiation had internal error:", failure=why,
+                             level=UNUSUAL)
                     errmsg = "internal server error, see logs"
                 errmsg = errmsg.replace("\n", " ").replace("\r", " ")
                 if self.send_phase == PLAINTEXT:
@@ -471,24 +479,25 @@ class Negotiation(protocol.Protocol):
             # probably a web browser
             raise BananaError("not right")
         targetTubID = url[4:]
-        if self.debugNegotiation:
-            log.msg("handlePLAINTEXTServer: targetTubID='%s'" % targetTubID)
+        self.log("handlePLAINTEXTServer: targetTubID='%s'" % targetTubID,
+                 level=NOISY)
         if targetTubID == "":
             targetTubID = None
         if isSubstring("Upgrade: TLS/1.0\r\n", header):
             wantEncrypted = True
         else:
             wantEncrypted = False
-        if self.debugNegotiation:
-            log.msg("handlePLAINTEXTServer: wantEncrypted=%s" % wantEncrypted)
+        self.log("handlePLAINTEXTServer: wantEncrypted=%s" % wantEncrypted,
+                 level=NOISY)
         # we ignore the rest of the lines
 
         if wantEncrypted and not crypto_available:
             # this is a confused client, or a bad URL: if we don't have
             # crypto, we couldn't have created a pb:// URL.
-            log.msg("Negotiate.handlePLAINTEXTServer: client wants "
-                    "encryption for TubID=%s but we have no crypto, "
-                    "hanging up on them" % targetTubID)
+            self.log("Negotiate.handlePLAINTEXTServer: client wants "
+                     "encryption for TubID=%s but we have no crypto, "
+                     "hanging up on them" % targetTubID,
+                     level=UNUSUAL)
             # we could just not offer the encryption, but they won't be happy
             # with the results, since they wanted to connect to a specific
             # TubID.
@@ -550,8 +559,7 @@ class Negotiation(protocol.Protocol):
         raise NotImplementedError # TODO
 
     def handlePLAINTEXTClient(self, header):
-        if self.debugNegotiation:
-            log.msg("handlePLAINTEXTClient: header='%s'" % header)
+        self.log("handlePLAINTEXTClient: header='%s'" % header, level=NOISY)
         lines = header.split("\r\n")
         tokens = lines[0].split()
         # TODO: accept a 303 redirect
@@ -574,9 +582,8 @@ class Negotiation(protocol.Protocol):
         # which might actually involve a TLS-encrypted session if that's what
         # the client wanted, but if it isn't then we just "upgrade" to
         # nothing and change modes.
-        if self.debugNegotiation:
-            log.msg("startENCRYPTED(isClient=%s, encrypted=%s)" %
-                    (self.isClient, encrypted))
+        self.log("startENCRYPTED(isClient=%s, encrypted=%s)" %
+                 (self.isClient, encrypted), level=NOISY)
         if encrypted:
             self.startTLS(self.tub.myCertificate)
         self.encrypted = encrypted
@@ -600,9 +607,8 @@ class Negotiation(protocol.Protocol):
             # identity.
             hello['my-tub-id'] = self.myTubID
 
-        if self.debugNegotiation:
-            log.msg("Negotiate.sendHello (isClient=%s): %s" %
-                    (self.isClient, hello))
+        self.log("Negotiate.sendHello (isClient=%s): %s" %
+                 (self.isClient, hello), level=NOISY)
         self.sendBlock(hello)
 
 
@@ -645,9 +651,8 @@ class Negotiation(protocol.Protocol):
             - We are not the master: DECISION is None
         """
 
-        if self.debugNegotiation:
-            log.msg("evaluateHello(isClient=%s): offer=%s" % (self.isClient,
-                                                              offer,))
+        self.log("evaluateHello(isClient=%s): offer=%s" %
+                 (self.isClient, offer), level=NOISY)
         if not offer.has_key('banana-negotiation-range'):
             if offer.has_key('banana-negotiation-version'):
                 msg = ("Peer is speaking foolscap-0.0.5 or earlier, "
@@ -743,8 +748,7 @@ class Negotiation(protocol.Protocol):
             # this is the most common case
             iAmTheMaster = myTubID > theirTubID
 
-        if self.debugNegotiation:
-            log.msg("iAmTheMaster: %s" % iAmTheMaster)
+        self.log("iAmTheMaster: %(master)s", master=iAmTheMaster, level=NOISY)
 
         decision, params = None, None
 
@@ -767,18 +771,21 @@ class Negotiation(protocol.Protocol):
                 # (NAT boxes and laptops that disconnect abruptly are two
                 # ways for a single process to disappear silently and then
                 # reappear with a different IP address).
-                log.msg("UNUSUAL: got offer for an existing connection")
+                lp = self.log("got offer for an existing connection",
+                              level=UNUSUAL)
                 existing = self.tub.brokers[theirTubRef]
-                acceptOffer = self.compareOfferAndExisting(offer, existing)
+                acceptOffer = self.compareOfferAndExisting(offer, existing, lp)
                 if acceptOffer:
                     # drop the old one
-                    log.msg(" accepting new offer, dropping existing connection")
+                    self.log("accepting new offer, dropping existing connection",
+                             parent=lp)
                     err = ConnectionDone("replaced by a new connection")
                     why = Failure(err)
                     existing.shutdown(why)
                 else:
                     # reject the new one
-                    log.msg(" rejecting the offer: we already have one")
+                    self.log("rejecting the offer: we already have one",
+                             parent=lp)
                     raise NegotiationError("Duplicate connection")
 
             if theirTubRef:
@@ -827,8 +834,8 @@ class Negotiation(protocol.Protocol):
 
         if iAmTheMaster:
             # I am the master, so I send the decision
-            if self.debugNegotiation:
-                log.msg("Negotiation.sendDecision: %s" % decision)
+            self.log("Negotiation.sendDecision: %s" % decision,
+                     level=OPERATIONAL)
             # now we send the decision and switch to Banana. they might hang
             # up.
             self.sendDecision(decision, params)
@@ -849,13 +856,33 @@ class Negotiation(protocol.Protocol):
         # changes were made to the offer or decision blocks.
         return self.evaluateNegotiationVersion1(offer)
 
-    def compareOfferAndExisting(self, offer, existing):
+    def compareOfferAndExisting(self, offer, existing, lp):
         """Compare the new offer against the existing connection, and
         decide which to keep.
 
         @return: True to accept the new offer, False to stick with the
                  existing connection.
         """
+
+        def log(*args, **kwargs):
+            if 'parent' not in kwargs:
+                kwargs['parent'] = lp
+            return self.log(*args, **kwargs)
+
+        existing_slave_IR = existing.current_slave_IR
+        existing_seqnum = existing.current_seqnum
+        existing_attempt_id = existing.current_attempt_id
+
+        log("existing connection has attempt_id=%(attempt_id)s, "
+            "slave_IR=%(slave_IR)s, seqnum=%(seqnum)s",
+            attempt_id=existing_attempt_id,
+            slave_IR=existing_slave_IR,
+            seqnum=existing_seqnum)
+
+        # TESTING: force handle-old stuff
+        #lp2 = log("TESTING: forcing use of handle-old logic")
+        #return self.handle_old(offer, existing, 60, lp2)
+
         # step one: does the inbound offer have a my-incarnation header? If
         # not, this is an older peer (<foolscap-0.1.7). We use
         # offer.get("my-incarnation") instead of "my-incarnation" in offer
@@ -866,22 +893,22 @@ class Negotiation(protocol.Protocol):
             # give us enough information to make some of the decisions below.
             # We reject the offer to avoid connection flap, and the
             # situtation won't be worse than it was in 0.1.7 .
+            lp2 = log("pre-0.2.0 peer detected (no my-incarnation"
+                      " or last-connection", level=CURIOUS)
             if self.tub._handle_old_duplicate_connections is not False:
                 # but if we've been configured to do better (with the
                 # 60-second age heuristic), do that.
+                self.log("using handle-old-duplicate-connections", parent=lp2)
                 threshold = self.tub._handle_old_duplicate_connections
-                return self.handle_old(offer, existing, threshold)
+                return self.handle_old(offer, existing, threshold, lp2)
             return False # reject the offer
-
-        existing_slave_IR = existing.current_slave_IR
-        existing_seqnum = existing.current_seqnum
-        existing_attempt_id = existing.current_attempt_id
 
         if offer["my-incarnation"] != existing_slave_IR:
             # this offer is from a different invocation of the peer than we
             # think we're currently talking to. That means the slave has
             # restarted since we made our connection, so clearly our
             # connection is stale. Accept the offer.
+            log("offer is from different peer incarnation than existing")
             return True
         pieces = offer['last-connection'].split()
         offer_master_IR = pieces[0]
@@ -895,6 +922,7 @@ class Negotiation(protocol.Protocol):
             # decision before they sent this offer. This is a normal race
             # between simultaneous connection hints, and we should reject
             # this offer in favor of the winning hint.
+            log("offer is part of same connection attempt as existing")
             return False
 
         if offer_master_IR == "none":
@@ -904,6 +932,7 @@ class Negotiation(protocol.Protocol):
             # attempt to connect to us (their first), we accepted their
             # connection, and the decision message got lost. The client is
             # now trying to connect a second time. Accept the new offer
+            log("peer doesn't remember talking to us")
             return True
 
         if offer_master_IR != self.tub.getIncarnationString():
@@ -916,7 +945,9 @@ class Negotiation(protocol.Protocol):
             # Or, offer_master_IR=none, because they don't remember ever
             # having a connection to us. Again, our existing connection isn't
             # viable, and we should accept their offer.
+            log("pper remembers talking to our past life")
             return True
+
         # at this point, the offer's IR matches our own, so the seqnum is
         # worth comparing
         if offer_master_seqnum == existing_seqnum:
@@ -924,7 +955,9 @@ class Negotiation(protocol.Protocol):
             # connection that we do, and they made a new connection anyways.
             # From this we can conclude that our connection is stale, so we
             # should accept the offer.
+            log("peer knows about existing seqnum")
             return True
+
         if offer_master_seqnum < existing_seqnum:
             # I can think of two ways to get here. The first (which seems
             # more likely by far) is that the client connects successfully,
@@ -957,6 +990,7 @@ class Negotiation(protocol.Protocol):
             # client being unable to connect for the up-to-35-minutes it
             # takes for the server to recognize that the old connection has
             # truly been lost.
+            log("peer knows about old seqnum")
             return True
 
         # it is entirely fair to ask what the point of the seqnum is. I think
@@ -964,18 +998,19 @@ class Negotiation(protocol.Protocol):
 
         # offer_master_seqnum > existing_seqnum indicates something really
         # weird has taken place.
-        log.msg("WEIRD: offer_master_seqnum %d > existing_seqnum %d" %
-                (offer_master_seqnum, existing_seqnum))
+        log("offer_master_seqnum %(offer)d > existing_seqnum %(existing)d",
+            offer=offer_master_seqnum, existing=existing_seqnum, level=WEIRD)
         return False # reject weirdness
 
-    def handle_old(self, offer, existing, threshold):
+    def handle_old(self, offer, existing, threshold, lp):
         # determine the age of the existing broker
         age = time.time() - existing.creation_timestamp
         if age < threshold:
-            log.msg(" the existing broker is too new (%d<%d), rejecting offer"
-                    % (age, threshold))
+            self.log("the existing broker is too new (%d<%d), rejecting offer"
+                     % (age, threshold),
+                     parent=lp)
             return False # reject the offer
-        log.msg(" the existing broker is old enough to replace")
+        self.log("the existing broker is old enough to replace", parent=lp)
         return True # accept the offer
 
     def sendDecision(self, decision, params):
@@ -991,9 +1026,8 @@ class Negotiation(protocol.Protocol):
 
     def handleDECIDING(self, header):
         # this gets called on the non-master side
-        if self.debugNegotiation:
-            log.msg("handleDECIDING(isClient=%s): %s" % (self.isClient,
-                                                         header))
+        self.log("handleDECIDING(isClient=%s): %s" % (self.isClient, header),
+                 level=NOISY)
         if self.debug_doTimer("handleDECIDING", 1,
                               self.handleDECIDING, header):
             # for testing purposes, wait a moment before accepting the
@@ -1011,8 +1045,7 @@ class Negotiation(protocol.Protocol):
         the negotiation from the server. The client must accept this decision
         (and return the connection parameters dict), or raise
         NegotiationError to hang up.negotiationResults."""
-        if self.debugNegotiation:
-            log.msg("Banana.acceptDecision: got %s" % decision)
+        self.log("Banana.acceptDecision: got %s" % decision, level=OPERATIONAL)
 
         version = decision.get('banana-decision-version')
         if not version:
@@ -1049,8 +1082,8 @@ class Negotiation(protocol.Protocol):
         if self.theirTubRef in self.tub.brokers:
             # we're the slave, so we need to drop our existing connection and
             # use the one picked by the master
-            log.msg("UNUSUAL: master told us to use a new connection, "
-                    "so we must drop the existing one")
+            self.log("master told us to use a new connection, "
+                     "so we must drop the existing one", level=UNUSUAL)
             err = ConnectionDone("replaced by a new connection")
             why = Failure(err)
             self.tub.brokers[self.theirTubRef].shutdown(why)
@@ -1061,8 +1094,8 @@ class Negotiation(protocol.Protocol):
             if tubID != "<unauth>":
                 self.tub.slave_table[tubID] = tuple(current_connection.split())
         else:
-            log.msg("UNUSUAL: no current-connection in decision from %s" %
-                    self.theirTubRef)
+            self.log("no current-connection in decision from %s" %
+                     self.theirTubRef, level=UNUSUAL)
 
         params = { 'banana-decision-version': ver,
                    'initial-vocab-table-index': vocab_index,
@@ -1102,8 +1135,7 @@ class Negotiation(protocol.Protocol):
         # We use the MyOptions class to fix up the verify stuff: we request a
         # certificate from the client, but do not verify it against a list of
         # root CAs
-        if self.debugNegotiation:
-            log.msg("startTLS, client=%s" % self.isClient)
+        self.log("startTLS, client=%s" % self.isClient, level=NOISY)
         kwargs = {}
         if cert:
             kwargs['privateKey'] = cert.privateKey.original
@@ -1116,9 +1148,9 @@ class Negotiation(protocol.Protocol):
         # switch over to the new protocol (a Broker instance). This
         # Negotiation protocol goes away after this point.
 
-        if self.debugNegotiation:
-            log.msg("Negotiate.switchToBanana(isClient=%s)" % self.isClient)
-            log.msg(" params: %s" % (params,))
+        lp = self.log("Negotiate.switchToBanana(isClient=%s)" % self.isClient,
+                      level=NOISY)
+        self.log("params: %s" % (params,), parent=lp, level=NOISY)
 
         self.stopNegotiationTimer()
 
@@ -1150,11 +1182,12 @@ class Negotiation(protocol.Protocol):
 
     def negotiationFailed(self):
         reason = self.failureReason
-        if self.debugNegotiation:
-            # TODO: consider logging this unconditionally.. it shouldn't
-            # happen very often, but if it does, it may take a long time to
-            # track down
-            log.msg("Negotiation.negotiationFailed: %s" % reason)
+        # TODO: consider logging this unconditionally.. it shouldn't happen
+        # very often, but if it does, it may take a long time to track down.
+        # ACTUALLY, parallel connection-hints cause the slower connection to
+        # hit here with a duplicate connection reason all the time.
+        self.log("Negotiation.negotiationFailed", failure=reason,
+                 level=OPERATIONAL)
         self.stopNegotiationTimer()
         if self.receive_phase != ABANDONED and self.isClient:
             eventually(self.connector.negotiationFailed, self.factory, reason)
@@ -1162,7 +1195,7 @@ class Negotiation(protocol.Protocol):
         cb = self.options.get("debug_negotiationFailed_cb")
         if cb:
             # note that this gets called with a NegotiationError, not a
-            # Failure
+            # Failure. ACTUALLY: not true, gets a Failure
             eventually(cb, reason)
 
 # TODO: make sure code that examines self.receive_phase handles ABANDONED
@@ -1171,9 +1204,16 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
     # this is for internal use only. Application code should use
     # Tub.getReference(url)
 
-    def __init__(self, tc, host):
+    noisy = False
+
+    def __init__(self, tc, host, logparent):
         self.tc = tc # the TubConnector
         self.host = host
+        self._logparent = logparent
+
+    def log(self, *args, **kwargs):
+        kwargs['parent'] = self._logparent
+        return log.msg(*args, **kwargs)
 
     def __repr__(self):
         # make it clear which remote Tub we're trying to connect to
@@ -1196,11 +1236,20 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
     def startedConnecting(self, connector):
         self.connector = connector
 
+    def startFactory(self):
+        self.log("Starting factory %r" % self)
+        return protocol.ClientFactory.startFactory(self)
+    def stopFactory(self):
+        self.log("Stopping factory %r" % self)
+        return protocol.ClientFactory.stopFactory(self)
+
     def disconnect(self):
+        self.log("told to disconnect")
         self.connector.disconnect()
 
     def buildProtocol(self, addr):
-        proto = self.tc.tub.negotiationClass() # this is usually Negotiation
+        nc = self.tc.tub.negotiationClass # this is usually Negotiation
+        proto = nc(self._logparent)
         proto.initClient(self.tc, self.host)
         proto.factory = self
         return proto
@@ -1232,6 +1281,11 @@ class TubConnector:
     timer = None
 
     def __init__(self, parent, tubref):
+        self._logparent = log.msg("TubConnector created from %(fromtubid)s"
+                                  " to %(totubid)s",
+                                  fromtubid=parent.tubID,
+                                  totubid=tubref.getTubID(),
+                                  level=OPERATIONAL)
         self.tub = parent
         self.target = tubref
         self.connection_id = binascii.b2a_hex(os.urandom(8))
@@ -1248,6 +1302,11 @@ class TubConnector:
         # stop connecting (either because one of the connections succeeded,
         # or because someone told us to give up).
         self.pendingConnections = {}
+
+
+    def log(self, *args, **kwargs):
+        kwargs['parent'] = self._logparent
+        return log.msg(*args, **kwargs)
 
     def connect(self):
         """Begin the connection process. This should only be called once.
@@ -1285,7 +1344,8 @@ class TubConnector:
             self.attemptedLocations.append(location)
             host, port = location.split(":")
             port = int(port)
-            f = TubConnectorClientFactory(self, host)
+            lp = self.log("connecting to %s", location)
+            f = TubConnectorClientFactory(self, host, lp)
             c = reactor.connectTCP(host, port, f)
             self.pendingConnections[f] = c
             # the tcp.Connector that we get back from reactor.connectTCP will
@@ -1327,6 +1387,8 @@ class TubConnector:
         # this is called if protocol negotiation cannot be established, or if
         # the connection is closed for any reason prior to switching to the
         # Banana protocol
+        self.log("negotiationFailed for factory %s" % factory, level=NOISY,
+                 failure=reason)
         assert isinstance(reason, Failure), \
                "Hey, %s isn't a Failure" % (reason,)
         if (not self.failureReason or
@@ -1341,6 +1403,7 @@ class TubConnector:
     def negotiationComplete(self, factory):
         # 'factory' has just completed negotiation, so abandon all the other
         # connection attempts
+        self.log("negotiationComplete, %s won" % factory)
         self.active = False
         if self.timer:
             self.timer.cancel()
@@ -1373,10 +1436,10 @@ class TubConnector:
         if (self.failureReason.check(RemoteNegotiationError) and
             isSubstring(self.failureReason.value.args[0],
                         "Duplicate connection")):
-            log.msg("TubConnector.checkForFailure: connection attempt "
-                    "failed because the other end decided ours was a "
-                    "duplicate connection, so we won't signal the "
-                    "failure here")
+            self.log("TubConnector.checkForFailure: connection attempt "
+                     "failed because the other end decided ours was a "
+                     "duplicate connection, so we won't signal the "
+                     "failure here")
             return
         self.failed()
 
@@ -1392,4 +1455,5 @@ class TubConnector:
             return
         # we have no more outstanding connections (either in progress or in
         # negotiation), so this connector is finished.
+        self.log("connectorFinished")
         self.tub.connectorFinished(self)

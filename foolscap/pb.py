@@ -4,7 +4,6 @@ import os.path, weakref, binascii
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
 from twisted.application import service, strports
-from twisted.python import log
 from twisted.python.failure import Failure
 
 from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
@@ -12,7 +11,9 @@ from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError
 from foolscap.reconnector import Reconnector
 from foolscap.logging import log as flog
+from foolscap.logging import log
 from foolscap.logging import publish as flog_publish
+from foolscap.logging.log import WEIRD, UNUSUAL
 
 crypto_available = False
 try:
@@ -31,6 +32,8 @@ class Listener(protocol.ServerFactory):
 
     Unauthenticated Tubs use a TubID of 'None'. There may be at most one such
     Tub attached to any given Listener."""
+
+    noisy = False
 
     # this also serves as the ServerFactory
 
@@ -120,10 +123,20 @@ class Listener(protocol.ServerFactory):
     def removeRedirect(self, tubID):
         del self.redirects[tubID]
 
+    def startFactory(self):
+        log.msg("Starting factory %r" % self)
+        return protocol.ServerFactory.startFactory(self)
+    def stopFactory(self):
+        log.msg("Stopping factory %r" % self)
+        return protocol.ServerFactory.stopFactory(self)
+        
+
     def buildProtocol(self, addr):
         """Return a Broker attached to me (as the service provider).
         """
-        proto = self.negotiationClass()
+        lp = log.msg("%s accepting connection from %s" % (self, addr),
+                     addr=(addr.host, addr.port))
+        proto = self.negotiationClass(logparent=lp)
         proto.initServer(self)
         proto.factory = self
         return proto
@@ -388,7 +401,7 @@ class Tub(service.MultiService):
 
     def log(self, *args, **kwargs):
         kwargs['tubID'] = self.tubID
-        return flog.msg(*args, **kwargs)
+        return log.msg(*args, **kwargs)
 
     def createCertificate(self):
         # this is copied from test_sslverify.py
@@ -494,8 +507,8 @@ class Tub(service.MultiService):
             # which never shut down a Tub aren't going to care), and it is
             # more important to let application code run normally than to
             # force an error here.
-            log.msg("Tub.connectorFinished: WEIRD, %s is not in %s"
-                    % (c, self._activeConnectors))
+            self.log("Tub.connectorFinished: WEIRD, %s is not in %s"
+                     % (c, self._activeConnectors), level=WEIRD)
             return
         self._activeConnectors.remove(c)
         if not self.running and not self._activeConnectors:
@@ -803,8 +816,8 @@ class Tub(service.MultiService):
         if self.running:
             rc.startConnecting(self)
         else:
-            log.msg("Tub.connectTo(%s) queued until Tub.startService called"
-                    % _sturdyOrURL)
+            self.log("Tub.connectTo(%s) queued until Tub.startService called"
+                     % _sturdyOrURL, level=UNUSUAL)
         self.reconnectors.append(rc)
         return rc
 

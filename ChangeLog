@@ -1,5 +1,13 @@
 2007-12-12  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py: covert logging to flogging (i.e. call
+	foolscap.logging.log.msg instead of twisted.log.msg). This gives
+	us parent/child structure, more useful severity levels, improves
+	display of Failure instances, and will give us more data to work
+	with in the future as the foolscap.logging tools mature.
+	* foolscap/pb.py: same
+	* foolscap/test/test_negotiate.py: same
+
 	* bin/flogtool: move all usage.Options into the file that contains
 	the implementations: TailOptions are moved to
 	foolscap.logging.tail, etc.
