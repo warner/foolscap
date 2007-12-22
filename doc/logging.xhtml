@@ -294,10 +294,10 @@ filter expressions that use these parameters as search criteria.</p>
 <p>There are a number of arguments you can add:</p>
 
 <pre class="python">
-parent = log.msg(facility="initialization", level=log.INFREQUENT,
+parent = log.msg(facility="app.initialization", level=log.INFREQUENT,
                  msg="hello world", stacktrace=False)
-log.msg(facility="initialization", level=log.OPERATIONAL, msg="init storage",
-        stacktrace=False, parent=parent)
+log.msg(facility="app.storage", level=log.OPERATIONAL,
+        msg="init storage", stacktrace=False, parent=parent)
 </pre>
 
 <p>The list of levels is defined in <code>foolscap/log.py</code>, and looks
@@ -365,13 +365,13 @@ of checkboxes, one for each facility name discovered in the logged data.
 Facility names should be divided along functional boundaries, so that
 developers who do not care about, say, UI events can turn all of them off
 with a single click. Related facilities can be given names separated with
-slashes, for example "ui/internationalization" and "ui/toolkit", and the
+dots, for example "ui.internationalization" and "ui.toolkit", and the
 viewer app may make it easy to enable or disable entire groups at once.
 Facilities can also be associated with more descriptive strings by calling
 <code>log.explain_facility</code> at least once:</p>
 
 <pre class="python">
-log.explain_facility("ui/web", "rendering pages for the web UI")
+log.explain_facility("ui.web", "rendering pages for the web UI")
 </pre>
 
 <h2>Configuring Logging</h2>

@@ -1,5 +1,8 @@
 2007-12-21  Brian Warner  <warner@lothar.com>
 
+	* doc/logging.xhtml: define facilities as dot-separated instead of
+	slash-separated, to match stdlib logging package
+
 	* foolscap/__init__.py: bump revision to 0.2.2+ while between releases
 	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
 
