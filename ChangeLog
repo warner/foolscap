@@ -1,3 +1,50 @@
+2007-12-23  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/log.py (NOISY): log levels are now defined in
+	terms of their stdlib 'logging' counterparts, so they're ints from
+	a larger scale (10 to 40). This removes the need for 'levelmap',
+	and allows log levels to be compared better.
+	(FoolscapLogger.msg): all messages get a ['level'] key (which
+	defaults to OPERATIONAL), so that observers and viewers don't have
+	to define a default or handle a missing key.
+	(FoolscapLogger.add_event): observers are now a simple callable,
+	and they're always invoked with eventually(). log-to-file is now
+	done with an observer, as are remote subscribers.
+	(FoolscapLogger.logTo): remove this, log-to-file is now done with
+	an observer
+	(LogFileObserver): new class to implement log-to-file. This
+	accepts a minimum level to pay attention to. Pickling is done at
+	level '2'. It will compress the output if the filename ends in
+	.bz2, and will use twisted's reactor.addSystemEventTrigger to try
+	and close the file at shutdown. This is good enough for trial test
+	cases, since trial helpfully fires this trigger for us after all
+	test cases have been run.
+	(FLOGFILE): if the $FLOGFILE environment variable is set, write
+	all log events of $FLOGLEVEL or higher to the named file (opened
+	at import time). Set FLOGLEVEL=1 to include NOISY debug messages.
+	Set FLOGTWISTED=1 to get twisted.log events in the same file. Use
+	all three when running trial tests to see what foolscap is saying
+	as the tests run, but note that you can't do
+	FLOGFILE=_trial_temp/flog.out.bz2 because foolscap is usually
+	imported before trial creates (or clears) that directory, thus
+	deleting the newly-created flogfile. Applications are expected to
+	use a better API to control log-to-file, but it doesn't really
+	exist yet.
+
+	* foolscap/logging/dumper.py (LogDumper): accept .bz2 files
+	* foolscap/logging/web.py (WebViewer.get_events): same
+
+	* foolscap/logging/publish.py (LogPublisher): observers are now
+	simple callables, so build a wrapper to do the callRemote for us.
+	Track both the wrapper and the subscriber, since we need to use
+	them both at unsubscribe time.
+
+	* foolscap/test/test_logging.py (Basic.testLog): make sure we can
+	tolerate '%' in log messages. (this needs to be changed, see #39).
+	Also test the generation threshold, and using num=
+	(Advanced.testObserver): test the new observer-as-callable scheme
+	(Advanced.testPriorities): facility names are now dot-separated
+
 2007-12-21  Brian Warner  <warner@lothar.com>
 
 	* doc/logging.xhtml: define facilities as dot-separated instead of

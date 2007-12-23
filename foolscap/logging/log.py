@@ -1,32 +1,20 @@
 
-import os, time, pickle
+import os, sys, time, pickle
 import itertools
 import logging
 import traceback
 import collections
 from twisted.python import log as twisted_log
+from foolscap import eventual
 
-(NOISY,
- OPERATIONAL,
- UNUSUAL,
- INFREQUENT,
- CURIOUS,
- WEIRD,
- SCARY,
- BAD,
- ) = range(8)
-
-levelmap = {
-    NOISY: logging.DEBUG,
-    OPERATIONAL: logging.INFO,
-    UNUSUAL: logging.WARNING,
-    INFREQUENT: logging.WARNING,
-    CURIOUS: logging.WARNING,
-    WEIRD: logging.ERROR,
-    SCARY: logging.ERROR,
-    BAD: logging.CRITICAL,
-    }
-
+NOISY = logging.DEBUG # 10
+OPERATIONAL = logging.INFO # 20
+UNUSUAL = logging.INFO+3
+INFREQUENT = logging.INFO+5
+CURIOUS = logging.INFO+8
+WEIRD = logging.WARNING # 30
+SCARY = logging.WARNING+5
+BAD = logging.ERROR # 40
 
 
 class FoolscapLogger:
@@ -43,15 +31,11 @@ class FoolscapLogger:
         self.buffer = collections.deque()
         self.thresholds = {}
         self._observers = []
-        self._logFile = None
 
     def get_incarnation(self):
         unique = os.urandom(8)
         sequential = None
         return (unique, sequential)
-
-    def logTo(self, flogfile):
-        self._logFile = open(flogfile, "ab")
 
     def addObserver(self, observer):
         self._observers.append(observer)
@@ -92,7 +76,9 @@ class FoolscapLogger:
         else:
             num = kwargs['num']
         facility = kwargs.get('facility')
-        level = kwargs.get("level", OPERATIONAL)
+        if "level" not in kwargs:
+            kwargs['level'] = OPERATIONAL
+        level = kwargs["level"]
         threshold = self.get_generation_threshold(facility)
         if level < threshold:
             return # not worth logging
@@ -126,11 +112,7 @@ class FoolscapLogger:
     def add_event(self, facility, level, event):
         # send to observers
         for o in self._observers:
-            o.callRemoteOnly("msg", event)
-            #d = o.callRemote("msg", d)
-            #def _oops(f):
-            #    print "PUBLISH FAILED: %s" % f
-            #d.addErrback(_oops)
+            eventual.eventually(o, event)
 
         # buffer locally
         d1 = self.buffers.get(facility)
@@ -149,13 +131,6 @@ class FoolscapLogger:
             sizelimit = self.DEFAULT_SIZELIMIT
         while len(buffer) > sizelimit:
             buffer.popleft()
-
-        if self._logFile:
-            e = {"from": "local",
-                 "rx_time": time.time(),
-                 "d": event,
-                 }
-            pickle.dump(e, self._logFile)
 
 
     def setLogPort(self, logport):
@@ -236,9 +211,48 @@ def setTwistedLogBridge(bridge):
 def bridgeTwistedLogs():
     setTwistedLogBridge(TwistedLogBridge())
 
+class LogFileObserver:
+    def __init__(self, filename, level=OPERATIONAL):
+        if filename.endswith(".bz2"):
+            import bz2
+            self._logFile = bz2.BZ2File(filename, "w")
+        else:
+            self._logFile = open(filename, "ab")
+        self._level = level
+        from twisted.internet import reactor
+        reactor.addSystemEventTrigger("after", "shutdown", self._stop)
 
-if "FLOGFILE" in os.environ:
-    theLogger.logTo(os.environ["FLOGFILE"])
+    def msg(self, event):
+        threshold = self._level
+        #if event.get('facility', '').startswith('foolscap'):
+        #    threshold = UNUSUAL
+        if event['level'] >= threshold:
+            e = {"from": "local",
+                 "rx_time": time.time(),
+                 "d": event,
+                 }
+            pickle.dump(e, self._logFile, 2)
+
+    def _stop(self):
+        self._logFile.close()
+        del self._logFile
+
+
+# remove the key, so any child processes won't try to log to (and thus
+# clobber) the same file. This doesn't always seem to work reliably
+# (allmydata.test.test_runner.RunNode.test_client uses os.system and the
+# child process still has $FLOGFILE set).
+
+_flogfile = os.environ.pop("FLOGFILE", None)
+if _flogfile:
+    try:
+        _floglevel = int(os.environ.get("FLOGLEVEL", str(OPERATIONAL)))
+        lfo = LogFileObserver(_flogfile, _floglevel)
+        theLogger.addObserver(lfo.msg)
+        #theLogger.set_generation_threshold(UNUSUAL, "foolscap.negotiation")
+    except IOError:
+        print >>sys.stderr, "FLOGFILE: unable to write to %s, ignoring" % \
+              (_flogfile,)
 
 if "FLOGTWISTED" in os.environ:
     bridgeTwistedLogs()

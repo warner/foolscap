@@ -8,7 +8,7 @@ from twisted.python import log as twisted_log
 import foolscap
 from foolscap.logging import gatherer, log
 from foolscap.logging.interfaces import RILogObserver
-from foolscap.eventual import flushEventualQueue
+from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
 
 crypto_available = False
@@ -33,9 +33,11 @@ class Basic(unittest.TestCase):
         l.msg("two")
         l.msg("three")
         l.msg("one=%d, two=%d", 1, 2)
+        l.msg("survive 100% of weird inputs")
         l.msg("foo=%(foo)s, bar=%(bar)s", foo="foo", bar="bar")
         l.msg() # useless, but make sure it doesn't crash
         l.msg("ui message", facility="ui")
+        l.msg("so boring it won't even be generated", level=log.NOISY-1)
         l.msg("blah blah", level=log.NOISY)
         l.msg("opening file", level=log.OPERATIONAL)
         l.msg("funny, that doesn't usually happen", level=log.UNUSUAL)
@@ -59,6 +61,7 @@ class Basic(unittest.TestCase):
         l.msg("fourth step", parent=p1)
         l.msg("third step deferred activity finally completed", parent=p2)
         l.msg("operation complete", level=log.OPERATIONAL, parent=p1)
+        l.msg("override number, for some unknown reason", num=45)
 
     def testTheLogger(self):
         log.msg("This goes to the One True Logger")
@@ -68,6 +71,46 @@ class Basic(unittest.TestCase):
         t.log("this goes into the tub")
 
 class Advanced(unittest.TestCase):
+
+    def testObserver(self):
+        l = log.FoolscapLogger()
+        out = []
+        l.addObserver(out.append)
+        l.set_generation_threshold(log.OPERATIONAL)
+        l.msg("one")
+        l.msg("two")
+        l.msg("ignored", level=log.NOISY)
+        d = fireEventually()
+        def _check(res):
+            self.failUnlessEqual(len(out), 2)
+            self.failUnlessEqual(out[0]["message"], "one")
+            self.failUnlessEqual(out[1]["message"], "two")
+        d.addCallback(_check)
+        return d
+
+    def testFileObserver(self):
+        l = log.FoolscapLogger()
+        ob = log.LogFileObserver("observer-log.out")
+        l.addObserver(ob.msg)
+        l.msg("one")
+        l.msg("two")
+        d = fireEventually()
+        def _check(res):
+            l.removeObserver(ob.msg)
+            ob._logFile.close()
+            f = open("observer-log.out", "rb")
+            events = []
+            while True:
+                try:
+                    e = pickle.load(f)
+                    events.append(e)
+                except EOFError:
+                    break
+            self.failUnlessEqual(len(events), 2)
+            self.failUnlessEqual(events[0]["from"], "local")
+            self.failUnlessEqual(events[1]["d"]["message"], "two")
+        d.addCallback(_check)
+        return d
 
     def testDisplace(self):
         l = log.FoolscapLogger()
@@ -113,6 +156,7 @@ class Advanced(unittest.TestCase):
         l = log.FoolscapLogger()
         l.set_buffer_size(log.NOISY, 3)
         l.set_buffer_size(log.WEIRD, 3)
+        l.set_buffer_size(log.WEIRD, 4, "new.facility")
 
         l.msg("one", level=log.WEIRD)
         l.msg("two", level=log.NOISY)
