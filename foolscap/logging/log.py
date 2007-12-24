@@ -108,7 +108,9 @@ class FoolscapLogger:
         elif "message" in event:
             event['message'] = str(event['message'])
         elif args:
-            event['message'], event['args'] = str(args[0]), args[1:]
+            event['message'], posargs = str(args[0]), args[1:]
+            if posargs:
+                event['args'] = posargs
         else:
             event['message'] = ""
 

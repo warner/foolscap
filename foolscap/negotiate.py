@@ -753,7 +753,7 @@ class Negotiation(protocol.Protocol):
             # this is the most common case
             iAmTheMaster = myTubID > theirTubID
 
-        self.log("iAmTheMaster: %(master)s", master=iAmTheMaster)
+        self.log(format="iAmTheMaster: %(master)s", master=iAmTheMaster)
 
         decision, params = None, None
 
@@ -876,7 +876,7 @@ class Negotiation(protocol.Protocol):
         existing_slave_IR = existing.current_slave_IR
         existing_seqnum = existing.current_seqnum
 
-        log("existing connection has slave_IR=%(slave_IR)s, seqnum=%(seqnum)s",
+        log(format="existing connection has slave_IR=%(slave_IR)s, seqnum=%(seqnum)s",
             slave_IR=existing_slave_IR, seqnum=existing_seqnum)
 
         # TESTING: force handle-old stuff
@@ -989,7 +989,7 @@ class Negotiation(protocol.Protocol):
 
         # offer_master_seqnum > existing_seqnum indicates something really
         # weird has taken place.
-        log("offer_master_seqnum %(offer)d > existing_seqnum %(existing)d",
+        log(format="offer_master_seqnum %(offer)d > existing_seqnum %(existing)d",
             offer=offer_master_seqnum, existing=existing_seqnum, level=WEIRD)
         return False # reject weirdness
 
@@ -1272,8 +1272,8 @@ class TubConnector:
     timer = None
 
     def __init__(self, parent, tubref):
-        self._logparent = log.msg("TubConnector created from %(fromtubid)s"
-                                  " to %(totubid)s",
+        self._logparent = log.msg(format="TubConnector created from "
+                                  "%(fromtubid)s to %(totubid)s",
                                   fromtubid=parent.tubID,
                                   totubid=tubref.getTubID(),
                                   level=OPERATIONAL)

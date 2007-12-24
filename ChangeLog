@@ -1,5 +1,9 @@
 2007-12-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (FoolscapLogger.msg): only record
+	e['args'] if there were any, to avoid spurious formatting attempts
+	* foolscap/negotiate.py: update log.msg calls to use format=
+
 	* foolscap/logging/log.py (format_message): refactor event
 	formatting into a separate function. Switch to using Twisted's
 	style of format= argument to indicate that we want to use
