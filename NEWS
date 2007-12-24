@@ -1,5 +1,86 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.2.3 (24 Dec 2007)
+
+** Compatibilty
+
+All releases between 0.1.3 and 0.2.3 (inclusive) are fully wire-compatible.
+
+** Bug Fixes
+
+RemoteReference.getSturdyRef() didn't work (due to bitrot). It has been
+fixed.
+
+** foolscap.logging Changes
+
+This release is mostly about flogging improvements: some bugs and misfeatures
+were fixed:
+
+*** tolerate '%' in log message format strings
+
+Dictionary-style kwarg formatting is now done with a twisted-style style
+format= argument instead of happening implicitly. That means the acceptable
+ways to call foolscap.logging.log.msg are:
+
+ log.msg("plain string")
+ log.msg("no args means use 0% interpolation")
+ log.msg("pre-interpolated: %d apples" % apples)
+ log.msg("posargs: %d apples and %d oranges", apples, oranges)
+ log.msg(format="kwargs: %(numapples)d apples", numapples=numapples)
+
+The benefit of the latter two forms are that the arguments are recorded
+separately in the event dictionary, so viewing tools can filter on the
+structured data, think of something like:
+
+  [e for e in allEvents if e.get("numapples",0) > 4]
+
+*** log facility names are now dot-separated, to match stdlib logging
+*** log levels are derived from numerical stdlib logging levels
+*** $FLOGFILE to capture flog events during 'trial' runs
+
+One challenge of the flogging system is that, once an application was changed
+to write events to flogging instead of twisted's log, those events do not
+show up in the normal places where twisted writes its logfiles. For full
+applications this will be less of an issue, because application startup will
+tell flogging where events should go (flogging is intended to supplant
+twisted logging for these applications). But for events emitted during unit
+tests, such as those driven by Trial, these events would get lost.
+
+To address this problem, the 0.2.3 flogging code looks for the "FLOGFILE"
+environment variable at import time. This specifies a filename where flog
+events (a series of pickled event dictionaries) should be written. The file
+is opened at import time, events are written during the lifetime of the
+process, then the file is closed at shutdown using a Twisted "system event
+trigger" (which happens to be enough to work properly under Trial: other
+environments may not work so well). If the FLOGFILE filename ends in .bz2,
+the event pickles will be compressed, which is highly recommended because it
+can result in a 30x space savings (and e.g. the Tahoe unit test run results
+in 90MB of uncompressed events). All 'flogtool' modes know how to handle a
+.bz2 compressed flogfile as well as an uncompressed one.
+
+The "FLOGTWISTED" environment variable, if set, will cause this same code to
+bridge twisted log messages into the flogfile. This makes it easier to see
+the relative ordering of Twisted actions and foolscap/application events.
+(without this it becomes very hard to correlate the two sources of events).
+
+The "FLOGLEVEL" variable specifies a minimum severity level that will be put
+into the flogfile. This defaults to "1", which puts pretty much everything
+into the file. The idea is that, for tests, you might as well record
+everything, and use the filtering tools to control the display and isolate
+the important events. Real applications will use more sophisticated tradeoffs
+between disk space and interpretation effort.
+
+The recommended way to run Trial on a unit test suite for an application that
+uses Foolscap is:
+
+ FLOGFILE=flog.out FLOGTWISTED=1 trial PACKAGENAME
+
+Note that the logfile cannot be placed in _trial_temp/, because trial deletes
+that directory after flogging creates the logfile, so the logfile would get
+deleted too. Also note that the file created by $FLOGFILE is truncated on
+each run of the program.
+
+
 * Release 0.2.2 (12 Dec 2007)
 
 ** Compatibilty

@@ -1,5 +1,7 @@
 2007-12-24  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the upcoming release
+
 	* foolscap/logging/log.py (LogFileObserver.__init__): open the
 	flogfile with mode "wb" instead of "a", so that both compressed
 	and uncompressed files work the same way. This truncates the file
