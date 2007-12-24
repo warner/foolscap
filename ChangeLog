@@ -1,5 +1,10 @@
 2007-12-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (LogFileObserver.__init__): open the
+	flogfile with mode "wb" instead of "a", so that both compressed
+	and uncompressed files work the same way. This truncates the file
+	on each run instead of appending to it.
+
 	* foolscap/broker.py (Broker.getRemoteInterfaceByName): remove
 	duplicate definition of method, detected by pyflakes
 	* foolscap/test/test_banana.py: change import of names from

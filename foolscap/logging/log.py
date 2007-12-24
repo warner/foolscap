@@ -235,7 +235,7 @@ class LogFileObserver:
             import bz2
             self._logFile = bz2.BZ2File(filename, "w")
         else:
-            self._logFile = open(filename, "ab")
+            self._logFile = open(filename, "wb")
         self._level = level
         from twisted.internet import reactor
         reactor.addSystemEventTrigger("after", "shutdown", self._stop)
