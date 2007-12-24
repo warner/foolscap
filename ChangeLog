@@ -1,3 +1,18 @@
+2007-12-24  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/log.py (format_message): refactor event
+	formatting into a separate function. Switch to using Twisted's
+	style of format= argument to indicate that we want to use
+	keyword-argument formatting. Closes #39.
+	(FoolscapLogger.msg): same, use format_message() to test whether
+	the event is stringifiable or not.
+	(TwistedLogBridge._old_twisted_log_observer): copy dict directly
+	if there's a format= kwarg, or stringify the message portion if
+	there isn't. I *think* this ought to match what twisted does.
+	* foolscap/logging/dumper.py (LogDumper.print_event): same
+	* foolscap/logging/web.py (LogEvent.to_html): use format_message
+	* foolscap/test/test_logging.py (Basic.testLog): improve tests
+
 2007-12-23  Brian Warner  <warner@lothar.com>
 
 	* foolscap/negotiate.py (Negotiation.__init__): log everything

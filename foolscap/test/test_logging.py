@@ -31,10 +31,10 @@ class Basic(unittest.TestCase):
         l.explain_facility("ui", "this terse string fully describes the gui")
         l.msg("one")
         l.msg("two")
-        l.msg("three")
+        l.msg(message="three")
         l.msg("one=%d, two=%d", 1, 2)
         l.msg("survive 100% of weird inputs")
-        l.msg("foo=%(foo)s, bar=%(bar)s", foo="foo", bar="bar")
+        l.msg(format="foo=%(foo)s, bar=%(bar)s", foo="foo", bar="bar")
         l.msg() # useless, but make sure it doesn't crash
         l.msg("ui message", facility="ui")
         l.msg("so boring it won't even be generated", level=log.NOISY-1)
@@ -262,7 +262,7 @@ class Publish(unittest.TestCase):
                 self.failUnlessEqual(msgs[1]["tubID"], t.tubID)
                 self.failUnlessEqual(msgs[2]["message"], "message 3 here")
                 self.failUnlessEqual(msgs[2]["tubID"], None)
-                self.failUnlessEqual(msgs[3]["message"], "%(foo)s is foo")
+                self.failUnlessEqual(msgs[3]["format"], "%(foo)s is foo")
                 self.failUnlessEqual(msgs[3]["foo"], "foo")
             d.addCallback(_check_observer)
             def _done(res):

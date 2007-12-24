@@ -167,14 +167,7 @@ class LogEvent:
         d = self.e['d']
         time_s = time.strftime("%H:%M:%S", time.localtime(d['time']))
         time_s = time_s + " %.4f" % (d['time'] - int(d['time']))
-        try:
-            if d['args']:
-                msg = d['message'] % d['args']
-            else:
-                msg = d['message'] % d
-        except (ValueError, TypeError):
-            msg = d['message'] + " [formatting failed]"
-        msg = html.escape(msg)
+        msg = html.escape(log.format_message(d))
         if 'failure' in d:
             lines = str(d['failure']).split("\n")
             html_lines = [html.escape(line) for line in lines]

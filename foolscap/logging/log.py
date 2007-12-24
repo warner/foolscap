@@ -17,6 +17,24 @@ SCARY = logging.WARNING+5
 BAD = logging.ERROR # 40
 
 
+def format_message(e):
+    try:
+        if "format" in e:
+            assert isinstance(e['format'], str)
+            return e['format'] % e
+        elif "args" in e:
+            assert "message" in e
+            assert isinstance(e['message'], str)
+            return e['message'] % e['args']
+        elif "message" in e:
+            assert isinstance(e['message'], str)
+            return e['message']
+        else:
+            return ""
+    except (ValueError, TypeError):
+        return e.get('message', "[no message]") + " [formatting failed]"
+
+
 class FoolscapLogger:
     DEFAULT_SIZELIMIT = 100
     DEFAULT_THRESHOLD = NOISY
@@ -83,24 +101,25 @@ class FoolscapLogger:
         if level < threshold:
             return # not worth logging
 
-        if not args:
-            message, args = "", ()
-        else:
-            message, args = args[0], args[1:]
-        message = str(message)
         event = kwargs
+
+        if "format" in event:
+            pass
+        elif "message" in event:
+            event['message'] = str(event['message'])
+        elif args:
+            event['message'], event['args'] = str(args[0]), args[1:]
+        else:
+            event['message'] = ""
+
         if "time" not in event:
             event['time'] = time.time()
-        event['message'] = message
-        event['args'] = args
+
         # verify that we can stringify the event correctly
         try:
-            if args:
-                s = message % args
-            else:
-                s = message % kwargs
-        except (ValueError, TypeError), ex:
-            #print "problem in log message: %s" % (message,)
+            format_message(event)
+        except:
+            print "problem in log message: %s" % (event,)
             pass
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
@@ -183,17 +202,14 @@ class TwistedLogBridge:
         if "format" in d:
             # 'message' will be treated as a format string, with the rest of
             # the arguments as its % dictionary.
-            message = d['format']
-            del event['format']
+            pass
         else:
-            # put empty ['args'] in the event to trigger tuple-interpolation
-            # instead of dictionary-interpolation. The message text is in
-            # ['message']
-            message = " ".join([str(m) for m in d['message']])
-            event.pop('message', None)
+            # no string interpolation, but if there are multiple args, then
+            # join them together, to match what twisted does.
+            event['message'] = " ".join([str(m) for m in d['message']])
         event.pop('args', None)
         event['tubID'] = self.tubID
-        msg(message, **event)
+        msg(**event)
 
 theTwistedLogBridge = None
 

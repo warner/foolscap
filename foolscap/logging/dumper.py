@@ -2,6 +2,7 @@
 import sys, pickle
 from twisted.python import usage
 from foolscap.logging.tail import short_tubid_b2a
+from foolscap.logging.log import format_message
 
 class DumpOptions(usage.Options):
     synopsis = "Usage: flogtool dump DUMPFILE.pickle"
@@ -32,13 +33,7 @@ class LogDumper:
         if options['just-numbers']:
             print when, d.get('num')
             return
-        try:
-            if d['args']:
-                text = d['message'] % d['args']
-            else:
-                text = d['message'] % d
-        except (ValueError, TypeError):
-            text = d['message'] + " [formatting failed]"
+        text = format_message(d)
 
         t = "%s %r: %s" % (short, when, text)
         if options['verbose']:
