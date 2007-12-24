@@ -283,10 +283,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
         if marker in self.disconnectWatchers:
             self.disconnectWatchers.remove(marker)
 
-    # methods to handle RemoteInterfaces
-    def getRemoteInterfaceByName(self, name):
-        return remoteinterface.RemoteInterfaceRegistry[name]
-
     # methods to send my Referenceables to the other side
 
     def getTrackerForMyReference(self, puid, obj):

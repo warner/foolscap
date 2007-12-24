@@ -6,9 +6,9 @@ from twisted.python.components import registerAdapter
 from twisted.internet import defer
 
 from foolscap.tokens import ISlicer, Violation, BananaError
-from foolscap.tokens import BananaFailure, \
+from foolscap.tokens import BananaFailure, tokenNames, \
      OPEN, CLOSE, ABORT, INT, LONGINT, NEG, LONGNEG, FLOAT, STRING
-from foolscap import slicer, schema, tokens, storage, banana
+from foolscap import slicer, schema, storage, banana
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
 from foolscap.constraint import IConstraint
@@ -1045,19 +1045,17 @@ class ErrorfulUnslicer(slicer.BaseUnslicer):
 
     def openerCheckToken(self, typebyte, size, opentype):
         if self.debug:
-            print "ErrorfulUnslicer.openerCheckToken(%s)" \
-                  % tokens.tokenNames[typebyte]
+            print "ErrorfulUnslicer.openerCheckToken(%s)" % tokenNames[typebyte]
         if self.mode == "openerCheckToken":
             raise Violation("boom")
         return slicer.BaseUnslicer.openerCheckToken(self, typebyte,
                                                     size, opentype)
     def checkToken(self, typebyte, size):
         if self.debug:
-            print "ErrorfulUnslicer.checkToken(%s)" \
-                  % tokens.tokenNames[typebyte]
+            print "ErrorfulUnslicer.checkToken(%s)" % tokenNames[typebyte]
         if self.mode == "checkToken":
             raise Violation("boom")
-        if self.mode == "checkToken-OPEN" and typebyte == tokens.OPEN:
+        if self.mode == "checkToken-OPEN" and typebyte == OPEN:
             raise Violation("boom")
         return slicer.BaseUnslicer.checkToken(self, typebyte, size)
 

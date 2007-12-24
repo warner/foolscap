@@ -1,7 +1,9 @@
 
 import time, pickle
+import socket
 from zope.interface import implements
 from twisted.internet import reactor, defer
+from twisted.internet.protocol import DatagramProtocol
 from twisted.python import usage
 import foolscap
 from foolscap.eventual import fireEventually
@@ -40,9 +42,6 @@ def get_local_ip_for(target='A.ROOT-SERVERS.NET'):
               there is no suitable address (perhaps we don't currently have an
               externally-visible interface), this will return None.
     """
-    import socket
-    from twisted.internet.protocol import DatagramProtocol
-    from twisted.internet import reactor
     try:
         target_ipaddr = socket.gethostbyname(target)
     except socket.gaierror:

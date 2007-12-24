@@ -1,5 +1,12 @@
 2007-12-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py (Broker.getRemoteInterfaceByName): remove
+	duplicate definition of method, detected by pyflakes
+	* foolscap/test/test_banana.py: change import of names from
+	foolscap.tokens to appease the new (stricter) pyflakes
+	* foolscap/logging/gatherer.py (get_local_ip_for): move imports up
+	to module level, remove duplicates
+
 	* foolscap/pb.py (Tub.setLogPortFURLFile): if the application has
 	done setOption("logport-furlfile"), make sure the logport furlfile
 	is created as soon as possible (i.e. when setLocation is called).
