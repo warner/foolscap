@@ -337,7 +337,7 @@ class RemoteReferenceOnly(object):
         self.tracker = tracker
 
     def getSturdyRef(self):
-        return self.tracker.sturdy
+        return SturdyRef(self.tracker.getURL())
 
     def notifyOnDisconnect(self, callback, *args, **kwargs):
         """Register a callback to run when we lose this connection.

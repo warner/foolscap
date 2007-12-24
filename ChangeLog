@@ -1,5 +1,9 @@
 2007-12-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReferenceOnly.getSturdyRef):
+	fix this, it had bitrotted. Closes #35.
+	* foolscap/test/test_pb.py (TestCallable.testGetSturdyRef): test it
+
 	* foolscap/logging/log.py (FoolscapLogger.msg): only record
 	e['args'] if there were any, to avoid spurious formatting attempts
 	* foolscap/negotiate.py: update log.msg calls to use format=

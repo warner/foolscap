@@ -417,6 +417,16 @@ class TestCallable(unittest.TestCase):
         d.addCallback(flushEventualQueue)
         return d
 
+    def testGetSturdyRef(self):
+        target = Target()
+        url = self.tubB.registerReference(target)
+        d = self.tubA.getReference(url)
+        def _check(rref):
+            sr = rref.getSturdyRef()
+            self.failUnlessEqual(sr.getURL(), url)
+        d.addCallback(_check)
+        return d
+
     def testLogLocalFailure(self):
         self.tubB.setOption("logLocalFailures", True)
         target = Target()
