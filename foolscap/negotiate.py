@@ -164,8 +164,8 @@ class Negotiation(protocol.Protocol):
     negotiationTimer = None
 
     def __init__(self, logparent=None):
-        self._logparent = log.msg("Negotiation started", level=OPERATIONAL,
-                                  parent=logparent)
+        self._logparent = log.msg("Negotiation started", parent=logparent,
+                                  facility="foolscap.negotiation")
         for i in range(self.minVersion, self.maxVersion+1):
             assert hasattr(self, "evaluateNegotiationVersion%d" % i), i
             assert hasattr(self, "acceptDecisionVersion%d" % i), i
@@ -206,8 +206,14 @@ class Negotiation(protocol.Protocol):
         self.failureReason = None
 
     def log(self, *args, **kwargs):
+        # we log as NOISY by default, because nobody should hear about
+        # negotiation unless it goes wrong.
         if 'parent' not in kwargs:
             kwargs['parent'] = self._logparent
+        if 'facility' not in kwargs:
+            kwargs['facility'] = "foolscap.negotiation"
+        if 'level' not in kwargs:
+            kwargs['level'] = log.NOISY
         return log.msg(*args, **kwargs)
 
     def initClient(self, connector, targetHost):
@@ -325,14 +331,13 @@ class Negotiation(protocol.Protocol):
         req = []
         if self.target.encrypted:
             self.log("sendPlaintextClient: GET for tubID %s" %
-                     self.target.tubID, level=NOISY)
+                     self.target.tubID)
             req.append("GET /id/%s HTTP/1.1" % self.target.tubID)
         else:
-            self.log("sendPlaintextClient: GET for no tubID", level=NOISY)
+            self.log("sendPlaintextClient: GET for no tubID")
             req.append("GET /id/ HTTP/1.1")
         req.append("Host: %s" % self.targetHost)
-        self.log("sendPlaintextClient: wantEncryption=%s" %
-                 self.wantEncryption, level=NOISY)
+        self.log("sendPlaintextClient: wantEncryption=%s" % self.wantEncryption)
         if self.wantEncryption:
             req.append("Upgrade: TLS/1.0")
         else:
@@ -409,7 +414,7 @@ class Negotiation(protocol.Protocol):
 
         except Exception, e:
             why = Failure()
-            self.log("negotiation had exception", failure=why, level=NOISY)
+            self.log("negotiation had exception", failure=why)
             if isinstance(e, RemoteNegotiationError):
                 pass # they've already hung up
             else:
@@ -555,7 +560,7 @@ class Negotiation(protocol.Protocol):
         raise NotImplementedError # TODO
 
     def handlePLAINTEXTClient(self, header):
-        self.log("handlePLAINTEXTClient: header='%s'" % header, level=NOISY)
+        self.log("handlePLAINTEXTClient: header='%s'" % header)
         lines = header.split("\r\n")
         tokens = lines[0].split()
         # TODO: accept a 303 redirect
@@ -579,7 +584,7 @@ class Negotiation(protocol.Protocol):
         # the client wanted, but if it isn't then we just "upgrade" to
         # nothing and change modes.
         self.log("startENCRYPTED(isClient=%s, encrypted=%s)" %
-                 (self.isClient, encrypted), level=NOISY)
+                 (self.isClient, encrypted))
         if encrypted:
             self.startTLS(self.tub.myCertificate)
         self.encrypted = encrypted
@@ -608,7 +613,7 @@ class Negotiation(protocol.Protocol):
             hello['my-incarnation'] = IR
 
         self.log("Negotiate.sendHello (isClient=%s): %s" %
-                 (self.isClient, hello), level=NOISY)
+                 (self.isClient, hello))
         self.sendBlock(hello)
 
 
@@ -652,7 +657,7 @@ class Negotiation(protocol.Protocol):
         """
 
         self.log("evaluateHello(isClient=%s): offer=%s" %
-                 (self.isClient, offer), level=NOISY)
+                 (self.isClient, offer))
         if not offer.has_key('banana-negotiation-range'):
             if offer.has_key('banana-negotiation-version'):
                 msg = ("Peer is speaking foolscap-0.0.5 or earlier, "
@@ -748,7 +753,7 @@ class Negotiation(protocol.Protocol):
             # this is the most common case
             iAmTheMaster = myTubID > theirTubID
 
-        self.log("iAmTheMaster: %(master)s", master=iAmTheMaster, level=NOISY)
+        self.log("iAmTheMaster: %(master)s", master=iAmTheMaster)
 
         decision, params = None, None
 
@@ -1121,7 +1126,7 @@ class Negotiation(protocol.Protocol):
         # We use the MyOptions class to fix up the verify stuff: we request a
         # certificate from the client, but do not verify it against a list of
         # root CAs
-        self.log("startTLS, client=%s" % self.isClient, level=NOISY)
+        self.log("startTLS, client=%s" % self.isClient)
         kwargs = {}
         if cert:
             kwargs['privateKey'] = cert.privateKey.original
@@ -1136,7 +1141,7 @@ class Negotiation(protocol.Protocol):
 
         lp = self.log("Negotiate.switchToBanana(isClient=%s)" % self.isClient,
                       level=NOISY)
-        self.log("params: %s" % (params,), parent=lp, level=NOISY)
+        self.log("params: %s" % (params,), parent=lp)
 
         self.stopNegotiationTimer()
 
@@ -1370,8 +1375,7 @@ class TubConnector:
         # this is called if protocol negotiation cannot be established, or if
         # the connection is closed for any reason prior to switching to the
         # Banana protocol
-        self.log("negotiationFailed for factory %s" % factory, level=NOISY,
-                 failure=reason)
+        self.log("negotiationFailed for factory %s" % factory, failure=reason)
         assert isinstance(reason, Failure), \
                "Hey, %s isn't a Failure" % (reason,)
         if (not self.failureReason or

@@ -1,5 +1,10 @@
 2007-12-23  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation.__init__): log everything
+	under the 'foolscap.negotiation' facility, and use NOISY by
+	default.
+	(Negotiation.log): same
+
 	* foolscap/logging/log.py (NOISY): log levels are now defined in
 	terms of their stdlib 'logging' counterparts, so they're ints from
 	a larger scale (10 to 40). This removes the need for 'levelmap',
