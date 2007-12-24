@@ -402,6 +402,7 @@ the logdir and have Foolscap automatically delete the oldest logfiles to stay
 under the size limit: this would make the disk-based logdir an extension of
 the memory-based circular buffers.</p>
 
+<p>TODO: setLogDir is not yet implemented.</p>
 <p>TODO: define what events cause logs to be written to disk.</p>
 
 <h3>Setting up the logport</h3>
@@ -413,8 +414,8 @@ about new events that occur later. The logport implements the
 <code>foolscap.logging.interfaces.RILogPublisher</code> interface, which
 defines the methods that can be called on it. Each Tub automatically creates
 and registers a logport: the <code>tub.getLogPort()</code> and
-<code>tub.getLogPortFURL()()</code> methods make it possible to grant access
-to others:</p>
+<code>tub.getLogPortFURL()</code> methods make it possible to grant access to
+others:</p>
 
 <pre class="python">
 t = Tub()
@@ -440,7 +441,10 @@ newly-generated FURL will be written into it.</p>
 <p>Note that this option must be set before you call
 <code>getLogPortFURL</code> (and also before you pass the result of
 <code>getLogPort</code> over the wire), otherwise an ephemeral name will have
-already been registered.</p>
+already been registered and the persistent one will be ignored. The call to
+<code>setOption</code> can take place before <code>setLocation</code>, and
+the logport-furlfile will be created as soon as both the filename and the
+location hints are known.</p>
 
 <pre class="python">
 tub.setOption("logport-furlfile", "~/logport.furl")

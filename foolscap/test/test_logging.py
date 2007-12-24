@@ -211,6 +211,30 @@ class Publish(unittest.TestCase):
         d.addCallback(flushEventualQueue)
         return d
 
+    def test_logport_furlfile1(self):
+        basedir = "test_logging/test_logport_furlfile1"
+        os.makedirs(basedir)
+        furlfile = os.path.join(basedir, "logport.furl")
+        t = GoodEnoughTub()
+        t.setOption("logport-furlfile", furlfile)
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        self.failIf(os.path.exists(furlfile))
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        logport_furl = open(furlfile, "r").read().strip()
+
+    def test_logport_furlfile2(self):
+        basedir = "test_logging/test_logport_furlfile2"
+        os.makedirs(basedir)
+        furlfile = os.path.join(basedir, "logport.furl")
+        t = GoodEnoughTub()
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setOption("logport-furlfile", furlfile)
+        self.failIf(os.path.exists(furlfile))
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        logport_furl = open(furlfile, "r").read().strip()
+
     def test_logpublisher(self):
         basedir = "test_logging/test_logpublisher"
         os.makedirs(basedir)

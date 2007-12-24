@@ -1,5 +1,16 @@
 2007-12-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.setLogPortFURLFile): if the application has
+	done setOption("logport-furlfile"), make sure the logport furlfile
+	is created as soon as possible (i.e. when setLocation is called).
+	Allow these two calls to occur in either order. The setOption call
+	must still occur before doing getLogPortFURL(), or before the tub
+	connects to the log gatherer; otherwise the furlfile will be
+	ignored. Closes #38.
+	* foolscap/test/test_logging.py (Publish.test_logport_furlfile1):
+	test it
+	* doc/logging.xhtml: update to match, fix a few typos
+
 	* foolscap/referenceable.py (RemoteReferenceOnly.getSturdyRef):
 	fix this, it had bitrotted. Closes #35.
 	* foolscap/test/test_pb.py (TestCallable.testGetSturdyRef): test it

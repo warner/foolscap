@@ -380,9 +380,6 @@ class Tub(service.MultiService):
         rref.callRemote('logport', tubID, self.getLogPort())
 
 
-    def setLogPortFURLFile(self, furlfile):
-        self._logport_furlfile = furlfile
-
     def getLogPort(self):
         return self._maybeCreateLogPort()
 
@@ -391,13 +388,27 @@ class Tub(service.MultiService):
             self._logport = flog_publish.LogPublisher(flog.theLogger)
         return self._logport
 
+    def setLogPortFURLFile(self, furlfile):
+        self._logport_furlfile = furlfile
+        self._maybeCreateLogPortFURLFile()
+
+    def _maybeCreateLogPortFURLFile(self):
+        if not self._logport_furlfile:
+            return
+        if not self.locationHints:
+            return
+        # getLogPortFURL() creates the logport-furlfile as a side-effect
+        ignored = self.getLogPortFURL()
+
     def getLogPortFURL(self):
-        if not self._logport_furl:
-            furlfile = self._logport_furlfile
-            # the Tub must be running and configured (setLocation) by now
-            self._logport_furl = self.registerReference(self.getLogPort(),
-                                                        furlFile=furlfile)
+        if self._logport_furl:
+            return self._logport_furl
+        furlfile = self._logport_furlfile
+        # the Tub must be running and configured (setLocation) by now
+        self._logport_furl = self.registerReference(self.getLogPort(),
+                                                    furlFile=furlfile)
         return self._logport_furl
+
 
     def log(self, *args, **kwargs):
         kwargs['tubID'] = self.tubID
@@ -442,6 +453,7 @@ class Tub(service.MultiService):
             raise PBError("Unauthenticated tubs may only have one "
                           "location hint")
         self.locationHints = hints
+        self._maybeCreateLogPortFURLFile()
 
     def listenOn(self, what, options={}):
         """Start listening for connections.
