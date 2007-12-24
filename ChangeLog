@@ -1,5 +1,8 @@
 2007-12-24  Brian Warner  <warner@lothar.com>
 
+	* setup.py: point url= at the trac page, instead of the root,
+	since I keep forgetting to update the tarball links on the root
+
 	* NEWS: update for the upcoming release
 
 	* foolscap/logging/log.py (LogFileObserver.__init__): open the
