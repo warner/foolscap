@@ -1,5 +1,9 @@
 2008-01-10  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/gatherer.py (LogSaver.remote_msg): if we can't
+	pickle something, complain to stdout, rather than causing an error
+	message to be sent back to the sender's Tub.
+
 	* foolscap/call.py (CopiedFailure.__getstate__): make
 	CopiedFailures pickleable, and make sure they come back looking
 	just like they started. The issue was that we play games with the

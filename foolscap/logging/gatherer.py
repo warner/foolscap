@@ -24,7 +24,10 @@ class LogSaver(foolscap.Referenceable):
              "rx_time": time.time(),
              "d": d,
              }
-        pickle.dump(e, self.f)
+        try:
+            pickle.dump(e, self.f)
+        except:
+            print "GATHERER: unable to pickle %s" % e
 
     def disconnected(self):
         del self.f
