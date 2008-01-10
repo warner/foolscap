@@ -1,5 +1,8 @@
 2008-01-10  Brian Warner  <warner@lothar.com>
 
+	* Makefile (pyflakes): new pyflakes doesn't uniqueify its output
+	* NEWS: fix misspelling
+
 	* foolscap/__init__.py: bump revision to 0.2.3+ while between releases
 	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
 

@@ -72,7 +72,7 @@ api-docs:
 	PYTHONPATH=. epydoc -v -o doc/api --html -n Foolscap -u http://foolscap.lothar.com --exclude foolscap.test foolscap
 
 pyflakes:
-	pyflakes bin foolscap
+	pyflakes bin foolscap |sort |uniq
 
 find-trailing-spaces:
 	find-trailing-spaces -r bin foolscap
