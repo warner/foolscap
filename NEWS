@@ -2,7 +2,7 @@ User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
 * Release 0.2.3 (24 Dec 2007)
 
-** Compatibilty
+** Compatibility
 
 All releases between 0.1.3 and 0.2.3 (inclusive) are fully wire-compatible.
 
@@ -83,7 +83,7 @@ each run of the program.
 
 * Release 0.2.2 (12 Dec 2007)
 
-** Compatibilty
+** Compatibility
 
 All releases between 0.1.3 and 0.2.2 (inclusive) are fully wire-compatible.
 New (optional) negotiation parameters were added in 0.2.1 (really in 0.2.0).
@@ -116,7 +116,7 @@ to their severity, and to format Failure tracebacks in a more-readable way.
 
 * Release 0.2.1 (10 Dec 2007)
 
-** Compatibilty
+** Compatibility
 
 All releases between 0.1.3 and 0.2.1 (inclusive) are fully wire-compatible.
 0.2.1 introduces some new negotiation parameters (to handle duplicate
