@@ -837,6 +837,17 @@ class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
     def __init__(self):
         copyable.RemoteCopyOldStyle.__init__(self)
 
+    def __getstate__(self):
+        s = failure.Failure.__getstate__(self)
+        # the ExceptionLikeString we use in self.type is not pickleable, so
+        # replace it with the same sort of string that we use in the wire
+        # protocol.
+        s['type'] = reflect.qual(self.type)
+        return s
+
+    def __setstate__(self, state):
+        self.setCopyableState(state)
+
     def setCopyableState(self, state):
         #self.__dict__.update(state)
         self.__dict__ = state

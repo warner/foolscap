@@ -1,5 +1,12 @@
 2008-01-10  Brian Warner  <warner@lothar.com>
 
+	* foolscap/call.py (CopiedFailure.__getstate__): make
+	CopiedFailures pickleable, and make sure they come back looking
+	just like they started. The issue was that we play games with the
+	.type attribute to make .trap/.check work.
+	* foolscap/test/test_copyable.py (Copyable._testFailure1_1): test it
+	(Copyable._testFailure2_1): same
+
 	* Makefile (pyflakes): new pyflakes doesn't uniqueify its output
 	* NEWS: fix misspelling
 
