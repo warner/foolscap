@@ -889,6 +889,8 @@ class Negotiation(protocol.Protocol):
         # so that unit tests can cause a client to send an empty string to
         # simulate the earlier version.
         if not offer.get("my-incarnation") or "last-connection" not in offer:
+            # TODO: new servers send my-incarnation but not last-connection
+
             # this is an old peer (foolscap 0.1.7 or earlier), which won't
             # give us enough information to make some of the decisions below.
             # We reject the offer to avoid connection flap, and the
