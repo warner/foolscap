@@ -1,5 +1,12 @@
 2008-01-10  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/filter.py (Filter): add 'flogtool filter'
+	subcommand, to take one large eventlog pickle file and produce
+	a smaller one with just a subset of the events. Currently this only
+	allows you to filter by timestamp, and requires timestamps be
+	provided as seconds since epoch.
+	* bin/flogtool (dispatch): same
+
 	* foolscap/logging/log.py (FoolscapLogger.err): add log.err, which
 	behaves just like twisted's log.err: it accepts an exception or
 	Failure object, or it can be used inside an except: clause to

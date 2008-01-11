@@ -15,6 +15,7 @@ from foolscap.logging.tail import TailOptions
 from foolscap.logging.gatherer import GatherOptions
 from foolscap.logging.dumper import DumpOptions
 from foolscap.logging.web import WebViewerOptions
+from foolscap.logging.filter import FilterOptions
 
 class Options(usage.Options):
     synopsis = "Usage: flogtool (tail|gather|dump) args.."
@@ -25,6 +26,8 @@ class Options(usage.Options):
          "run as a daemon, record all logs to the current directory"),
         ("dump", None, DumpOptions,
          "dump the logs recorded by 'logtool gather'"),
+        ("filter", None, FilterOptions,
+         "produce a new file with a subset of the events from another file"),
         ("web-viewer", None, WebViewerOptions,
          "view the logs through a web page"),
         ]
@@ -53,6 +56,11 @@ def dispatch(command, options):
         from foolscap.logging.dumper import LogDumper
         ld = LogDumper()
         ld.run(options)
+
+    elif command == "filter":
+        from foolscap.logging.filter import Filter
+        f = Filter()
+        f.run(options)
 
     elif command == "web-viewer":
         from foolscap.logging.web import WebViewer
