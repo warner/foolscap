@@ -11,6 +11,7 @@ if (os.path.exists(os.path.join(base, "setup.py")) and
     os.path.exists(os.path.join(base, "foolscap"))):
     sys.path.insert(0, base)
 
+import foolscap
 from foolscap.logging.tail import TailOptions
 from foolscap.logging.gatherer import GatherOptions
 from foolscap.logging.dumper import DumpOptions
@@ -38,6 +39,12 @@ class Options(usage.Options):
 
     def opt_help(self):
         print self.synopsis
+        sys.exit(0)
+
+    def opt_version(self):
+        from twisted import copyright
+        print "Foolscap version:", foolscap.__version__
+        print "Twisted version:", copyright.version
         sys.exit(0)
 
 

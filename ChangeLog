@@ -1,5 +1,8 @@
 2008-01-10  Brian Warner  <warner@lothar.com>
 
+	* bin/flogtool (Options.opt_version): make 'flogtool --version'
+	show the foolscap version.
+
 	* foolscap/logging/web.py (SummaryView): add summaries to the
 	'flogtool web-viewer' tool: show counts of events by severity
 	level, show lists of those events, with each event hyperlinked to
