@@ -1,5 +1,11 @@
 2008-01-10  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (FoolscapLogger.err): add log.err, which
+	behaves just like twisted's log.err: it accepts an exception or
+	Failure object, or it can be used inside an except: clause to
+	log the current exception.
+	* foolscap/test/test_logging.py (Publish): test it
+
 	* foolscap/logging/gatherer.py (LogSaver.remote_msg): if we can't
 	pickle something, complain to stdout, rather than causing an error
 	message to be sent back to the sender's Tub.

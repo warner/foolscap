@@ -5,6 +5,7 @@ import logging
 import traceback
 import collections
 from twisted.python import log as twisted_log
+from twisted.python import failure
 from foolscap import eventual
 
 NOISY = logging.DEBUG # 10
@@ -130,6 +131,20 @@ class FoolscapLogger:
         self.add_event(facility, level, event)
         return num
 
+    def err(self, _stuff=None, _why=None, **kw):
+        """
+        Write a failure to the log.
+        """
+        if _stuff is None:
+            _stuff = failure.Failure()
+        if isinstance(_stuff, failure.Failure):
+            return self.msg(failure=_stuff, why=_why, isError=1, **kw)
+        elif isinstance(_stuff, Exception):
+            return self.msg(failure=failure.Failure(_stuff), why=_why,
+                            isError=1, **kw)
+        else:
+            return self.msg(repr(_stuff), why=_why, isError=1, **kw)
+
     def add_event(self, facility, level, event):
         # send to observers
         for o in self._observers:
@@ -164,6 +179,7 @@ theLogger = FoolscapLogger()
 
 # def msg(stuff):
 msg = theLogger.msg
+err = theLogger.err
 setLogDir = theLogger.setLogDir
 explain_facility = theLogger.explain_facility
 set_buffer_size = theLogger.set_buffer_size

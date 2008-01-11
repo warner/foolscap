@@ -5,6 +5,7 @@ from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.python import log as twisted_log
+from twisted.python import failure
 import foolscap
 from foolscap.logging import gatherer, log
 from foolscap.logging.interfaces import RILogObserver
@@ -199,6 +200,9 @@ class MyGatherer(gatherer.LogGatherer):
         gatherer.LogGatherer.remote_logport(self, nodeid, publisher)
         self.d.callback(publisher)
 
+class SampleError(Exception):
+    """a sample error"""
+
 class Publish(unittest.TestCase):
     def setUp(self):
         self.parent = service.MultiService()
@@ -254,6 +258,8 @@ class Publish(unittest.TestCase):
         t2.setServiceParent(self.parent)
         ob = Observer()
 
+        do_twisted_errors = hasattr(self, "flushLoggedErrors")
+
         d = t2.getReference(logport_furl)
         def _got_logport(logport):
             d = logport.callRemote("get_versions")
@@ -271,6 +277,15 @@ class Publish(unittest.TestCase):
                 log.bridgeTwistedLogs()
                 twisted_log.msg("message 3 here")
                 twisted_log.msg(format="%(foo)s is foo", foo="foo")
+                log.err(failure.Failure(SampleError("err1")))
+                log.err(SampleError("err2"))
+                if do_twisted_errors:
+                    twisted_log.err(failure.Failure(SampleError("err3")))
+                    twisted_log.err(SampleError("err4"))
+                    # twisted-2.5.0 added flushLoggedErrors, which makes
+                    # it much easier for unit test to exercise error logging
+                    errors = self.flushLoggedErrors(SampleError)
+                    self.failUnlessEqual(len(errors), 2)
             d.addCallback(_emit)
             d.addCallback(self.stall, 1.0)
             # TODO: I'm not content with that absolute-time stall, and would
@@ -279,7 +294,10 @@ class Publish(unittest.TestCase):
             #d.addCallback(fireEventually)
             def _check_observer(res):
                 msgs = ob.messages
-                self.failUnlessEqual(len(msgs), 4)
+                expected = 6
+                if do_twisted_errors:
+                    expected += 2
+                self.failUnlessEqual(len(msgs), expected)
                 #print msgs
                 self.failUnlessEqual(msgs[0]["message"], "message 1 here")
                 self.failUnlessEqual(msgs[1]["message"], "message 2 here")
@@ -288,6 +306,32 @@ class Publish(unittest.TestCase):
                 self.failUnlessEqual(msgs[2]["tubID"], None)
                 self.failUnlessEqual(msgs[3]["format"], "%(foo)s is foo")
                 self.failUnlessEqual(msgs[3]["foo"], "foo")
+
+                # check the errors
+                self.failUnlessEqual(msgs[4]["message"], "")
+                self.failUnless(msgs[4]["isError"])
+                self.failUnless("failure" in msgs[4])
+                self.failUnless(msgs[4]["failure"].check(SampleError))
+                self.failUnless("err1" in str(msgs[4]["failure"]))
+                self.failUnlessEqual(msgs[5]["message"], "")
+                self.failUnless(msgs[5]["isError"])
+                self.failUnless("failure" in msgs[5])
+                self.failUnless(msgs[5]["failure"].check(SampleError))
+                self.failUnless("err2" in str(msgs[5]["failure"]))
+
+                if do_twisted_errors:
+                    self.failUnlessEqual(msgs[6]["message"], "")
+                    self.failUnless(msgs[6]["isError"])
+                    self.failUnless("failure" in msgs[6])
+                    self.failUnless(msgs[6]["failure"].check(SampleError))
+                    self.failUnless("err3" in str(msgs[6]["failure"]))
+
+                    self.failUnlessEqual(msgs[7]["message"], "")
+                    self.failUnless(msgs[7]["isError"])
+                    self.failUnless("failure" in msgs[7])
+                    self.failUnless(msgs[7]["failure"].check(SampleError))
+                    self.failUnless("err4" in str(msgs[7]["failure"]))
+
             d.addCallback(_check_observer)
             def _done(res):
                 return logport.callRemote("unsubscribe", self._subscription)
@@ -309,6 +353,15 @@ class Publish(unittest.TestCase):
         d.addCallback(self.stall, 1.0) # give subscribe_to_all() a chance
         def _go(res):
             log.msg("gathered message here")
+            try:
+                raise SampleError("whoops1")
+            except:
+                log.err()
+            def _oops():
+                raise SampleError("whoops2")
+            d2 = defer.maybeDeferred(_oops)
+            d2.addErrback(log.err)
+            return d2
         d.addCallback(_go)
         d.addCallback(self.stall, 1.0)
         d.addCallback(lambda res: t2.disownServiceParent())
@@ -317,14 +370,50 @@ class Publish(unittest.TestCase):
         def _check(res):
             gatherer._savefile.close()
             fn = os.path.join(basedir, "logs.pickle")
+            f = open(fn, "r")
+            events = []
+            while True:
+                try:
+                    events.append(pickle.load(f))
+                except EOFError:
+                    break
+            self.failUnlessEqual(len(events), 3)
+
             # grab the first event from the log
-            data = pickle.load(open(fn, "r"))
+            data = events[0]
             self.failUnless(isinstance(data, dict))
             expected_tubid = t2.tubID
             if t2.tubID is None:
                 expected_tubid = "<unauth>"
             self.failUnlessEqual(data['from'], expected_tubid)
             self.failUnlessEqual(data['d']['message'], "gathered message here")
+
+            # grab the second event from the log
+            data = events[1]
+            self.failUnless(isinstance(data, dict))
+            expected_tubid = t2.tubID
+            if t2.tubID is None:
+                expected_tubid = "<unauth>"
+            self.failUnlessEqual(data['from'], expected_tubid)
+            self.failUnlessEqual(data['d']['message'], "")
+            self.failUnless(data['d']["isError"])
+            self.failUnless("failure" in data['d'])
+            self.failUnless(data['d']["failure"].check(SampleError))
+            self.failUnless("whoops1" in str(data['d']["failure"]))
+
+            # grab the third event from the log
+            data = events[2]
+            self.failUnless(isinstance(data, dict))
+            expected_tubid = t2.tubID
+            if t2.tubID is None:
+                expected_tubid = "<unauth>"
+            self.failUnlessEqual(data['from'], expected_tubid)
+            self.failUnlessEqual(data['d']['message'], "")
+            self.failUnless(data['d']["isError"])
+            self.failUnless("failure" in data['d'])
+            self.failUnless(data['d']["failure"].check(SampleError))
+            self.failUnless("whoops2" in str(data['d']["failure"]))
+
         d.addCallback(_check)
         return d
 
