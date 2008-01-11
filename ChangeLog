@@ -1,5 +1,11 @@
 2008-01-10  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/web.py (SummaryView): add summaries to the
+	'flogtool web-viewer' tool: show counts of events by severity
+	level, show lists of those events, with each event hyperlinked to
+	the correct line in the full display. The full display also has
+	anchor tags which let you construct bookmarks to specific lines.
+
 	* foolscap/logging/filter.py (Filter): add 'flogtool filter'
 	subcommand, to take one large eventlog pickle file and produce
 	a smaller one with just a subset of the events. Currently this only

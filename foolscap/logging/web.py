@@ -3,6 +3,7 @@ import pickle, time
 from twisted.internet import reactor
 from twisted.application import strports
 from twisted.python import usage
+from foolscap import base32
 from foolscap.eventual import fireEventually
 from foolscap.logging import log
 from twisted.web import server, static, html, resource
@@ -66,7 +67,7 @@ class Welcome(resource.Resource):
         data += "<h2>Logfiles:</h2>\n"
         if self.viewer.logfiles:
             data += "<ul>\n"
-            for lf in self.viewer.logfiles:
+            for lfnum,lf in enumerate(self.viewer.logfiles):
                 data += " <li>%s:\n" % html.escape(lf)
                 data += " <ul>\n"
                 ((first_number, first_time),
@@ -86,8 +87,10 @@ class Welcome(resource.Resource):
                 data += ("  <li>from %s to %s</li>\n" %
                          (first_time, last_time))
                 for level in sorted(levels.keys()):
-                    data += ("  <li>%d events at level %s</li>\n" %
-                             (len(levels[level]), level))
+                    data += ('  <li><a href="summary/%d-%d">%d events</a> '
+                             'at level %s</li>\n' %
+                             (lfnum, level, len(levels[level]),
+                              level))
                 data += " </ul>\n"
             data += "</ul>\n"
         else:
@@ -98,6 +101,44 @@ class Welcome(resource.Resource):
         data += "</body></html>"
         req.setHeader("content-type", "text/html")
         return data
+
+class Summary(resource.Resource):
+    def __init__(self, viewer):
+        self._viewer = viewer
+        resource.Resource.__init__(self)
+
+    def getChild(self, path, req):
+        if "-" in path:
+            lfnum,levelnum = map(int, path.split("-"))
+            lf = self._viewer.logfiles[lfnum]
+            (first, last, num_events, levels) = self._viewer.summaries[lf]
+            events = levels[levelnum]
+            return SummaryView(events, levelnum)
+        return resource.Resource.getChild(self, path, req)
+
+class SummaryView(resource.Resource):
+    def __init__(self, events, levelnum):
+        self._events = events
+        self._levelnum = levelnum
+        resource.Resource.__init__(self)
+
+    def render(self, req):
+        data = "<html>"
+        data += "<head><title>Foolscap Log Viewer</title>\n"
+        data += '<link href="flog.css" rel="stylesheet" type="text/css" />'
+        data += "</head>\n"
+        data += "<body>\n"
+        data += "<h1>Events at level %d</h1>\n" % self._levelnum
+
+        data += "<ul>\n"
+        for e in self._events:
+            data += "<li>" + e.to_html("/all-events") + "</li>\n"
+        data += "</ul>\n"
+        data += "</body>\n"
+        data += "</html>\n"
+        return data
+
+
 
 class EventView(resource.Resource):
     def __init__(self, viewer):
@@ -144,6 +185,8 @@ class LogEvent:
         self.index = None
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
+            self.anchor_index = "%s_%d" % (base32.encode(e['from']),
+                                           e['d']['num'])
         self.parent_index = None
         if 'parent' in e['d']:
             self.parent_index = (e['from'], e['d']['parent'])
@@ -163,7 +206,7 @@ class LogEvent:
         level = self.e['d'].get('level', log.OPERATIONAL)
         return self.LEVELMAP.get(level, "UNKNOWN")
 
-    def to_html(self):
+    def to_html(self, href_base=""):
         d = self.e['d']
         time_s = time.strftime("%H:%M:%S", time.localtime(d['time']))
         time_s = time_s + " %.4f" % (d['time'] - int(d['time']))
@@ -177,7 +220,10 @@ class LogEvent:
         level_s = ""
         if level >= log.UNUSUAL:
             level_s = self.LEVELMAP.get(level, "") + " "
-        return "%s [%d]: %s%s" % (time_s, d['num'], level_s, msg)
+        return '%s [<span id="E%s"><a href="%s#E%s">%d</a></span>]: %s%s' \
+               % (time_s,
+                  self.anchor_index, href_base, self.anchor_index, d['num'],
+                  level_s, msg)
 
 
 class WebViewer:
@@ -198,6 +244,7 @@ class WebViewer:
         welcome = Welcome(self)
         root.putChild("welcome", welcome)
         root.putChild("all-events", EventView(self))
+        root.putChild("summary", Summary(self))
         root.putChild("flog.css", static.Data(FLOG_CSS, "text/css"))
         s = server.Site(root)
         self.serv = strports.service(options['port'], s)
