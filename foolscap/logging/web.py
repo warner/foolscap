@@ -155,9 +155,29 @@ class EventView(resource.Resource):
 
         data += "%d root events" % len(self.viewer.root_events)
 
+        sortby = req.args.get("sort", ["nested"])[0]
+
         data += "<ul>\n"
-        for e in self.viewer.root_events:
-            data += self._emit_events(0, e)
+        if sortby == "nested":
+            for e in self.viewer.root_events:
+                data += self._emit_events(0, e)
+        elif sortby == "number":
+            numbers = sorted(self.viewer.number_map.keys())
+            for n in numbers:
+                e = self.viewer.number_map[n]
+                data += '<li><span class="%s">' % e.level_class()
+                data += e.to_html()
+                data += '</span></li>\n'
+        elif sortby == "time":
+            events = self.viewer.number_map.values()
+            events.sort(lambda a,b: cmp(a.e['d']['time'], b.e['d']['time']))
+            for e in events:
+                data += '<li><span class="%s">' % e.level_class()
+                data += e.to_html()
+                data += '</span></li>\n'
+        else:
+            data += "<b>unknown sort argument '%s'</b>\n" % sortby
+
         data += "</ul>\n"
         req.setHeader("content-type", "text/html")
         return data
@@ -165,7 +185,7 @@ class EventView(resource.Resource):
     def _emit_events(self, indent, event):
         indent_s = " " * indent
         data = (indent_s
-                + "<li><span class='%s'>" % event.level_class()
+                + '<li><span class="%s">' % event.level_class()
                 + event.to_html()
                 + "</span></li>\n"
                 )

@@ -1,3 +1,19 @@
+2008-01-17  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/web.py (EventView.render): add a sort= query
+	argument. If set to 'nested' (the default), you get the default
+	nested view, in which the root events (those without a parent) are
+	shown in chronological order, and the child events of each node
+	are shown in chronological order underneath it. If sort=time, then
+	no nesting is used, and all events are shown in chronological
+	order. If sort=number, then all events are shown in numerical
+	order, which is nominally better for single-process logfiles and
+	coarse timestamps, but practically speaking is no better than
+	sort=time. Using a non-nested mode can make it easier to spot
+	events that happen in different areas but at about the same time;
+	the nested display puts these events further apart
+	(EventView._emit_events): minor formatting change
+
 2008-01-10  Brian Warner  <warner@lothar.com>
 
 	* bin/flogtool (Options.opt_version): make 'flogtool --version'
