@@ -1,5 +1,12 @@
 2008-01-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (FoolscapLogger.__init__): remove unused
+	.buffer attribute
+	(FoolscapLogger.msg): avoid pickling application-specific
+	exception classes when using failure=; use CopiedFailure to avoid
+	it. This allows the emitted log pickle to be loaded on systems
+	that do not have the original source code around.
+
 	* foolscap/logging/filter.py: add --strip-facility option, to
 	remove events that pertain to a given facility or its children
 

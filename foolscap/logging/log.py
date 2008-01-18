@@ -47,7 +47,6 @@ class FoolscapLogger:
         self.buffer_sizes = {} # k: facility or None, v: dict(level->sizelimit)
         self.buffer_sizes[None] = {}
         self.buffers = {} # k: facility or None, v: dict(level->deque)
-        self.buffer = collections.deque()
         self.thresholds = {}
         self._observers = []
 
@@ -117,6 +116,23 @@ class FoolscapLogger:
 
         if "time" not in event:
             event['time'] = time.time()
+
+        if "failure" in event:
+            f = event["failure"]
+            # we need to avoid pickling the exception class, since that will
+            # require the original application code to unpickle, and log
+            # viewers may not have it installed. A CopiedFailure works great
+            # for this purpose. TODO: I'd prefer to not use a local import
+            # here, but doing at the top level causes a circular import
+            # failure.
+            from foolscap.call import FailureSlicer, CopiedFailure
+            class FakeBroker:
+                unsafeTracebacks = True
+            if not isinstance(f, CopiedFailure):
+                fs = FailureSlicer(f)
+                f2 = CopiedFailure()
+                f2.setCopyableState(fs.getStateToCopy(f, FakeBroker))
+                event["failure"] = f2
 
         # verify that we can stringify the event correctly
         try:
