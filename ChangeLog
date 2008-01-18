@@ -1,5 +1,10 @@
 2008-01-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/call.py (PendingRequest.fail): switch remote-exception
+	logging over to flogging
+	(InboundDelivery.logFailure): switch local-exception logging to
+	flogging too
+
 	* foolscap/logging/log.py (FoolscapLogger.__init__): remove unused
 	.buffer attribute
 	(FoolscapLogger.msg): avoid pickling application-specific

@@ -1,5 +1,5 @@
 
-from twisted.python import failure, log, reflect
+from twisted.python import failure, reflect
 from twisted.internet import defer
 
 from foolscap import copyable, slicer, tokens
@@ -8,6 +8,7 @@ from foolscap.constraint import ByteStringConstraint
 from foolscap.slicers.list import ListConstraint
 from tokens import BananaError, Violation
 from foolscap.util import AsyncAND
+from foolscap.logging import log
 
 
 class FailureConstraint(AttributeDictConstraint):
@@ -68,19 +69,22 @@ class PendingRequest(object):
                     my_short_tubid = self.broker.tub.getShortTubID()
                 their_short_tubid = self.broker.remote_tubref.getShortTubID()
 
-                log.msg("an outbound callRemote (that we [%s] sent to "
-                        "someone else [%s]) failed on the far end"
-                        % (my_short_tubid, their_short_tubid))
+                lp = log.msg("an outbound callRemote (that we [%s] sent to "
+                             "someone else [%s]) failed on the far end"
+                             % (my_short_tubid, their_short_tubid),
+                             level=log.UNUSUAL)
                 methname = ".".join([self.interfaceName or "?",
                                      self.methodName or "?"])
                 log.msg(" reqID=%d, rref=%s, methname=%s"
-                        % (self.reqID, self.rref, methname))
-                stack = why.getTraceback()
+                        % (self.reqID, self.rref, methname),
+                        level=log.NOISY, parent=lp)
+                #stack = why.getTraceback()
                 # TODO: include the first few letters of the remote tubID in
                 # this REMOTE tag
-                stack = "REMOTE: " + stack.replace("\n", "\nREMOTE: ")
-                log.msg(" the failure was:")
-                log.msg(stack)
+                #stack = "REMOTE: " + stack.replace("\n", "\nREMOTE: ")
+                log.msg(" the REMOTE failure was:", failure=why,
+                        level=log.NOISY, parent=lp)
+                #log.msg(stack, level=log.NOISY, parent=lp)
             self.deferred.errback(why)
         else:
             log.msg("WEIRD: fail() on an inactive request", traceback=True)
@@ -183,25 +187,29 @@ class InboundDelivery:
         their_short_tubid = "<unauth>"
         if self.broker.remote_tubref:
             their_short_tubid = self.broker.remote_tubref.getShortTubID()
-        log.msg("an inbound callRemote that we [%s] executed (on behalf of "
-                "someone else, TubID %s) failed"
-                % (my_short_tubid, their_short_tubid))
+        lp = log.msg("an inbound callRemote that we [%s] executed (on behalf "
+                     "of someone else, TubID %s) failed"
+                     % (my_short_tubid, their_short_tubid),
+                     level=log.UNUSUAL)
         if self.interface:
             methname = self.interface.getName() + "." + self.methodname
         else:
             methname = self.methodname
         log.msg(" reqID=%d, rref=%s, methname=%s" %
-                (self.reqID, self.obj, methname))
-        log.msg(" args=%s" % (self.allargs.args,))
-        log.msg(" kwargs=%s" % (self.allargs.kwargs,))
-        if isinstance(f.type, str):
-            stack = "getTraceback() not available for string exceptions\n"
-        else:
-            stack = f.getTraceback()
+                (self.reqID, self.obj, methname),
+                level=log.NOISY, parent=lp)
+        log.msg(" args=%s" % (self.allargs.args,), level=log.NOISY, parent=lp)
+        log.msg(" kwargs=%s" % (self.allargs.kwargs,),
+                level=log.NOISY, parent=lp)
+        #if isinstance(f.type, str):
+        #    stack = "getTraceback() not available for string exceptions\n"
+        #else:
+        #    stack = f.getTraceback()
         # TODO: trim stack to everything below Broker._doCall
-        stack = "LOCAL: " + stack.replace("\n", "\nLOCAL: ")
-        log.msg(" the failure was:")
-        log.msg(stack)
+        #stack = "LOCAL: " + stack.replace("\n", "\nLOCAL: ")
+        log.msg(" the LOCAL failure was:", failure=f,
+                level=log.NOISY, parent=lp)
+        #log.msg(stack, level=log.NOISY, parent=lp)
 
 class ArgumentUnslicer(slicer.ScopedUnslicer):
     methodSchema = None
