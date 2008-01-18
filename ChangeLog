@@ -1,5 +1,9 @@
 2008-01-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py: put all negotiation flog messages in
+	facility "foolscap.negotiation", to make it easier to strip them
+	out with 'flogtool filter --strip-facility foolscap'
+
 	* foolscap/call.py (PendingRequest.fail): switch remote-exception
 	logging over to flogging
 	(InboundDelivery.logFailure): switch local-exception logging to

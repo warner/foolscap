@@ -1206,6 +1206,7 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
 
     def log(self, *args, **kwargs):
         kwargs['parent'] = self._logparent
+        kwargs['facility'] = "foolscap.negotiation"
         return log.msg(*args, **kwargs)
 
     def __repr__(self):
@@ -1278,7 +1279,8 @@ class TubConnector:
                                   "%(fromtubid)s to %(totubid)s",
                                   fromtubid=parent.tubID,
                                   totubid=tubref.getTubID(),
-                                  level=OPERATIONAL)
+                                  level=OPERATIONAL,
+                                  facility="foolscap.connection")
         self.tub = parent
         self.target = tubref
         self.remainingLocations = self.target.getLocations()
@@ -1296,6 +1298,7 @@ class TubConnector:
 
     def log(self, *args, **kwargs):
         kwargs['parent'] = self._logparent
+        kwargs['facility'] = "foolscap.connection"
         return log.msg(*args, **kwargs)
 
     def connect(self):
