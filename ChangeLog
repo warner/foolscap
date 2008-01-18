@@ -4,6 +4,8 @@
 	logging over to flogging
 	(InboundDelivery.logFailure): switch local-exception logging to
 	flogging too
+	* foolscap/test/test_pb.py (TestCallable.testLogLocalFailure): match it
+	(TestCallable.testLogRemoteFailure): same
 
 	* foolscap/logging/log.py (FoolscapLogger.__init__): remove unused
 	.buffer attribute

@@ -7,7 +7,7 @@ if False:
     from twisted.python import log
     log.startLogging(sys.stderr)
 
-from twisted.python import failure, log, reflect
+from twisted.python import failure, reflect
 from twisted.internet import defer
 from twisted.trial import unittest
 
@@ -18,6 +18,7 @@ from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
 from foolscap.tokens import BananaFailure
 from foolscap import broker, call
 from foolscap.constraint import IConstraint
+from foolscap.logging import log
 
 crypto_available = False
 try:
@@ -33,7 +34,7 @@ if crypto_available:
     GoodEnoughTub = Tub
 
 from foolscap.test.common import HelperTarget, RIHelper, TargetMixin
-from foolscap.eventual import flushEventualQueue
+from foolscap.eventual import fireEventually, flushEventualQueue
 
 from foolscap.test.common import Target, TargetWithoutInterfaces
 
@@ -407,12 +408,12 @@ class TestCallable(unittest.TestCase):
         self._log_observers_to_remove = []
 
     def addLogObserver(self, observer):
-        log.addObserver(observer)
+        log.theLogger.addObserver(observer)
         self._log_observers_to_remove.append(observer)
 
     def tearDown(self):
         for lo in self._log_observers_to_remove:
-            log.removeObserver(lo)
+            log.theLogger.removeObserver(lo)
         d = defer.DeferredList([s.stopService() for s in self.services])
         d.addCallback(flushEventualQueue)
         return d
@@ -440,7 +441,8 @@ class TestCallable(unittest.TestCase):
         def _check(res):
             self.failUnless(isinstance(res, failure.Failure))
             res.trap(ValueError)
-            messages = [l['message'][0] for l in logs]
+            messages = [log.format_message(e) for e in logs]
+            failures = [e['failure'] for e in logs if "failure" in e]
             text = "\n".join(messages)
             msg = ("an inbound callRemote that we [%s] executed (on behalf of "
                    "someone else, TubID %s) failed\n"
@@ -452,9 +454,15 @@ class TestCallable(unittest.TestCase):
             self.failUnless(", methname=RIMyTarget.fail\n" in text)
             self.failUnless("\n args=[]\n" in text)
             self.failUnless("\n kwargs={}\n" in text)
-            self.failUnless("\nLOCAL: Traceback (most recent call last):\n"
-                            in text)
-            self.failUnless("\nLOCAL: exceptions.ValueError: you asked me to fail\n" in text)
+            self.failUnless("\n the LOCAL failure was:" in text)
+            self.failUnlessEqual(len(failures), 1)
+            f = failures[0]
+            self.failUnless(isinstance(f, failure.Failure))
+            self.failUnless(isinstance(f, call.CopiedFailure))
+            self.failUnless("Traceback (most recent call last):\n"
+                            in str(f))
+            self.failUnless("\nexceptions.ValueError: you asked me to fail\n"
+                            in str(f))
         d.addBoth(_check)
         return d
     testLogLocalFailure.timeout = 2
@@ -467,12 +475,16 @@ class TestCallable(unittest.TestCase):
         url = self.tubB.registerReference(target)
         d = self.tubA.getReference(url)
         d.addCallback(lambda rref: rref.callRemote("fail"))
-        # this will cause some text to be logged with log.msg. TODO: capture
-        # this text and look at it more closely.
+        # this will cause some text to be logged with log.msg. Capture this
+        # text and look at it more closely. Log events are sent through an
+        # eventual-send, so we need the fireEventually() call to give the
+        # event a chance to be put into the list.
+        d.addBoth(fireEventually)
         def _check(res):
             self.failUnless(isinstance(res, failure.Failure))
             res.trap(ValueError)
-            messages = [l['message'][0] for l in logs]
+            messages = [log.format_message(e) for e in logs]
+            failures = [e['failure'] for e in logs if "failure" in e]
             text = "\n".join(messages)
             msg = ("an outbound callRemote (that we [%s] sent to someone "
                    "else [%s]) failed on the far end\n"
@@ -484,9 +496,12 @@ class TestCallable(unittest.TestCase):
                             in text)
             #self.failUnless("\n args=[]\n" in text) # TODO: log these too
             #self.failUnless("\n kwargs={}\n" in text)
-            self.failUnless("\nREMOTE: Traceback from remote host -- Traceback (most recent call last):\n"
-                            in text)
-            self.failUnless("\nREMOTE: exceptions.ValueError: you asked me to fail\n" in text)
+            self.failUnlessEqual(len(failures), 1)
+            f = failures[0]
+            self.failUnless("Traceback (most recent call last):\n"
+                            in str(f))
+            self.failUnless("\nexceptions.ValueError: you asked me to fail\n"
+                            in str(f))
         d.addBoth(_check)
         return d
     testLogRemoteFailure.timeout = 2
