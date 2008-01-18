@@ -8,6 +8,11 @@ class FilterOptions(usage.Options):
     optParameters = [
         ["after", None, None, "include events after timestamp (seconds since epoch)"],
         ["before", None, None, "include events before timestamp"],
+        ["strip-facility", None, None, "remove events with the given facility prefix"],
+        ]
+
+    optFlags = [
+        ["verbose", "v", "emit event numbers during processing (useful to isolate an unloadable event pickle"],
         ]
 
     def parseArgs(self, oldfile, newfile):
@@ -34,13 +39,21 @@ class Filter:
         before = options['before']
         if before is not None:
             print " --before: removing events after %s" % time.ctime(before)
+        strip_facility = options['strip-facility']
+        if strip_facility is not None:
+            print "--strip-facility: removing events for %s and children" % strip_facility
         total = 0
         copied = 0
         for e in self.get_events(options.oldfile):
+            if options['verbose']:
+                print e['d']['num']
             total += 1
             if before is not None and e['d']['time'] >= before:
                 continue
             if after is not None and e['d']['time'] <= after:
+                continue
+            if (strip_facility is not None
+                and e['d'].get('facility', "").startswith(strip_facility)):
                 continue
             copied += 1
             pickle.dump(e, newfile, 2)
