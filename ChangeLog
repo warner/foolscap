@@ -1,5 +1,8 @@
 2008-01-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation.evaluateNegotiationVersion1):
+	include tubid in error message
+
 	* foolscap/call.py (CopiedFailure.__getstate__): don't use
 	reflect.qual on a string. This might improve behavior when we copy
 	failures around, particularly in logging.
