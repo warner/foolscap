@@ -850,7 +850,8 @@ class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
         # the ExceptionLikeString we use in self.type is not pickleable, so
         # replace it with the same sort of string that we use in the wire
         # protocol.
-        s['type'] = reflect.qual(self.type)
+        if not isinstance(self.type, str):
+            s['type'] = reflect.qual(self.type)
         return s
 
     def __setstate__(self, state):
