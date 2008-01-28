@@ -1,5 +1,9 @@
 2008-01-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/filter.py (FilterOptions.parseArgs): make it
+	possible to filter the event file in place, by using 'flogtool
+	filter filename' instead of 'flogtool filter infile outfile'
+
 	* foolscap/negotiate.py (Negotiation.evaluateNegotiationVersion1):
 	include tubid in error message
 
