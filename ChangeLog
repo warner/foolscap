@@ -1,3 +1,16 @@
+2008-01-28  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/filter.py (FilterOptions.parseArgs): make it
+	possible to filter the event file in place, by using 'flogtool
+	filter filename' instead of 'flogtool filter infile outfile'
+
+	* foolscap/negotiate.py (Negotiation.evaluateNegotiationVersion1):
+	include tubid in error message
+
+	* foolscap/call.py (CopiedFailure.__getstate__): don't use
+	reflect.qual on a string. This might improve behavior when we copy
+	failures around, particularly in logging.
+
 2008-01-18  Brian Warner  <warner@lothar.com>
 
 	* foolscap/negotiate.py: put all negotiation flog messages in

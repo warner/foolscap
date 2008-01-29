@@ -784,7 +784,8 @@ class Negotiation(protocol.Protocol):
                     # drop the old one
                     self.log("accepting new offer, dropping existing connection",
                              parent=lp)
-                    err = ConnectionDone("replaced by a new connection")
+                    err = ConnectionDone("[%s] replaced by a new connection"
+                                         % theirTubRef.getShortTubID())
                     why = Failure(err)
                     existing.shutdown(why)
                 else:

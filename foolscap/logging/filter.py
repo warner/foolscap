@@ -1,6 +1,6 @@
 
 from twisted.python import usage
-import pickle, bz2, time
+import os, pickle, bz2, time
 
 class FilterOptions(usage.Options):
     synopsis = "Usage: flogtool filter [options] OLDFILE.pickle NEWFILE.pickle"
@@ -15,9 +15,12 @@ class FilterOptions(usage.Options):
         ["verbose", "v", "emit event numbers during processing (useful to isolate an unloadable event pickle"],
         ]
 
-    def parseArgs(self, oldfile, newfile):
+    def parseArgs(self, oldfile, newfile=None):
         self.oldfile = oldfile
         self.newfile = newfile
+        if newfile is None:
+            print "modifying event file in place"
+            self.newfile = oldfile
 
     def opt_after(self, arg):
         self['after'] = int(arg)
@@ -29,10 +32,13 @@ class FilterOptions(usage.Options):
 class Filter:
 
     def run(self, options):
+        newfilename = options.newfile
+        if options.newfile == options.oldfile:
+            newfilename = newfilename + ".tmp"
         if options.newfile.endswith(".bz2"):
-            newfile = bz2.BZ2File(options.newfile, "w")
+            newfile = bz2.BZ2File(newfilename, "w")
         else:
-            newfile = open(options.newfile, "w")
+            newfile = open(newfilename, "w")
         after = options['after']
         if after is not None:
             print " --after: removing events before %s" % time.ctime(after)
@@ -58,6 +64,8 @@ class Filter:
             copied += 1
             pickle.dump(e, newfile, 2)
         newfile.close()
+        if options.newfile == options.oldfile:
+            os.rename(newfilename, options.newfile)
         print "copied %d of %d events into new file" % (copied, total)
 
     def get_events(self, fn):
