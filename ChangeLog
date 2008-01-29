@@ -1,5 +1,7 @@
 2008-01-28  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the upcoming release
+
 	* foolscap/logging/filter.py (FilterOptions.parseArgs): make it
 	possible to filter the event file in place, by using 'flogtool
 	filter filename' instead of 'flogtool filter infile outfile'

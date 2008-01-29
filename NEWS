@@ -1,5 +1,63 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.2.4 (28 Jan 2008)
+
+** Compatibility
+
+All releases between 0.1.3 and 0.2.4 (inclusive) are fully wire-compatible.
+
+** foolscap.logging Changes
+
+*** 'flogtool filter' command added
+
+This mode is used to take one event-log file and produce another with a
+subset of the events. There are several options to control the filtering:
+"--strip-facility=foolscap" would remove all the foolscap-related messages,
+and "--after=start --before=end" will retain events that occur within the
+given period. The syntax is still in flux, expect these options to change in
+the next few releases. The main idea is to take a very large logfile and turn
+it into a smaller, more manageable one.
+
+*** error logging
+
+Applications should avoid recording application-specific instances in log
+events. Doing so will forces the log viewer to access the original source
+code. The current release of foolscap uses pickle, so such instances will be
+loadable if the viewer can import the same code, but future versions will
+probably switch to using Banana, at which point trying to log such instances
+will cause an error.
+
+In this release, foolscap stringifies the type of an exception/Failure passed
+in through the failure= kwarg, to avoid inducing this import dependency in
+serialized Failures. It also uses the CopiedFailure code to improve
+portability of Failure instances, and CopiedFailures have been made
+pickleable.
+
+The preferred way to log a Failure instance is to pass it like so:
+
+ def _oops(f):
+   log.msg("Oh no, it failed", failure=f, level=log.BAD)
+ d.addErrback(_oops)
+
+Finally, a 'log.err()' method was added, which behaves just like Twisted's
+normal log.err(): it can be used in a Deferred errback, or inside an
+exception handler.
+
+*** 'flogtool web-viewer'
+
+Adding a "sort=time" query argument to the all-events viewing page URL will
+turn off the default nested view, and instead will sort all events strictly
+by time of generation (note that unsynchronized clocks may confuse the
+relative ordering of events on different machines). "sort=number" sorts all
+events by their event number, which is of dubious utility (since these
+numbers are only scoped to the Tub). "sort=nested" is the default mode.
+
+The web-viewer now provides "summary views", which show just the events that
+occurred at a given severity level. Each event is a hyperlink to the line in
+the all-events page (using anchor/fragment tags), which may make them more
+convenient to bookmark or reference externally.
+
+
 * Release 0.2.3 (24 Dec 2007)
 
 ** Compatibility
