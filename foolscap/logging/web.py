@@ -205,8 +205,10 @@ class LogEvent:
         self.index = None
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
-            self.anchor_index = "%s_%d" % (base32.encode(e['from']),
-                                           e['d']['num'])
+            incarnation = base32.encode(e['d']['incarnation'][0])
+            self.anchor_index = "%s_%s_%d" % (base32.encode(e['from']),
+                                              incarnation,
+                                              e['d']['num'])
         self.parent_index = None
         if 'parent' in e['d']:
             self.parent_index = (e['from'], e['d']['parent'])

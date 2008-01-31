@@ -1,5 +1,10 @@
 2008-01-31  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/web.py (LogEvent.__init__): include the
+	incarnation number in the anchor index, so that logfiles which
+	contain events from multiple incarnations of the same Tub will not
+	suffer from href collisions
+
 	* foolscap/broker.py: switch to foolscap.logging
 	(Broker.connectionLost): log this event
 	(Broker.freeYourReference): same, at log.UNUSUAL
