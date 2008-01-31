@@ -1,5 +1,10 @@
 2008-01-31  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/broker.py: switch to foolscap.logging
+	(Broker.connectionLost): log this event
+	(Broker.freeYourReference): same, at log.UNUSUAL
+	(Broker._callFinished): same, at log.UNUSUAL
+
 	* foolscap/__init__.py: bump revision to 0.2.4+ while between releases
 	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
 

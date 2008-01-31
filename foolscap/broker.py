@@ -6,7 +6,7 @@ import types, time
 from itertools import count
 
 from zope.interface import implements
-from twisted.python import log, failure
+from twisted.python import failure
 from twisted.internet import defer, error
 from twisted.internet import interfaces as twinterfaces
 from twisted.internet.protocol import connectionDone
@@ -18,6 +18,7 @@ from foolscap.tokens import Violation, BananaError
 from foolscap.ipb import DeadReferenceError, IBroker
 from foolscap.slicers.root import RootSlicer, RootUnslicer, ScopedRootSlicer
 from foolscap.eventual import eventually
+from foolscap.logging import log
 
 
 PBTopRegistry = {
@@ -233,6 +234,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.transport.loseConnection()
 
     def connectionLost(self, why):
+        tubid = "?"
+        if self.remote_tubref:
+            tubid = self.remote_tubref.getShortTubID()
+        log.msg("connection to %s lost" % tubid, facility="foolscap.connection")
         self.finish(why)
 
     def finish(self, why):
@@ -377,8 +382,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
             # release the tracker
             d.addCallback(self.freeYourReferenceTracker, tracker)
         except:
-            log.msg("failure during freeRemoteReference")
-            log.err()
+            f = failure.Failure()
+            log.msg("failure during freeRemoteReference", facility="foolscap",
+                    level=log.UNUSUAL, failure=f)
 
     def freeYourReferenceTracker(self, res, tracker):
         if tracker.received_count != 0:
@@ -583,8 +589,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
             # TODO: .send should return a Deferred that fires when the last
             # byte has been queued, and we should delete the local note then
         except:
-            log.msg("Broker._callfinished unable to send")
-            log.err()
+            f = failure.Failure()
+            log.msg("Broker._callfinished unable to send",
+                    facility="foolscap", level=log.UNUSUAL, failure=f)
         del self.activeLocalCalls[reqID]
 
     def callFailed(self, f, reqID, delivery=None):
