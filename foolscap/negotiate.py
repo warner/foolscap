@@ -1338,7 +1338,7 @@ class TubConnector:
             self.attemptedLocations.append(location)
             host, port = location.split(":")
             port = int(port)
-            lp = self.log("connecting to %s", location)
+            lp = self.log("connectTCP to %s" % location)
             f = TubConnectorClientFactory(self, host, lp)
             c = reactor.connectTCP(host, port, f)
             self.pendingConnections[f] = c
