@@ -13,7 +13,7 @@ except ImportError:
     pass
 
 from foolscap import Tub, UnauthenticatedTub, SturdyRef, Referenceable
-from foolscap.referenceable import RemoteReference, SturdyRef
+from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin
 from foolscap.tokens import WrongTubIdError
@@ -63,7 +63,7 @@ class SetLocation(unittest.TestCase):
         return d
 
     def test_set_location(self):
-        t = Tub()
+        t = GoodEnoughTub()
         l = t.listenOn("tcp:0")
         t.setServiceParent(self.s)
         d = t.setLocationAutomatically()
