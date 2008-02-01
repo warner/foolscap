@@ -1,5 +1,11 @@
 2008-01-31  Brian Warner  <warner@allmydata.com>
 
+	* doc/listings/xfer-server.py:
+	* doc/listings/xfer-client.py: new sample programs, a
+	client/server pair which allow the client to put files in the
+	server's directory. Useful as a replacement for restricted-command
+	passphraseless ssh key arrangements.
+
 	* foolscap/pb.py (Tub.setLocationAutomatically): new method that
 	guesses an externally-visible IP address and uses it to call
 	setLocation().
