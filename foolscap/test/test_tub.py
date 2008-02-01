@@ -71,9 +71,14 @@ class SetLocation(unittest.TestCase):
         def _check(furl):
             sr = SturdyRef(furl)
             portnum = l.getPortnum()
-            for lh in sr.locationHints:
-                self.failUnless(lh.endswith(":%d" % portnum), lh)
-            self.failUnless("127.0.0.1:%d" % portnum in sr.locationHints)
+            if sr.encrypted:
+                for lh in sr.locationHints:
+                    self.failUnless(lh.endswith(":%d" % portnum), lh)
+                self.failUnless("127.0.0.1:%d" % portnum in sr.locationHints)
+            else:
+                # TODO: unauthenticated tubs need review, I think they
+                # deserve to have tubids and multiple connection hints
+                pass
         d.addCallback(_check)
         return d
 
