@@ -13,7 +13,7 @@ except ImportError:
     pass
 
 from foolscap import Tub, UnauthenticatedTub, SturdyRef, Referenceable
-from foolscap.referenceable import RemoteReference
+from foolscap.referenceable import RemoteReference, SturdyRef
 from foolscap.eventual import eventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin
 from foolscap.tokens import WrongTubIdError
@@ -50,6 +50,34 @@ class TestCertFile(unittest.TestCase):
 
 if not crypto_available:
     del TestCertFile
+
+class SetLocation(unittest.TestCase):
+
+    def setUp(self):
+        self.s = service.MultiService()
+        self.s.startService()
+
+    def tearDown(self):
+        d = self.s.stopService()
+        d.addCallback(flushEventualQueue)
+        return d
+
+    def test_set_location(self):
+        t = Tub()
+        l = t.listenOn("tcp:0")
+        t.setServiceParent(self.s)
+        d = t.setLocationAutomatically()
+        d.addCallback(lambda res: t.registerReference(Referenceable()))
+        def _check(furl):
+            sr = SturdyRef(furl)
+            portnum = l.getPortnum()
+            for lh in sr.locationHints:
+                self.failUnless(lh.endswith(":%d" % portnum), lh)
+            self.failUnless("127.0.0.1:%d" % portnum in sr.locationHints)
+        d.addCallback(_check)
+        return d
+
+        
 
 class FurlFile(unittest.TestCase):
 

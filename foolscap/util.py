@@ -1,5 +1,6 @@
 
-from twisted.internet import defer
+import socket
+from twisted.internet import defer, reactor, protocol
 
 
 class AsyncAND(defer.Deferred):
@@ -50,3 +51,31 @@ class AsyncAND(defer.Deferred):
             else:
                 # second and later Failures are not absorbed
                 return result
+
+# adapted from Tahoe: finds a single publically-visible address, or None.
+# Tahoe also uses code to run /bin/ifconfig (or equivalent) to find other
+# addresses, but that's a bit heavy for this. Note that this runs
+# synchronously.
+def get_local_ip_for(target='A.ROOT-SERVERS.NET'):
+    """Find out what our IP address is for use by a given target.
+
+    @return: the IP address as a dotted-quad string which could be used by
+              to connect to us. It might work for them, it might not. If
+              there is no suitable address (perhaps we don't currently have an
+              externally-visible interface), this will return None.
+    """
+    try:
+        target_ipaddr = socket.gethostbyname(target)
+    except socket.gaierror:
+        # DNS isn't running
+        return None
+    udpprot = protocol.DatagramProtocol()
+    port = reactor.listenUDP(0, udpprot)
+    try:
+        udpprot.transport.connect(target_ipaddr, 7)
+        localip = udpprot.transport.getHost().host
+    except socket.error:
+        # no route to that host
+        localip = None
+    port.stopListening() # note, this returns a Deferred
+    return localip

@@ -1,5 +1,15 @@
 2008-01-31  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/pb.py (Tub.setLocationAutomatically): new method that
+	guesses an externally-visible IP address and uses it to call
+	setLocation().
+	* foolscap/test/test_tub.py (SetLocation.test_set_location): test
+	for it
+
+	* foolscap/util.py (get_local_ip_for): make get_local_ip_for()
+	more generally available, moving out of gatherer.py
+	* foolscap/logging/gatherer.py: same
+
 	* foolscap/negotiate.py (TubConnector.connectToAll): fix log message
 
 	* foolscap/logging/web.py (LogEvent.__init__): include the

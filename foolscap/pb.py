@@ -7,6 +7,7 @@ from twisted.application import service, strports
 from twisted.python.failure import Failure
 
 from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
+from foolscap import util
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError
 from foolscap.reconnector import Reconnector
@@ -454,6 +455,49 @@ class Tub(service.MultiService):
                           "location hint")
         self.locationHints = hints
         self._maybeCreateLogPortFURLFile()
+
+    def setLocationAutomatically(self, *extra_addresses):
+        """Determine one of this host's publically-visible IP addresses and
+        use it to set our location. This uses whatever source address would
+        be used to get to a well-known public host (A.ROOT-SERVERS.NET),
+        which is effectively the interface on which a default route lives.
+        This is neither very pretty (IP address instead of hostname) nor
+        guaranteed to work (it may very well be a 192.168 'private' address),
+        but for publically-visible hosts this will probably produce a useable
+        FURL.
+
+        This method returns a Deferred that will fire once the location is
+        actually established. Calls to registerReference() must be put off
+        until the location has been set. And of course, you must call
+        listenOn() before calling autoSetLocation()."""
+
+        # first, make sure the reactor is actually running, by using the
+        # eventual-send queue
+        d = eventual.fireEventually()
+
+        def _reactor_running(res):
+            assert self.running
+            # we can't use get_local_ip_for until the reactor is running
+            return util.get_local_ip_for()
+        d.addCallback(_reactor_running)
+
+        def _got_local_ip(local_address):
+            local_addresses = set(extra_addresses)
+            if local_address:
+                local_addresses.add(local_address)
+            local_addresses.add("127.0.0.1")
+            locations = set()
+            for l in self.getListeners():
+                portnum = l.getPortnum()
+                for addr in local_addresses:
+                    locations.add("%s:%d" % (addr, portnum))
+            locations = list(locations)
+            locations.sort()
+            assert len(locations) >= 1
+            location = ",".join(locations)
+            self.setLocation(location)
+        d.addCallback(_got_local_ip)
+        return d
 
     def listenOn(self, what, options={}):
         """Start listening for connections.

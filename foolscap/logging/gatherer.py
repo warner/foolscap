@@ -1,14 +1,13 @@
 
 import time, pickle
-import socket
 from zope.interface import implements
 from twisted.internet import reactor, defer
-from twisted.internet.protocol import DatagramProtocol
 from twisted.python import usage
 import foolscap
 from foolscap.eventual import fireEventually
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.logging.tail import short_tubid_b2a
+from foolscap.util import get_local_ip_for
 
 class GatherOptions(usage.Options):
     pass
@@ -32,34 +31,6 @@ class LogSaver(foolscap.Referenceable):
     def disconnected(self):
         del self.f
 
-
-# adapted from Tahoe: finds a single publically-visible address, or None.
-# Tahoe also uses code to run /bin/ifconfig (or equivalent) to find other
-# addresses, but that's a bit heavy for this. Note that this runs
-# synchronously.
-def get_local_ip_for(target='A.ROOT-SERVERS.NET'):
-    """Find out what our IP address is for use by a given target.
-
-    @return: the IP address as a dotted-quad string which could be used by
-              to connect to us. It might work for them, it might not. If
-              there is no suitable address (perhaps we don't currently have an
-              externally-visible interface), this will return None.
-    """
-    try:
-        target_ipaddr = socket.gethostbyname(target)
-    except socket.gaierror:
-        # DNS isn't running
-        return None
-    udpprot = DatagramProtocol()
-    port = reactor.listenUDP(0, udpprot)
-    try:
-        udpprot.transport.connect(target_ipaddr, 7)
-        localip = udpprot.transport.getHost().host
-    except socket.error:
-        # no route to that host
-        localip = None
-    port.stopListening() # note, this returns a Deferred
-    return localip
 
 class LogGatherer(foolscap.Referenceable):
     """Run a service that gathers logs from multiple applications.
