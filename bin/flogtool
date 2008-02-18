@@ -13,7 +13,7 @@ if (os.path.exists(os.path.join(base, "setup.py")) and
 
 import foolscap
 from foolscap.logging.tail import TailOptions
-from foolscap.logging.gatherer import GatherOptions
+from foolscap.logging.gatherer import CreateGatherOptions
 from foolscap.logging.dumper import DumpOptions
 from foolscap.logging.web import WebViewerOptions
 from foolscap.logging.filter import FilterOptions
@@ -23,8 +23,8 @@ class Options(usage.Options):
 
     subCommands = [
         ("tail", None, TailOptions, "follow logs of the target node"),
-        ("gather", None, GatherOptions,
-         "run as a daemon, record all logs to the current directory"),
+        ("create-gatherer", None, CreateGatherOptions,
+         "Make a .tac which will record all logs to a given directory"),
         ("dump", None, DumpOptions,
          "dump the logs recorded by 'logtool gather'"),
         ("filter", None, FilterOptions,
@@ -54,10 +54,9 @@ def dispatch(command, options):
         lt = LogTail()
         lt.run(options.target_furl)
 
-    elif command == "gather":
-        from foolscap.logging.gatherer import LogGatherer
-        lg = LogGatherer()
-        lg.run()
+    elif command == "create-gatherer":
+        from foolscap.logging.gatherer import create_log_gatherer
+        create_log_gatherer(options)
 
     elif command == "dump":
         from foolscap.logging.dumper import LogDumper

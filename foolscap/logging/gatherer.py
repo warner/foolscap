@@ -1,16 +1,20 @@
 
-import time, pickle
+import os, sys, time, pickle
 from zope.interface import implements
 from twisted.internet import reactor, defer
 from twisted.python import usage
+from twisted.application import service
 import foolscap
 from foolscap.eventual import fireEventually
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.logging.tail import short_tubid_b2a
 from foolscap.util import get_local_ip_for
 
-class GatherOptions(usage.Options):
-    pass
+class CreateGatherOptions(usage.Options):
+    """flogtool create-gatherer GATHERER_DIRECTORY"""
+
+    def parseArgs(self, gatherer_dir):
+        self["basedir"] = gatherer_dir
 
 class LogSaver(foolscap.Referenceable):
     implements(RILogObserver)
@@ -126,3 +130,51 @@ class LogGatherer(foolscap.Referenceable):
         publisher.callRemote("subscribe_to_all", ls)
         publisher.notifyOnDisconnect(ls.disconnected)
 
+class GathererService(service.Service):
+    # create this with 'flogtool create-gatherer BASEDIR'
+    # run this as 'cd BASEDIR && twistd -y gatherer.tac'
+    def startService(self):
+        # confirm that we're running from our BASEDIR, otherwise we'll put
+        # the logevent file in the wrong place.
+        tac = os.path.join(os.getcwd(), "gatherer.tac")
+        if not os.path.exists(tac):
+            raise RuntimeError("running in the wrong directory")
+        service.Service.startService(self)
+        lg = LogGatherer()
+        d = fireEventually()
+        d.addCallback(lg.start)
+        d.addErrback(lg._error)
+
+
+def create_log_gatherer(config):
+    basedir = config["basedir"]
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+    f = open(os.path.join(basedir, "gatherer.tac"), "w")
+    f.write("""\
+# -*- python -*-
+
+# we record the path when 'flogtool create-gatherer' is run, in case flogtool
+# was run out of a source tree. This is somewhat fragile, of course.
+
+stashed_path = [
+""")
+    for p in sys.path:
+        f.write("  %r,\n" % p)
+    f.write(" ]\n\n")
+    f.write("""
+import sys
+needed = [p for p in stashed_path if p not in sys.path]
+sys.path = needed + sys.path
+print 'NEEDED', needed
+
+from foolscap.logging import gatherer
+from twisted.application import service
+
+gs = gatherer.GathererService()
+application = service.Application('log_gatherer')
+gs.setServiceParent(application)
+""")
+    f.close()
+    print "Gatherer created in directory %s" % basedir
+    print "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir

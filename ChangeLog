@@ -1,3 +1,11 @@
+2008-02-17  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/gatherer.py: make 'flogtool create-gatherer' to
+	build a .tac file (which can be launched with twistd) rather than
+	starting a gatherer right away. This is much more useable in
+	practice.
+	* bin/flogtool: same
+
 2008-01-31  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/test/test_tub.py: hush pyflakes, make it work without
