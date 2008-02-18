@@ -1,5 +1,10 @@
 2008-02-17  Brian Warner  <warner@lothar.com>
 
+	* doc/using-foolscap.xhtml: fix href, thanks to Stephen Waterbury
+	for the catch. Note that the .xhtml points to .xhtml, and lore
+	converts the target of the link to .html in the .html output.
+	* doc/copyable.xhtml: same
+
 	* foolscap/logging/gatherer.py: make 'flogtool create-gatherer' to
 	build a .tac file (which can be launched with twistd) rather than
 	starting a gatherer right away. This is much more useable in
