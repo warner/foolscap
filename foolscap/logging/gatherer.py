@@ -1,13 +1,13 @@
 
-import os, sys, time, pickle
+import os, sys
 from zope.interface import implements
 from twisted.internet import reactor, defer
 from twisted.python import usage
 from twisted.application import service
 import foolscap
 from foolscap.eventual import fireEventually
-from foolscap.logging.interfaces import RILogGatherer, RILogObserver
-from foolscap.logging.tail import short_tubid_b2a
+from foolscap.logging.interfaces import RILogGatherer
+from foolscap.logging.tail import short_tubid_b2a, LogSaver
 from foolscap.util import get_local_ip_for
 
 class CreateGatherOptions(usage.Options):
@@ -15,25 +15,6 @@ class CreateGatherOptions(usage.Options):
 
     def parseArgs(self, gatherer_dir):
         self["basedir"] = gatherer_dir
-
-class LogSaver(foolscap.Referenceable):
-    implements(RILogObserver)
-    def __init__(self, nodeid, savefile):
-        self.nodeid = nodeid
-        self.f = savefile
-
-    def remote_msg(self, d):
-        e = {"from": self.nodeid,
-             "rx_time": time.time(),
-             "d": d,
-             }
-        try:
-            pickle.dump(e, self.f)
-        except:
-            print "GATHERER: unable to pickle %s" % e
-
-    def disconnected(self):
-        del self.f
 
 
 class LogGatherer(foolscap.Referenceable):

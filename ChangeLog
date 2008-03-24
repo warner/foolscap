@@ -1,5 +1,13 @@
 2008-03-24  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/tail.py: add --save-to option to 'flogtool
+	tail', which saves the log events to a file (in addition to
+	printing them to stdout). 'flogtool dump' can be used on the saved
+	file later. Also refactor things a bit to let us grab the
+	tubid from the target furl, since this gets recorded in the
+	save file format.
+	* foolscap/logging/gatherer.py (LogSaver): move to tail.py
+
 	* foolscap/logging/tail.py (LogPrinter): print formatted event
 	lines by default. Use the new --verbose option to dump raw event
 	dictionaries. Part of #43.

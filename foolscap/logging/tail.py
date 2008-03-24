@@ -1,5 +1,5 @@
 
-import os, time
+import os, time, pickle
 from zope.interface import implements
 from twisted.internet import reactor
 from twisted.python import usage
@@ -7,13 +7,40 @@ import foolscap
 from foolscap import base32
 from foolscap.eventual import fireEventually
 from foolscap.logging import log
+from foolscap.referenceable import SturdyRef
 from interfaces import RILogObserver
+
+def short_tubid_b2a(tubid):
+    return base32.encode(tubid)[:8]
+
+class LogSaver(foolscap.Referenceable):
+    implements(RILogObserver)
+    def __init__(self, nodeid_s, savefile):
+        self.nodeid_s = nodeid_s
+        self.f = savefile
+
+    def remote_msg(self, d):
+        e = {"from": self.nodeid_s,
+             "rx_time": time.time(),
+             "d": d,
+             }
+        try:
+            pickle.dump(e, self.f)
+        except:
+            print "GATHERER: unable to pickle %s" % e
+
+    def disconnected(self):
+        del self.f
 
 class TailOptions(usage.Options):
     synopsis = "Usage: flogtool tail (LOGPORT.furl/furlfile/nodedir)"
 
     optFlags = [
         ("verbose", "v", "Show all event arguments"),
+        ]
+    optParameters = [
+        ("save-to", "s", None,
+         "Save events to the given file. The file will be overwritten."),
         ]
 
     def parseArgs(self, target):
@@ -30,14 +57,20 @@ class TailOptions(usage.Options):
 class LogPrinter(foolscap.Referenceable):
     implements(RILogObserver)
 
-    def __init__(self, options):
+    def __init__(self, options, target_tubid_s):
         self.options = options
+        self.saver = None
+        if options["saveto"]:
+            self.saver = LogSaver(target_tubid_s[:8],
+                                  open(options["saveto"], "w"))
 
     def remote_msg(self, d):
         if self.options['verbose']:
             self.simple_print(d)
         else:
             self.formatted_print(d)
+        if self.saver:
+            self.saver.remote_msg(d)
 
     def simple_print(self, d):
         print d
@@ -58,16 +91,14 @@ class LogPrinter(foolscap.Referenceable):
                 print " %s" % (line,)
 
 
-def short_tubid_b2a(tubid):
-    return base32.encode(tubid)[:8]
-
 class LogTail:
     def __init__(self, options):
         self.options = options
 
     def run(self, target_furl):
+        target_tubid = SturdyRef(target_furl).getTubRef().getTubID()
         d = fireEventually(target_furl)
-        d.addCallback(self.start)
+        d.addCallback(self.start, target_tubid)
         d.addErrback(self._error)
         print "starting.."
         reactor.run()
@@ -76,16 +107,16 @@ class LogTail:
         print "ERROR", f
         reactor.stop()
 
-    def start(self, target_furl):
+    def start(self, target_furl, target_tubid):
         print "Connecting.."
         self._tub = foolscap.Tub()
         self._tub.startService()
-        self._tub.connectTo(target_furl, self._got_logpublisher)
+        self._tub.connectTo(target_furl, self._got_logpublisher, target_tubid)
 
-    def _got_logpublisher(self, publisher):
+    def _got_logpublisher(self, publisher, target_tubid):
         print "Connected"
         publisher.notifyOnDisconnect(self._lost_logpublisher)
-        lp = LogPrinter(self.options)
+        lp = LogPrinter(self.options, target_tubid)
         d = publisher.callRemote("subscribe_to_all", lp)
         return d
 
