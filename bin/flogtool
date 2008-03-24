@@ -51,7 +51,7 @@ class Options(usage.Options):
 def dispatch(command, options):
     if command == "tail":
         from foolscap.logging.tail import LogTail
-        lt = LogTail()
+        lt = LogTail(options)
         lt.run(options.target_furl)
 
     elif command == "create-gatherer":

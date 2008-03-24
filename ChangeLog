@@ -1,3 +1,10 @@
+2008-03-24  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/logging/tail.py (LogPrinter): print formatted event
+	lines by default. Use the new --verbose option to dump raw event
+	dictionaries. Part of #43.
+	* bin/flogtool (dispatch): same
+
 2008-02-17  Brian Warner  <warner@lothar.com>
 
 	* doc/using-foolscap.xhtml: fix href, thanks to Stephen Waterbury
