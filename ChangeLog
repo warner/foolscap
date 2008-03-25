@@ -1,5 +1,15 @@
 2008-03-24  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/tail.py: fix --save-to, also put exception
+	information into the twistd.log when we can't pickle the event
+
+	* foolscap/logging/gatherer.py: add --rotate and --bzip options to
+	'flogtool create-gatherer': rotate the logfile every N seconds,
+	and optionally compress the results. Each logfile gets named like
+	from-2008-03-24-20-31-46Z--to-2008-03-24-20-31-56Z.flog.bz2 , and
+	the open one is named from-2008-03-24-20-32-16Z--to-present.flog .
+	Sending SIGHUP to the gatherer will force a rotation. Closes #48.
+
 	* foolscap/logging/tail.py: add --save-to option to 'flogtool
 	tail', which saves the log events to a file (in addition to
 	printing them to stdout). 'flogtool dump' can be used on the saved
@@ -10,7 +20,7 @@
 
 	* foolscap/logging/tail.py (LogPrinter): print formatted event
 	lines by default. Use the new --verbose option to dump raw event
-	dictionaries. Part of #43.
+	dictionaries. Closes #43.
 	* bin/flogtool (dispatch): same
 
 2008-02-17  Brian Warner  <warner@lothar.com>

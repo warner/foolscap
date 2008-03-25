@@ -26,8 +26,8 @@ class LogSaver(foolscap.Referenceable):
              }
         try:
             pickle.dump(e, self.f)
-        except:
-            print "GATHERER: unable to pickle %s" % e
+        except Exception, ex:
+            print "GATHERER: unable to pickle %s: %s" % (e, ex)
 
     def disconnected(self):
         del self.f
@@ -60,9 +60,9 @@ class LogPrinter(foolscap.Referenceable):
     def __init__(self, options, target_tubid_s):
         self.options = options
         self.saver = None
-        if options["saveto"]:
+        if options["save-to"]:
             self.saver = LogSaver(target_tubid_s[:8],
-                                  open(options["saveto"], "w"))
+                                  open(options["save-to"], "w"))
 
     def remote_msg(self, d):
         if self.options['verbose']:
