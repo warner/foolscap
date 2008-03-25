@@ -1,5 +1,8 @@
 2008-03-25  Brian Warner  <warner@lothar.com>
 
+	* bin/flogtool (Options.synopsis): update with all commands.
+	There's still something broken with --help output, though.
+
 	* doc/listings/command-server.py:
 	* doc/listings/command-client.py: new sample programs, a 
 	client/server pair which lets the client trigger a specific

@@ -19,7 +19,7 @@ from foolscap.logging.web import WebViewerOptions
 from foolscap.logging.filter import FilterOptions
 
 class Options(usage.Options):
-    synopsis = "Usage: flogtool (tail|gather|dump) args.."
+    synopsis = "Usage: flogtool (tail|create-gatherer|dump|filter|web-viewer)"
 
     subCommands = [
         ("tail", None, TailOptions, "follow logs of the target node"),
