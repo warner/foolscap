@@ -1,7 +1,6 @@
 
 import sys, pickle
 from twisted.python import usage
-from foolscap.logging.tail import short_tubid_b2a
 from foolscap.logging.log import format_message
 
 class DumpOptions(usage.Options):
@@ -27,7 +26,7 @@ class LogDumper:
             self.print_event(e, options)
 
     def print_event(self, e, options):
-        short = short_tubid_b2a(e['from'])
+        short = e['from'][:8]
         when = e['rx_time']
         d = e['d']
         if options['just-numbers']:

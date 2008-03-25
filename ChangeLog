@@ -1,5 +1,14 @@
 2008-03-24  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/dumper.py (LogDumper.print_event): event dicts
+	store the printable tubid, not a binary form
+	* foolscap/logging/gatherer.py (Observer.__init__): same
+	(LogGatherer.remote_logport): same
+	* foolscap/logging/interfaces.py (TubID): same
+	* foolscap/logging/web.py (LogEvent.__init__): same
+	* foolscap/logging/gatherer.py (LogGatherer.__init__): make bzip=
+	argument optional, for unit tests
+
 	* foolscap/logging/tail.py: fix --save-to, also put exception
 	information into the twistd.log when we can't pickle the event
 

@@ -12,7 +12,6 @@ from twisted.application import service
 import foolscap
 from foolscap.eventual import fireEventually
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
-from foolscap.logging.tail import short_tubid_b2a
 from foolscap.util import get_local_ip_for
 
 class CreateGatherOptions(usage.Options):
@@ -33,9 +32,8 @@ class CreateGatherOptions(usage.Options):
 class Observer(foolscap.Referenceable):
     implements(RILogObserver)
 
-    def __init__(self, nodeid, gatherer):
-        self.nodeid = nodeid # binary
-        self.nodeid_s = short_tubid_b2a(nodeid)
+    def __init__(self, nodeid_s, gatherer):
+        self.nodeid_s = nodeid_s # printable string
         self.gatherer = gatherer
 
     def remote_msg(self, d):
@@ -77,7 +75,7 @@ class LogGatherer(foolscap.Referenceable):
     furlFile = "log_gatherer.furl"
     TIME_FORMAT = "%Y-%m-%d-%H-%M-%SZ"
 
-    def __init__(self, bzip):
+    def __init__(self, bzip=None):
         self.bzip = bzip
 
     def run(self):
@@ -170,7 +168,9 @@ class LogGatherer(foolscap.Referenceable):
             print "Gatherer waiting at:", me
 
     def remote_logport(self, nodeid, publisher):
-        o = Observer(nodeid, self)
+        # nodeid is actually a printable string
+        nodeid_s = nodeid
+        o = Observer(nodeid_s, self)
         publisher.callRemote("subscribe_to_all", o)
 
     def msg(self, nodeid_s, d):

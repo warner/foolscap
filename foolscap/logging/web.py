@@ -1,5 +1,5 @@
 
-import pickle, time
+import pickle, time, urllib
 from twisted.internet import reactor
 from twisted.application import strports
 from twisted.python import usage
@@ -206,7 +206,7 @@ class LogEvent:
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
             incarnation = base32.encode(e['d']['incarnation'][0])
-            self.anchor_index = "%s_%s_%d" % (base32.encode(e['from']),
+            self.anchor_index = "%s_%s_%d" % (urllib.quote(e['from']),
                                               incarnation,
                                               e['d']['num'])
         self.parent_index = None

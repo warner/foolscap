@@ -2,7 +2,7 @@
 from foolscap.remoteinterface import RemoteInterface
 from foolscap.schema import DictOf, ListOf, Any
 
-TubID = str
+TubID = str # printable: either base32 encoded or "<unauth>"
 
 class RILogObserver(RemoteInterface):
     __remote_name__ = "RILogObserver.foolscap.lothar.com"
