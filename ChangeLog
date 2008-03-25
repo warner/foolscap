@@ -1,5 +1,11 @@
 2008-03-25  Brian Warner  <warner@lothar.com>
 
+	* doc/listings/command-server.py:
+	* doc/listings/command-client.py: new sample programs, a 
+	client/server pair which lets the client trigger a specific
+	command to be run on the server. Like xfer-server.py, but for
+	running commands instead of transferring files.
+
 	* foolscap/test/common.py (PollMixin): refactor a bit, to extract
 	the poll() method for use by other tests
 	* foolscap/test/test_logging.py (Publish.test_logpublisher):
