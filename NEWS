@@ -1,5 +1,80 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.2.5 (25 Mar 2008)
+
+** Compatibility
+
+All releases between 0.1.3 and 0.2.5 (inclusive) are fully wire-compatible.
+
+The new 'flogtool tail --catch-up' command requires a log publisher running
+0.2.5 or later. 'flogtool tail' without the --catch-up option will work with
+earlier publishers.
+
+** Licensing clarification
+
+Foolscap is distributed under the (very liberal) terms of the MIT license,
+which is the same license that Twisted uses. It's been like this since the
+beginning, but this is the first release to make this obvious by including a
+LICENSE file.
+
+** foolscap.logging Changes
+
+'flogtool tail' now has a --catch-up option, which prompts the remote
+publisher to deliver stored historical events to the subscribe, in proper
+sequential order. This allows you to connect to a process that has just done
+something interesting and grab a copy of the log events relevant to that
+event.
+
+'flogtool tail' also has a --save-to option, which specifies a filename to
+which all captured events should be saved. This file can be processed further
+with 'flogtool dump', 'flogtool filter', or 'flogtool web-viewer'. This
+behaves much like the unix 'tee' utility, except that the saved data is
+recorded in a lossless binary format (whereas the text emitted to stdout is
+not particularly machine-readable).
+
+'flogtool tail' and 'flogtool dump' both emit human-readable log messages by
+default. The --verbose option will emit raw event dictionaries, which contain
+slightly more information but are harder to read.
+
+'flogtool create-gatherer' will create a log gatherer .tac file in a new
+working directory. This .tac file can be launched with 'twistd', the standard
+Twisted daemon-launching program. This is significantly easier to work with
+than the previous 'flogtool gather' command (which has been removed). The new
+--rotate option will cause the log-gatherer to switch to a new output file
+every N seconds. The --bzip option will make it compress the logfiles after
+rotating them. For example, a log gatherer that rotates and compresses log
+files once per day could be created and launched with:
+
+ flogtool create-gatherer --rotate 86400 --bzip ./workdir
+ (cd workdir && twistd -y gatherer.tac)
+
+** New sample programs
+
+doc/listings/command-server.py and command-client.py are a pair of programs
+that let you safely grant access to a specific command. The server is
+configured with a command line to run, and a directory to run it from. The
+client gets a FURL: when the client is executed, the server will run its
+preconfigured command. The client gets to see stdout and stderr (and the exit
+status), but does not get to influence the command being run in any way.
+This is much like setting up an ssh server with a restricted command, but
+somewhat easier to configure.
+
+doc/listings/xfer-server.py and xfer-client.py are similar, but provide file
+transfer services instead of command execution.
+
+** New Features
+
+Tub.setLocationAutomatically() will try to determine an externally-visible IP
+address and feed it to Tub.setLocation(). It does this by preparing to send a
+packet to a well-known public IP address (one of the root DNS servers) and
+seeing which network interface would be used. This will tend to find the
+outbound default route, which of course is only externally-visible if the
+host is externally-visible. Applications should not depend upon this giving a
+useful value, and should give the user a way to configure a list of
+hostname+portnumbers so that manually-configured firewalls, port forwarders,
+and NAT boxes can be dealt with.
+
+
 * Release 0.2.4 (28 Jan 2008)
 
 ** Compatibility
