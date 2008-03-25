@@ -1,5 +1,7 @@
 2008-03-25  Brian Warner  <warner@lothar.com>
 
+	* MANIFEST.in: add LICENSE
+
 	* NEWS: update for the upcoming release
 
 	* bin/flogtool (Options.synopsis): update with all commands.
