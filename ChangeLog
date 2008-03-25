@@ -1,3 +1,10 @@
+2008-03-24  Brian Warner  <warner@lothar.com>
+
+	* LICENSE: make it clear that Foolscap ships under the MIT license,
+	the same as Twisted uses. Closes #47.
+	* README: same
+	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/copyright: same
+
 2008-03-24  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/logging/dumper.py (LogDumper.print_event): event dicts

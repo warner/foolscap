@@ -80,3 +80,7 @@ AUTHOR:
  The Foolscap home page is a Trac instance at <http://foolscap.lothar.com>.
  It contains pointers to the latest release, bug reports, patches,
  documentation, and other resources.
+
+ Foolscap is distributed under the same license as Twisted itself, namely the
+ MIT license. Details are in the LICENSE file.
+
