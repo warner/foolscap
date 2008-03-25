@@ -1,5 +1,21 @@
 2008-03-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/interfaces.py (RILogPublisher.subscribe_to_all):
+	add a catch_up= argument, which causes the publisher to dump all
+	its stored messages just after adding the subscriber. Closes #49.
+	* foolscap/logging/log.py (FoolscapLogger.get_buffered_events): same
+	(LogFileObserver.msg): catch+print exceptions while pickling events
+	* foolscap/logging/publish.py (LogPublisher): add catch_up=, make
+	sure that any log events arrive after subscribe_to_all() has
+	returned, to make event sequencing easier on the subscriber. Also
+	make sure that any catch-up events arrive before subsequent log
+	events.
+	* foolscap/logging/tail.py: add --catch-up option, make sure we
+	remain compatible with <=0.2.4 publishers (as long as you don't
+	use --catch-up)
+	* foolscap/test/test_logging.py (Publish.test_logpublisher_catchup):
+	test it
+
 	* LICENSE: make it clear that Foolscap ships under the MIT license,
 	the same as Twisted uses. Closes #47.
 	* README: same

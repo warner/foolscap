@@ -267,6 +267,8 @@ class Publish(unittest.TestCase):
                 self.failUnlessEqual(versions["foolscap"],
                                      foolscap.__version__)
             d.addCallback(_check)
+            # note: catch_up=False, so this message won't be sent
+            log.msg("message 0 here, before your time")
             d.addCallback(lambda res:
                           logport.callRemote("subscribe_to_all", ob))
             def _emit(subscription):
@@ -331,6 +333,60 @@ class Publish(unittest.TestCase):
                     self.failUnless("failure" in msgs[7])
                     self.failUnless(msgs[7]["failure"].check(SampleError))
                     self.failUnless("err4" in str(msgs[7]["failure"]))
+
+            d.addCallback(_check_observer)
+            def _done(res):
+                return logport.callRemote("unsubscribe", self._subscription)
+            d.addCallback(_done)
+            return d
+        d.addCallback(_got_logport)
+        return d
+
+    def test_logpublisher_catchup(self):
+        basedir = "test_logging/test_logpublisher_catchup"
+        os.makedirs(basedir)
+        furlfile = os.path.join(basedir, "logport.furl")
+        t = GoodEnoughTub()
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+
+        t.setOption("logport-furlfile", furlfile)
+        logport_furl = t.getLogPortFURL()
+
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.parent)
+        ob = Observer()
+
+        d = t2.getReference(logport_furl)
+        def _got_logport(logport):
+            d = logport.callRemote("get_versions")
+            def _check(versions):
+                self.failUnlessEqual(versions["foolscap"],
+                                     foolscap.__version__)
+            d.addCallback(_check)
+            # note: catch_up=True, so this message *will* be sent
+            log.msg("message 0 here, before your time")
+            d.addCallback(lambda res:
+                          logport.callRemote("subscribe_to_all", ob, True))
+            def _emit(subscription):
+                self._subscription = subscription
+                log.msg("message 1 here")
+            d.addCallback(_emit)
+            d.addCallback(self.stall, 1.0)
+            # TODO: I'm not content with that absolute-time stall, and would
+            # prefer to do something faster and more deterministic
+            #d.addCallback(fireEventually)
+            #d.addCallback(fireEventually)
+            def _check_observer(res):
+                msgs = ob.messages
+                # this gets everything that's been logged since the unit
+                # tests began. Only check the last two.
+                self.failUnless(len(msgs) >= 2, len(msgs))
+                #print msgs
+                self.failUnlessEqual(msgs[-2]["message"],
+                                     "message 0 here, before your time")
+                self.failUnlessEqual(msgs[-1]["message"], "message 1 here")
 
             d.addCallback(_check_observer)
             def _done(res):

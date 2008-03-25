@@ -1,6 +1,6 @@
 
 from foolscap.remoteinterface import RemoteInterface
-from foolscap.schema import DictOf, ListOf, Any
+from foolscap.schema import DictOf, ListOf, Any, Optional
 
 TubID = str # printable: either base32 encoded or "<unauth>"
 
@@ -33,7 +33,8 @@ class RILogPublisher(RemoteInterface):
     __remote_name__ = "RILogPublisher.foolscap.lothar.com"
     def get_versions():
         return DictOf(str, str)
-    def subscribe_to_all(observer=RILogObserver):
+    def subscribe_to_all(observer=RILogObserver,
+                         catch_up=Optional(bool, False)):
         return RISubscription
     def unsubscribe(subscription=Any()):
         # I don't know how to get the constraint right: unsubscribe() should

@@ -190,6 +190,15 @@ class FoolscapLogger:
     def getLogPort(self):
         return self._logport
 
+    def get_buffered_events(self):
+        # iterates over all current log events in no particular order. The
+        # caller should sort them by event number. If this isn't iterated
+        # quickly enough, more events may arrive.
+        for facility,b1 in self.buffers.iteritems():
+            for level,q in b1.iteritems():
+                for event in q:
+                    yield event
+
 
 theLogger = FoolscapLogger()
 

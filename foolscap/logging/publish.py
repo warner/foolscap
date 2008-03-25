@@ -4,6 +4,7 @@ import twisted
 import foolscap
 from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
+from foolscap.eventual import eventually
 
 class Subscription(Referenceable):
     implements(RISubscription)
@@ -60,8 +61,13 @@ class LogPublisher(Referenceable):
     def remote_get_versions(self):
         return self.versions
 
-    def remote_subscribe_to_all(self, observer):
+    def remote_subscribe_to_all(self, observer, catch_up=False):
         s = Subscription()
+        eventually(self._subscribe, s, observer, catch_up)
+        # allow the call to return before we send them any events
+        return s
+
+    def _subscribe(self, s, observer, catch_up):
         def _observe(event):
             observer.callRemoteOnly("msg", event)
             #def _oops(f):
@@ -71,7 +77,14 @@ class LogPublisher(Referenceable):
         self._logger.addObserver(_observe)
         c = observer.notifyOnDisconnect(self.remote_unsubscribe, s)
         self._notifyOnDisconnectors[s] = c
-        return s
+        if catch_up:
+            # send any catch-up events in a single batch, before we allow any
+            # other events to be generated (and sent). This lets the
+            # subscriber see events in sorted order.
+            events = list(self._logger.get_buffered_events())
+            events.sort(lambda a,b: cmp(a['num'], b['num']))
+            for e in events:
+                observer.callRemoteOnly("msg", e)
 
     def remote_unsubscribe(self, s):
         f, observer = self._subscribers.pop(s)
