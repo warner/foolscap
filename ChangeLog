@@ -1,3 +1,17 @@
+2008-03-25  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/common.py (PollMixin): refactor a bit, to extract
+	the poll() method for use by other tests
+	* foolscap/test/test_logging.py (Publish.test_logpublisher):
+	improve the timing a bit, by waiting until the observer has heard
+	only silence for a full second, instead of starting the verify
+	pass one second after subscribing.
+	(Publish.test_logpublisher_catchup): same. It makes a bigger
+	difference here, because catch_up=True means that we'll be seeing
+	several hundred messages, which may take a non-trivial amount of
+	time to receive. I was seeing intermittent test failures with the
+	one-second-from-subscribe stall.
+
 2008-03-24  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/interfaces.py (RILogPublisher.subscribe_to_all):
@@ -15,6 +29,7 @@
 	use --catch-up)
 	* foolscap/test/test_logging.py (Publish.test_logpublisher_catchup):
 	test it
+	(Publish.test_logpublisher_catchup): make test more reliable
 
 	* LICENSE: make it clear that Foolscap ships under the MIT license,
 	the same as Twisted uses. Closes #47.

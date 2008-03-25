@@ -1,5 +1,5 @@
 
-import os, pickle
+import os, pickle, time
 from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
@@ -11,6 +11,7 @@ from foolscap.logging import gatherer, log
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
+from foolscap.test.common import PollMixin
 
 crypto_available = False
 try:
@@ -189,8 +190,10 @@ class Observer(Referenceable):
     implements(RILogObserver)
     def __init__(self):
         self.messages = []
+        self.last_received = time.time()
     def remote_msg(self, d):
         self.messages.append(d)
+        self.last_received = time.time()
 
 class MyGatherer(gatherer.LogGatherer):
     verbose = False
@@ -203,7 +206,7 @@ class MyGatherer(gatherer.LogGatherer):
 class SampleError(Exception):
     """a sample error"""
 
-class Publish(unittest.TestCase):
+class Publish(PollMixin, unittest.TestCase):
     def setUp(self):
         self.parent = service.MultiService()
         self.parent.startService()
@@ -273,6 +276,7 @@ class Publish(unittest.TestCase):
                           logport.callRemote("subscribe_to_all", ob))
             def _emit(subscription):
                 self._subscription = subscription
+                ob.last_received = time.time()
                 log.msg("message 1 here")
                 twisted_log.msg("message 2 here")
                 # switch to generic (no tubid) bridge
@@ -289,7 +293,14 @@ class Publish(unittest.TestCase):
                     errors = self.flushLoggedErrors(SampleError)
                     self.failUnlessEqual(len(errors), 2)
             d.addCallback(_emit)
-            d.addCallback(self.stall, 1.0)
+            # now we wait until the observer has seen nothing for a full
+            # second. I'd prefer something faster and more deterministic, but
+            # this ought to handle the normal slow-host cases.
+            def _check_f():
+                if ob.last_received < time.time() - 1.0:
+                    return True
+                return False
+            d.addCallback(lambda res: self.poll(_check_f))
             # TODO: I'm not content with that absolute-time stall, and would
             # prefer to do something faster and more deterministic
             #d.addCallback(fireEventually)
@@ -365,29 +376,45 @@ class Publish(unittest.TestCase):
                 self.failUnlessEqual(versions["foolscap"],
                                      foolscap.__version__)
             d.addCallback(_check)
-            # note: catch_up=True, so this message *will* be sent
-            log.msg("message 0 here, before your time")
+            # note: catch_up=True, so this message *will* be sent. Also note
+            # that we need this message to be unique, since our logger will
+            # stash messages recorded by other test cases, and we don't want
+            # to confuse the two.
+            log.msg("this is an early message")
             d.addCallback(lambda res:
                           logport.callRemote("subscribe_to_all", ob, True))
             def _emit(subscription):
                 self._subscription = subscription
-                log.msg("message 1 here")
+                ob.last_received = time.time()
+                log.msg("this is a later message")
             d.addCallback(_emit)
-            d.addCallback(self.stall, 1.0)
-            # TODO: I'm not content with that absolute-time stall, and would
-            # prefer to do something faster and more deterministic
-            #d.addCallback(fireEventually)
-            #d.addCallback(fireEventually)
+            # wait until the observer has seen nothing for a full second
+            def _check_f():
+                if ob.last_received < time.time() - 1.0:
+                    return True
+                return False
+            d.addCallback(lambda res: self.poll(_check_f))
             def _check_observer(res):
                 msgs = ob.messages
                 # this gets everything that's been logged since the unit
-                # tests began. Only check the last two.
+                # tests began. The Reconnector that's used by
+                # logport-furlfile will cause some uncertainty.. negotiation
+                # messages might be interleaved with the ones that we
+                # actually care about. So what we verify is that both of our
+                # messages appear *somewhere*, and that they show up in the
+                # correct order.
                 self.failUnless(len(msgs) >= 2, len(msgs))
-                #print msgs
-                self.failUnlessEqual(msgs[-2]["message"],
-                                     "message 0 here, before your time")
-                self.failUnlessEqual(msgs[-1]["message"], "message 1 here")
-
+                first = None
+                second = None
+                for i,m in enumerate(msgs):
+                    if m.get("message") == "this is an early message":
+                        first = i
+                    if m.get("message") == "this is a later message":
+                        second = i
+                self.failUnless(first is not None)
+                self.failUnless(second is not None)
+                self.failUnless(first < second,
+                                "%d is not before %d" % (first, second))
             d.addCallback(_check_observer)
             def _done(res):
                 return logport.callRemote("unsubscribe", self._subscription)
