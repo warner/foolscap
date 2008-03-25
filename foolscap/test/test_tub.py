@@ -82,7 +82,7 @@ class SetLocation(unittest.TestCase):
         d.addCallback(_check)
         return d
 
-        
+
 
 class FurlFile(unittest.TestCase):
 
