@@ -78,7 +78,7 @@ class LogPrinter(foolscap.Referenceable):
 
     def formatted_print(self, d):
         time_s = time.strftime("%H:%M:%S", time.localtime(d['time']))
-        time_s = time_s + "%.3f" % (d['time'] - int(d['time']))
+        time_s = time_s + ".%03d" % int(1000*(d['time'] - int(d['time'])))
 
         msg = log.format_message(d)
         level = d.get('level', log.OPERATIONAL)

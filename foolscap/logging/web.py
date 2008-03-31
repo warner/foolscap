@@ -231,7 +231,7 @@ class LogEvent:
     def to_html(self, href_base=""):
         d = self.e['d']
         time_s = time.strftime("%H:%M:%S", time.localtime(d['time']))
-        time_s = time_s + " %.4f" % (d['time'] - int(d['time']))
+        time_s = time_s + ".%03d" % int(1000*(d['time'] - int(d['time'])))
         msg = html.escape(log.format_message(d))
         if 'failure' in d:
             lines = str(d['failure']).split("\n")
