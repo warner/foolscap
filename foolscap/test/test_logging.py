@@ -1,5 +1,6 @@
 
 import os, pickle, time
+from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
@@ -7,7 +8,7 @@ from twisted.internet import defer, reactor
 from twisted.python import log as twisted_log
 from twisted.python import failure
 import foolscap
-from foolscap.logging import gatherer, log
+from foolscap.logging import gatherer, log, tail
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
@@ -572,5 +573,113 @@ class Publish(PollMixin, unittest.TestCase):
         t2.log("this message shouldn't make anything explode")
     test_log_gatherer_empty_furlfile.timeout = 20
 
+class Tail(unittest.TestCase):
+    def test_logprinter(self):
+        target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
+        options1 = {"save-to": None,
+                   "verbose": None}
+        out = StringIO()
+        lp = tail.LogPrinter(options1, target_tubid_s[:8], out)
+        lp.remote_msg({"time": 1207005906.527782,
+                       "level": 25,
+                       "num": 123,
+                       "message": "howdy",
+                       })
+        outmsg = out.getvalue()
+        # this contains a localtime string, so don't check the hour
+        self.failUnless(":25:06.527 L25 []#123 howdy" in outmsg)
 
+        lp.remote_msg({"time": 1207005907.527782,
+                       "level": 25,
+                       "num": 124,
+                       "format": "howdy %(there)s",
+                       "there": "pardner",
+                       })
+        outmsg = out.getvalue()
+        # this contains a localtime string, so don't check the hour
+        self.failUnless(":25:07.527 L25 []#124 howdy pardner" in outmsg)
+
+        try:
+            raise RuntimeError("fake error")
+        except RuntimeError:
+            f = failure.Failure()
+
+        lp.remote_msg({"time": 1207005950.002,
+                       "level": 30,
+                       "num": 125,
+                       "message": "oops",
+                       "failure": f,
+                       })
+        outmsg = out.getvalue()
+
+        self.failUnless(":25:50.002 L30 []#125 oops\n FAILURE:\n" in outmsg)
+        self.failUnless("RuntimeError: fake error" in outmsg)
+        self.failUnless("--- <exception caught here> ---\n" in outmsg)
+
+    def test_logprinter_verbose(self):
+        target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
+        options1 = {"save-to": None,
+                   "verbose": True}
+        out = StringIO()
+        lp = tail.LogPrinter(options1, target_tubid_s[:8], out)
+        lp.remote_msg({"time": 1207005906.527782,
+                       "level": 25,
+                       "num": 123,
+                       "message": "howdy",
+                       })
+        outmsg = out.getvalue()
+        self.failUnless("'message': 'howdy'" in outmsg, outmsg)
+        self.failUnless("'time': 1207005906.527782" in outmsg, outmsg)
+        self.failUnless("'level': 25" in outmsg, outmsg)
+        self.failUnless("{" in outmsg, outmsg)
+
+    def test_logprinter_saveto(self):
+        target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
+        saveto_filename = "test_logprinter_saveto.flog"
+        options = {"save-to": saveto_filename,
+                   "verbose": False}
+        out = StringIO()
+        lp = tail.LogPrinter(options, target_tubid_s[:8], out)
+        lp.remote_msg({"time": 1207005906.527782,
+                       "level": 25,
+                       "num": 123,
+                       "message": "howdy",
+                       })
+        outmsg = out.getvalue()
+        lp.saver.disconnected() # cause the file to be closed
+        data = pickle.load(open(saveto_filename, "rb"))
+        self.failUnlessEqual(data["from"], "jiijpvbg")
+        self.failUnlessEqual(data["d"]["message"], "howdy")
+        self.failUnlessEqual(data["d"]["num"], 123)
+
+    def test_options(self):
+        fn = "test_logging.Tail.test_options"
+        f = open(fn, "w")
+        f.write("pretend this is a furl")
+        f.close()
+        f = open("logport.furl", "w")
+        f.write("this too")
+        f.close()
+
+        to = tail.TailOptions()
+        to.parseOptions(["pb:pretend-furl"])
+        self.failIf(to["verbose"])
+        self.failIf(to["catch-up"])
+        self.failUnlessEqual(to.target_furl, "pb:pretend-furl")
+
+        to = tail.TailOptions()
+        to.parseOptions(["--verbose", "--catch-up", "."])
+        self.failUnless(to["verbose"])
+        self.failUnless(to["catch-up"])
+        self.failUnlessEqual(to.target_furl, "this too")
+
+        to = tail.TailOptions()
+        to.parseOptions(["--save-to", "save.flog", fn])
+        self.failIf(to["verbose"])
+        self.failIf(to["catch-up"])
+        self.failUnlessEqual(to["save-to"], "save.flog")
+        self.failUnlessEqual(to.target_furl, "pretend this is a furl")
+
+        to = tail.TailOptions()
+        self.failUnlessRaises(RuntimeError, to.parseOptions, ["bogus.txt"])
 

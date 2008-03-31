@@ -1,5 +1,5 @@
 
-import os, time, pickle
+import os, sys, time, pickle
 from zope.interface import implements
 from twisted.internet import reactor
 from twisted.python import usage
@@ -58,12 +58,13 @@ class TailOptions(usage.Options):
 class LogPrinter(foolscap.Referenceable):
     implements(RILogObserver)
 
-    def __init__(self, options, target_tubid_s):
+    def __init__(self, options, target_tubid_s, output=sys.stdout):
         self.options = options
         self.saver = None
         if options["save-to"]:
             self.saver = LogSaver(target_tubid_s[:8],
-                                  open(options["save-to"], "w"))
+                                  open(options["save-to"], "wb"))
+        self.output = output
 
     def remote_msg(self, d):
         if self.options['verbose']:
@@ -74,7 +75,7 @@ class LogPrinter(foolscap.Referenceable):
             self.saver.remote_msg(d)
 
     def simple_print(self, d):
-        print d
+        print >>self.output, d
 
     def formatted_print(self, d):
         time_s = time.strftime("%H:%M:%S", time.localtime(d['time']))
@@ -84,12 +85,13 @@ class LogPrinter(foolscap.Referenceable):
         level = d.get('level', log.OPERATIONAL)
 
         tubid = "" # TODO
-        print "%s L%d [%s]#%d %s" % (time_s, level, tubid, d["num"], msg)
+        print >>self.output, "%s L%d [%s]#%d %s" % (time_s, level, tubid,
+                                                    d["num"], msg)
         if 'failure' in d:
-            print " FAILURE:"
+            print >>self.output, " FAILURE:"
             lines = str(d['failure']).split("\n")
             for line in lines:
-                print " %s" % (line,)
+                print >>self.output, " %s" % (line,)
 
 
 class LogTail:

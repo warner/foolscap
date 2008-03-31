@@ -1,5 +1,10 @@
 2008-03-31  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/test/test_logging.py (Tail): basic tests for
+	logging.tail
+	* foolscap/logging/tail.py (LogPrinter.remote_msg): parameterize
+	the output filehandle so we can test it
+
 	* foolscap/logging/gatherer.py (LogGatherer): remove the "Z"
 	suffix from the from- and to- timestamps that we put into
 	filenames, since we're actually using localtime. If and when we
