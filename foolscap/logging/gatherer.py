@@ -73,7 +73,7 @@ class LogGatherer(foolscap.Referenceable):
     implements(RILogGatherer)
     verbose = True
     furlFile = "log_gatherer.furl"
-    TIME_FORMAT = "%Y-%m-%d-%H-%M-%SZ"
+    TIME_FORMAT = "%Y-%m-%d-%H%M%S"
 
     def __init__(self, bzip=None):
         self.bzip = bzip

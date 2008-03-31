@@ -1,5 +1,13 @@
 2008-03-31  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/gatherer.py (LogGatherer): remove the "Z"
+	suffix from the from- and to- timestamps that we put into
+	filenames, since we're actually using localtime. If and when we
+	switch to use UTC, we'll bring the Z back. Also remove the hyphens
+	between the time portions: from-2008-03-31-161721 instead of
+	from-2008-03-31-16-17-21. I'm still looking for a format that
+	feels readable, scannable, and clear.
+
 	* foolscap/logging/tail.py (LogPrinter.formatted_print): remove
 	spurious "0" from timestamps: i.e. print "08:09:12.345" instead of
 	"08:09:120.345"
