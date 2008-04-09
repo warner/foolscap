@@ -16,7 +16,8 @@ else:
         verstr = mo.group(1)
     else:
         print "unable to find version in %s" % (VERSIONFILE,)
-        raise RuntimeError("if %s.py exists, it is required to be well-formed" % (VERSIONFILE,))
+        raise RuntimeError("if %s.py exists, it is required to be well-formed"
+                           % (VERSIONFILE,))
 
 setup_args = {
         'name': "foolscap",
@@ -51,20 +52,20 @@ object reference system, and a capability-based security model.
 }
 
 try:
-    # If setuptools is installed, then we'll add setuptools-specific arguments
-    # to the setup args.
+    # If setuptools is installed, then we'll add setuptools-specific
+    # arguments to the setup args.
     import setuptools
 except ImportError:
     pass
 else:
     setup_args['install_requires'] = ['twisted >= 2.4.0']
 
-    # zip_safe = False because the unit tests inspect stack traces to make sure
-    # that they were included with a Failure that is copied across a connection.
-    # When foolscap is installed in a zipped egg then the name of the .py file,
-    # which is stored inside the .pyc file, is not updated to point to the
-    # current location of the .py file, and as a result the stack trace doesn't
-    # include the relevant lines of source code.
+    # zip_safe = False because the unit tests inspect stack traces to make
+    # sure that they were included with a Failure that is copied across a
+    # connection. When foolscap is installed in a zipped egg then the name of
+    # the .py file, which is stored inside the .pyc file, is not updated to
+    # point to the current location of the .py file, and as a result the
+    # stack trace doesn't include the relevant lines of source code.
     setup_args['zip_safe'] = False
 
 if __name__ == '__main__':
