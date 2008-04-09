@@ -334,13 +334,21 @@ class Publish(PollMixin, unittest.TestCase):
                 self.failUnless("err2" in str(msgs[5]["failure"]))
 
                 if do_twisted_errors:
-                    self.failUnlessEqual(msgs[6]["message"], "")
+                    # twisted-8.0 has textFromEventDict, which means we get a
+                    # ["message"] key from log.err . In older version of
+                    # twisted, we don't.
+                    if msgs[6]["message"]:
+                        self.failUnless("Unhandled Error" in msgs[6]["message"])
+                        self.failUnless("SampleError: err3" in msgs[6]["message"])
                     self.failUnless(msgs[6]["isError"])
                     self.failUnless("failure" in msgs[6])
                     self.failUnless(msgs[6]["failure"].check(SampleError))
                     self.failUnless("err3" in str(msgs[6]["failure"]))
 
-                    self.failUnlessEqual(msgs[7]["message"], "")
+                    # same
+                    if msgs[7]["message"]:
+                        self.failUnless("Unhandled Error" in msgs[7]["message"])
+                        self.failUnless("SampleError: err4" in msgs[7]["message"])
                     self.failUnless(msgs[7]["isError"])
                     self.failUnless("failure" in msgs[7])
                     self.failUnless(msgs[7]["failure"].check(SampleError))
