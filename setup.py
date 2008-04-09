@@ -60,14 +60,6 @@ except ImportError:
 else:
     setup_args['install_requires'] = ['twisted >= 2.4.0']
 
-    # zip_safe = False because the unit tests inspect stack traces to make
-    # sure that they were included with a Failure that is copied across a
-    # connection. When foolscap is installed in a zipped egg then the name of
-    # the .py file, which is stored inside the .pyc file, is not updated to
-    # point to the current location of the .py file, and as a result the
-    # stack trace doesn't include the relevant lines of source code.
-    setup_args['zip_safe'] = False
-
 if __name__ == '__main__':
     setup(**setup_args)
 

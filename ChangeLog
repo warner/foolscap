@@ -1,5 +1,7 @@
 2008-04-09  Brian Warner  <warner@allmydata.com>
 
+	* setup.py: finally remove zip_safe=False
+
 	* foolscap/test/test_interfaces.py (TestInterface.testStack):
 	allow the test to pass even if the source code isn't
 	available (i.e. it's locked away inside an egg). This ought to
