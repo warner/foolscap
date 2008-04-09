@@ -1,5 +1,9 @@
 2008-04-09  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/test/test_logging.py (Tail.test_logprinter): make the
+	test pass on python2.5: I think twisted now emits type(exception)
+	instead of str(exception), or something: the printed form changed.
+
 	* foolscap/schema.py (PolyConstraint): improve error messages
 
 	* foolscap/test/test_logging.py (Tail.test_logprinter): improve
