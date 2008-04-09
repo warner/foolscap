@@ -18,6 +18,7 @@ from foolscap.storage import serialize, unserialize
 
 # hush pyflakes
 _unused = [
+    __version__,
     Tub, UnauthenticatedTub, getRemoteURL_TCP,
     RemoteInterface,
     Referenceable, SturdyRef,

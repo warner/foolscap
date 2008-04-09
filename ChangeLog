@@ -1,5 +1,7 @@
 2008-04-09  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/__init__.py (_unused): add __version__, to hush pyflakes
+
 	* foolscap/test/test_logging.py (Publish.test_logpublisher): make
 	the test work with twisted-8.0.x, which puts more information in
 	log.err Failures than earlier versions did.
