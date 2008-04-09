@@ -1,6 +1,7 @@
 (^|/)\_darcs($|/)
 (^|/)\.hg($|/)
 (^|/)\.hgtags($|/)
+^build($|/)
 \.pyc$
 ^_trial_temp/
 ^doc/.*\.html$
