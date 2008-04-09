@@ -1,5 +1,8 @@
 2008-04-09  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/test/test_logging.py (Tail.test_logprinter): improve
+	error messages, to figure out why this fails on python2.5
+
 	* foolscap/__init__.py (_unused): add __version__, to hush pyflakes
 
 	* foolscap/test/test_logging.py (Publish.test_logpublisher): make

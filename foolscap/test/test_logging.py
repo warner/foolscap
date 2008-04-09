@@ -620,9 +620,10 @@ class Tail(unittest.TestCase):
                        })
         outmsg = out.getvalue()
 
-        self.failUnless(":25:50.002 L30 []#125 oops\n FAILURE:\n" in outmsg)
-        self.failUnless("RuntimeError: fake error" in outmsg)
-        self.failUnless("--- <exception caught here> ---\n" in outmsg)
+        self.failUnless(":25:50.002 L30 []#125 oops\n FAILURE:\n" in outmsg,
+                        outmsg)
+        self.failUnless("RuntimeError: fake error" in outmsg, outmsg)
+        self.failUnless("--- <exception caught here> ---\n" in outmsg, outmsg)
 
     def test_logprinter_verbose(self):
         target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
