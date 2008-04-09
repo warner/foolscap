@@ -1,25 +1,38 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
-import sys
+import re, sys
 from distutils.core import setup
-from foolscap import __version__
 
-if __name__ == '__main__':
-    setup(
-        name="foolscap",
-        version=__version__,
-        description="Foolscap contains an RPC protocol for Twisted.",
-        author="Brian Warner",
-        author_email="warner-foolscap@lothar.com",
-        url="http://foolscap.lothar.com/trac",
-        license="MIT",
-        long_description="""\
+VERSIONFILE = "foolscap/_version.py"
+verstr = "unknown"
+try:
+    verstrline = open(VERSIONFILE, "rt").read()
+except EnvironmentError:
+    pass # Okay, there is no version file.
+else:
+    VSRE = r"^verstr = ['\"]([^'\"]*)['\"]"
+    mo = re.search(VSRE, verstrline, re.M)
+    if mo:
+        verstr = mo.group(1)
+    else:
+        print "unable to find version in %s" % (VERSIONFILE,)
+        raise RuntimeError("if %s.py exists, it is required to be well-formed" % (VERSIONFILE,))
+
+setup_args = {
+        'name': "foolscap",
+        'version': verstr,
+        'description': "Foolscap contains an RPC protocol for Twisted.",
+        'author': "Brian Warner",
+        'author_email': "warner-foolscap@lothar.com",
+        'url': "http://foolscap.lothar.com/trac",
+        'license': "MIT",
+        'long_description': """\
 Foolscap (aka newpb) is a new version of Twisted's native RPC protocol, known
 as 'Perspective Broker'. This allows an object in one process to be used by
 code in a distant process. This module provides data marshaling, a remote
 object reference system, and a capability-based security model.
 """,
-        classifiers=[
+        'classifiers': [
         "Development Status :: 3 - Alpha",
         "Operating System :: OS Independent",
         "License :: OSI Approved :: MIT License",
@@ -30,9 +43,30 @@ object reference system, and a capability-based security model.
         "Topic :: System :: Networking",
         "Topic :: Software Development :: Object Brokering",
         ],
-        platforms=["any"],
+        'platforms': ["any"],
         
-        packages=["foolscap", "foolscap/slicers", "foolscap/logging",
+        'packages': ["foolscap", "foolscap/slicers", "foolscap/logging",
                   "foolscap/test"],
-        scripts=["bin/flogtool"],
-        )
+        'scripts': ["bin/flogtool"],
+}
+
+try:
+    # If setuptools is installed, then we'll add setuptools-specific arguments
+    # to the setup args.
+    import setuptools
+except ImportError:
+    pass
+else:
+    setup_args['install_requires'] = ['twisted >= 2.4.0']
+
+    # zip_safe = False because the unit tests inspect stack traces to make sure
+    # that they were included with a Failure that is copied across a connection.
+    # When foolscap is installed in a zipped egg then the name of the .py file,
+    # which is stored inside the .pyc file, is not updated to point to the
+    # current location of the .py file, and as a result the stack trace doesn't
+    # include the relevant lines of source code.
+    setup_args['zip_safe'] = False
+
+if __name__ == '__main__':
+    setup(**setup_args)
+
