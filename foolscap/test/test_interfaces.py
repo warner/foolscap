@@ -112,7 +112,13 @@ class TestInterface(TargetMixin, unittest.TestCase):
 
     def testStack(self):
         # when you violate your outbound schema, the Failure you get should
-        # have a stack trace that includes the actual callRemote invocation
+        # have a stack trace that includes the actual callRemote invocation.
+        # Sometimes the stack trace doesn't include source code (either we
+        # have .pyc files but not .py files, or because the code is coming
+        # from an .egg). So this test merely asserts that test_interfaces.py
+        # is present in the trace, followed by either a source code line that
+        # mentions callRemote, or the filename/linenumber/functionname line
+        # that mentions callRemote.
         self.setupBrokers()
         rr, target = self.setupTarget(Target(), True)
         d = rr.callRemote('add', "not a number", "oops")
@@ -120,10 +126,10 @@ class TestInterface(TargetMixin, unittest.TestCase):
             s = f.getTraceback().split("\n")
             for i in range(len(s)):
                 line = s[i]
-                #print line
                 if ("test_interfaces.py" in line
-                    and i+1 < len(s)
-                    and "rr.callRemote" in s[i+1]):
+                    and i+2 < len(s)
+                    and ("rr.callRemote" in s[i+1]
+                         or "in callRemote" in s[i+2])):
                     return # all good
             print "failure looked like this:"
             print f

@@ -1,5 +1,10 @@
 2008-04-09  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/test/test_interfaces.py (TestInterface.testStack):
+	allow the test to pass even if the source code isn't
+	available (i.e. it's locked away inside an egg). This ought to
+	remove the need for zip_safe=False.
+
 	* foolscap/test/test_logging.py (Tail.test_logprinter): make the
 	test pass on python2.5: I think twisted now emits type(exception)
 	instead of str(exception), or something: the printed form changed.
