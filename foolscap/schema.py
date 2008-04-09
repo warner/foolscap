@@ -54,7 +54,8 @@ modifiers:
 
 """
 
-from foolscap.tokens import Violation, UnknownSchemaType, BananaError
+from foolscap.tokens import Violation, UnknownSchemaType, BananaError, \
+     tokenNames
 
 # make constraints available in a single location
 from foolscap.constraint import Constraint, Any, ByteStringConstraint, \
@@ -108,8 +109,8 @@ class PolyConstraint(Constraint):
             except (Violation, BananaError), e:
                 pass
         if not ok:
-            raise Violation("does not satisfy any of %s" \
-                            % (self.alternatives,))
+            raise Violation("typebyte %s does not satisfy any of %s"
+                            % (tokenNames[typebyte], self.alternatives))
 
     def checkObject(self, obj, inbound):
         ok = False
@@ -120,8 +121,8 @@ class PolyConstraint(Constraint):
             except Violation:
                 pass
         if not ok:
-            raise Violation("does not satisfy any of %s" \
-                            % (self.alternatives,))
+            raise Violation("object type %s does not satisfy any of %s"
+                            % (type(obj), self.alternatives))
 
     def maxSize(self, seen=None):
         if not seen: seen = []
