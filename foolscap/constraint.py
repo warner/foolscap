@@ -129,6 +129,18 @@ class Constraint:
         if self.opentypes == None:
             return
 
+        # shared references are always accepted. checkOpentype() is a defense
+        # against resource-exhaustion attacks, and references don't consume
+        # any more resources than any other token. For inbound method
+        # arguments, the CallUnslicer will perform a final check on all
+        # arguments (after these shared references have been resolved), and
+        # that will get to verify that they have resolved to the correct
+        # type.
+
+        #if opentype == ReferenceSlicer.opentype:
+        if opentype == ('reference',):
+            return
+
         for o in self.opentypes:
             if len(o) == len(opentype):
                 if o == opentype:
@@ -137,8 +149,9 @@ class Constraint:
                 # we might have a partial match: they haven't flunked yet
                 if opentype == o[:len(opentype)]:
                     return # still in the running
-        print "opentype %s, self.opentypes %s" % (opentype, self.opentypes)
-        raise Violation("unacceptable OPEN type '%s'" % (opentype,))
+
+        raise Violation("unacceptable OPEN type: %s not in my list %s" %
+                        (opentype, self.opentypes))
 
     def checkObject(self, obj, inbound):
         """Validate an existing object. Usually objects are validated as

@@ -237,6 +237,15 @@ class TestCall(TargetMixin, unittest.TestCase):
         d.addCallback(lambda res: self.failUnlessEqual(res, None))
         return d
 
+    def testMega3(self):
+        # exercise a specific bug: shared references don't pass schemas
+        t = (0,1)
+        obj = [t, t]
+        rr, target = self.setupTarget(HelperTarget())
+        d = rr.callRemote("mega3", obj)
+        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        return d
+
     def testUnconstrainedMethod(self):
         rr, target = self.setupTarget(Target(), True)
         d = rr.callRemote('free', 3, 4, x="boo")

@@ -80,6 +80,7 @@ MegaSchema2 = TupleOf(SetOf(int),
                       ListOf(int),
                       DictOf(int, str),
                       )
+MegaSchema3 = ListOf(TupleOf(int,int))
 
 
 class RIHelper(RemoteInterface):
@@ -92,6 +93,7 @@ class RIHelper(RemoteInterface):
     def hang(): return Any()
     # test one of everything
     def megaschema(obj1=MegaSchema1, obj2=MegaSchema2): return None
+    def mega3(obj1=MegaSchema3): return None
     def choice1(obj1=ChoiceOf(ByteStringConstraint(2000), int)): return None
 
 class HelperTarget(Referenceable):
@@ -135,6 +137,10 @@ class HelperTarget(Referenceable):
     def remote_megaschema(self, obj1, obj2):
         self.obj1 = obj1
         self.obj2 = obj2
+        return None
+
+    def remote_mega3(self, obj):
+        self.obj = obj
         return None
 
     def remote_choice1(self, obj):

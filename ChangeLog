@@ -1,5 +1,18 @@
 2008-04-09  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/constraint.py (Constraint.checkOpentype): always
+	accept ('reference',) sequences. The per-token constraint checking
+	system is a defense against resource-exhaustion attacks, and
+	shared reference don't consume any more memory or stack frames
+	than any other object. The check-all-args that CallUnslicer does
+	just before delivering the arguments is responsible for making
+	sure the final (resolved) types all match the constraint. By
+	allowing shared references here, we fix a bug in which a schema
+	violation was raised when python combined two equivalent tuples
+	into a single object.
+	* foolscap/test/test_call.py (TestCall.testMega3): test it
+	* foolscap/test/common.py (MegaSchema3): same
+
 	* setup.py: finally remove zip_safe=False
 
 	* foolscap/test/test_interfaces.py (TestInterface.testStack):
