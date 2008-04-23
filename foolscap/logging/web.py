@@ -361,4 +361,7 @@ class WebViewer:
                 yield e
             except EOFError:
                 break
+            except ValueError, ex:
+                print "truncated pickle file? (%s): %s" % (fn, ex)
+                break
 

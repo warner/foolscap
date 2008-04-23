@@ -37,6 +37,8 @@ class LogDumper:
         t = "%s %r: %s" % (short, when, text)
         if options['verbose']:
             t += ": %r" % d
+        if "failure" in d:
+            t += d["failure"].getBriefTraceback()
         print t
 
     def get_events(self, options):

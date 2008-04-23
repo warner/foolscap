@@ -1,3 +1,15 @@
+2008-04-22  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/logging/web.py (WebViewer.get_events): catch
+	ValueError, mention it as a possible truncated pickle file
+
+	* foolscap/logging/log.py (FoolscapLogger.msg): if something goes
+	wrong, print both str() and repr() in case it helps figure out the
+	problem
+
+	* foolscap/logging/dumper.py (LogDumper.print_event): include
+	failure tracebacks in 'flogtool dump' output
+
 2008-04-09  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/constraint.py (Constraint.checkOpentype): always

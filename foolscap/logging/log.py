@@ -137,8 +137,8 @@ class FoolscapLogger:
         # verify that we can stringify the event correctly
         try:
             format_message(event)
-        except:
-            print "problem in log message: %s" % (event,)
+        except Exception, e:
+            print "problem in log message %s: %r %s" % (event, e, e)
             pass
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
