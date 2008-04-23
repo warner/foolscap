@@ -1,5 +1,5 @@
 
-import sys, pickle
+import sys, pickle, time
 from twisted.python import usage
 from foolscap.logging.log import format_message
 
@@ -8,6 +8,7 @@ class DumpOptions(usage.Options):
     optFlags = [
         ("verbose", "v", "Show all event arguments"),
         ("just-numbers", "n", "Show only event numbers"),
+        ("rx-time", "r", "Show event receipt time (in addition to emit time)"),
         ]
 
     def parseArgs(self, dumpfile):
@@ -25,21 +26,36 @@ class LogDumper:
         for e in self.get_events(options):
             self.print_event(e, options)
 
+    def format_time(self, when):
+        time_s = time.strftime("%H:%M:%S", time.localtime(when))
+        time_s = time_s + ".%03d" % int(1000*(when - int(when)))
+        return time_s
+
     def print_event(self, e, options):
         short = e['from'][:8]
-        when = e['rx_time']
         d = e['d']
+        when = self.format_time(d['time'])
         if options['just-numbers']:
             print when, d.get('num')
             return
         text = format_message(d)
 
-        t = "%s %r: %s" % (short, when, text)
+        t = "%s#%d " % (short, d['num'])
+        if options['rx-time']:
+            rx_when = self.format_time(e['rx_time'])
+            t += "rx(%s) " % rx_when
+            t += "emit(%s)" % when
+        else:
+            t += "%s" % when
+        t += ": %s" % text
         if options['verbose']:
             t += ": %r" % d
-        if "failure" in d:
-            t += d["failure"].getBriefTraceback()
         print t
+        if 'failure' in d:
+            print " FAILURE:"
+            lines = str(d['failure']).split("\n")
+            for line in lines:
+                print " %s" % (line,)
 
     def get_events(self, options):
         fn = options.dumpfile

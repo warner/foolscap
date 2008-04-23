@@ -1,5 +1,12 @@
 2008-04-22  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/dumper.py (LogDumper.print_event): use
+	--rx-time to show both event-generation time and event-receive
+	time in the logs, useful if you suspect the application is getting
+	bogged down and events are being delivered slowly.
+	(LogDumper.print_event): Use a different format to display failure
+	tracebacks.
+
 	* foolscap/logging/web.py (WebViewer.get_events): catch
 	ValueError, mention it as a possible truncated pickle file
 
