@@ -1,5 +1,9 @@
 2008-04-22  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/filter.py: add "--above UNUSUAL" option (to
+	discard events below the given level", and "--from [TUBID]" (to
+	discard events that weren't recorded by the given tubid).
+
 	* foolscap/logging/dumper.py (LogDumper.print_event): use
 	--rx-time to show both event-generation time and event-receive
 	time in the logs, useful if you suspect the application is getting

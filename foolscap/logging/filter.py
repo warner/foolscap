@@ -1,6 +1,7 @@
 
 from twisted.python import usage
 import os, pickle, bz2, time
+from foolscap.logging import log
 
 class FilterOptions(usage.Options):
     synopsis = "Usage: flogtool filter [options] OLDFILE.pickle NEWFILE.pickle"
@@ -9,6 +10,8 @@ class FilterOptions(usage.Options):
         ["after", None, None, "include events after timestamp (seconds since epoch)"],
         ["before", None, None, "include events before timestamp"],
         ["strip-facility", None, None, "remove events with the given facility prefix"],
+        ["above", None, None, "include events at the given severity level or above"],
+        ["from", None, None, "include events from the given tubid prefix"],
         ]
 
     optFlags = [
@@ -28,6 +31,21 @@ class FilterOptions(usage.Options):
     def opt_before(self, arg):
         self['before'] = int(arg)
 
+    def opt_above(self, arg):
+        try:
+            self['above'] = int(arg)
+        except ValueError:
+            levelmap = {"NOISY": log.NOISY,
+                        "OPERATIONAL": log.OPERATIONAL,
+                        "UNUSUAL": log.UNUSUAL,
+                        "INFREQUENT": log.INFREQUENT,
+                        "CURIOUS": log.CURIOUS,
+                        "WEIRD": log.WEIRD,
+                        "SCARY": log.SCARY,
+                        "BAD": log.BAD,
+                        }
+            self['above'] = levelmap[arg]
+
 
 class Filter:
 
@@ -45,6 +63,12 @@ class Filter:
         before = options['before']
         if before is not None:
             print " --before: removing events after %s" % time.ctime(before)
+        above = options['above']
+        if above:
+            print " --above: removing events below level %d" % above
+        from_tubid = options['from']
+        if from_tubid:
+            print " --from: retaining events only from tubid prefix %s" % from_tubid
         strip_facility = options['strip-facility']
         if strip_facility is not None:
             print "--strip-facility: removing events for %s and children" % strip_facility
@@ -57,6 +81,10 @@ class Filter:
             if before is not None and e['d']['time'] >= before:
                 continue
             if after is not None and e['d']['time'] <= after:
+                continue
+            if above is not None and e['d']['level'] < above:
+                continue
+            if from_tubid is not None and not e['from'].startswith(from_tubid):
                 continue
             if (strip_facility is not None
                 and e['d'].get('facility', "").startswith(strip_facility)):
