@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/env python
 
 """This program is a server that runs a specific command when asked by a
 client. The command is completely controlled by the server's command-line

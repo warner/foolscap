@@ -1,3 +1,9 @@
+2008-04-22  Brian Warner  <warner@lothar.com>
+
+	* doc/listings/command-client.py: don't emit extra newlines, use
+	/usr/bin/env on shbang line
+	* doc/listings/command-server.py: use /usr/bin/env on shbang line
+
 2008-04-22  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/logging/filter.py: add "--above UNUSUAL" option (to

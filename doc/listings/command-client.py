@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/env python
 
 """This program is a client that triggers command-server.py. You give it the
 server's FURL, and it causes the server to run its pre-configured command.
@@ -45,9 +45,9 @@ def _success(res):
     if not opts["quiet"]:
         out, err, rc = res
         if out:
-            print >>sys.stdout, out
+            print >>sys.stdout, out,
         if err:
-            print >>sys.stderr, err
+            print >>sys.stderr, err,
         return rc
     return 0
 def _failure(res):
