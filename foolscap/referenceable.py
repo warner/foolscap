@@ -734,6 +734,17 @@ def encode_location_hint(hint):
     assert hint[0] == "ipv4"
     host, port = hint[1:]
     return "%s:%d" % (host, port)
+def decode_location_hints(hints_s):
+    hints = []
+    for hint_s in hints_s.split(","):
+        mo = IPV4_HINT_RE.search(hint_s)
+        if mo:
+            hint = ( "ipv4", mo.group(1), int(mo.group(2)) )
+            hints.append(hint)
+        else:
+            # some extension from the future that we will ignore
+            pass
+    return hints
 
 class BadFURLError(Exception):
     pass
@@ -755,7 +766,6 @@ class SturdyRef(Copyable, RemoteCopy):
 
     encrypted = False
     tubID = None
-    location = None
     name = None
 
     def __init__(self, url=None):
@@ -771,40 +781,28 @@ class SturdyRef(Copyable, RemoteCopy):
         # it can live at any one of a (TODO) variety of network-accessible
         # locations, or (TODO) at a single UNIX-domain socket.
         #
-        # there is also an unauthenticated form, which is indexed by the
-        # single locationHint, because it does not have a TubID
+        # there is also an unauthenticated form, which does not have a TubID
 
         mo_auth_furl = AUTH_STURDYREF_RE.search(url)
         mo_nonauth_furl = NONAUTH_STURDYREF_RE.search(url)
         if mo_auth_furl:
             self.encrypted = True
-            tubID_s = mo_auth_furl.group(1)
-            locations = mo_auth_furl.group(2)
-            self.name = mo_auth_furl.group(3)
-
             # we only pay attention to the first 32 base32 characters
             # of the tubid string. Everything else is left for future
             # extensions.
+            tubID_s = mo_auth_furl.group(1)
             self.tubID = tubID_s[:32]
             if not base32.is_base32(self.tubID):
                 raise BadFURLError("'%s' is not a valid tubid" % (self.tubID,))
-
-            locationHints_s = locations.split(",")
-            for hint_s in locationHints_s:
-                mo = IPV4_HINT_RE.search(hint_s)
-                if mo:
-                    hint = ( "ipv4", mo.group(1), int(mo.group(2)) )
-                    self.locationHints.append(hint)
-                else:
-                    # some extension from the future that we will ignore
-                    pass
+            hints = mo_auth_furl.group(2)
+            self.locationHints = decode_location_hints(hints)
+            self.name = mo_auth_furl.group(3)
 
         elif mo_nonauth_furl:
             self.encrypted = False
             self.tubID = None
-            hint_s = mo_nonauth_furl.group(1)
-            mo = IPV4_HINT_RE.search(hint_s)
-            self.location = ("ipv4", mo.group(1), int(mo.group(2)))
+            hints = mo_nonauth_furl.group(1)
+            self.locationHints = decode_location_hints(hints)
             self.name = mo_nonauth_furl.group(2)
 
         else:
@@ -813,14 +811,11 @@ class SturdyRef(Copyable, RemoteCopy):
     def getTubRef(self):
         if self.encrypted:
             return TubRef(self.tubID, self.locationHints)
-        return NoAuthTubRef(self.location)
+        return NoAuthTubRef(self.locationHints)
 
     def _encode_location_hints(self):
-        if self.encrypted:
-            return ",".join([encode_location_hint(hint)
-                             for hint in self.locationHints])
-        else:
-            return encode_location_hint(self.location)
+        return ",".join([encode_location_hint(hint)
+                         for hint in self.locationHints])
 
     def getURL(self):
         if not self.url:
@@ -839,11 +834,11 @@ class SturdyRef(Copyable, RemoteCopy):
         """Two SturdyRefs are equivalent if they point to the same object.
         SturdyRefs to encrypted Tubs only pay attention to the TubID and the
         reference name. SturdyRefs to unauthenticated Tubs must use the
-        location hint instead of the (missing) TubID. This method makes it
+        location hints instead of the (missing) TubID. This method makes it
         easier to compare a pair of SturdyRefs."""
         if self.encrypted:
             return (True, self.tubID, self.name)
-        return (False, self.location, self.name)
+        return (False, self.locationHints, self.name)
 
     def __hash__(self):
         return hash(self._distinguishers())
@@ -889,11 +884,11 @@ class NoAuthTubRef(TubRef):
     # this is only used on outbound connections
     encrypted = False
 
-    def __init__(self, location):
-        self.location = location
+    def __init__(self, locations):
+        self.locations = locations
 
     def getLocations(self):
-        return [self.location]
+        return self.locations
 
     def getTubID(self):
         return "<unauth>"
@@ -901,8 +896,9 @@ class NoAuthTubRef(TubRef):
         return "<unauth>"
 
     def __str__(self):
-        return "pbu://" + encode_location_hint(self.location)
+        return "pbu://" + ",".join([encode_location_hint(location)
+                                    for location in self.locations])
 
     def _distinguishers(self):
         """This serves the same purpose as SturdyRef._distinguishers."""
-        return (self.location,)
+        return tuple(self.locations)

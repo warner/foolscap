@@ -1,5 +1,10 @@
 2008-05-01  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/referenceable.py (SturdyRef): accept multiple
+	connection hints in unauthenticated FURLs. This fixes a test
+	failure induced by the #60 changes when pyOpenSSL is unavailable.
+	* doc/using-foolscap.xhtml: document the new feature.
+
 	* foolscap/referenceable.py (SturdyRef): tolerate extensions in
 	tubid and location-hints fields, change FURL parsing, store
 	structured hints in the SturdyRef instead of just strings. This
