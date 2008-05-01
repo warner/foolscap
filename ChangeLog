@@ -1,5 +1,8 @@
 2008-05-01  Brian Warner  <warner@allmydata.com>
 
+	* doc/specifications/logfiles.xhtml: document the current saved
+	logfile format (event dictionaries, pickled wrapper dicts)
+
 	* foolscap/referenceable.py (SturdyRef): accept multiple
 	connection hints in unauthenticated FURLs. This fixes a test
 	failure induced by the #60 changes when pyOpenSSL is unavailable.
