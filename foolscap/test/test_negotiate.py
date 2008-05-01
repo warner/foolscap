@@ -19,7 +19,7 @@ GoodEnoughTub = UnauthenticatedTub
 if crypto_available:
     GoodEnoughTub = Tub
 
-# this is tubID 3hemthez7rvgvyhjx2n5kdj7mcyar3yt
+tubid_low = "3hemthez7rvgvyhjx2n5kdj7mcyar3yt"
 certData_low = \
 """-----BEGIN CERTIFICATE-----
 MIIBnjCCAQcCAgCEMA0GCSqGSIb3DQEBBAUAMBcxFTATBgNVBAMUDG5ld3BiX3Ro
@@ -49,7 +49,7 @@ Fs8AQDgI/9gOUXxXno51xQSdCnJLQJ8lThRUa6M7/F1B
 -----END RSA PRIVATE KEY-----
 """
 
-# this is tubID 6cxxohyb5ysw6ftpwprbzffxrghbfopm
+tubid_high = "6cxxohyb5ysw6ftpwprbzffxrghbfopm"
 certData_high = \
 """-----BEGIN CERTIFICATE-----
 MIIBnjCCAQcCAgCEMA0GCSqGSIb3DQEBBAUAMBcxFTATBgNVBAMUDG5ld3BiX3Ro
@@ -261,7 +261,7 @@ class Versus(BaseMixin, unittest.TestCase):
         client = Tub()
         client.startService()
         self.services.append(client)
-        url = "pb://1234@127.0.0.1:%d/target" % portnum
+        url = "pb://%s@127.0.0.1:%d/target" % (tubid_low, portnum)
         d = client.getReference(url)
         d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
                        lambda f: f.trap(BananaError))

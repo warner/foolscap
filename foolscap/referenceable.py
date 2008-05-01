@@ -4,7 +4,7 @@
 # Referenceable (callable) objects. All details of actually invoking methods
 # live in call.py
 
-import weakref
+import weakref, re
 
 from zope.interface import interface
 from zope.interface import implements
@@ -13,7 +13,7 @@ Interface = interface.Interface
 from twisted.internet import defer
 from twisted.python import failure, log
 
-from foolscap import ipb, slicer, tokens, call
+from foolscap import ipb, slicer, tokens, call, base32
 BananaError = tokens.BananaError
 Violation = tokens.Violation
 from foolscap.constraint import IConstraint, ByteStringConstraint
@@ -726,6 +726,18 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
             return "<gift-?>"
         return "<gift-%s>" % self.giftID
 
+AUTH_STURDYREF_RE = re.compile(r"pb://([^@]+)@([^/]+)/(.+)$")
+NONAUTH_STURDYREF_RE = re.compile(r"pbu://([^/]+)/(.+)$")
+
+IPV4_HINT_RE = re.compile(r"^([^:]+):(\d+)$")
+def encode_location_hint(hint):
+    assert hint[0] == "ipv4"
+    host, port = hint[1:]
+    return "%s:%d" % (host, port)
+
+class BadFURLError(Exception):
+    pass
+
 class SturdyRef(Copyable, RemoteCopy):
     """I am a pointer to a Referenceable that lives in some (probably remote)
     Tub. This pointer is long-lived, however you cannot send messages with it
@@ -744,50 +756,81 @@ class SturdyRef(Copyable, RemoteCopy):
     encrypted = False
     tubID = None
     location = None
-    locationHints = []
     name = None
 
     def __init__(self, url=None):
+        self.locationHints = [] # list of ("ipv4", host, port) tuples
         if url:
-            # pb://key@{ip:port,host:port,[ipv6]:port}[/unix]/swissnumber
-            # i.e. pb://tubID@{locationHints..}/name
-            #
-            # it can live at any one of a variety of network-accessible
-            # locations, or at a single UNIX-domain socket.
-            #
-            # there is also an unauthenticated form, which is indexed by the
-            # single locationHint, because it does not have a TubID
+            self.url = url
+            self._init_from_url(url)
 
-            if url.startswith("pb://"):
-                self.encrypted = True
-                url = url[len("pb://"):]
-                slash = url.rfind("/")
-                self.name = url[slash+1:]
-                at = url.find("@")
-                if at != -1:
-                    self.tubID = url[:at]
-                self.locationHints = url[at+1:slash].split(",")
-            elif url.startswith("pbu://"):
-                self.encrypted = False
-                url = url[len("pbu://"):]
-                slash = url.rfind("/")
-                self.name = url[slash+1:]
-                self.tubID = None
-                self.location = url[:slash]
-            else:
-                raise ValueError("unknown FURL prefix in %r" % (url,))
+    def _init_from_url(self, url):
+        # pb://key@{ip:port,host:port,[ipv6]:port}[/unix]/swissnumber
+        # i.e. pb://tubID@{locationHints..}/name
+        #
+        # it can live at any one of a (TODO) variety of network-accessible
+        # locations, or (TODO) at a single UNIX-domain socket.
+        #
+        # there is also an unauthenticated form, which is indexed by the
+        # single locationHint, because it does not have a TubID
+
+        mo_auth_furl = AUTH_STURDYREF_RE.search(url)
+        mo_nonauth_furl = NONAUTH_STURDYREF_RE.search(url)
+        if mo_auth_furl:
+            self.encrypted = True
+            tubID_s = mo_auth_furl.group(1)
+            locations = mo_auth_furl.group(2)
+            self.name = mo_auth_furl.group(3)
+
+            # we only pay attention to the first 32 base32 characters
+            # of the tubid string. Everything else is left for future
+            # extensions.
+            self.tubID = tubID_s[:32]
+            if not base32.is_base32(self.tubID):
+                raise BadFURLError("'%s' is not a valid tubid" % (self.tubID,))
+
+            locationHints_s = locations.split(",")
+            for hint_s in locationHints_s:
+                mo = IPV4_HINT_RE.search(hint_s)
+                if mo:
+                    hint = ( "ipv4", mo.group(1), int(mo.group(2)) )
+                    self.locationHints.append(hint)
+                else:
+                    # some extension from the future that we will ignore
+                    pass
+
+        elif mo_nonauth_furl:
+            self.encrypted = False
+            self.tubID = None
+            hint_s = mo_nonauth_furl.group(1)
+            mo = IPV4_HINT_RE.search(hint_s)
+            self.location = ("ipv4", mo.group(1), int(mo.group(2)))
+            self.name = mo_nonauth_furl.group(2)
+
+        else:
+            raise ValueError("unknown FURL prefix in %r" % (url,))
 
     def getTubRef(self):
         if self.encrypted:
             return TubRef(self.tubID, self.locationHints)
         return NoAuthTubRef(self.location)
 
-    def getURL(self):
+    def _encode_location_hints(self):
         if self.encrypted:
-            return ("pb://" + self.tubID + "@" +
-                    ",".join(self.locationHints) +
-                    "/" + self.name)
-        return "pbu://" + self.location + "/" + self.name
+            return ",".join([encode_location_hint(hint)
+                             for hint in self.locationHints])
+        else:
+            return encode_location_hint(self.location)
+
+    def getURL(self):
+        if not self.url:
+            location_hints = self._encode_location_hints()
+            if self.encrypted:
+                self.url = ("pb://" + self.tubID + "@" +
+                            location_hints + "/" + self.name)
+            else:
+                self.url = "pbu://" + location_hints + "/" + self.name
+        return self.url
 
     def __str__(self):
         return self.getURL()
@@ -858,7 +901,7 @@ class NoAuthTubRef(TubRef):
         return "<unauth>"
 
     def __str__(self):
-        return "pbu://" + self.location
+        return "pbu://" + encode_location_hint(self.location)
 
     def _distinguishers(self):
         """This serves the same purpose as SturdyRef._distinguishers."""

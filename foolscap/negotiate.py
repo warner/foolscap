@@ -1284,7 +1284,14 @@ class TubConnector:
                                   facility="foolscap.connection")
         self.tub = parent
         self.target = tubref
-        self.remainingLocations = self.target.getLocations()
+        hints = []
+        # filter out the hints that we can actually use.. there may be
+        # extensions from the future sitting in this list
+        for h in self.target.getLocations():
+            if h[0] == "ipv4":
+                (host, port) = h[1:]
+                hints.append( (host, port) )
+        self.remainingLocations = hints
         # attemptedLocations keeps track of where we've already tried to
         # connect, so we don't try them twice.
         self.attemptedLocations = []
@@ -1336,9 +1343,8 @@ class TubConnector:
             if location in self.attemptedLocations:
                 continue
             self.attemptedLocations.append(location)
-            host, port = location.split(":")
-            port = int(port)
-            lp = self.log("connectTCP to %s" % location)
+            host, port = location
+            lp = self.log("connectTCP to %s" % (location,))
             f = TubConnectorClientFactory(self, host, lp)
             c = reactor.connectTCP(host, port, f)
             self.pendingConnections[f] = c

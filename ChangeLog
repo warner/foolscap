@@ -1,3 +1,24 @@
+2008-05-01  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/referenceable.py (SturdyRef): tolerate extensions in
+	tubid and location-hints fields, change FURL parsing, store
+	structured hints in the SturdyRef instead of just strings. This
+	should give us some wiggle room in the future to gracefully
+	transition applications to using new features while retaining
+	backwards compatibilty. Many thanks to Zooko for the suggestion.
+	Closes #60.
+	* foolscap/negotiate.py (TubConnector): same
+	* foolscap/test/test_sturdyref.py (URL.testTubIDExtensions): new
+	tests for it
+	(URL.testLocationHintExtensions): same
+	* foolscap/test/test_tub.py (SetLocation.test_set_location):
+	update to match
+	* foolscap/test/test_gifts.py (Bad): same
+	* foolscap/test/test_negotiate.py
+	(Versus.testVersusHTTPServerAuthenticated): same
+	* foolscap/base32.py (is_base32): new utility function
+	* foolscap/test/test_util.py (Base32.test_is_base32): test it
+
 2008-04-22  Brian Warner  <warner@lothar.com>
 
 	* doc/listings/command-client.py: don't emit extra newlines, use

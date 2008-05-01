@@ -453,6 +453,7 @@ class Bad(Base, unittest.TestCase):
             # referenced, since tracker.url is scheduled to go away.
             r = SturdyRef(adave.tracker.url)
             r.name += ".MANGLED"
+            r.url = None
             adave.tracker.url = r.getURL()
             return self.acarol.callRemote("set", adave)
         d.addCallback(_introduce)
@@ -469,11 +470,14 @@ class Bad(Base, unittest.TestCase):
         d.addCallback(lambda res: self.tubA.getReference(self.dave_url))
         def _introduce(adave):
             # The second way is to mangle the tubid, which will result in a
-            # failure during negotiation. NOTE: this will have to change when
-            # we modify the way gifts are referenced, since tracker.url is
-            # scheduled to go away.
+            # failure during negotiation. We mangle it by reversing the
+            # characters: this makes it syntactically valid but highly
+            # unlikely to remain the same. NOTE: this will have to change
+            # when we modify the way gifts are referenced, since tracker.url
+            # is scheduled to go away.
             r = SturdyRef(adave.tracker.url)
-            r.tubID += ".MANGLED"
+            r.tubID = "".join(reversed(r.tubID))
+            r.url = None
             adave.tracker.url = r.getURL()
             return self.acarol.callRemote("set", adave)
         d.addCallback(_introduce)
@@ -492,7 +496,8 @@ class Bad(Base, unittest.TestCase):
             # establish a TCP connection.
             r = SturdyRef(adave.tracker.url)
             # highly unlikely that there's anything listening on this port
-            r.locationHints = ["127.0.0.1:2"]
+            r.locationHints = [ ("ipv4", "127.0.0.1", 2) ]
+            r.url = None
             adave.tracker.url = r.getURL()
             return self.acarol.callRemote("set", adave)
         d.addCallback(_introduce)
@@ -515,7 +520,8 @@ class Bad(Base, unittest.TestCase):
             # and then stays silent. This should trigger the overall
             # connection timeout.
             r = SturdyRef(adave.tracker.url)
-            r.locationHints = ["127.0.0.1:%d" % p.getHost().port]
+            r.locationHints = [ ("ipv4", "127.0.0.1", p.getHost().port) ]
+            r.url = None
             adave.tracker.url = r.getURL()
             self.tubD.options['connect_timeout'] = 2
             return self.acarol.callRemote("set", adave)
@@ -544,6 +550,7 @@ class Bad(Base, unittest.TestCase):
             # referenced, since tracker.url is scheduled to go away.
             r = SturdyRef(self.bdave.tracker.url)
             r.name += ".MANGLED"
+            r.url = None
             self.bdave.tracker.url = r.getURL()
             self.bob.obj = self.bdave
             return self.abob.callRemote("get")

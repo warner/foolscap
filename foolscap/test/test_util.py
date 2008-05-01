@@ -2,7 +2,7 @@
 from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.python import failure
-from foolscap import util, eventual
+from foolscap import util, eventual, base32
 
 
 class AsyncAND(unittest.TestCase):
@@ -90,3 +90,12 @@ class AsyncAND(unittest.TestCase):
         self.shouldFail()
 
 
+class Base32(unittest.TestCase):
+    def test_is_base32(self):
+        self.failUnless(base32.is_base32("abc456"))
+        self.failUnless(base32.is_base32("456"))
+        self.failUnless(base32.is_base32(""))
+        self.failIf(base32.is_base32("123")) # 1 is not in rfc4648 base32
+        self.failIf(base32.is_base32(".123"))
+        self.failIf(base32.is_base32("_"))
+        self.failIf(base32.is_base32("a b c"))

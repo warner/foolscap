@@ -23,3 +23,13 @@ def _encode(v):
         return chr(ord('a') + v)
     else:
         return chr(ord('2') + (v - 26))
+
+# we use the rfc4648 base32 alphabet, in lowercase
+BASE32_ALPHABET = "".join([_encode(i) for i in range(0x20)])
+# 'abcdefghijklmnopqrstuvwxyz234567'
+
+def is_base32(s):
+    for c in s.lower():
+        if c not in BASE32_ALPHABET:
+            return False
+    return True
