@@ -278,6 +278,10 @@ class LogFileObserver:
         else:
             self._logFile = open(filename, "wb")
         self._level = level
+        header = {"header": {"type": "log-file-observer",
+                             "threshold": level,
+                             }}
+        pickle.dump(header, self._logFile)
         from twisted.internet import reactor
         reactor.addSystemEventTrigger("after", "shutdown", self._stop)
 

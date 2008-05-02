@@ -94,11 +94,19 @@ class LogGatherer(foolscap.Referenceable):
     def format_time(self, when):
         return time.strftime(self.TIME_FORMAT, time.localtime(when))
 
+    def _open_savefile(self, now, filename=None):
+        new_filename = "from-%s--to-present.flog" % self.format_time(now)
+        self._savefile_name = filename or new_filename
+        self._savefile = open(self._savefile_name, "ab", 0)
+        self._starting_timestamp = now
+        header = {"header": {"type": "gatherer",
+                             "start": self._starting_timestamp,
+                             }}
+        pickle.dump(header, self._savefile)
+
     def start(self, res):
         now = time.time()
-        self._savefile_name = "from-%s--to-present.flog" % self.format_time(now)
-        self._savefile = open(self._savefile_name, "ab", 0)
-        self._starting_timestamp = time.time()
+        self._open_savefile(now)
 
         if signal and hasattr(signal, "SIGHUP"):
             signal.signal(signal.SIGHUP, self._handle_SIGHUP)
@@ -128,10 +136,7 @@ class LogGatherer(foolscap.Referenceable):
             def _compressed(f):
                 print f
             d.addErrback(_compressed)
-
-        self._savefile_name = "from-%s--to-present.flog" % self.format_time(now)
-        self._savefile = open(self._savefile_name, "ab", 0)
-        self._starting_timestamp = time.time()
+        self._open_savefile(now)
 
     def setup_tub(self):
         self._tub = foolscap.Tub(certFile="gatherer.pem")

@@ -62,8 +62,10 @@ class LogPrinter(foolscap.Referenceable):
         self.options = options
         self.saver = None
         if options["save-to"]:
-            self.saver = LogSaver(target_tubid_s[:8],
-                                  open(options["save-to"], "wb"))
+            f = open(options["save-to"], "wb")
+            header = {"header": {"type": "tail"}}
+            pickle.dump(header, f)
+            self.saver = LogSaver(target_tubid_s[:8], f)
         self.output = output
 
     def remote_msg(self, d):

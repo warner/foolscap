@@ -109,9 +109,13 @@ class Advanced(unittest.TestCase):
                     events.append(e)
                 except EOFError:
                     break
-            self.failUnlessEqual(len(events), 2)
-            self.failUnlessEqual(events[0]["from"], "local")
-            self.failUnlessEqual(events[1]["d"]["message"], "two")
+            self.failUnlessEqual(len(events), 3)
+            self.failUnlessEqual(events[0]["header"]["type"],
+                                 "log-file-observer")
+            self.failUnlessEqual(events[0]["header"]["threshold"],
+                                 log.OPERATIONAL)
+            self.failUnlessEqual(events[1]["from"], "local")
+            self.failUnlessEqual(events[2]["d"]["message"], "two")
         d.addCallback(_check)
         return d
 
@@ -469,10 +473,17 @@ class Publish(PollMixin, unittest.TestCase):
                     events.append(pickle.load(f))
                 except EOFError:
                     break
-            self.failUnlessEqual(len(events), 3)
+            self.failUnlessEqual(len(events), 4)
+
+            # header
+            data = events.pop(0)
+            self.failUnless(isinstance(data, dict))
+            self.failUnless("header" in data)
+            self.failUnlessEqual(data["header"]["type"], "gatherer")
+            self.failUnlessEqual(data["header"]["start"], 123.456)
 
             # grab the first event from the log
-            data = events[0]
+            data = events.pop(0)
             self.failUnless(isinstance(data, dict))
             expected_tubid = t2.tubID
             if t2.tubID is None:
@@ -481,7 +492,7 @@ class Publish(PollMixin, unittest.TestCase):
             self.failUnlessEqual(data['d']['message'], "gathered message here")
 
             # grab the second event from the log
-            data = events[1]
+            data = events.pop(0)
             self.failUnless(isinstance(data, dict))
             expected_tubid = t2.tubID
             if t2.tubID is None:
@@ -494,7 +505,7 @@ class Publish(PollMixin, unittest.TestCase):
             self.failUnless("whoops1" in str(data['d']["failure"]))
 
             # grab the third event from the log
-            data = events[2]
+            data = events.pop(0)
             self.failUnless(isinstance(data, dict))
             expected_tubid = t2.tubID
             if t2.tubID is None:
@@ -521,7 +532,7 @@ class Publish(PollMixin, unittest.TestCase):
         gatherer = MyGatherer()
         gatherer.d = defer.Deferred()
         fn = os.path.join(basedir, "logs.pickle")
-        gatherer._savefile = open(fn, "ab")
+        gatherer._open_savefile(123.456, fn)
         gatherer._tub_ready(t)
         gatherer_furl = t.registerReference(gatherer)
 
@@ -546,7 +557,7 @@ class Publish(PollMixin, unittest.TestCase):
         gatherer = MyGatherer()
         gatherer.d = defer.Deferred()
         fn = os.path.join(basedir, "logs.pickle")
-        gatherer._savefile = open(fn, "ab")
+        gatherer._open_savefile(123.456, fn)
         gatherer._tub_ready(t)
         gatherer_furl = t.registerReference(gatherer)
 
@@ -657,7 +668,10 @@ class Tail(unittest.TestCase):
                        })
         outmsg = out.getvalue()
         lp.saver.disconnected() # cause the file to be closed
-        data = pickle.load(open(saveto_filename, "rb"))
+        f = open(saveto_filename, "rb")
+        data = pickle.load(f) # header
+        self.failUnlessEqual(data["header"]["type"], "tail")
+        data = pickle.load(f) # event
         self.failUnlessEqual(data["from"], "jiijpvbg")
         self.failUnlessEqual(data["d"]["message"], "howdy")
         self.failUnlessEqual(data["d"]["num"], 123)

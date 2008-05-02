@@ -153,6 +153,92 @@ be cleaned up). The wrapper dictionary contains the following keys:</p>
 
 </ul>
 
+
+<h2>Logfile Headers</h2>
+
+<p>The first wrapper dict in the logfile may be special: it contains
+<b>headers</b>. This header dict is distinguished by the fact that it does
+not contain a <code>["d"]</code> member. Instead, it contains a
+<code>["header"]</code> member. The tools which iterate over events in
+logfiles know to ignore the wrapper dicts which lack a <code>["d"]</code>
+key.</p>
+
+<p>On the other hand, the first wrapper dict might be a regular event. Older
+versions of foolscap (0.2.5 and earlier) did not produce header dicts. Tools
+which process logfiles must tolerate the lack of a header dict.</p>
+
+<p>The header dict allows the logfile to be used for various purposes,
+somewhat open-ended to allow for future extensions.</p>
+
+<p>All header dicts contain a key named <code>type</code> that describe the
+purpose of the logfile. The currently assigned values for type are:</p>
+
+<ul>
+  <li><code>log-file-observer</code>: this indicates that the logfile was
+  created by a <code>LogFileObserver</code> instance, for example the one
+  created when the <code>FLOGFILE=out.flog</code> environment variable is
+  used. </li>
+
+  <li><code>tail</code>: this indicates that the logfile was created by the
+  <code>--save-to</code> option of <code>flogtool tail</code>. </li>
+
+  <li><code>gatherer</code>: the logfile was created by the foolscap
+  log-gatherer, for which the <code>flogtool create-gatherer</code> command
+  is provided. </li>
+
+  <li><code>incident</code>: the logfile was created by an application
+  as part of the incident reporting process. </li>
+</ul>
+
+<h3>log-file-observer</h3>
+
+<p>The header dict produced by a <code>LogFileObserver</code> contains the
+following additional keys:</p>
+
+<ul>
+  <li><code>threshold</code> (int): the severity threshold that was used for
+  this logfile: no events below the threshold will be saved. </li>
+</ul>
+
+<p>Also note that the wrapper dicts recorded by the
+<code>LogFileObserver</code> will use a "from" value of "local", instead of a
+particular TubID, since these events are not recorded through a path that
+uses any specific Tub.</p>
+
+<h3>flogtool tail</h3>
+
+<p>The header dict produced by <code>flogtool tail</code> does not contain
+any additional keys at this time.</p>
+
+<h3>log-gatherer</h3>
+
+<p>The header dict produced by the flogtool log-gatherer contains the
+following additional keys:</p>
+
+<ul>
+  <li><code>start</code> (float): the time at which this logfile was first
+  opened. </li>
+</ul>
+
+<h3>Incident Reports</h3>
+
+<p>An <b>Incident Report</b> is a logfile that was recorded because of an
+important triggering event: a dump of the short-term history buffers that
+saves the activity of the application just prior to the trigger. It can also
+contain some number of subsequent events, to record recovery efforts or
+additional information that is logged after the triggering event.</p>
+
+<p>Incident Reports are distinguished by their header type:
+<code>e["header"]["type"]=="incident"</code>. Their header dicts contain the
+following additional keys:</p>
+
+<ul>
+  <li><code>trigger</code> (event dict): a copy of the event which triggered
+  the incident. This event will also be present somewhere in the rest of the
+  logfile, at it's normal position in the event stream. </li>
+</ul>
+
+
 <h2>Index Files</h2>
 
 <p>No index files have been defined yet. The vague idea is that each logfile

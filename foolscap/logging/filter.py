@@ -76,19 +76,23 @@ class Filter:
         copied = 0
         for e in self.get_events(options.oldfile):
             if options['verbose']:
-                print e['d']['num']
+                if "d" in e:
+                    print e['d']['num']
+                else:
+                    print "HEADER"
             total += 1
-            if before is not None and e['d']['time'] >= before:
-                continue
-            if after is not None and e['d']['time'] <= after:
-                continue
-            if above is not None and e['d']['level'] < above:
-                continue
-            if from_tubid is not None and not e['from'].startswith(from_tubid):
-                continue
-            if (strip_facility is not None
-                and e['d'].get('facility', "").startswith(strip_facility)):
-                continue
+            if "d" in e:
+                if before is not None and e['d']['time'] >= before:
+                    continue
+                if after is not None and e['d']['time'] <= after:
+                    continue
+                if above is not None and e['d']['level'] < above:
+                    continue
+                if from_tubid is not None and not e['from'].startswith(from_tubid):
+                    continue
+                if (strip_facility is not None
+                    and e['d'].get('facility', "").startswith(strip_facility)):
+                    continue
             copied += 1
             pickle.dump(e, newfile, 2)
         newfile.close()

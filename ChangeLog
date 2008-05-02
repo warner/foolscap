@@ -1,5 +1,25 @@
 2008-05-01  Brian Warner  <warner@allmydata.com>
 
+	* doc/specifications/logfiles.xhtml (Logfile Headers): define
+	"headers", a separate dictionary at the start of the logfile that
+	contains metadata. The specific use for this will be the
+	"Triggering Event" that gets put into incident reports, once we
+	implement those. This induces a backwards compatibility break:
+	logfiles produced after this change will probably not be tolerated
+	by tools like 'flogtool dump' from before this point. The other
+	direction is ok: newer tools can handle either format.
+	* foolscap/logging/gatherer.py (LogGatherer._open_savefile): emit
+	a header, with type="gatherer", and a starting timestamp in
+	"start". Refactor a bit to make this easier.
+	* foolscap/logging/tail.py (LogPrinter): emit a header, with
+	type="tail"
+	* foolscap/logging/log.py (LogFileObserver): emit a header, with
+	type="log-file-observer", and a "threshold" key
+	* foolscap/logging/dumper.py (LogDumper.start): tolerate headers
+	* foolscap/logging/filter.py (Filter.run): same
+	* foolscap/logging/web.py (WebViewer.process_logfiles): same
+	* foolscap/test/test_logging.py: update tests to match
+
 	* doc/specifications/logfiles.xhtml: document the current saved
 	logfile format (event dictionaries, pickled wrapper dicts)
 

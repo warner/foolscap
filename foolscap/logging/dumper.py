@@ -24,7 +24,8 @@ class LogDumper:
 
     def start(self, options):
         for e in self.get_events(options):
-            self.print_event(e, options)
+            if "d" in e:
+                self.print_event(e, options)
 
     def format_time(self, when):
         time_s = time.strftime("%H:%M:%S", time.localtime(when))

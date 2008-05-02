@@ -300,6 +300,8 @@ class WebViewer:
             levels = {}
 
             for e in self.get_events(lf):
+                if "d" not in e:
+                    continue # skip headers
                 le = LogEvent(e)
                 if le.index:
                     number_map[le.index] = le
