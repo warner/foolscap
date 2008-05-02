@@ -15,7 +15,7 @@ class Calculator(Referenceable):
             o.callRemote("event", msg=msg)
     def remote_removeObserver(self, observer):
         self.observers.remove(observer)
-        
+
     def remote_push(self, num):
         self.log("push(%d)" % num)
         self.stack.append(num)

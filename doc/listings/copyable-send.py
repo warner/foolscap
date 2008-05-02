@@ -13,7 +13,7 @@ class UserRecord(Copyable):
         self.name = name
         self.age = age
         self.shoe_size = shoe_size # this is a secret
-    
+
     def getStateToCopy(self):
         d = {}
         d['name'] = self.name

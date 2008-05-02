@@ -45,7 +45,7 @@ object reference system, and a capability-based security model.
         "Topic :: Software Development :: Object Brokering",
         ],
         'platforms': ["any"],
-        
+
         'packages': ["foolscap", "foolscap/slicers", "foolscap/logging",
                   "foolscap/test"],
         'scripts': ["bin/flogtool"],
