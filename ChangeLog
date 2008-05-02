@@ -1,5 +1,8 @@
 2008-05-01  Brian Warner  <warner@allmydata.com>
 
+	* doc/logging.xhtml: fix discussion of format=, since the
+	instructions and examples were simply wrong
+
 	* doc/specifications/logfiles.xhtml (Logfile Headers): define
 	"headers", a separate dictionary at the start of the logfile that
 	contains metadata. The specific use for this will be the
