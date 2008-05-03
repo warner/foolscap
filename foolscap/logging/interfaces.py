@@ -1,4 +1,5 @@
 
+from zope.interface import Interface
 from foolscap.remoteinterface import RemoteInterface
 from foolscap.schema import DictOf, ListOf, Any, Optional
 
@@ -49,3 +50,6 @@ class RILogGatherer(RemoteInterface):
     def logport(nodeid=TubID, logport=RILogPublisher):
         return None
 
+class IIncidentReporter(Interface):
+    def incident_declared(triggering_event):
+        """This is called when an Incident needs to be recorded."""

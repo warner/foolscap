@@ -7,6 +7,7 @@ import collections
 from twisted.python import log as twisted_log
 from twisted.python import failure
 from foolscap import eventual
+from foolscap.logging.interfaces import IIncidentReporter
 
 NOISY = logging.DEBUG # 10
 OPERATIONAL = logging.INFO # 20
@@ -49,6 +50,7 @@ class FoolscapLogger:
         self.buffers = {} # k: facility or None, v: dict(level->deque)
         self.thresholds = {}
         self._observers = []
+        self.logdir = None # nowhere to put our incidents
 
     def get_incarnation(self):
         unique = os.urandom(8)
@@ -63,7 +65,21 @@ class FoolscapLogger:
     def setLogDir(self, directory):
         # TODO: not implemented yet
         # TODO: change self.incarnation to reflect next seqnum
+        self.logdir = os.path.abspath(os.path.expanduser(directory))
         pass
+
+    def setIncidentQualifier(self, iq):
+        assert iq.event
+        if self.incident_qualifier:
+            self.removeObserver(self.incident_qualifier.event)
+            self.incident_qualifier.set_handler(None)
+        self.incident_qualifier = iq
+        iq.set_handler(self)
+        self.addObserver(iq.event)
+
+    def setIncidentReporterClass(self, ir):
+        assert IIncidentReporter.implementedBy(ir)
+        self.incident_reporter_class = ir
 
     def explain_facility(self, facility, description):
         self.facility_explanations[facility] = description

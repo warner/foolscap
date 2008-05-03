@@ -1,3 +1,13 @@
+2008-05-02  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/logging/incident.py: start to implement Incident
+	handling, for ticket #61. Not complete yet, might be completely
+	broken, needs tests and to be wired up.
+	* foolscap/logging/log.py (FoolscapLogger.setIncidentQualifier):
+	start to add the new interfaces, not complete yetxo
+	* foolscap/logging/interfaces.py (IIncidentReporter): same
+	* doc/logging.xhtml (Incidents): document the new features
+
 2008-05-01  Brian Warner  <warner@allmydata.com>
 
 	* doc/logging.xhtml: fix discussion of format=, since the

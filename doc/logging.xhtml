@@ -101,8 +101,9 @@ be expensive or cheap, depending upon their frequency and complexity.</p>
 <p>Foolscap's logging library seeks to capture this ex-post-facto
 interestingness by categorizing messages into "severity levels", recording
 each level into a separate size-limited circular buffer, and provoking a dump
-of all buffers when certain higher-severity events take place. The idea is
-that, at any given time, we have a record (in memory) of a lot of
+of all buffers when an "Incident" occurs. An "Incident Qualifier" is used to
+classify certain higher-severity events as worthy of triggering the log dump.
+The idea is that, at any given time, we have a record (in memory) of a lot of
 low-frequency important things (like program startup, user actions, and
 unhandled exceptions), and only the most recent high-frequency events
 (verbose debugging data). But, if something strange happens, we dump
@@ -391,7 +392,7 @@ any time something strange happens, and both the in-memory buffers and the
 on-disk records are made available to viewing applications:</p>
 
 <pre class="python">
-from foolscap import log
+from foolscap.logging import log
 log.setLogDir("~/saved-log-events")   # == log.theLogger.setLogDir
 </pre>
 
@@ -402,8 +403,70 @@ the logdir and have Foolscap automatically delete the oldest logfiles to stay
 under the size limit: this would make the disk-based logdir an extension of
 the memory-based circular buffers.</p>
 
-<p>TODO: setLogDir is not yet implemented.</p>
-<p>TODO: define what events cause logs to be written to disk.</p>
+<h4>Incidents</h4>
+
+<p>Foolscap's logging subsystem uses the term "Incident" to describe the
+"something strange" that causes the buffered log events to be dumped. The
+logger has an "Incident Qualifier" that controls what counts as an incident.
+The default qualifier simply fires on events at severity level
+<code>log.WEIRD</code> or higher. You can override the qualifier by
+subclassing <code>foolscap.logging.incident.IncidentQualifier</code> and
+calling <code>log.setIncidentQualifier</code> with an instance of your new
+class. For example, certain facilities might be more important than others,
+and you might want to declare an Incident for unusual but relatively
+low-severity events in those facilities:</p>
+
+<pre class="python">
+from foolscap.logging import log, incident
+
+class EasilyTriggeredQualifier(incident.IncidentQualifier):
+    def check_event(self, ev):
+        if ev['level'] > log.INFREQUENT:
+            return True
+        if ev.get('facility',"").startswith("lifesupport"):
+            if ev['level'] > log.UNUSUAL:
+                return True
+        return False
+
+log.setIncidentQualifier(EasilyTriggeredQualifier())
+</pre>
+
+<p>The qualifier could also keep track of how many events of a given type had
+occurred, and trigger an incident if too many UNUSUAL events happen in rapid
+succession, or if too many recoverable errors are observed within a single
+operation.</p>
+
+<p>Once the Incident has been declared, the "Incident Reporter" is
+responsible for recording the recent events to the file on disk. The default
+reporter copies everything from the circular buffers into the logfiles, then
+waits an additional 5 seconds or 100 events (whichever comes first),
+recording any trailing events into the logfile too. The idea is to capture
+the application's error-recovery behavior: if the application experiences a
+problem, it should log something at the <code>log.WEIRD</code> level (or
+similar), then attempt to fix the problem. The post-trigger trailing event
+logging code should capture the otherwise-ordinary events performed by this
+recovery code.</p>
+
+<p>The incident reporter can be overridden as well, by calling
+<code>log.setIncidentReporterClass</code> with a <b>class</b> that will
+produce reporter instances. For example, if you wanted to increase the
+post-trigger event recording to 1000 events or 10 seconds, then you could do
+something like this:</p>
+
+<pre class="python">
+from foolscap.logging import log, incident
+
+class MoreRecoveryIncidentReporter(incident.IncidentReporter):
+    TRAILING_DELAY = 10.0
+    TRAILING_EVENT_LIMIT = 1000
+
+log.setIncidentReporterClass(MoreRecoveryIncidentReporter)
+</pre>
+
+<p>Recorded Incidents will be saved in the logdir with filenames like
+<code>incident-2008-05-02-011235.flog.bz2</code>, and can be read with tools
+like <code>flogtool dump</code> and <code>flogtool web-viewer</code>.</p>
+
 
 <h3>Setting up the logport</h3>
 
