@@ -1,5 +1,8 @@
 2008-05-05  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/interfaces.py (RISubscription): remove spurious
+	'pass', figleaf thought it was real code
+
 	* bin/flogtool: split out the CLI dispatcher to..
 	* foolscap/logging/cli.py (run_flogtool): here, to help with #51
 	(run_flogtool): make it possible to run with a wrapper, closes #51.

@@ -28,7 +28,6 @@ class RILogFile(RemoteInterface):
 
 class RISubscription(RemoteInterface):
     __remote_name__ = "RISubscription.foolscap.lothar.com"
-    pass
 
 class RILogPublisher(RemoteInterface):
     __remote_name__ = "RILogPublisher.foolscap.lothar.com"
