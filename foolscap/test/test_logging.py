@@ -6,9 +6,9 @@ from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.python import log as twisted_log
-from twisted.python import failure
+from twisted.python import failure, runtime
 import foolscap
-from foolscap.logging import gatherer, log, tail
+from foolscap.logging import gatherer, log, tail, incident
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
@@ -189,6 +189,128 @@ class Advanced(unittest.TestCase):
         n = l.msg("one")
         n2 = l.msg("two", parent=n)
         l.msg("three", parent=n2)
+
+class SuperstitiousQualifier(incident.IncidentQualifier):
+    def check_event(self, ev):
+        if "thirteen" in ev.get("message", ""):
+            return True
+        return False
+
+class ImpatientReporter(incident.IncidentReporter):
+    TRAILING_DELAY = 1.0
+    TRAILING_EVENT_LIMIT = 3
+
+class Incidents(unittest.TestCase, PollMixin):
+    def test_basic(self):
+        l = log.FoolscapLogger()
+        self.failUnlessEqual(l.incidents_declared, 0)
+        # no qualifiers are run until a logdir is provided
+        l.msg("one", level=log.BAD)
+        self.failUnlessEqual(l.incidents_declared, 0)
+        l.setLogDir("logging/Incidents/basic")
+        got_logdir = l.logdir
+        self.failUnlessEqual(got_logdir,
+                             os.path.abspath("logging/Incidents/basic"))
+        # qualifiers should be run now
+        l.msg("two")
+        l.msg("3-trigger", level=log.BAD)
+        self.failUnlessEqual(l.incidents_declared, 1)
+        self.failUnlessEqual(len(l.active_incident_reporters), 1)
+        # at this point, the uncompressed logfile should be present, and it
+        # should contain all the events up to and including the trigger
+        files = os.listdir(got_logdir)
+        self.failUnlessEqual(len(files), 2)
+        # the uncompressed one will sort earlier, since it lacks the .bz2
+        # extension
+        files.sort()
+        self.failUnlessEqual(files[0] + ".bz2", files[1])
+        # unix systems let us look inside the uncompressed file while it's
+        # still being written to by the recorder
+        if runtime.platformType == "posix":
+            events = self._read_logfile(os.path.join(got_logdir, files[0]))
+            self.failUnlessEqual(len(events), 1+3)
+            header = events[0]
+            self.failUnless("header" in events[0])
+            self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
+                                 "3-trigger")
+            self.failUnlessEqual(events[3]["d"]["message"], "3-trigger")
+
+        l.msg("4-trailing")
+        # this will take 5 seconds to finish trailing events
+        d = self.poll(lambda: bool(l.incidents_recorded), 1.0)
+        def _check(res):
+            self.failUnlessEqual(len(l.recent_recorded_incidents), 1)
+            fn = l.recent_recorded_incidents[0]
+            events = self._read_logfile(fn)
+            self.failUnlessEqual(len(events), 1+4)
+            self.failUnless("header" in events[0])
+            self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
+                                 "3-trigger")
+            self.failUnlessEqual(events[3]["d"]["message"], "3-trigger")
+            self.failUnlessEqual(events[4]["d"]["message"], "4-trailing")
+
+        d.addCallback(_check)
+        return d
+
+    def _read_logfile(self, fn):
+        if fn.endswith(".bz2"):
+            import bz2
+            f = bz2.BZ2File(fn, "r")
+        else:
+            f = open(fn, "rb")
+        events = []
+        while True:
+            try:
+                events.append(pickle.load(f))
+            except EOFError:
+                break
+            except ValueError:
+                break
+        f.close()
+        return events
+
+    def test_qualifier1(self):
+        l = log.FoolscapLogger()
+        l.setIncidentQualifier(SuperstitiousQualifier())
+        l.setLogDir("logging/Incidents/qualifier1")
+        l.msg("1", level=log.BAD)
+        self.failUnlessEqual(l.incidents_declared, 0)
+
+    def test_qualifier2(self):
+        l = log.FoolscapLogger()
+        # call them in the other order
+        l.setLogDir("logging/Incidents/qualifier2")
+        l.setIncidentQualifier(SuperstitiousQualifier())
+        l.msg("1", level=log.BAD)
+        self.failUnlessEqual(l.incidents_declared, 0)
+
+    def test_customize(self):
+        l = log.FoolscapLogger()
+        l.setIncidentQualifier(SuperstitiousQualifier())
+        l.setLogDir("logging/Incidents/customize")
+        # you set the reporter *class*, not an instance
+        bad_ir = ImpatientReporter("basedir", "logger", "tubid")
+        self.failUnlessRaises((AssertionError, TypeError),
+                              l.setIncidentReporterClass, bad_ir)
+        l.setIncidentReporterClass(ImpatientReporter)
+        l.msg("1", level=log.BAD)
+        self.failUnlessEqual(l.incidents_declared, 0)
+        l.msg("2")
+        l.msg("thirteen is scary")
+        self.failUnlessEqual(l.incidents_declared, 1)
+        l.msg("4")
+        l.msg("5")
+        l.msg("6") # this should hit the trailing event limit
+        l.msg("7") # this should not be recorded
+        d = self.poll(lambda: bool(l.incidents_recorded), 1.0)
+        def _check(res):
+            self.failUnlessEqual(len(l.recent_recorded_incidents), 1)
+            fn = l.recent_recorded_incidents[0]
+            events = self._read_logfile(fn)
+            self.failUnlessEqual(len(events), 1+6)
+            self.failUnlessEqual(events[-1]["d"]["message"], "6")
+        d.addCallback(_check)
+        return d
 
 
 class Observer(Referenceable):

@@ -1,3 +1,21 @@
+2008-05-05  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/logging/log.py (FoolscapLogger.setLogDir): wire up
+	Incident handling. We still need incident publishing. This gets
+	us most of the way to #61.
+	(setIncidentQualifier): this customizes the qualification function
+	(setIncidentReporterClass): this customizes the reporter/recorder
+	* foolscap/logging/levels.py: move log.WEIRD and friends here to
+	avoid circular import problems elsewhere. They are still available
+	from log.py .
+	* foolscap/logging/incident.py (IncidentReporter.incident_declared):
+	flush the uncompressed logfile just before we switch into
+	gather-trailing-events mode
+	(IncidentReporter.stop_recording): oops, fix typo
+	* foolscap/test/test_logging.py (Incidents): test most
+	incident-handling functionality
+
+
 2008-05-02  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/logging/incident.py: start to implement Incident

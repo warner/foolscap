@@ -2,8 +2,8 @@
 import os.path, time, pickle, bz2
 from zope.interface import implements
 from twisted.internet import reactor
-from foolscap.logging import log
 from foolscap.logging.interfaces import IIncidentReporter
+from foolscap.logging import levels
 from foolscap.eventual import eventually
 from foolscap import base32
 
@@ -24,7 +24,7 @@ class IncidentQualifier:
         self.handler = handler
 
     def check_event(self, ev):
-        if ev['level'] >= log.WEIRD:
+        if ev['level'] >= levels.WEIRD:
             return True
         return False
 
@@ -98,6 +98,9 @@ class IncidentReporter:
             pickle.dump(wrapper, self.f1)
             pickle.dump(wrapper, self.f2)
 
+        self.f1.flush()
+        # the BZ2File has no flush method
+
         # now we wait for the trailing events to arrive
 
         self.timer = reactor.callLater(self.TRAILING_DELAY,
@@ -127,7 +130,7 @@ class IncidentReporter:
         # Observers are notified through an eventually() call, so we might
         # get a few more after the observer is removed. We use
         # self.still_recording to hush them.
-        eventually(self.stop_recording)
+        eventually(self.finished_recording)
 
     def finished_recording(self):
         self.f2.close()

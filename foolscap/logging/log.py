@@ -1,23 +1,19 @@
 
-import os, sys, time, pickle
+import os, sys, time, pickle, weakref
 import itertools
-import logging
 import traceback
 import collections
 from twisted.python import log as twisted_log
 from twisted.python import failure
 from foolscap import eventual
 from foolscap.logging.interfaces import IIncidentReporter
+from foolscap.logging.incident import IncidentQualifier, IncidentReporter
 
-NOISY = logging.DEBUG # 10
-OPERATIONAL = logging.INFO # 20
-UNUSUAL = logging.INFO+3
-INFREQUENT = logging.INFO+5
-CURIOUS = logging.INFO+8
-WEIRD = logging.WARNING # 30
-SCARY = logging.WARNING+5
-BAD = logging.ERROR # 40
+from foolscap.logging.levels import NOISY, OPERATIONAL, UNUSUAL, \
+     INFREQUENT, CURIOUS, WEIRD, SCARY, BAD
 
+# hush pyflakes, these are imported to be available to other callers
+_unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 
 def format_message(e):
     try:
@@ -40,6 +36,7 @@ def format_message(e):
 class FoolscapLogger:
     DEFAULT_SIZELIMIT = 100
     DEFAULT_THRESHOLD = NOISY
+    MAX_RECORDED_INCIDENTS = 20 # records filenames of incident logfiles
 
     def __init__(self):
         self.incarnation = self.get_incarnation()
@@ -51,6 +48,13 @@ class FoolscapLogger:
         self.thresholds = {}
         self._observers = []
         self.logdir = None # nowhere to put our incidents
+        self.inactive_incident_qualifier = IncidentQualifier()
+        self.active_incident_qualifier = None
+        self.incident_reporter_class = IncidentReporter
+        self.active_incident_reporters = weakref.WeakKeyDictionary()
+        self.incidents_declared = 0
+        self.incidents_recorded = 0
+        self.recent_recorded_incidents = []
 
     def get_incarnation(self):
         unique = os.urandom(8)
@@ -63,19 +67,26 @@ class FoolscapLogger:
         self._observers.remove(observer)
 
     def setLogDir(self, directory):
-        # TODO: not implemented yet
         # TODO: change self.incarnation to reflect next seqnum
         self.logdir = os.path.abspath(os.path.expanduser(directory))
-        pass
+        os.makedirs(self.logdir)
+        self.activate_incident_qualifier()
 
     def setIncidentQualifier(self, iq):
         assert iq.event
-        if self.incident_qualifier:
-            self.removeObserver(self.incident_qualifier.event)
-            self.incident_qualifier.set_handler(None)
-        self.incident_qualifier = iq
-        iq.set_handler(self)
-        self.addObserver(iq.event)
+        self.deactivate_incident_qualifier()
+        self.inactive_incident_qualifier = iq
+        if self.logdir:
+            self.activate_incident_qualifier()
+
+    def deactivate_incident_qualifier(self):
+        if self.active_incident_qualifier:
+            self.active_incident_qualifier.set_handler(None)
+            self.active_incident_qualifier = None
+
+    def activate_incident_qualifier(self):
+        self.active_incident_qualifier = self.inactive_incident_qualifier
+        self.active_incident_qualifier.set_handler(self)
 
     def setIncidentReporterClass(self, ir):
         assert IIncidentReporter.implementedBy(ir)
@@ -200,6 +211,36 @@ class FoolscapLogger:
         while len(buffer) > sizelimit:
             buffer.popleft()
 
+        # check with incident reporter. This is done synchronously rather
+        # than via the usual eventual-send to allow the application to do:
+        #  log.msg("abandon ship", level=log.BAD)
+        #  sys.exit(1)
+        #
+        # This means the IncidentReporter will do most of its work right
+        # here. The reporter is not allowed to make any foolscap calls, and
+        # the call to incident_recorded() is required to pass through an
+        # eventual-send.
+
+        if self.active_incident_qualifier:
+            try:
+                # this might call declare_incident
+                self.active_incident_qualifier.event(event)
+            except:
+                print failure.Failure() # for debugging
+
+    def declare_incident(self, triggering_event):
+        self.incidents_declared += 1
+        if self.logdir: # just in case
+            ir = self.incident_reporter_class(self.logdir, self, "local")
+            self.active_incident_reporters[ir] = None
+            ir.incident_declared(triggering_event)
+
+    def incident_recorded(self, filename):
+        self.incidents_recorded += 1
+        # TODO: publish these to interested parties
+        self.recent_recorded_incidents.append(filename)
+        while len(self.recent_recorded_incidents) > self.MAX_RECORDED_INCIDENTS:
+            self.recent_recorded_incidents.pop(0)
 
     def setLogPort(self, logport):
         self._logport = logport
