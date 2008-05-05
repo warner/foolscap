@@ -1,5 +1,8 @@
 2008-05-05  Brian Warner  <warner@allmydata.com>
 
+	* bin/flogtool: split out the CLI dispatcher to..
+	* foolscap/logging/cli.py (run_flogtool): here, to help with #51
+
 	* misc/testutils/trial_figleaf.py: make this compatible with
 	twisted-8.0.x: the earlier version didn't write out any coverage
 	data on newer twisteds
