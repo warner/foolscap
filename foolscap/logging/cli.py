@@ -68,12 +68,14 @@ def dispatch(command, options):
         print "unknown command '%s'" % command
         raise NotImplementedError
 
-def run_flogtool():
+def run_flogtool(argv=sys.argv, run_by_human=True):
     config = Options()
     try:
-        config.parseOptions()
+        config.parseOptions(argv)
     except usage.error, e:
-        print "%s:  %s" % (sys.argv[0], e)
+        if not run_by_human:
+            raise
+        print "%s:  %s" % (argv[0], e)
         print
         c = getattr(config, 'subOptions', config)
         print str(c)

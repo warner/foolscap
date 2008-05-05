@@ -19,6 +19,7 @@ class CreateGatherOptions(usage.Options):
 
     optFlags = [
         ("bzip", "b", "Compress each output file with bzip2"),
+        ("quiet", "q", "Don't print instructions to stdout"),
         ]
     optParameters = [
         ("rotate", "r", None,
@@ -263,5 +264,6 @@ def create_log_gatherer(config):
                         'use_bzip': bool(config["bzip"]),
                         })
     f.close()
-    print "Gatherer created in directory %s" % basedir
-    print "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir
+    if not config["quiet"]:
+        print "Gatherer created in directory %s" % basedir
+        print "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir

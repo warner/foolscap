@@ -2,6 +2,11 @@
 
 	* bin/flogtool: split out the CLI dispatcher to..
 	* foolscap/logging/cli.py (run_flogtool): here, to help with #51
+	(run_flogtool): make it possible to run with a wrapper, closes #51.
+	* foolscap/test/test_logging.py (CLI.test_wrapper): test a wrapper,
+	provide an example of how to build one
+	* foolscap/logging/gatherer.py (CreateGatherOptions.optFlags): add
+	a --quiet flag to make the unit test less noisy
 
 	* misc/testutils/trial_figleaf.py: make this compatible with
 	twisted-8.0.x: the earlier version didn't write out any coverage

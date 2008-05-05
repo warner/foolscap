@@ -6,9 +6,9 @@ from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.python import log as twisted_log
-from twisted.python import failure, runtime
+from twisted.python import failure, runtime, usage
 import foolscap
-from foolscap.logging import gatherer, log, tail, incident
+from foolscap.logging import gatherer, log, tail, incident, cli
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
@@ -829,3 +829,35 @@ class Tail(unittest.TestCase):
         to = tail.TailOptions()
         self.failUnlessRaises(RuntimeError, to.parseOptions, ["bogus.txt"])
 
+# applications that provide a command-line tool may find it useful to include
+# a "flogtool" subcommand, using something like this:
+class WrapperOptions(usage.Options):
+    synopsis = "Usage: wrapper flogtool <command>"
+    subCommands = [("flogtool", None, cli.Options, "foolscap log tool")]
+
+def run_wrapper(argv):
+    config = WrapperOptions()
+    config.parseOptions(argv)
+    command = config.subCommand
+    if command == "flogtool":
+        so = config.subOptions
+        return cli.run_flogtool(argv[1:])
+
+class CLI(unittest.TestCase):
+    def test_create_gatherer(self):
+        basedir = "logging/CLI/create_gatherer"
+        argv = ["flogtool", "create-gatherer", "--quiet", basedir]
+        cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnless(os.path.exists(basedir))
+
+    def test_create_gatherer_badly(self):
+        basedir = "logging/CLI/create_gatherer"
+        argv = ["flogtool", "create-gatherer", "--bogus-arg"]
+        self.failUnlessRaises(usage.UsageError,
+                              cli.run_flogtool, argv[1:], run_by_human=False)
+        
+    def test_wrapper(self):
+        basedir = "logging/CLI/wrapper"
+        argv = ["wrapper", "flogtool", "create-gatherer", "--quiet", basedir]
+        run_wrapper(argv[1:])
+        self.failUnless(os.path.exists(basedir))
