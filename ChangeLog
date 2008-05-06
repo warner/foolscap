@@ -1,3 +1,7 @@
+2008-05-06  Brian Warner  <warner@lothar.com>
+
+	* NEWS: update for the upcoming release
+
 2008-05-05  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/test/test_logging.py (Web): add tests for 'flogtool
