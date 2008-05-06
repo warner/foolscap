@@ -11,6 +11,10 @@ from twisted.web import server, static, html, resource
 class WebViewerOptions(usage.Options):
     synopsis = "Usage: flogtool web-viewer DUMPFILE.pickle"
 
+    optFlags = [
+        ("quiet", "q", "Don't print instructions to stdout"),
+        ]
+
     optParameters = [
         ["port", "p", "tcp:0",
          "strports specification of where the web server should listen."],
@@ -275,11 +279,15 @@ class WebViewer:
         # TODO: this makes all sort of assumptions: HTTP-vs-HTTPS, localhost.
         url = "http://localhost:%d/welcome" % portnum
 
-        print "scanning.."
+        if not options["quiet"]:
+            print "scanning.."
         self.get_logfiles(options)
 
-        print "please point your browser at:"
-        print url
+        if not options["quiet"]:
+            print "please point your browser at:"
+            print url
+
+        return url # for tests
 
     def get_logfiles(self, options):
         self.logfiles = [options.dumpfile]

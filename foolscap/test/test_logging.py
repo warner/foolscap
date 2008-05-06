@@ -8,7 +8,7 @@ from twisted.internet import defer, reactor
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
-from foolscap.logging import gatherer, log, tail, incident, cli
+from foolscap.logging import gatherer, log, tail, incident, cli, web
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
@@ -92,8 +92,11 @@ class Advanced(unittest.TestCase):
         return d
 
     def testFileObserver(self):
+        basedir = "logging/Advanced/FileObserver"
+        os.makedirs(basedir)
         l = log.FoolscapLogger()
-        ob = log.LogFileObserver("observer-log.out")
+        fn = os.path.join(basedir, "observer-log.out")
+        ob = log.LogFileObserver(fn)
         l.addObserver(ob.msg)
         l.msg("one")
         l.msg("two")
@@ -101,7 +104,7 @@ class Advanced(unittest.TestCase):
         def _check(res):
             l.removeObserver(ob.msg)
             ob._logFile.close()
-            f = open("observer-log.out", "rb")
+            f = open(fn, "rb")
             events = []
             while True:
                 try:
@@ -345,7 +348,7 @@ class Publish(PollMixin, unittest.TestCase):
         return d
 
     def test_logport_furlfile1(self):
-        basedir = "test_logging/test_logport_furlfile1"
+        basedir = "logging/Publish/logport_furlfile1"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
         t = GoodEnoughTub()
@@ -357,7 +360,7 @@ class Publish(PollMixin, unittest.TestCase):
         logport_furl = open(furlfile, "r").read().strip()
 
     def test_logport_furlfile2(self):
-        basedir = "test_logging/test_logport_furlfile2"
+        basedir = "logging/Publish/logport_furlfile2"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
         t = GoodEnoughTub()
@@ -369,7 +372,7 @@ class Publish(PollMixin, unittest.TestCase):
         logport_furl = open(furlfile, "r").read().strip()
 
     def test_logpublisher(self):
-        basedir = "test_logging/test_logpublisher"
+        basedir = "logging/Publish/logpublisher"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
         t = GoodEnoughTub()
@@ -488,7 +491,7 @@ class Publish(PollMixin, unittest.TestCase):
         return d
 
     def test_logpublisher_catchup(self):
-        basedir = "test_logging/test_logpublisher_catchup"
+        basedir = "logging/Publish/logpublisher_catchup"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
         t = GoodEnoughTub()
@@ -745,7 +748,7 @@ class Gatherer(PollMixin, unittest.TestCase):
         return d
 
     def test_log_gatherer(self):
-        basedir = "test_logging/test_log_gatherer"
+        basedir = "logging/Gatherer/log_gatherer"
         os.makedirs(basedir)
 
         t = GoodEnoughTub()
@@ -770,7 +773,7 @@ class Gatherer(PollMixin, unittest.TestCase):
     test_log_gatherer.timeout = 20
 
     def test_log_gatherer_furlfile(self):
-        basedir = "test_logging/test_log_gatherer_furlfile"
+        basedir = "logging/Gatherer/log_gatherer_furlfile"
         os.makedirs(basedir)
 
         t = GoodEnoughTub()
@@ -800,7 +803,7 @@ class Gatherer(PollMixin, unittest.TestCase):
     test_log_gatherer_furlfile.timeout = 20
 
     def test_log_gatherer_empty_furlfile(self):
-        basedir = "test_logging/test_log_gatherer_empty_furlfile"
+        basedir = "logging/Gatherer/log_gatherer_empty_furlfile"
         os.makedirs(basedir)
 
         gatherer_fn = os.path.join(basedir, "log_gatherer.furl")
@@ -902,11 +905,13 @@ class Tail(unittest.TestCase):
         self.failUnlessEqual(data["d"]["num"], 123)
 
     def test_options(self):
-        fn = "test_logging.Tail.test_options"
+        basedir = "logging/Tail/options"
+        os.makedirs(basedir)
+        fn = os.path.join(basedir, "foo")
         f = open(fn, "w")
         f.write("pretend this is a furl")
         f.close()
-        f = open("logport.furl", "w")
+        f = open(os.path.join(basedir, "logport.furl"), "w")
         f.write("this too")
         f.close()
 
@@ -917,7 +922,7 @@ class Tail(unittest.TestCase):
         self.failUnlessEqual(to.target_furl, "pb:pretend-furl")
 
         to = tail.TailOptions()
-        to.parseOptions(["--verbose", "--catch-up", "."])
+        to.parseOptions(["--verbose", "--catch-up", basedir])
         self.failUnless(to["verbose"])
         self.failUnless(to["catch-up"])
         self.failUnlessEqual(to.target_furl, "this too")
@@ -964,3 +969,68 @@ class CLI(unittest.TestCase):
         argv = ["wrapper", "flogtool", "create-gatherer", "--quiet", basedir]
         run_wrapper(argv[1:])
         self.failUnless(os.path.exists(basedir))
+
+class Web(unittest.TestCase):
+    def setUp(self):
+        self.viewer = None
+    def tearDown(self):
+        d = defer.maybeDeferred(unittest.TestCase.tearDown, self)
+        if self.viewer:
+            d.addCallback(lambda res: self.viewer.serv.stopService())
+        return d
+
+    def test_basic(self):
+        from twisted.web import client
+        basedir = "logging/Web/basic"
+        os.makedirs(basedir)
+        l = log.FoolscapLogger()
+        fn = os.path.join(basedir, "flog.out")
+        ob = log.LogFileObserver(fn)
+        l.addObserver(ob.msg)
+        l.msg("one")
+        lp = l.msg("two")
+        l.msg("three", parent=lp, failure=failure.Failure(RuntimeError("yo")))
+        l.msg("four", level=log.UNUSUAL)
+        d = fireEventually()
+        def _created(res):
+            l.removeObserver(ob.msg)
+            ob._stop()
+            argv = ["-p", "tcp:0:interface=127.0.0.1",
+                    "--quiet",
+                    fn]
+            options = web.WebViewerOptions()
+            options.parseOptions(argv)
+            self.viewer = web.WebViewer()
+            self.url = self.viewer.start(options)
+            self.baseurl = self.url[:self.url.rfind("/")] + "/"
+
+        d.addCallback(_created)
+        d.addCallback(lambda res: client.getPage(self.url))
+        def _check_welcome(page):
+            self.failUnless("4 events covering" in page)
+            self.failUnless('href="summary/0-20">3 events</a> at level 20'
+                            in page)
+        d.addCallback(_check_welcome)
+        d.addCallback(lambda res:
+                      client.getPage(self.baseurl + "summary/0-20"))
+        def _check_summary(page):
+            self.failUnless("Events at level 20" in page)
+            self.failUnless(": two" in page)
+            self.failIf("four" in page)
+        d.addCallback(_check_summary)
+        d.addCallback(lambda res: client.getPage(self.baseurl + "all-events"))
+        def _check_all_events(page):
+            self.failUnless("3 root events" in page)
+            self.failUnless(": one</span>" in page)
+            self.failUnless(": two</span>" in page)
+            self.failUnless(": three FAILURE:" in page)
+            self.failUnless(": UNUSUAL four</span>" in page)
+        d.addCallback(_check_all_events)
+        d.addCallback(lambda res:
+                      client.getPage(self.baseurl + "all-events?sort=number"))
+        d.addCallback(_check_all_events)
+        d.addCallback(lambda res:
+                      client.getPage(self.baseurl + "all-events?sort=time"))
+        d.addCallback(_check_all_events)
+        return d
+

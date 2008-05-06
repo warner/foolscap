@@ -1,5 +1,10 @@
 2008-05-05  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/test/test_logging.py (Web): add tests for 'flogtool
+	web-viewer'
+	* foolscap/logging/web.py (WebViewer.start): make this class more
+	amenable to being tested
+
 	* foolscap/logging/interfaces.py: misc cleanups
 	(RILogPublisher.list_incidents): provide an interface to retrieve
 	stored incident reports from a logport.
