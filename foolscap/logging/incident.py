@@ -73,9 +73,10 @@ class IncidentReporter:
                                             unique_s)
         self.abs_filename = os.path.join(self.basedir, filename)
         self.abs_filename_bz2 = self.abs_filename + ".bz2"
+        self.abs_filename_bz2_tmp = self.abs_filename + ".bz2.tmp"
         # open logfile. We use both an uncompressed one and a compressed one.
         self.f1 = open(self.abs_filename, "wb")
-        self.f2 = bz2.BZ2File(self.abs_filename_bz2, "wb")
+        self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
         # write header with triggering_event
         header = {"header": {"type": "incident",
                              "trigger": triggering_event,
@@ -83,10 +84,11 @@ class IncidentReporter:
         pickle.dump(header, self.f1)
         pickle.dump(header, self.f2)
 
-        # subscribe to events that occur after this one
-        self.still_recording = True
-        self.remaining_events = self.TRAILING_EVENT_LIMIT
-        self.logger.addObserver(self.trailing_event)
+        if self.TRAILING_DELAY is not None:
+            # subscribe to events that occur after this one
+            self.still_recording = True
+            self.remaining_events = self.TRAILING_EVENT_LIMIT
+            self.logger.addObserver(self.trailing_event)
 
         # use self.logger.buffers, copy events into logfile
         events = list(self.logger.get_buffered_events())
@@ -101,10 +103,12 @@ class IncidentReporter:
         self.f1.flush()
         # the BZ2File has no flush method
 
-        # now we wait for the trailing events to arrive
-
-        self.timer = reactor.callLater(self.TRAILING_DELAY,
-                                       self.stop_recording)
+        if self.TRAILING_DELAY is None:
+            eventually(self.finished_recording)
+        else:
+            # now we wait for the trailing events to arrive
+            self.timer = reactor.callLater(self.TRAILING_DELAY,
+                                           self.stop_recording)
 
     def trailing_event(self, ev):
         if not self.still_recording:
@@ -134,6 +138,7 @@ class IncidentReporter:
 
     def finished_recording(self):
         self.f2.close()
+        os.rename(self.abs_filename_bz2_tmp, self.abs_filename_bz2)
         # the compressed logfile has closed successfully. We no longer care
         # about the uncompressed one.
         self.f1.close()
@@ -142,3 +147,5 @@ class IncidentReporter:
         # now we can tell the world about our new incident record
         eventually(self.logger.incident_recorded, self.abs_filename_bz2)
 
+class NonTrailingIncidentReporter(IncidentReporter):
+    TRAILING_DELAY = None

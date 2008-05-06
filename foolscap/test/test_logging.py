@@ -1,5 +1,5 @@
 
-import os, pickle, time
+import os, pickle, time, bz2
 from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
@@ -223,7 +223,7 @@ class Incidents(unittest.TestCase, PollMixin):
         # the uncompressed one will sort earlier, since it lacks the .bz2
         # extension
         files.sort()
-        self.failUnlessEqual(files[0] + ".bz2", files[1])
+        self.failUnlessEqual(files[0] + ".bz2.tmp", files[1])
         # unix systems let us look inside the uncompressed file while it's
         # still being written to by the recorder
         if runtime.platformType == "posix":
@@ -254,7 +254,6 @@ class Incidents(unittest.TestCase, PollMixin):
 
     def _read_logfile(self, fn):
         if fn.endswith(".bz2"):
-            import bz2
             f = bz2.BZ2File(fn, "r")
         else:
             f = open(fn, "rb")
@@ -558,6 +557,109 @@ class Publish(PollMixin, unittest.TestCase):
         d.addCallback(_got_logport)
         return d
 
+class IncidentPublisher(unittest.TestCase):
+    def setUp(self):
+        self.parent = service.MultiService()
+        self.parent.startService()
+
+    def tearDown(self):
+        d = defer.succeed(None)
+        d.addCallback(lambda res: self.parent.stopService())
+        d.addCallback(flushEventualQueue)
+        return d
+
+    def test_get_incidents(self):
+        basedir = "logging/IncidentPublisher/get_incidents"
+        os.makedirs(basedir)
+        furlfile = os.path.join(basedir, "logport.furl")
+        t = GoodEnoughTub()
+        t.logger = self.logger = log.FoolscapLogger()
+        logdir = os.path.join(basedir, "logdir")
+        t.logger.setLogDir(logdir)
+        t.logger.setIncidentReporterFactory(incident.NonTrailingIncidentReporter)
+        # dump some other files in the incident directory
+        open(os.path.join(logdir, "distraction.bz2"), "w").write("stuff")
+        open(os.path.join(logdir, "noise"), "w").write("stuff")
+        # fill the buffers with some messages
+        t.logger.msg("one")
+        t.logger.msg("two")
+        # and trigger an incident
+        t.logger.msg("three", level=log.WEIRD)
+        # the NonTrailingIncidentReporter needs a turn before it will have
+        # finished recording the event: the getReference() call will suffice.
+
+        # now set up a Tub to connect to the logport
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+
+        t.setOption("logport-furlfile", furlfile)
+        logport_furl = t.getLogPortFURL()
+        logport_furl2 = open(furlfile, "r").read().strip()
+        self.failUnlessEqual(logport_furl, logport_furl2)
+
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.parent)
+
+        d = t2.getReference(logport_furl)
+        def _got_logport(logport):
+            d = logport.callRemote("list_incidents")
+            d.addCallback(self._check_listed)
+            d.addCallback(lambda res:
+                          logport.callRemote("get_incident", self.i_name))
+            d.addCallback(self._check_incident)
+            def _decompress(res):
+                # now we manually decompress the logfile for that incident,
+                # to exercise the code that provides access to incidents that
+                # did not finish their trailing-gather by the time the
+                # application was shut down
+                fn1 = os.path.join(logdir, self.i_name)
+                assert fn1.endswith(".bz2")
+                fn2 = fn1[:-len(".bz2")]
+                f1 = bz2.BZ2File(fn1, "r")
+                f2 = open(fn2, "wb")
+                f2.write(f1.read())
+                f2.close()
+                f1.close()
+                os.unlink(fn1)
+            d.addCallback(_decompress)
+            # and do it again
+            d.addCallback(lambda res: logport.callRemote("list_incidents"))
+            d.addCallback(self._check_listed)
+            d.addCallback(lambda res:
+                          logport.callRemote("get_incident", self.i_name))
+            d.addCallback(self._check_incident)
+            return d
+        d.addCallback(_got_logport)
+        return d
+
+    def _check_listed(self, incidents):
+        self.failUnless(isinstance(incidents, dict))
+        self.failUnlessEqual(len(incidents), 1)
+        self.i_name = i_name = incidents.keys()[0]
+        (tubid_s, incarnation, trigger) = incidents[i_name]
+        self.failUnlessEqual(tubid_s, "local")
+        self.failUnlessEqual(incarnation, self.logger.incarnation)
+        self.failUnlessEqual(trigger["message"], "three")
+    def _check_incident(self, (header, events) ):
+        self.failUnlessEqual(header["type"], "incident")
+        self.failUnlessEqual(header["trigger"]["message"], "three")
+        self.failUnlessEqual(len(events), 3)
+        self.failUnlessEqual(events[0]["message"], "one")
+
+class Gatherer(PollMixin, unittest.TestCase):
+    def setUp(self):
+        self.parent = service.MultiService()
+        self.parent.startService()
+
+    def tearDown(self):
+        log.setTwistedLogBridge(None) # disable any bridge still in place
+        d = defer.succeed(None)
+        d.addCallback(lambda res: self.parent.stopService())
+        d.addCallback(flushEventualQueue)
+        return d
+
+
     def stall(self, res, delay=1.0):
         d = defer.Deferred()
         reactor.callLater(delay, d.callback, res)
@@ -714,6 +816,7 @@ class Publish(PollMixin, unittest.TestCase):
         t2.log("this message shouldn't make anything explode")
     test_log_gatherer_empty_furlfile.timeout = 20
 
+
 class Tail(unittest.TestCase):
     def test_logprinter(self):
         target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
@@ -855,7 +958,7 @@ class CLI(unittest.TestCase):
         argv = ["flogtool", "create-gatherer", "--bogus-arg"]
         self.failUnlessRaises(usage.UsageError,
                               cli.run_flogtool, argv[1:], run_by_human=False)
-        
+
     def test_wrapper(self):
         basedir = "logging/CLI/wrapper"
         argv = ["wrapper", "flogtool", "create-gatherer", "--quiet", basedir]

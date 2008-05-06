@@ -1,6 +1,9 @@
 
+import os
+import pickle
 from zope.interface import implements
 import twisted
+from twisted.python import filepath
 import foolscap
 from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
@@ -92,3 +95,44 @@ class LogPublisher(Referenceable):
         c = self._notifyOnDisconnectors.pop(s)
         observer.dontNotifyOnDisconnect(c)
 
+    def remote_list_incidents(self):
+        basedir = self._logger.logdir
+        filenames = [fn
+                     for fn in os.listdir(basedir)
+                     if fn.startswith("incident") and not fn.endswith(".tmp")]
+        filenames.sort()
+        incidents = {}
+        for fn in filenames:
+            abs_fn = os.path.join(basedir, fn)
+            if abs_fn.endswith(".bz2"):
+                import bz2
+                f = bz2.BZ2File(abs_fn, "r")
+            else:
+                f = open(abs_fn, "rb")
+            try:
+                header = pickle.load(f)
+            except (EOFError, ValueError):
+                continue
+            assert header["header"]["type"] == "incident"
+            trigger = header["header"]["trigger"]
+            incidents[fn] = ("local", trigger["incarnation"], trigger)
+        return incidents
+
+    def remote_get_incident(self, fn):
+        incident_dir = filepath.FilePath(self._logger.logdir)
+        abs_fn = incident_dir.child(fn).path
+        if abs_fn.endswith(".bz2"):
+            import bz2
+            f = bz2.BZ2File(abs_fn, "r")
+        else:
+            f = open(abs_fn, "rb")
+        header = pickle.load(f)["header"]
+        events = []
+        while True:
+            try:
+                wrapped = pickle.load(f)
+            except (EOFError, ValueError):
+                break
+            events.append(wrapped["d"])
+        f.close()
+        return (header, events)

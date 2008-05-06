@@ -1,5 +1,23 @@
 2008-05-05  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/interfaces.py: misc cleanups
+	(RILogPublisher.list_incidents): provide an interface to retrieve
+	stored incident reports from a logport.
+	(RILogPublisher.get_incident): same
+	* foolscap/logging/publish.py (LogPublisher): same
+	* foolscap/test/test_logging.py (IncidentPublisher): test it
+	* foolscap/pb.py (Tub.setup): make the Tub's logger a bit easier
+	to override, for tests
+
+	* foolscap/logging/incident.py (IncidentReporter): make the
+	compressed logfile use a temporary name until we've closed it, so
+	later observers don't get tricked into using an incomplete
+	compressed logfile (they should use the more-complete uncompressed
+	logfile instead).
+	(IncidentReporter.incident_declared): make it easier to turn off
+	the gather-trailing-events behavior
+	(NonTrailingIncidentReporter): convenience subclass that does that
+
 	* doc/logging.xhtml: update to match current reality, remove some
 	TODO warnings
 

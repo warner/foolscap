@@ -261,6 +261,7 @@ class Tub(service.MultiService):
 
     def setup(self, options):
         self.options = options
+        self.logger = flog.theLogger
         self.listeners = []
         self.locationHints = []
 
@@ -386,7 +387,7 @@ class Tub(service.MultiService):
 
     def _maybeCreateLogPort(self):
         if not self._logport:
-            self._logport = flog_publish.LogPublisher(flog.theLogger)
+            self._logport = flog_publish.LogPublisher(self.logger)
         return self._logport
 
     def setLogPortFURLFile(self, furlfile):
