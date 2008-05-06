@@ -1,5 +1,12 @@
 2008-05-05  Brian Warner  <warner@allmydata.com>
 
+	* doc/logging.xhtml: update to match current reality, remove some
+	TODO warnings
+
+	* foolscap/logging/log.py (FoolscapLogger): rename
+	setIncidentReporterClass to setIncidentReporterFactory
+	* foolscap/test/test_logging.py (Incidents.test_customize): same
+
 	* foolscap/logging/interfaces.py (RISubscription): remove spurious
 	'pass', figleaf thought it was real code
 

@@ -50,7 +50,7 @@ class FoolscapLogger:
         self.logdir = None # nowhere to put our incidents
         self.inactive_incident_qualifier = IncidentQualifier()
         self.active_incident_qualifier = None
-        self.incident_reporter_class = IncidentReporter
+        self.incident_reporter_factory = IncidentReporter
         self.active_incident_reporters = weakref.WeakKeyDictionary()
         self.incidents_declared = 0
         self.incidents_recorded = 0
@@ -88,9 +88,9 @@ class FoolscapLogger:
         self.active_incident_qualifier = self.inactive_incident_qualifier
         self.active_incident_qualifier.set_handler(self)
 
-    def setIncidentReporterClass(self, ir):
+    def setIncidentReporterFactory(self, ir):
         assert IIncidentReporter.implementedBy(ir)
-        self.incident_reporter_class = ir
+        self.incident_reporter_factory = ir
 
     def explain_facility(self, facility, description):
         self.facility_explanations[facility] = description
@@ -231,7 +231,7 @@ class FoolscapLogger:
     def declare_incident(self, triggering_event):
         self.incidents_declared += 1
         if self.logdir: # just in case
-            ir = self.incident_reporter_class(self.logdir, self, "local")
+            ir = self.incident_reporter_factory(self.logdir, self, "local")
             self.active_incident_reporters[ir] = None
             ir.incident_declared(triggering_event)
 

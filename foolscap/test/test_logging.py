@@ -291,8 +291,8 @@ class Incidents(unittest.TestCase, PollMixin):
         # you set the reporter *class*, not an instance
         bad_ir = ImpatientReporter("basedir", "logger", "tubid")
         self.failUnlessRaises((AssertionError, TypeError),
-                              l.setIncidentReporterClass, bad_ir)
-        l.setIncidentReporterClass(ImpatientReporter)
+                              l.setIncidentReporterFactory, bad_ir)
+        l.setIncidentReporterFactory(ImpatientReporter)
         l.msg("1", level=log.BAD)
         self.failUnlessEqual(l.incidents_declared, 0)
         l.msg("2")

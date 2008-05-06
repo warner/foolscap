@@ -278,7 +278,7 @@ treating the log message as a normal format string:</p>
 log.msg("queue depth %d exceeds limit %d", current_depth, limit)
 </pre>
 
-<p>Or you can use keyword arguments instead. You can either provide
+<p>Or you can use keyword arguments instead. The format string can use
 positional parameters, or keyword arguments, but not both.</p>
 
 <pre class="python">
@@ -290,9 +290,20 @@ before calling <code>log.msg</code> has the benefit of preserving more
 information: later, when you view the log messages, you can apply python
 filter expressions that use these parameters as search criteria.</p>
 
+<p>Regardless of how you format the main log message, you can always pass
+additional keyword arguments, and their values will be serialized into the
+log event. This will not be automatically stringified into a printed form of
+the message, but it will be available to other tools (either to filter upon
+or to display):</p>
+
+<pre class="python">
+log.msg("state changed", previous=states[now-1], current=stats[now])
+</pre>
+
 <h4>Modifying Log Messages</h4>
 
-<p>There are a number of arguments you can add:</p>
+<p>There are a number of arguments you can add to the <code>log.msg</code>
+call that foolscap will treat specially:</p>
 
 <pre class="python">
 parent = log.msg(facility="app.initialization", level=log.INFREQUENT,
@@ -301,8 +312,8 @@ log.msg(facility="app.storage", level=log.OPERATIONAL,
         msg="init storage", stacktrace=False, parent=parent)
 </pre>
 
-<p>The list of levels is defined in <code>foolscap/log.py</code>, and looks
-like this:</p>
+<p>The <code>level</code> argument is how you specify a severity level, and
+takes a constant from the list defined in <code>foolscap/log.py</code>:</p>
 
 <ul>
   <li><code>BAD</code>: something which significantly breaks functionality.
@@ -377,8 +388,9 @@ log.explain_facility("ui.web", "rendering pages for the web UI")
 
 <h2>Configuring Logging</h2>
 
-<p>Foolscap's logging system is always enabled, but the default configuration
-is lacking a number of useful features.</p>
+<p>Foolscap's logging system is always enabled, but the unconfigured initial
+state is lacking a number of useful features. By configuring the logging
+system at application startup, you can enable these features.</p>
 
 <h3>Saving Log Events to Disk</h3>
 
@@ -419,16 +431,14 @@ low-severity events in those facilities:</p>
 <pre class="python">
 from foolscap.logging import log, incident
 
-class EasilyTriggeredQualifier(incident.IncidentQualifier):
+class BetterQualifier(incident.IncidentQualifier):
     def check_event(self, ev):
-        if ev['level'] > log.INFREQUENT:
-            return True
         if ev.get('facility',"").startswith("lifesupport"):
             if ev['level'] > log.UNUSUAL:
                 return True
-        return False
+        return incident.IncidentQualifier.check_event(self, ev)
 
-log.setIncidentQualifier(EasilyTriggeredQualifier())
+log.setIncidentQualifier(BetterQualifier())
 </pre>
 
 <p>The qualifier could also keep track of how many events of a given type had
@@ -448,7 +458,7 @@ logging code should capture the otherwise-ordinary events performed by this
 recovery code.</p>
 
 <p>The incident reporter can be overridden as well, by calling
-<code>log.setIncidentReporterClass</code> with a <b>class</b> that will
+<code>log.setIncidentReporterFactory</code> with a <b>class</b> that will
 produce reporter instances. For example, if you wanted to increase the
 post-trigger event recording to 1000 events or 10 seconds, then you could do
 something like this:</p>
@@ -460,7 +470,7 @@ class MoreRecoveryIncidentReporter(incident.IncidentReporter):
     TRAILING_DELAY = 10.0
     TRAILING_EVENT_LIMIT = 1000
 
-log.setIncidentReporterClass(MoreRecoveryIncidentReporter)
+log.setIncidentReporterFactory(MoreRecoveryIncidentReporter)
 </pre>
 
 <p>Recorded Incidents will be saved in the logdir with filenames like
@@ -553,8 +563,9 @@ t.setOption("log-gatherer-furlfile", "~/gatherer.furl")
 </pre>
 
 <p>In both cases, the gatherer FURL is expected to point to a remote object
-which implements the <code>foolscap.logging.RILogGatherer</code> interface.
-The Tub will connect to the gatherer and offer it the logport.</p>
+which implements the <code>foolscap.logging.RILogGatherer</code> interface
+(such as the service created by <code>flogtool create-gatherer</code>). The
+Tub will connect to the gatherer and offer it the logport.</p>
 
 
 <h3>Interacting With Other Logging Systems</h3>
@@ -569,8 +580,8 @@ of the Foolscap logging code (named <code>theLogger</code> and defined at
 module level in <code>foolscap.logging.log</code>). This maintains a single
 logdir. Each time a process is started it gets a new "incarnation record",
 which consists of a randomly generated (unique) number, and (if a logdir is
-available) a continuously incrementing sequence number. All log events are
-tagged with this incarnation record: it is used to distinguish between
+available) (TODO) a continuously incrementing sequence number. All log events
+are tagged with this incarnation record: it is used to distinguish between
 event#23 in one process versus the same event number from a different
 process.</p>
 
@@ -632,7 +643,7 @@ behavior, we want earlier messages to be bridged too.</p>
 <h4>stdlib 'logging' module</h4>
 
 <p>stdlib <code>logging</code> messages must be bridged in the same way. TODO:
-define the bridge setup</p>
+define and implement the bridge setup</p>
 
 <h4>Preferred Logging API</h4>
 
@@ -646,21 +657,19 @@ neither stdlib's nor Twisted's log calls provide a return value)</p>
 
 <h3>Controlling Buffer Sizes</h3>
 
-<p>(NOTE: this section is incomplete and has not been implemented)</p>
-
-<p>Each level is given a separate circular buffer, with a maximum size. After
-each message is added, the size of the buffer is checked and enough old
-messages are discarded to bring the size back down to the limit. If desired,
-each facility can use a separate set of buffers, so that e.g. the NOISY
-messages from the "ui" facility do not evict the NOISY messages from the
-"upload" facility.</p>
+<p>There is a separate circular buffer (with some maximum size) for each
+combination of level and facility. After each message is added, the size of
+the buffer is checked and enough old messages are discarded to bring the size
+back down to the limit. Each facility uses a separate set of buffers, so that
+e.g. the NOISY messages from the "ui" facility do not evict the NOISY
+messages from the "upload" facility.</p>
 
 <p>The sizes of these buffers can be controlled with the
-<code>log.set_buffer_size</code> function. Setting it without a facility name
-controls the all-facility buffer. Using a facility name indicates that you
-want this facility to use a separate buffer for its messages. Use
-<code>log.allocate_facility_buffers</code> to allocate a set of buffers for a
-specific facility, using the default sizes:</p>
+<code>log.set_buffer_size</code> function, which is called with the severity
+level, the facility name, and the desired buffer size (maximum number of
+messages). If <code>set_buffer_size</code> is called without a facility name,
+then it will set the default size that will be used when a log.msg call
+references an as-yet-unknown facility).</p>
 
 <pre class="python">
 log.set_buffer_size(log.NOISY, 10000)
@@ -671,16 +680,14 @@ print log.get_buffer_size(log.NOISY, facility="upload")
 
 <h3>Some Messages Are Not Worth Generating</h3>
 
-<p>(NOTE: this section is incomplete and has not been implemented)</p>
-
 <p>If the message to be logged is below some threshold, it will not even be
 generated. This makes it easy to leave the log line in the source code, but
 not consume CPU time or memory space by actually using it. Such messages must
-be enabled before use (either through the logport or by restarting the
-application with different log settings), but at least developers will not
-have to re-learn the source code to figure out where it might be useful to
-add some messages. This threshold can be configured for all facilities at the
-same time, or on a facility-by-facility basis.</p>
+be enabled before use (either through the logport (TODO) or by restarting the
+application with different log settings(TODO)), but at least developers will
+not have to re-learn the source code to figure out where it might be useful
+to add some messages. This threshold can be configured for all facilities at
+the same time, or on a facility-by-facility basis.</p>
 
 <pre class="python">
 log.set_generation_threshold(log.NOISY)
@@ -690,9 +697,6 @@ print log.get_generation_threshold(facility="web")
 </pre>
 
 <h2>Viewing Log Messages</h2>
-
-<p>(NOTE: this section is incomplete and some tools/options have not yet been
-implemented)</p>
 
 <p>There are a variety of ways for humans (and their tools) to read and
 analyze log messages. The <code>flogtool</code> program, provided with
@@ -715,9 +719,9 @@ Foolscap, provides access to many of them.</p>
   which log events can be examined.</li>
 </ul>
 
-<p>This tool uses a log-viewing API defined here (TODO). Application code can
-use the same API to get access to log messages from inside a python
-program.</p>
+<p>This tool uses a log-viewing API defined in
+<code>foolscap/logging/interfaces.py</code>. (TODO) Application code can use
+the same API to get access to log messages from inside a python program.</p>
 
 <h3>Log Views</h3>
 
@@ -736,25 +740,22 @@ overrides for a few specific facilities.</p>
 
 <h3>Log Observers</h3>
 
-<p>(NOTE: this section is incomplete and has not been implemented)</p>
-
 <p>A "Log Observer" can be attached to a foolscap-using program (either
 internally or by subscribing through the flogport). Once attached, this
 observer will receive a stream of log messages, which the observer is then
 free to format, store, or ignore as it sees fit.</p>
 
-<p>Each log message is an instance of
-<code>foolscap.logging.LogMessage</code>, and its properties are available as
-attributes.</p>
+<p>Each log message is a dictionary, as defined in <a
+href="specifications/logfiles.xhtml">specifications/logfiles</a>.</p>
 
 <pre class="python">
 def observe(event):
     print strftime(fmt, event.timestamp)
-    print event.severity # a string like "CURIOUS"
-    print event.facility # a string like "ui"
-    print event.text  # a unicode object with the actual event text
+    print event["level"] # a number
+    print event.get("facility" # a string like "ui"
+    print event["message"]  # a unicode object with the actual event text
 
-tub.getLogger().addLogObserver(observe)
+log.theLogger.addObserver(observe)
 </pre>
 
 <h2>Python <code>logging</code> module</h2>
