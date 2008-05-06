@@ -1,5 +1,8 @@
 2008-05-06  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py (verstr): release Foolscap-0.2.6
+	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
+
 	* NEWS: update for the upcoming release
 
 2008-05-05  Brian Warner  <warner@allmydata.com>
