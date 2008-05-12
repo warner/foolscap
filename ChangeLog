@@ -1,5 +1,8 @@
 2008-05-12  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/cli.py (run_flogtool): fix use of sys.argv,
+	the previous version was completely broken
+
 	* foolscap/_version.py (verstr): bump revision to 0.2.6+ while
 	between releases
 	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same
