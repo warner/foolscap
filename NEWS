@@ -1,5 +1,27 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.2.7 (13 May 2008)
+
+** Compatibility: exactly the same as 0.2.6
+
+** flogtool works again
+
+The "flogtool" utility was completely non-functional in 0.2.6 . This has been
+fixed.
+
+** Known Issues
+
+*** some debian packages are wrong
+
+When using the 'make debian-dapper' target (to build a .deb for a dapper
+system), the resulting .deb sometimes includes a full copy of Twisted, and is
+probably unsuitable for installation. This appears to be a result of
+installation behavior changing due to setuptools being imported (even though
+it is not explicitly used). No other platforms .deb files seem to be affected
+this way. Package builders are advised to examine the generated .deb closely
+before using it.
+
+
 * Release 0.2.6 (06 May 2008)
 
 ** Compatibility

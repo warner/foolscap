@@ -1,3 +1,7 @@
+2008-05-13  Brian Warner  <warner@lothar.com>
+
+	* NEWS: update for new "OMG flogtool is broken" release.
+
 2008-05-12  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/logging/cli.py (run_flogtool): fix use of sys.argv,
