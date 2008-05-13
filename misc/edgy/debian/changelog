@@ -1,8 +1,8 @@
-foolscap (0.2.6+) unstable; urgency=low
+foolscap (0.2.7) unstable; urgency=low
 
-  * bump revision while between releases
+  * new release, fix /usr/bin/flogtool
 
- -- Brian Warner <warner@lothar.com>  Mon, 12 May 2008 14:57:04 -0700
+ -- Brian Warner <warner@lothar.com>  Tue, 13 May 2008 12:25:34 -0700
 
 foolscap (0.2.6) unstable; urgency=low
 
