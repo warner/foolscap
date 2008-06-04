@@ -60,6 +60,11 @@ class Loopback:
         self.connected = False
         return fireEventually()
 
+    def getPeer(self):
+        return broker.LoopbackAddress()
+    def getHost(self):
+        return broker.LoopbackAddress()
+
 Digits = re.compile("\d*")
 MegaSchema1 = DictOf(str,
                      ListOf(TupleOf(SetOf(int, maxLength=10, mutable=True),

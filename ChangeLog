@@ -1,5 +1,13 @@
 2008-06-04  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/referenceable.py (RemoteReferenceOnly.getPeer): new
+	method to get the IP address and port number of the other end of a
+	connection. This returns a twisted.internet.interfaces.IAddress
+	provider. Loopback connections give
+	foolscap.broker.LoopbackAddress instances. Real remote connections
+	give twisted.internet.address.IPv4Address instances, so you can use
+	rref.getPeer().host and rref.getPeer().port on them. Closes #45.
+
 	* setup.py: add an "extras_require" clause to the
 	setuptools-specific setup args, to declare that our
 	"secure_connections" feature requires pyOpenSSL. This helps other

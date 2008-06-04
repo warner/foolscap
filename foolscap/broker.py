@@ -684,7 +684,7 @@ class StorageBroker(Broker):
 # we use it for real, not just for testing. The IConsumer stuff hasn't been
 # tested at all.
 
-class _LoopbackAddress(object):
+class LoopbackAddress(object):
     implements(twinterfaces.IAddress)
 
 class LoopbackTransport(object):
@@ -720,9 +720,9 @@ class LoopbackTransport(object):
         self.protocol.connectionLost(reason)
 
     def getPeer(self):
-        return _LoopbackAddress()
+        return LoopbackAddress()
     def getHost(self):
-        return _LoopbackAddress()
+        return LoopbackAddress()
 
     # IConsumer
     def registerProducer(self, producer, streaming):

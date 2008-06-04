@@ -9,6 +9,7 @@ if False:
 
 from twisted.python import failure, reflect
 from twisted.internet import defer
+from twisted.internet.interfaces import IAddress
 from twisted.trial import unittest
 
 from foolscap import tokens, referenceable
@@ -223,6 +224,7 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         d.addCallback(self._testRef1_1, r)
         return d
     def _testRef1_1(self, res, r):
+        self.failUnless(isinstance(res.getPeer(), broker.LoopbackAddress))
         t = res.tracker
         self.failUnless(isinstance(res, referenceable.RemoteReference))
         self.failUnlessEqual(t.broker, self.targetBroker)
@@ -425,6 +427,10 @@ class TestCallable(unittest.TestCase):
         def _check(rref):
             sr = rref.getSturdyRef()
             self.failUnlessEqual(sr.getURL(), url)
+            peer = rref.getPeer()
+            self.failUnless(IAddress.providedBy(peer))
+            self.failUnlessEqual(peer.type, "TCP")
+            self.failUnlessEqual(peer.host, "127.0.0.1")
         d.addCallback(_check)
         return d
 

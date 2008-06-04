@@ -339,6 +339,15 @@ class RemoteReferenceOnly(object):
     def getSturdyRef(self):
         return SturdyRef(self.tracker.getURL())
 
+    def getPeer(self):
+        """Return an IAddress-providing object that describes the remote
+        peer. If we've connected to ourselves, this will be a
+        foolscap.broker.LoopbackAddress instance. If we've connected to
+        someone else, this will be a twisted.internet.address.IPv4Address
+        instance, with .host and .port attributes."""
+        transport = self.tracker.broker.transport
+        return transport.getPeer()
+
     def notifyOnDisconnect(self, callback, *args, **kwargs):
         """Register a callback to run when we lose this connection.
 
