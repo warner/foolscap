@@ -355,3 +355,23 @@ class TypesTarget(Referenceable):
         if work:
             return Foo()
         return "not implementor of IFoo"
+
+
+class ShouldFailMixin:
+
+    def shouldFail(self, expected_failure, which, substring,
+                   callable, *args, **kwargs):
+        assert substring is None or isinstance(substring, str)
+        d = defer.maybeDeferred(callable, *args, **kwargs)
+        def done(res):
+            if isinstance(res, failure.Failure):
+                res.trap(expected_failure)
+                if substring:
+                    self.failUnless(substring in str(res),
+                                    "%s: substring '%s' not in '%s'"
+                                    % (which, substring, str(res)))
+            else:
+                self.fail("%s was supposed to raise %s, not get '%s'" %
+                          (which, expected_failure, res))
+        d.addBoth(done)
+        return d

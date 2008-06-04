@@ -1,5 +1,13 @@
 2008-06-04  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/pb.py (Tub._tubsAreNotRestartable): fix args so that
+	these methods actually get run (and produce a useful error
+	message, instead of TypeError). Thanks to Brian Granger for the
+	patch. Closes #65.
+	* foolscap/test/test_tub.py (Shutdown.test_doublestop): test it
+	* foolscap/test/common.py (ShouldFailMixin.shouldFail): add some
+	support code
+
 	* foolscap/referenceable.py (RemoteReferenceOnly.getPeer): new
 	method to get the IP address and port number of the other end of a
 	connection. This returns a twisted.internet.interfaces.IAddress

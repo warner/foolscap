@@ -15,7 +15,7 @@ except ImportError:
 from foolscap import Tub, UnauthenticatedTub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, flushEventualQueue
-from foolscap.test.common import HelperTarget, TargetMixin
+from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin
 from foolscap.tokens import WrongTubIdError
 
 # we use authenticated tubs if possible. If crypto is not available, fall
@@ -308,5 +308,27 @@ class NameLookup(TargetMixin, unittest.TestCase):
             self.lookups = []; self.lookups2 = []
         d.addCallback(_check4)
 
+        return d
+
+class Shutdown(unittest.TestCase, ShouldFailMixin):
+    def test_doublestop(self):
+        tub = GoodEnoughTub()
+        tub.startService()
+        d = tub.stopService()
+        d.addCallback(lambda res:
+                      self.shouldFail(RuntimeError,
+                                      "test_doublestop_startService",
+                                      "Sorry, but Tubs cannot be restarted",
+                                      tub.startService))
+        d.addCallback(lambda res:
+                      self.shouldFail(RuntimeError,
+                                      "test_doublestop_getReference",
+                                      "Sorry, but this Tub has been shut down",
+                                      tub.getReference, "furl"))
+        d.addCallback(lambda res:
+                      self.shouldFail(RuntimeError,
+                                      "test_doublestop_connectTo",
+                                      "Sorry, but this Tub has been shut down",
+                                      tub.connectTo, "furl", None))
         return d
 

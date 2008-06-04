@@ -582,9 +582,9 @@ class Tub(service.MultiService):
         for rc in self.reconnectors:
             eventual.eventually(rc.startConnecting, self)
 
-    def _tubsAreNotRestartable(self):
+    def _tubsAreNotRestartable(self, *args, **kwargs):
         raise RuntimeError("Sorry, but Tubs cannot be restarted.")
-    def _tubHasBeenShutDown(self):
+    def _tubHasBeenShutDown(self, *args, **kwargs):
         raise RuntimeError("Sorry, but this Tub has been shut down.")
 
     def stopService(self):
