@@ -1,5 +1,37 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.2.8 (04 Jun 2008)
+
+** Compatibility: exactly the same as 0.2.6
+
+** setuptools dependencies updated
+
+Foolscap (when built with setuptools) now uses the "extras_require" feature
+to declare that it needs pyOpenSSL if you want to use the
+"secure_connections" feature. This makes easy_install easier to use in
+projects that depend upon Foolscap (and also insist upon using secure
+connections): they do not need to declare a dependency on pyOpenSSL
+themselves, instead they declare a dependency on
+"Foolscap[secure_connections]". See the following documentation for more
+details:
+http://peak.telecommunity.com/DevCenter/setuptools#declaring-extras-optional-features-with-their-own-dependencies
+
+** New RemoteReference.getPeer() method
+
+The new rref.getPeer() method will return address information about the far
+end of the connection, allowing you to determine their IP address and port
+number. This may be useful for debugging or diagnostic purposes.
+
+** Minor bugs fixed
+
+Tub.registerReference() with both name= and furlFile= arguments now works
+even when the furlFile= already exists.
+
+Tubs which have been shutdown now give more useful error messages when you
+(incorrectly) try to use them again. Previously a bug caused them to emit a
+TypeError.
+
+
 * Release 0.2.7 (13 May 2008)
 
 ** Compatibility: exactly the same as 0.2.6
