@@ -513,7 +513,7 @@ class Tub(service.MultiService):
         @return: The Listener object that was created. This can be used to
         stop listening later on, to have another Tub listen on the same port,
         and to figure out which port was allocated when you used a strports
-        specification of'tcp:0'. """
+        specification of 'tcp:0'. """
 
         if type(what) is str:
             l = Listener(what, options, self.negotiationClass)
