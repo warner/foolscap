@@ -115,6 +115,8 @@ class BananaFailure(Failure):
 
 class WrongTubIdError(Exception):
     """getReference(furlFile=) used a FURL with a different TubID"""
+class WrongNameError(Exception):
+    """getReference(furlFule=) used a FURL with a different name"""
 
 
 class ISlicer(Interface):

@@ -9,7 +9,8 @@ from twisted.python.failure import Failure
 from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
 from foolscap import util
 from foolscap.referenceable import SturdyRef
-from foolscap.tokens import PBError, BananaError, WrongTubIdError
+from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
+     WrongNameError
 from foolscap.reconnector import Reconnector
 from foolscap.logging import log as flog
 from foolscap.logging import log
@@ -667,14 +668,19 @@ class Tub(service.MultiService):
             except EnvironmentError:
                 pass
         if oldfurl:
+            sr = SturdyRef(oldfurl)
             if name is None:
-                sr = SturdyRef(oldfurl)
                 name = sr.name
             if self.tubID != sr.tubID:
-                raise WrongTubIdError("I cannot keep using the old FURL (%s)"
+                raise WrongTubIdError("I cannot keep using the old FURL from %s"
                                       " because it does not have the same"
                                       " TubID as I do (%s)" %
-                                      (oldfurl, self.tubID))
+                                      (furlFile, self.tubID))
+            if name != sr.name:
+                raise WrongNameError("I cannot keep using the old FURL from %s"
+                                     " because you called registerReference"
+                                     " with a new name (%s)" %
+                                     (furlFile, name))
         name = self._assignName(ref, name)
         assert name
         if ref not in self.strongReferences:

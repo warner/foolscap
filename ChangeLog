@@ -1,5 +1,11 @@
 2008-06-04  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/pb.py (Tub.registerReference): fix an exception that
+	occurs if you call this with both name= and furlFile= and the
+	furlFile already exists. Also prohibit attempts to change the name
+	to something other than what is in the furlFile. Thanks to Brian
+	Granger for the patch. Closes #64.
+
 	* foolscap/_version.py (verstr): bump revision to 0.2.7+ while
 	between releases
 	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same

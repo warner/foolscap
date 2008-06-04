@@ -2,9 +2,10 @@
 
 from twisted.trial import unittest
 
-import weakref, gc
+import os, weakref, gc
 from foolscap import UnauthenticatedTub
 from foolscap.test.common import HelperTarget
+from foolscap.tokens import WrongNameError
 
 class Registration(unittest.TestCase):
     def testStrong(self):
@@ -49,4 +50,19 @@ class Registration(unittest.TestCase):
         tub = UnauthenticatedTub()
         tub.setLocation("bogus:1234567")
         url = tub.registerReference(target)
+
+    def test_duplicate(self):
+        basedir = "test_registration"
+        os.makedirs(basedir)
+        ff = os.path.join(basedir, "duplicate.furl")
+        t1 = HelperTarget()
+        tub = UnauthenticatedTub()
+        tub.setLocation("bogus:1234567")
+        u1 = tub.registerReference(t1, "name", furlFile=ff)
+        u2 = tub.registerReference(t1, "name", furlFile=ff)
+        self.failUnlessEqual(u1, u2)
+        self.failUnlessRaises(WrongNameError,
+                              tub.registerReference, t1, "newname", furlFile=ff)
+
+
 
