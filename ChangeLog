@@ -1,5 +1,12 @@
 2008-06-04  Brian Warner  <warner@allmydata.com>
 
+	* setup.py: add an "extras_require" clause to the
+	setuptools-specific setup args, to declare that our
+	"secure_connections" feature requires pyOpenSSL. This helps other
+	packages, which can declare a dependency on
+	"Foolscap[secure_connections]", rather than claiming to require
+	pyOpenSSL themselves. Addresses #66.
+
 	* foolscap/pb.py (Tub.registerReference): fix an exception that
 	occurs if you call this with both name= and furlFile= and the
 	furlFile already exists. Also prohibit attempts to change the name
