@@ -1,5 +1,9 @@
 2008-07-02  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/test/test_logging.py
+	(Publish.test_logpublisher_overload): change poller condition to
+	avoid spurious failures on slow systems
+
 	* misc/*/debian/watch: update to point at foolscap.lothar.com
 
 	* Makefile (debian-gutsy, debian-hardy): add .deb targets for

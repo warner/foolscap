@@ -528,20 +528,16 @@ class Publish(PollMixin, unittest.TestCase):
             # now we wait until the observer has seen nothing for a full
             # second. I'd prefer something faster and more deterministic, but
             # this ought to handle the normal slow-host cases.
-            self.pollcount = 0
+            expected = publish.Subscription.MAX_QUEUE_SIZE
             def _check_f():
-                self.pollcount += 1
-                if ob.last_received < time.time() - 1.0:
-                    return True
-                return False
+                return bool(len(ob.messages) >= expected)
             d.addCallback(lambda res: self.poll(_check_f, 0.2))
-            # TODO: I'm not content with that absolute-time stall, and would
-            # prefer to do something faster and more deterministic
+            # TODO: I'm not content with that polling, and would prefer to do
+            # something faster and more deterministic
             #d.addCallback(fireEventually)
             #d.addCallback(fireEventually)
             def _check_observer(res):
                 msgs = ob.messages
-                expected = publish.Subscription.MAX_QUEUE_SIZE
                 self.failUnlessEqual(len(msgs), expected)
                 # since we discard new messages during overload (and preserve
                 # old ones), we should see 0..MAX_QUEUE_SIZE-1.
