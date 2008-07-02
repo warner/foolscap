@@ -63,6 +63,8 @@ class LogPublisher(Referenceable):
 
     def remote_get_versions(self):
         return self.versions
+    def remote_get_pid(self):
+        return os.getpid()
 
     def remote_subscribe_to_all(self, observer, catch_up=False):
         s = Subscription()

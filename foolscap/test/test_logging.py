@@ -510,10 +510,14 @@ class Publish(PollMixin, unittest.TestCase):
         d = t2.getReference(logport_furl)
         def _got_logport(logport):
             d = logport.callRemote("get_versions")
-            def _check(versions):
+            def _check_versions(versions):
                 self.failUnlessEqual(versions["foolscap"],
                                      foolscap.__version__)
-            d.addCallback(_check)
+            d.addCallback(_check_versions)
+            d.addCallback(lambda res: logport.callRemote("get_pid"))
+            def _check_pid(pid):
+                self.failUnlessEqual(pid, os.getpid())
+            d.addCallback(_check_pid)
             # note: catch_up=True, so this message *will* be sent. Also note
             # that we need this message to be unique, since our logger will
             # stash messages recorded by other test cases, and we don't want

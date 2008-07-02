@@ -124,10 +124,18 @@ class LogTail:
             print " %s: %s" % (k, versions[k])
 
     def _got_logpublisher(self, publisher, target_tubid):
-        print "Connected"
+        d = publisher.callRemote("get_pid")
+        def _announce(pid_or_failure):
+            if isinstance(pid_or_failure, int):
+                print "Connected (to pid %d)" % pid_or_failure
+            else:
+                # the logport is probably foolscap-0.2.8 or earlier and
+                # doesn't offer get_pid()
+                print "Connected (unable to get pid)"
+        d.addBoth(_announce)
         publisher.notifyOnDisconnect(self._lost_logpublisher)
         lp = LogPrinter(self.options, target_tubid)
-        d = publisher.callRemote("get_versions")
+        d.addCallback(lambda res: publisher.callRemote("get_versions"))
         d.addCallback(self._print_versions)
         catch_up = bool(self.options["catch-up"])
         if catch_up:

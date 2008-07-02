@@ -1,5 +1,14 @@
 2008-07-01  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/interfaces.py (RILogPublisher.get_pid): new
+	interface, to retrieve the process ID through the logport
+	* foolscap/test/test_logging.py
+	(Publish.test_logpublisher_catchup._got_logport._check_pid): test it
+	* foolscap/logging/publish.py (LogPublisher.remote_get_pid):
+	implement it
+	* foolscap/logging/tail.py (LogTail._got_logpublisher._announce):
+	Use it, but tolerate old logports that don't offer it. Closes #71.
+
 	* foolscap/slicers/decimal_slicer.py: handle Decimal objects,
 	serializing them as a string. No constraints yet. Closes #50.
 	* foolscap/slicers/allslicers.py: import decimal_slicer

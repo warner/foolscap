@@ -37,6 +37,9 @@ class RILogPublisher(RemoteInterface):
     __remote_name__ = "RILogPublisher.foolscap.lothar.com"
     def get_versions():
         return DictOf(str, str)
+    def get_pid():
+        return int
+
     def subscribe_to_all(observer=RILogObserver,
                          catch_up=Optional(bool, False)):
         return RISubscription
