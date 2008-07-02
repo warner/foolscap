@@ -1,6 +1,7 @@
 
 import os
 import pickle
+import random
 from zope.interface import implements
 import twisted
 from twisted.python import filepath
@@ -13,20 +14,26 @@ class Subscription(Referenceable):
     implements(RISubscription)
     # used as a marker, but has no remote methods. We use this to manage
     # the outbound size-limited queue.
+    MAX_QUEUE_SIZE = 2000
+    MAX_IN_FLIGHT = 10
 
     def __init__(self, observer, logger):
         self.observer = observer
         self.logger = logger
         self.subscribed = False
+        self.queue = []
+        self.in_flight = 0
+        self.marked_for_sending = False
 
     def subscribe(self, catch_up):
         self.subscribed = True
-        self.logger.addObserver(self.send)
+        self.logger.addImmediateObserver(self.send)
         self._nod_marker = self.observer.notifyOnDisconnect(self.unsubscribe)
         if catch_up:
             # send any catch-up events in a single batch, before we allow any
             # other events to be generated (and sent). This lets the
-            # subscriber see events in sorted order.
+            # subscriber see events in sorted order. We bypass the bounded
+            # queue for this.
             events = list(self.logger.get_buffered_events())
             events.sort(lambda a,b: cmp(a['num'], b['num']))
             for e in events:
@@ -34,15 +41,47 @@ class Subscription(Referenceable):
 
     def unsubscribe(self):
         if self.subscribed:
-            self.logger.removeObserver(self.send)
+            self.logger.removeImmediateObserver(self.send)
             self.observer.dontNotifyOnDisconnect(self._nod_marker)
             self.subscribed = False
 
     def send(self, event):
-        self.observer.callRemoteOnly("msg", event)
-        #def _oops(f):
-        #    print "PUBLISH FAILED: %s" % f
-        #d.addErrback(_oops)
+        self.queue.append(event)
+        if len(self.queue) > self.MAX_QUEUE_SIZE:
+            # Random Early Discard. For 1k items, this takes about 25us on my
+            # laptop (in low-power-CPU mode, only about 10us at full-speed).
+            # If we have to discard messages, discard them as early as
+            # possible, and provide backpressure. Therefore this method is
+            # added as an "immediate observer" instead of a regular one.
+            del self.queue[random.randrange(len(self.queue))]
+        if not self.marked_for_sending:
+            self.marked_for_sending = True
+            eventually(self.start_sending)
+
+    def start_sending(self):
+        self.marked_for_sending = False
+        num_sendable = min(self.MAX_IN_FLIGHT - self.in_flight, len(self.queue))
+        if not num_sendable:
+            return
+        self.in_flight += num_sendable
+        sendable = self.queue[:num_sendable]
+        self.queue = self.queue[num_sendable:]
+
+        for event in sendable:
+            d = self.observer.callRemote("msg", event)
+            d.addCallback(self._event_received)
+            d.addErrback(self._error)
+
+    def _event_received(self, res):
+        self.in_flight -= 1
+        if not self.marked_for_sending:
+            self.marked_for_sending = True
+            eventually(self.start_sending)
+
+    def _error(self, f):
+        #print "PUBLISH FAILED: %s" % f
+        self.unsubscribe()
+
 
 class LogPublisher(Referenceable):
     """Publish log events to anyone subscribed to our 'logport'.

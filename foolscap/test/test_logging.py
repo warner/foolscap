@@ -8,7 +8,7 @@ from twisted.internet import defer, reactor
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
-from foolscap.logging import gatherer, log, tail, incident, cli, web
+from foolscap.logging import gatherer, log, tail, incident, cli, web, publish
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
@@ -340,8 +340,15 @@ class Publish(PollMixin, unittest.TestCase):
     def setUp(self):
         self.parent = service.MultiService()
         self.parent.startService()
+        # make the MAX_QUEUE_SIZE smaller to speed up the test, and restore
+        # it when we're done. The normal value is 2000, chosen to bound the
+        # queue to perhaps 1MB. Lowering the size from 2000 to 500 speeds up
+        # the test from about 10s to 5s.
+        self.saved_queue_size = publish.Subscription.MAX_QUEUE_SIZE
+        publish.Subscription.MAX_QUEUE_SIZE = 500
 
     def tearDown(self):
+        publish.Subscription.MAX_QUEUE_SIZE = self.saved_queue_size
         log.setTwistedLogBridge(None) # disable any bridge still in place
         d = defer.succeed(None)
         d.addCallback(lambda res: self.parent.stopService())
@@ -482,6 +489,71 @@ class Publish(PollMixin, unittest.TestCase):
                     self.failUnless("failure" in msgs[7])
                     self.failUnless(msgs[7]["failure"].check(SampleError))
                     self.failUnless("err4" in str(msgs[7]["failure"]))
+
+            d.addCallback(_check_observer)
+            def _done(res):
+                return logport.callRemote("unsubscribe", self._subscription)
+            d.addCallback(_done)
+            return d
+        d.addCallback(_got_logport)
+        return d
+
+    def test_logpublisher_overload(self):
+        basedir = "logging/Publish/logpublisher_overload"
+        os.makedirs(basedir)
+        furlfile = os.path.join(basedir, "logport.furl")
+        t = GoodEnoughTub()
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+
+        t.setOption("logport-furlfile", furlfile)
+        logport_furl = t.getLogPortFURL()
+        logport_furl2 = open(furlfile, "r").read().strip()
+        self.failUnlessEqual(logport_furl, logport_furl2)
+
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.parent)
+        ob = Observer()
+
+        d = t2.getReference(logport_furl)
+        def _got_logport(logport):
+            d = logport.callRemote("subscribe_to_all", ob)
+            def _emit(subscription):
+                self._subscription = subscription
+                ob.last_received = time.time()
+                for i in range(10000):
+                    log.msg("message %d here" % i)
+            d.addCallback(_emit)
+            # now we wait until the observer has seen nothing for a full
+            # second. I'd prefer something faster and more deterministic, but
+            # this ought to handle the normal slow-host cases.
+            self.pollcount = 0
+            def _check_f():
+                self.pollcount += 1
+                if ob.last_received < time.time() - 1.0:
+                    return True
+                return False
+            d.addCallback(lambda res: self.poll(_check_f, 0.2))
+            # TODO: I'm not content with that absolute-time stall, and would
+            # prefer to do something faster and more deterministic
+            #d.addCallback(fireEventually)
+            #d.addCallback(fireEventually)
+            def _check_observer(res):
+                msgs = ob.messages
+                expected = publish.Subscription.MAX_QUEUE_SIZE
+                self.failUnlessEqual(len(msgs), expected)
+                # the numbers should be monotonically increasing, but
+                # random-early-discard means that we should tend to get
+                # recent messages with higher probability than early
+                # messages (most likely an exponential distribution).
+                got = []
+                for m in msgs:
+                    ignored1, number_s, ignored2 = m["message"].split()
+                    number = int(number_s)
+                    got.append(number)
+                self.failUnlessEqual(got, sorted(got))
+                self.failUnless(got[0] < 10000-expected)
 
             d.addCallback(_check_observer)
             def _done(res):

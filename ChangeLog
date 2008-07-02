@@ -1,5 +1,23 @@
 2008-07-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/publish.py (Subscription.send): add a
+	size-limited queue for sending messages to subscribers, with a
+	default queue size of 2000 entries. This should probably keep the
+	memory footprint bounded to perhaps 1MB. When the queue gets full,
+	we randomly discard old messages, so recent messages are more
+	likely to survive than earlier ones. We allow 10 messages to be
+	outstanding on the wire at once, to pipeline them a bit and
+	improve network utilization. Any errors during sending will cause
+	the subscription to be dropped. This should close #72.
+	* foolscap/logging/log.py (FoolscapLogger.addImmediateObserver):
+	add a new kind of observer, so that the logport publisher can also
+	avoid unboundedness in the eventual-send queue. If we can't throw
+	away messages fast enough, callers to log.msg will block, slowing
+	down the inlet rate.
+	* foolscap/test/test_logging.py
+	(Publish.test_logpublisher_overload): test it, by throwing 10k
+	messages at log.msg and counting how many make it through.
+
 	* foolscap/test/common.py (PollMixin): add a comment: this
 	chained-Deferred pattern will run up against python's recursion
 	limit if the check function is called more than about 300 times.

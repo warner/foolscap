@@ -47,6 +47,7 @@ class FoolscapLogger:
         self.buffers = {} # k: facility or None, v: dict(level->deque)
         self.thresholds = {}
         self._observers = []
+        self._immediate_observers = []
         self.logdir = None # nowhere to put our incidents
         self.inactive_incident_qualifier = IncidentQualifier()
         self.active_incident_qualifier = None
@@ -65,6 +66,15 @@ class FoolscapLogger:
         self._observers.append(observer)
     def removeObserver(self, observer):
         self._observers.remove(observer)
+
+    def addImmediateObserver(self, observer):
+        # by using this, you solemly swear that your observer will not raise
+        # an exception, nor will it recurse or cause more log messages to be
+        # emitted. Immediate Observers are notified without an eventual-send.
+        self._immediate_observers.append(observer)
+    def removeImmediateObserver(self, observer):
+        self._immediate_observers.remove(observer)
+
 
     def setLogDir(self, directory):
         # TODO: change self.incarnation to reflect next seqnum
@@ -191,6 +201,8 @@ class FoolscapLogger:
 
     def add_event(self, facility, level, event):
         # send to observers
+        for o in self._immediate_observers:
+            o(event)
         for o in self._observers:
             eventual.eventually(o, event)
 
