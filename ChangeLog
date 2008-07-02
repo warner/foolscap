@@ -1,5 +1,9 @@
 2008-07-02  Brian Warner  <warner@allmydata.com>
 
+	* Makefile (debian-gutsy, debian-hardy): add .deb targets for
+	gutsy and hardy. The rules are the same as for feisty. Closes #76.
+	* misc/gutsy/*, misc/hardy/*: same
+
 	* foolscap/logging/publish.py (Subscription.send): change the
 	discard policy to discard-new instead of discard-random: in tests
 	with a busy Tahoe node, this seems to give good enough

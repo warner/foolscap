@@ -51,6 +51,18 @@ debian-feisty:
 	chmod a+x debian/rules
 	debuild -uc -us
 
+debian-gutsy:
+	rm -f debian
+	ln -s misc/gutsy/debian debian
+	chmod a+x debian/rules
+	debuild -uc -us
+
+debian-hardy:
+	rm -f debian
+	ln -s misc/hardy/debian debian
+	chmod a+x debian/rules
+	debuild -uc -us
+
 debian-sarge:
 	rm -f debian
 	ln -s misc/sarge/debian debian
