@@ -1,3 +1,8 @@
+2008-07-01  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/publish.py (Subscription): refactor a bit, in
+	preparation for #72 limit log-publishing queue size
+
 2008-07-01  Brian Warner  <warner@allmydata.com>
 
 	* doc/logging.xhtml ("That Was Weird" Buttons): provide a simple

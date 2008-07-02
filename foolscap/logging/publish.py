@@ -11,7 +11,38 @@ from foolscap.eventual import eventually
 
 class Subscription(Referenceable):
     implements(RISubscription)
-    # used as a marker, but has no actual behavior
+    # used as a marker, but has no remote methods. We use this to manage
+    # the outbound size-limited queue.
+
+    def __init__(self, observer, logger):
+        self.observer = observer
+        self.logger = logger
+        self.subscribed = False
+
+    def subscribe(self, catch_up):
+        self.subscribed = True
+        self.logger.addObserver(self.send)
+        self._nod_marker = self.observer.notifyOnDisconnect(self.unsubscribe)
+        if catch_up:
+            # send any catch-up events in a single batch, before we allow any
+            # other events to be generated (and sent). This lets the
+            # subscriber see events in sorted order.
+            events = list(self.logger.get_buffered_events())
+            events.sort(lambda a,b: cmp(a['num'], b['num']))
+            for e in events:
+                self.observer.callRemoteOnly("msg", e)
+
+    def unsubscribe(self):
+        if self.subscribed:
+            self.logger.removeObserver(self.send)
+            self.observer.dontNotifyOnDisconnect(self._nod_marker)
+            self.subscribed = False
+
+    def send(self, event):
+        self.observer.callRemoteOnly("msg", event)
+        #def _oops(f):
+        #    print "PUBLISH FAILED: %s" % f
+        #d.addErrback(_oops)
 
 class LogPublisher(Referenceable):
     """Publish log events to anyone subscribed to our 'logport'.
@@ -57,45 +88,22 @@ class LogPublisher(Referenceable):
     def __init__(self, logger):
         self._logger = logger
         logger.setLogPort(self)
-        self._subscribers = {}
-        # k: Subscription instance, v: (RILogObserver, wrapper)
-        self._notifyOnDisconnectors = {}
 
     def remote_get_versions(self):
         return self.versions
     def remote_get_pid(self):
         return os.getpid()
 
+
     def remote_subscribe_to_all(self, observer, catch_up=False):
-        s = Subscription()
-        eventually(self._subscribe, s, observer, catch_up)
+        s = Subscription(observer, self._logger)
+        eventually(s.subscribe, catch_up)
         # allow the call to return before we send them any events
         return s
 
-    def _subscribe(self, s, observer, catch_up):
-        def _observe(event):
-            observer.callRemoteOnly("msg", event)
-            #def _oops(f):
-            #    print "PUBLISH FAILED: %s" % f
-            #d.addErrback(_oops)
-        self._subscribers[s] = (_observe, observer)
-        self._logger.addObserver(_observe)
-        c = observer.notifyOnDisconnect(self.remote_unsubscribe, s)
-        self._notifyOnDisconnectors[s] = c
-        if catch_up:
-            # send any catch-up events in a single batch, before we allow any
-            # other events to be generated (and sent). This lets the
-            # subscriber see events in sorted order.
-            events = list(self._logger.get_buffered_events())
-            events.sort(lambda a,b: cmp(a['num'], b['num']))
-            for e in events:
-                observer.callRemoteOnly("msg", e)
-
     def remote_unsubscribe(self, s):
-        f, observer = self._subscribers.pop(s)
-        self._logger.removeObserver(f)
-        c = self._notifyOnDisconnectors.pop(s)
-        observer.dontNotifyOnDisconnect(c)
+        return s.unsubscribe()
+
 
     def remote_list_incidents(self):
         basedir = self._logger.logdir
