@@ -1,5 +1,7 @@
 2008-07-02  Brian Warner  <warner@allmydata.com>
 
+	* misc/*/debian/watch: update to point at foolscap.lothar.com
+
 	* Makefile (debian-gutsy, debian-hardy): add .deb targets for
 	gutsy and hardy. The rules are the same as for feisty. Closes #76.
 	* misc/gutsy/*, misc/hardy/*: same

@@ -1,2 +1,3 @@
 version=3
-http://twistedmatrix.com/~warner/Foolscap/ ([\d\.]+)/
+
+http://foolscap.lothar.com/releases/foolscap-([\d\.]+)\.tar\.gz
