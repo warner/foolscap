@@ -129,6 +129,7 @@ class LogTail:
             # provide compatibility with foolscap-0.2.4 and earlier, which
             # didn't accept a catchup= argument
             d = publisher.callRemote("subscribe_to_all", lp)
+        d.addErrback(self._error)
         return d
 
     def _lost_logpublisher(publisher):

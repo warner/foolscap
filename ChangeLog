@@ -1,5 +1,8 @@
 2008-07-01  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/tail.py (LogTail._got_logpublisher): exit if we
+	get an error while connecting or subscribing. Closes #63.
+
 	* foolscap/logging/log.py (FoolscapLogger.setLogDir): oops, allow
 	the incident directory to be re-used: os.makedirs throws an
 	exception if the directory already exists.
