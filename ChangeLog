@@ -1,5 +1,11 @@
 2008-07-01  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/log.py (FoolscapLogger.setLogDir): oops, allow
+	the incident directory to be re-used: os.makedirs throws an
+	exception if the directory already exists.
+	* foolscap/test/test_logging.py (Incidents.test_basic): test it
+
+
 	* foolscap/_version.py (verstr): bump revision to 0.2.8+ while
 	between releases
 	* misc/{dapper|edgy|etch|fesity|sarge|sid}/debian/changelog: same

@@ -211,6 +211,7 @@ class Incidents(unittest.TestCase, PollMixin):
         l.msg("one", level=log.BAD)
         self.failUnlessEqual(l.incidents_declared, 0)
         l.setLogDir("logging/Incidents/basic")
+        l.setLogDir("logging/Incidents/basic") # this should be idempotent
         got_logdir = l.logdir
         self.failUnlessEqual(got_logdir,
                              os.path.abspath("logging/Incidents/basic"))

@@ -69,7 +69,8 @@ class FoolscapLogger:
     def setLogDir(self, directory):
         # TODO: change self.incarnation to reflect next seqnum
         self.logdir = os.path.abspath(os.path.expanduser(directory))
-        os.makedirs(self.logdir)
+        if not os.path.isdir(self.logdir):
+            os.makedirs(self.logdir)
         self.activate_incident_qualifier()
 
     def setIncidentQualifier(self, iq):
