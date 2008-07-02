@@ -2,6 +2,8 @@
 
 	* foolscap/logging/tail.py (LogTail._got_logpublisher): exit if we
 	get an error while connecting or subscribing. Closes #63.
+	(LogTail._print_versions): print remote versions immediately after
+	connecting to the logport. Closes #70.
 
 	* foolscap/logging/log.py (FoolscapLogger.setLogDir): oops, allow
 	the incident directory to be re-used: os.makedirs throws an

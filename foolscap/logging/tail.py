@@ -118,17 +118,26 @@ class LogTail:
         self._tub.startService()
         self._tub.connectTo(target_furl, self._got_logpublisher, target_tubid)
 
+    def _print_versions(self, versions):
+        print "Remote Versions:"
+        for k in sorted(versions.keys()):
+            print " %s: %s" % (k, versions[k])
+
     def _got_logpublisher(self, publisher, target_tubid):
         print "Connected"
         publisher.notifyOnDisconnect(self._lost_logpublisher)
         lp = LogPrinter(self.options, target_tubid)
+        d = publisher.callRemote("get_versions")
+        d.addCallback(self._print_versions)
         catch_up = bool(self.options["catch-up"])
         if catch_up:
-            d = publisher.callRemote("subscribe_to_all", lp, True)
+            d.addCallback(lambda res:
+                          publisher.callRemote("subscribe_to_all", lp, True))
         else:
             # provide compatibility with foolscap-0.2.4 and earlier, which
             # didn't accept a catchup= argument
-            d = publisher.callRemote("subscribe_to_all", lp)
+            d.addCallback(lambda res:
+                          publisher.callRemote("subscribe_to_all", lp))
         d.addErrback(self._error)
         return d
 
