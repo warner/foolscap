@@ -543,17 +543,15 @@ class Publish(PollMixin, unittest.TestCase):
                 msgs = ob.messages
                 expected = publish.Subscription.MAX_QUEUE_SIZE
                 self.failUnlessEqual(len(msgs), expected)
-                # the numbers should be monotonically increasing, but
-                # random-early-discard means that we should tend to get
-                # recent messages with higher probability than early
-                # messages (most likely an exponential distribution).
+                # since we discard new messages during overload (and preserve
+                # old ones), we should see 0..MAX_QUEUE_SIZE-1.
                 got = []
                 for m in msgs:
                     ignored1, number_s, ignored2 = m["message"].split()
                     number = int(number_s)
                     got.append(number)
                 self.failUnlessEqual(got, sorted(got))
-                self.failUnless(got[0] < 10000-expected)
+                self.failUnlessEqual(got, range(expected))
 
             d.addCallback(_check_observer)
             def _done(res):

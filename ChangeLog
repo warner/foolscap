@@ -1,3 +1,15 @@
+2008-07-02  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/logging/publish.py (Subscription.send): change the
+	discard policy to discard-new instead of discard-random: in tests
+	with a busy Tahoe node, this seems to give good enough
+	behavior (probably since the busyness is bursty), although I can't
+	say we fully understand what's really going on. discard-new lets
+	us use a faster and simpler deque instead of requiring random
+	access to the list.
+	* foolscap/test/test_logging.py
+	(Publish.test_logpublisher_overload): update to match
+
 2008-07-02  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/publish.py (Subscription.send): add a

@@ -1,7 +1,7 @@
 
 import os
 import pickle
-import random
+from collections import deque
 from zope.interface import implements
 import twisted
 from twisted.python import filepath
@@ -21,12 +21,16 @@ class Subscription(Referenceable):
         self.observer = observer
         self.logger = logger
         self.subscribed = False
-        self.queue = []
+        self.queue = deque()
         self.in_flight = 0
         self.marked_for_sending = False
+        #self.messages_dropped = 0
 
     def subscribe(self, catch_up):
         self.subscribed = True
+        # If we have to discard messages, discard them as early as possible,
+        # and provide backpressure. So we add our method as an "immediate
+        # observer" instead of a regular one.
         self.logger.addImmediateObserver(self.send)
         self._nod_marker = self.observer.notifyOnDisconnect(self.unsubscribe)
         if catch_up:
@@ -46,34 +50,36 @@ class Subscription(Referenceable):
             self.subscribed = False
 
     def send(self, event):
-        self.queue.append(event)
-        if len(self.queue) > self.MAX_QUEUE_SIZE:
-            # Random Early Discard. For 1k items, this takes about 25us on my
-            # laptop (in low-power-CPU mode, only about 10us at full-speed).
-            # If we have to discard messages, discard them as early as
-            # possible, and provide backpressure. Therefore this method is
-            # added as an "immediate observer" instead of a regular one.
-            del self.queue[random.randrange(len(self.queue))]
+        if len(self.queue) < self.MAX_QUEUE_SIZE:
+            self.queue.append(event)
+        else:
+            # preserve old messages, discard new ones.
+            #self.messages_dropped += 1
+            pass
         if not self.marked_for_sending:
             self.marked_for_sending = True
             eventually(self.start_sending)
 
     def start_sending(self):
         self.marked_for_sending = False
-        num_sendable = min(self.MAX_IN_FLIGHT - self.in_flight, len(self.queue))
-        if not num_sendable:
-            return
-        self.in_flight += num_sendable
-        sendable = self.queue[:num_sendable]
-        self.queue = self.queue[num_sendable:]
-
-        for event in sendable:
+        while self.queue and (self.MAX_IN_FLIGHT - self.in_flight > 0):
+            event = self.queue.popleft()
+            self.in_flight += 1
             d = self.observer.callRemote("msg", event)
             d.addCallback(self._event_received)
             d.addErrback(self._error)
 
     def _event_received(self, res):
         self.in_flight -= 1
+        # the following would be nice to have, but requires very careful
+        # analysis to avoid recursion, reentrancy, or even more overload
+        #if self.messages_dropped and not self.queue:
+        #    count = self.messages_dropped
+        #    self.messages_dropped = 0
+        #    log.msg(format="log-publisher: %(dropped)d messages dropped",
+        #            dropped=count,
+        #            facility="foolscap.log.publisher",
+        #            level=log.UNUSUAL)
         if not self.marked_for_sending:
             self.marked_for_sending = True
             eventually(self.start_sending)
