@@ -1,5 +1,11 @@
 2008-07-01  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/slicers/decimal_slicer.py: handle Decimal objects,
+	serializing them as a string. No constraints yet. Closes #50.
+	* foolscap/slicers/allslicers.py: import decimal_slicer
+	* foolscap/test/test_banana.py (ThereAndBackAgain.test_decimal):
+	test it
+
 	* foolscap/logging/tail.py (LogTail._got_logpublisher): exit if we
 	get an error while connecting or subscribing. Closes #63.
 	(LogTail._print_versions): print remote versions immediately after

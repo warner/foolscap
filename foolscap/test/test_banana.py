@@ -16,6 +16,7 @@ from foolscap.banana import int2b128, long_to_bytes
 
 import StringIO
 import sets, struct
+from decimal import Decimal, Inf, NaN
 
 #log.startLogging(sys.stderr)
 
@@ -1667,6 +1668,27 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
         d.addCallback(lambda res: self.looptest(long(-2**100)))
         d.addCallback(lambda res: self.looptest(long(2**1000)))
         d.addCallback(lambda res: self.looptest(long(-2**1000)))
+        return d
+
+    def test_decimal(self):
+        d = self.looptest(Decimal(0))
+        d.addCallback(lambda res: self.looptest(Decimal(123)))
+        d.addCallback(lambda res: self.looptest(Decimal(-123)))
+        d.addCallback(lambda res: self.looptest(Decimal("123")))
+        d.addCallback(lambda res: self.looptest(Decimal("-123")))
+        d.addCallback(lambda res: self.looptest(Decimal("123.456")))
+        d.addCallback(lambda res: self.looptest(Decimal("-123.456")))
+        d.addCallback(lambda res: self.looptest(Decimal("0.000003")))
+        d.addCallback(lambda res: self.looptest(Decimal("-0.000003")))
+        d.addCallback(lambda res: self.looptest(Decimal(Inf)))
+        d.addCallback(lambda res: self.looptest(Decimal(-Inf)))
+        # NaN is a bit weird: by definition, NaN != NaN. So we need to make
+        # sure it serializes, and that str(new) == str(old), but we don't
+        # check that new == old.
+        d.addCallback(lambda res: self.loop(Decimal(NaN)))
+        def _check_NaN(new_NaN):
+            self.failUnlessEqual(str(new_NaN), str(Decimal(NaN)))
+        d.addCallback(_check_NaN)
         return d
 
     def test_string(self):
