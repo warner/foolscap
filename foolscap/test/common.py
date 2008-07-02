@@ -163,6 +163,11 @@ class PollMixin:
     def _poll(self, res, check_f, pollinterval):
         if check_f():
             return True
+        # N.B.: this chain-the-deferreds pattern breaks when the loop must be
+        # run more than about 300 times, because when check_f() finally
+        # returns True and stops recursing, all of the Deferreds that have
+        # stacked up must be fired, and that runs into python's recursion
+        # limit.
         d = defer.Deferred()
         d.addCallback(self._poll, check_f, pollinterval)
         reactor.callLater(pollinterval, d.callback, None)

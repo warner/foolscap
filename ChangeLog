@@ -1,3 +1,9 @@
+2008-07-02  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/common.py (PollMixin): add a comment: this
+	chained-Deferred pattern will run up against python's recursion
+	limit if the check function is called more than about 300 times.
+
 2008-07-01  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/publish.py (Subscription): refactor a bit, in
