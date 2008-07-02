@@ -1,5 +1,9 @@
 2008-07-01  Brian Warner  <warner@allmydata.com>
 
+	* doc/logging.xhtml ("That Was Weird" Buttons): provide a simple
+	example of giving the user a way to trigger Incident logging.
+	Closes #75.
+
 	* foolscap/logging/interfaces.py (RILogPublisher.get_pid): new
 	interface, to retrieve the process ID through the logport
 	* foolscap/test/test_logging.py

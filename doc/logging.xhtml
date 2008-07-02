@@ -371,7 +371,7 @@ class Example:
 
 
 <h3>Facilities</h3>
-  
+
 <p>Facility names are up to the application: the viewer app will show a list
 of checkboxes, one for each facility name discovered in the logged data.
 Facility names should be divided along functional boundaries, so that
@@ -385,6 +385,28 @@ Facilities can also be associated with more descriptive strings by calling
 <pre class="python">
 log.explain_facility("ui.web", "rendering pages for the web UI")
 </pre>
+
+<h3>"That Was Weird" Buttons</h3>
+
+<p>Sometimes it is the user of your application who is in the best position
+to decide that something weird has taken place. Internal consistency checks
+are useful, but the user is the final judge of what meets their needs. So if
+they were expecting one thing to happen and something else happened instead,
+they should be able to declare that an Incident has taken place, perhaps by
+pushing a special "That Was Weird" button in your UI.</p>
+
+<p>To implement this sort of button for your user, just take the user's
+reason string and log it in an event at level WEIRD or higher. Since events
+at this level trigger Incidents by default, Foolscap's normal
+incident-handling behavior will take care of the rest for you.</p>
+
+<pre class="python">
+def that_was_weird_button_pushed(reason):
+    log.msg(format="The user said that was weird: %(reason)s",
+            reason=reason,
+            level=log.WEIRD)
+</pre>
+
 
 <h2>Configuring Logging</h2>
 
