@@ -1,5 +1,41 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.2.9 (02 Jul 2008)
+
+** Compatibility: exactly the same as 0.2.6
+
+** logging bugs fixed
+
+The foolscap.logging.log.setLogDir() option would throw an exception if the
+directory already existed, making it unsuitable for use in an application
+which is expected to be run multiple times. This has been fixed.
+
+** logging improvements
+
+'flogtool tail' now displays the process ID and version information about the
+remote process. The tool will tolerate older versions of foolscap which do
+not offer the get_pid interface. (foolscap ticket #71)
+
+The remote logport now uses a size-limited queue for messages going to a
+gatherer or 'flogtool tail', to prevent the monitored process from using
+unbounded amounts of memory during overload situations (when it is generating
+messages faster than the receiver can handle them). This solves a runaway
+load problem we've seen in Tahoe production systems, in which a busy node
+sends log messages to a gatherer too quickly for it to absorb, using lots of
+memory to hold the pending messages, which causes swapping, which causes more
+load, making the problem worse. We frequently see an otherwise well-behaved
+process swell to 1.4GB due to this problem, occasionally failing due to VM
+exhaustion. Of course, a bounded queue means that new log events will be
+dropped during this overload situation. (#72)
+
+** serialization added for the Decimal type (#50)
+
+** debian packaging targets added for gutsy and hardy
+
+The Makefile now has 'make debian-gutsy' and 'make debian-hardy' targets.
+These do the same thing as 'make debian-feisty'. (#76)
+
+
 * Release 0.2.8 (04 Jun 2008)
 
 ** Compatibility: exactly the same as 0.2.6

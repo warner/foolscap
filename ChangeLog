@@ -1,3 +1,7 @@
+2008-07-02  Brian Warner  <warner@lothar.com>
+
+	* NEWS: update for the upcoming release
+
 2008-07-02  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/test/test_logging.py
