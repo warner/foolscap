@@ -6,8 +6,10 @@ include Makefile
 include misc/dapper/debian/*
 include misc/edgy/debian/*
 include misc/feisty/debian/*
-include misc/sid/debian/*
+include misc/gutsy/debian/*
+include misc/hardy/debian/*
 include misc/sarge/debian/*
 include misc/etch/debian/*
+include misc/sid/debian/*
 include misc/testutils/*
 include misc/testutils/twisted/plugins/*

@@ -1,6 +1,7 @@
 2008-07-02  Brian Warner  <warner@lothar.com>
 
 	* NEWS: update for the upcoming release
+	* MANIFEST.in: add gutsy/hardy directories
 
 2008-07-02  Brian Warner  <warner@allmydata.com>
 
