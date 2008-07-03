@@ -1,5 +1,9 @@
 2008-07-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py (verstr): release Foolscap-0.2.9
+	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
+	same
+
 	* NEWS: update for the upcoming release
 	* MANIFEST.in: add gutsy/hardy directories
 
