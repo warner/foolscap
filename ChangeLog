@@ -1,5 +1,8 @@
 2008-07-07  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/dumper.py (LogDumper): when dumping an Incident
+	Report, mark the triggering event with "[INCIDENT-TRIGGER]"
+
 	* foolscap/_version.py (verstr): bump revision to 0.2.9+ while
 	between releases
 	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:

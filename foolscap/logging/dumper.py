@@ -15,6 +15,8 @@ class DumpOptions(usage.Options):
         self.dumpfile = dumpfile
 
 class LogDumper:
+    def __init__(self):
+        self.trigger = None
 
     def run(self, options):
         try:
@@ -24,6 +26,10 @@ class LogDumper:
 
     def start(self, options):
         for e in self.get_events(options):
+            if "header" in e:
+                if e["header"]["type"] == "incident":
+                    t = e["header"]["trigger"]
+                    self.trigger = (t["incarnation"], t["num"])
             if "d" in e:
                 self.print_event(e, options)
 
@@ -39,6 +45,11 @@ class LogDumper:
         if options['just-numbers']:
             print when, d.get('num')
             return
+
+        eid = (d["incarnation"], d["num"])
+        # let's mark the trigger event from incident reports with
+        # [INCIDENT-TRIGGER] at the end of the line
+        is_trigger = bool(self.trigger and (eid == self.trigger))
         text = format_message(d)
 
         t = "%s#%d " % (short, d['num'])
@@ -51,6 +62,8 @@ class LogDumper:
         t += ": %s" % text
         if options['verbose']:
             t += ": %r" % d
+        if is_trigger:
+            t += " [INCIDENT-TRIGGER]"
         print t
         if 'failure' in d:
             print " FAILURE:"
