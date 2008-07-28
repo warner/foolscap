@@ -1,5 +1,8 @@
 2008-07-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/publish.py (LogPublisher.remote_get_incident):
+	reject invalid incident names
+
 	* doc/logging.xhtml: add details about running a Log Gatherer
 	(Python 'logging' module): comment out this section, it is wrong
 

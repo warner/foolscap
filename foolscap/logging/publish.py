@@ -174,6 +174,8 @@ class LogPublisher(Referenceable):
         return incidents
 
     def remote_get_incident(self, fn):
+        if not fn.startswith("incident"):
+            raise KeyError("bad incident name %s" % fn)
         incident_dir = filepath.FilePath(self._logger.logdir)
         abs_fn = incident_dir.child(fn).path
         if abs_fn.endswith(".bz2"):
