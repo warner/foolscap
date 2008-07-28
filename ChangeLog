@@ -1,6 +1,7 @@
 2008-07-28  Brian Warner  <warner@lothar.com>
 
 	* doc/logging.xhtml: add details about running a Log Gatherer
+	(Python 'logging' module): comment out this section, it is wrong
 
 2008-07-09  Brian Warner  <warner@lothar.com>
 
