@@ -12,7 +12,7 @@ from foolscap.eventual import eventually
 
 class Subscription(Referenceable):
     implements(RISubscription)
-    # used as a marker, but has no remote methods. We use this to manage
+    # used as a marker, and as an unsubscribe() method. We use this to manage
     # the outbound size-limited queue.
     MAX_QUEUE_SIZE = 2000
     MAX_IN_FLIGHT = 10
@@ -48,6 +48,8 @@ class Subscription(Referenceable):
             self.logger.removeImmediateObserver(self.send)
             self.observer.dontNotifyOnDisconnect(self._nod_marker)
             self.subscribed = False
+    def remote_unsubscribe(self):
+        return self.unsubscribe()
 
     def send(self, event):
         if len(self.queue) < self.MAX_QUEUE_SIZE:

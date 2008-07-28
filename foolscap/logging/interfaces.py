@@ -32,6 +32,15 @@ class RILogFile(RemoteInterface):
 
 class RISubscription(RemoteInterface):
     __remote_name__ = "RISubscription.foolscap.lothar.com"
+    def unsubscribe():
+        """Cancel a subscription. Once this method has been completed (and
+        its Deferred has fired), no further messages will be received by the
+        observer (i.e. the response to unsubscribe() will wait until all
+        pending messages have been queued).
+
+        This method is idempotent: calling it multiple times has the same
+        effect as calling it just once."""
+        return None
 
 class RILogPublisher(RemoteInterface):
     __remote_name__ = "RILogPublisher.foolscap.lothar.com"
@@ -42,8 +51,13 @@ class RILogPublisher(RemoteInterface):
 
     def subscribe_to_all(observer=RILogObserver,
                          catch_up=Optional(bool, False)):
+        """
+        Call unsubscribe() on the returned RISubscription object to stop
+        receiving messages.
+        """
         return RISubscription
     def unsubscribe(subscription=Any()):
+        # NOTE: this is deprecated. Use subscription.unsubscribe() instead.
         # I don't know how to get the constraint right: unsubscribe() should
         # accept return value of subscribe_to_all()
         return None

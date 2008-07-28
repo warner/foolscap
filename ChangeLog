@@ -1,5 +1,11 @@
 2008-07-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/interfaces.py (RISubscription.unsubscribe):
+	move the RILogPublisher.unsubscribe() method to the RISubscription
+	object, since that's a better place for it.
+	(RILogPublisher.unsubscribe): deprecate this one
+	* foolscap/logging/publish.py (Subscription.remote_unsubscribe): same
+
 	* foolscap/logging/publish.py (LogPublisher.remote_get_incident):
 	reject invalid incident names
 
