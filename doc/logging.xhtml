@@ -209,9 +209,10 @@ Gatherer, or the name of a file that might contain this FURL. This makes
 deployment easier: just copy the FURL of your central gatherer into this file
 in each of your application's working directories.</p>
 
-<p>A basic log gatherer is provided by running <code>flogtool gather</code>
-and giving it a storage directory: this emits a gatherer FURL that can be
-used in the app configuration, and saves all incoming log events to disk.</p>
+<p>A basic log gatherer is created by running <code>flogtool
+create-gatherer</code> and giving it a storage directory: this emits a
+gatherer FURL that can be used in the app configuration, and saves all
+incoming log events to disk.</p>
 
 
 <h3>Causality Tracing</h3>
@@ -779,6 +780,43 @@ def observe(event):
 
 log.theLogger.addObserver(observe)
 </pre>
+
+<h3>Running a Log Gatherer</h3>
+
+<p>A "Log Gatherer" is a python server to which the process under examination
+sends some or all of its log messages. These messages are saved to a file as
+they arrive, so they can be examined later. The resulting logfiles can be
+compressed, and they can be automatically rotated (saved, rename, reopened)
+on a periodic interval. In addition, sending a SIGHUP to the gatherer will
+cause it to rotate the logfiles.
+
+To create one, choose a new directory for it to live in, and run
+"<code>flogtool create-gatherer</code>". You can then start it with "twistd",
+and stop it by using the <code>twistd.pid</code> file:</p>
+
+<pre class="shell">
+% flogtool create-gatherer lg
+Gatherer created in directory lg
+Now run '(cd lg &amp;&amp; twistd -y gatherer.tac)' to launch the daemon
+% cd lg
+% ls
+gatherer.tac
+% twistd -y gatherer.tac
+% ls
+from-2008-07-28-133034--to-present.flog  log_gatherer.furl  twistd.pid
+gatherer.pem                             portnum
+gatherer.tac                             twistd.log
+% cat log_gatherer.furl
+pb://g7yntwfu24w2hhb54oniqowfgizpk73d@192.168.69.172:54611,127.0.0.1:54611/z4ntcdg4jpdg3pnabhmyu3qvi3a7mdp3
+% kill `cat twistd.pid`
+%
+</pre>
+
+<p>The <code>log_gatherer.furl</code> string is the one that should be
+provided to all applications whose logs should be gathered here. By using
+<code>tub.setOption("log-gatherer-furlfile", "log_gatherer.furl")</code> in
+the application, you can just copy this .furl file into the application's
+working directory.</p>
 
 <h2>Python <code>logging</code> module</h2>
 
