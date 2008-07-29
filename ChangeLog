@@ -1,9 +1,27 @@
 2008-07-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/interfaces.py (RILogPublisher.list_incidents):
+	change signature to remove tubid/incarnation from the response.
+	(RILogPublisher.subscribe_to_incidents): add pubsub interface for
+	incidents, including catch_up= and since=
+	(RILogObserver.new_incident): same
+	(RILogObserver.done_with_incident_catchup): same
+	* foolscap/logging/publish.py (IncidentSubscription): same
+	* foolscap/logging/incident.py
+	(IncidentReporter.finished_recording): tell the logger about the
+	incident name, so it can publish it.
+	* foolscap/logging/log.py
+	(FoolscapLogger.addImmediateIncidentObserver): same
+	(FoolscapLogger.incident_recorded): same
+	* foolscap/test/test_logging.py (IncidentPublisher._check_listed):
+	same
+	(IncidentPublisher.test_subscribe): test it
+
 	* foolscap/logging/interfaces.py (RISubscription.unsubscribe):
 	move the RILogPublisher.unsubscribe() method to the RISubscription
 	object, since that's a better place for it.
 	(RILogPublisher.unsubscribe): deprecate this one
+
 	* foolscap/logging/publish.py (Subscription.remote_unsubscribe): same
 
 	* foolscap/logging/publish.py (LogPublisher.remote_get_incident):

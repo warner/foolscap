@@ -48,6 +48,7 @@ class FoolscapLogger:
         self.thresholds = {}
         self._observers = []
         self._immediate_observers = []
+        self._immediate_incident_observers = []
         self.logdir = None # nowhere to put our incidents
         self.inactive_incident_qualifier = IncidentQualifier()
         self.active_incident_qualifier = None
@@ -102,6 +103,11 @@ class FoolscapLogger:
     def setIncidentReporterFactory(self, ir):
         assert IIncidentReporter.implementedBy(ir)
         self.incident_reporter_factory = ir
+
+    def addImmediateIncidentObserver(self, observer):
+        self._immediate_incident_observers.append(observer)
+    def removeImmediateIncidentObserver(self, observer):
+        self._immediate_incident_observers.remove(observer)
 
     def explain_facility(self, facility, description):
         self.facility_explanations[facility] = description
@@ -248,12 +254,14 @@ class FoolscapLogger:
             self.active_incident_reporters[ir] = None
             ir.incident_declared(triggering_event)
 
-    def incident_recorded(self, filename):
+    def incident_recorded(self, filename, name, trigger):
         self.incidents_recorded += 1
-        # TODO: publish these to interested parties
         self.recent_recorded_incidents.append(filename)
         while len(self.recent_recorded_incidents) > self.MAX_RECORDED_INCIDENTS:
             self.recent_recorded_incidents.pop(0)
+        # publish these to interested parties
+        for o in self._immediate_incident_observers:
+            o(name, trigger)
 
     def setLogPort(self, logport):
         self._logport = logport

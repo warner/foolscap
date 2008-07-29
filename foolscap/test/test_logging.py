@@ -320,10 +320,17 @@ class Observer(Referenceable):
     implements(RILogObserver)
     def __init__(self):
         self.messages = []
+        self.incidents = []
+        self.done_with_incidents = False
         self.last_received = time.time()
     def remote_msg(self, d):
         self.messages.append(d)
         self.last_received = time.time()
+
+    def remote_new_incident(self, name, trigger):
+        self.incidents.append( (name, trigger) )
+    def remote_done_with_incident_catchup(self):
+        self.done_with_incidents = True
 
 class MyGatherer(gatherer.LogGatherer):
     verbose = False
@@ -631,7 +638,7 @@ class Publish(PollMixin, unittest.TestCase):
         d.addCallback(_got_logport)
         return d
 
-class IncidentPublisher(unittest.TestCase):
+class IncidentPublisher(PollMixin, unittest.TestCase):
     def setUp(self):
         self.parent = service.MultiService()
         self.parent.startService()
@@ -711,15 +718,116 @@ class IncidentPublisher(unittest.TestCase):
         self.failUnless(isinstance(incidents, dict))
         self.failUnlessEqual(len(incidents), 1)
         self.i_name = i_name = incidents.keys()[0]
-        (tubid_s, incarnation, trigger) = incidents[i_name]
-        self.failUnlessEqual(tubid_s, "local")
-        self.failUnlessEqual(incarnation, self.logger.incarnation)
+        trigger = incidents[i_name]
         self.failUnlessEqual(trigger["message"], "three")
     def _check_incident(self, (header, events) ):
         self.failUnlessEqual(header["type"], "incident")
         self.failUnlessEqual(header["trigger"]["message"], "three")
         self.failUnlessEqual(len(events), 3)
         self.failUnlessEqual(events[0]["message"], "one")
+
+    def test_subscribe(self):
+        basedir = "logging/IncidentPublisher/subscribe"
+        os.makedirs(basedir)
+        t = GoodEnoughTub()
+        t.logger = self.logger = log.FoolscapLogger()
+        logdir = os.path.join(basedir, "logdir")
+        t.logger.setLogDir(logdir)
+        t.logger.setIncidentReporterFactory(incident.NonTrailingIncidentReporter)
+
+        # fill the buffers with some messages
+        t.logger.msg("boring")
+        t.logger.msg("blah")
+        # and trigger the first incident
+        t.logger.msg("one", level=log.WEIRD)
+        # the NonTrailingIncidentReporter needs a turn before it will have
+        # finished recording the event: the getReference() call will suffice.
+
+        # now set up a Tub to connect to the logport
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        logport_furl = t.getLogPortFURL()
+
+        ob = Observer()
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.parent)
+
+        d = t2.getReference(logport_furl)
+        def _got_logport(logport):
+            self._logport = logport
+            d2 = logport.callRemote("subscribe_to_incidents", ob) # no catchup
+            return d2
+        d.addCallback(_got_logport)
+        def _subscribed(subscription):
+            self._subscription = subscription
+        d.addCallback(_subscribed)
+        # pause long enough for the incident names to change
+        d.addCallback(lambda res: time.sleep(2))
+        d.addCallback(lambda res: t.logger.msg("two", level=log.WEIRD))
+        d.addCallback(lambda res:
+                      self.poll(lambda: bool(ob.incidents), 0.1))
+        def _triggerof(incident):
+            (name, trigger) = incident
+            return trigger["message"]
+        def _check_new(res):
+            self.failUnlessEqual(len(ob.incidents), 1)
+            self.failUnlessEqual(_triggerof(ob.incidents[0]), "two")
+        d.addCallback(_check_new)
+        d.addCallback(lambda res: self._subscription.callRemote("unsubscribe"))
+
+        # now subscribe and catch up on all incidents
+        ob2 = Observer()
+        d.addCallback(lambda res:
+                      self._logport.callRemote("subscribe_to_incidents", ob2,
+                                               True, ""))
+        d.addCallback(_subscribed)
+        d.addCallback(lambda res:
+                      self.poll(lambda: ob2.done_with_incidents, 0.1))
+        def _check_all(res):
+            self.failUnlessEqual(len(ob2.incidents), 2)
+            self.failUnlessEqual(_triggerof(ob2.incidents[0]), "one")
+            self.failUnlessEqual(_triggerof(ob2.incidents[1]), "two")
+        d.addCallback(_check_all)
+
+        d.addCallback(lambda res: time.sleep(2))
+        d.addCallback(lambda res: t.logger.msg("three", level=log.WEIRD))
+        d.addCallback(lambda res:
+                      self.poll(lambda: len(ob2.incidents) >= 3, 0.1))
+        def _check_all2(res):
+            self.failUnlessEqual(len(ob2.incidents), 3)
+            self.failUnlessEqual(_triggerof(ob2.incidents[0]), "one")
+            self.failUnlessEqual(_triggerof(ob2.incidents[1]), "two")
+            self.failUnlessEqual(_triggerof(ob2.incidents[2]), "three")
+        d.addCallback(_check_all2)
+        d.addCallback(lambda res: self._subscription.callRemote("unsubscribe"))
+
+        # test the since= argument, setting it equal to the name of the
+        # second incident. This should give us the third incident.
+        ob3 = Observer()
+        d.addCallback(lambda res:
+                      self._logport.callRemote("subscribe_to_incidents", ob3,
+                                               True, ob2.incidents[1][0]))
+        d.addCallback(_subscribed)
+        d.addCallback(lambda res:
+                      self.poll(lambda: ob3.done_with_incidents, 0.1))
+        def _check_since(res):
+            self.failUnlessEqual(len(ob3.incidents), 1)
+            self.failUnlessEqual(_triggerof(ob3.incidents[0]), "three")
+        d.addCallback(_check_since)
+        d.addCallback(lambda res: time.sleep(2))
+        d.addCallback(lambda res: t.logger.msg("four", level=log.WEIRD))
+        d.addCallback(lambda res:
+                      self.poll(lambda: len(ob3.incidents) >= 2, 0.1))
+        def _check_since2(res):
+            self.failUnlessEqual(len(ob3.incidents), 2)
+            self.failUnlessEqual(_triggerof(ob3.incidents[0]), "three")
+            self.failUnlessEqual(_triggerof(ob3.incidents[1]), "four")
+        d.addCallback(_check_since2)
+        d.addCallback(lambda res: self._subscription.callRemote("unsubscribe"))
+
+        return d
+    test_subscribe.timeout = 20
 
 class Gatherer(PollMixin, unittest.TestCase):
     def setUp(self):

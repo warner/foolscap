@@ -46,9 +46,9 @@ class IncidentReporter:
     will grab the contents of the history buffer.
 
     When I have closed the incident logfile, I will notify the logger by
-    calling their incident_recorded(filename) method, passing it the filename
-    of the logfile I created. This can be used to notify remote subscribers
-    about the incident that just occurred.
+    calling their incident_recorded() method, passing it the local filename
+    of the logfile I created and the triggering event. This can be used to
+    notify remote subscribers about the incident that just occurred.
     """
     implements(IIncidentReporter)
 
@@ -65,12 +65,14 @@ class IncidentReporter:
         return time.strftime(self.TIME_FORMAT, time.localtime(when))
 
     def incident_declared(self, triggering_event):
+        self.trigger = triggering_event
         # choose a name for the logfile
         now = time.time()
         unique = os.urandom(4)
         unique_s = base32.encode(unique)
         filename = "incident-%s-%s.flog" % (self.format_time(now),
                                             unique_s)
+        self.name = filename
         self.abs_filename = os.path.join(self.basedir, filename)
         self.abs_filename_bz2 = self.abs_filename + ".bz2"
         self.abs_filename_bz2_tmp = self.abs_filename + ".bz2.tmp"
@@ -145,7 +147,8 @@ class IncidentReporter:
         os.unlink(self.abs_filename)
 
         # now we can tell the world about our new incident record
-        eventually(self.logger.incident_recorded, self.abs_filename_bz2)
+        eventually(self.logger.incident_recorded,
+                   self.abs_filename_bz2, self.name, self.trigger)
 
 class NonTrailingIncidentReporter(IncidentReporter):
     TRAILING_DELAY = None

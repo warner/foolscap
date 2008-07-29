@@ -16,6 +16,12 @@ class RILogObserver(RemoteInterface):
     def done():
         return None
 
+    def new_incident(name=str, trigger=Event):
+        # should this give (tubid, incarnation, trigger) like list_incidents?
+        return None
+    def done_with_incident_catchup():
+        return None
+
 class RILogFile(RemoteInterface):
     __remote_name__ = "RILogFile.foolscap.lothar.com"
     def get_header():
@@ -65,13 +71,47 @@ class RILogPublisher(RemoteInterface):
     def enumerate_logfiles():
         return ListOf(RILogFile)
 
-    def list_incidents():
-        """Return a dict that maps an 'incident name' (a string) to tuple of
-        (tubid string, incarnation, triggering event). The incident name can
+    # Incident support
+
+    def list_incidents(since=Optional(str, "")):
+        """Return a dict that maps an 'incident name' (a string) to the
+        triggering event (a single event dictionary). The incident name can
         be passed to get_incident() to obtain the list of events (including
         header) contained inside the incident report. Incident names will
-        sort in chronological order."""
-        return DictOf(str, (TubID, Incarnation, Event) )
+        sort in chronological order.
+
+        If the optional since= argument is provided, then this will only
+        return incident names that are alphabetically greater (and thus
+        chronologically later) than the given string. This can be used to
+        poll an application for incidents that have occurred since a previous
+        query. For real-time reporting, use subscribe_to_incidents() instead.
+        """
+        return DictOf(str, Event)
+
+    def subscribe_to_incidents(observer=RILogObserver,
+                               catch_up=Optional(bool, False),
+                               since=Optional(str, "")):
+        """Subscribe to hear about new Incidents, optionally catching up on
+        old ones.
+
+        Each new Incident will be reported by name+trigger to the observer by
+        a new_incident() message. This message will be sent after the
+        incident reporter has finished working (usually a few seconds after
+        the triggering event).
+
+        If catch_up=True, then old Incidents will be sent to the observer
+        before any new ones are reported. When the publisher has finished
+        sending the names of all old events, it will send a
+        done_with_incident_catchup() message to the observer.
+
+        Only old Incidents with a name that is alphabetically greater (and
+        thus later) than the since= argument will be sent. Use since='' to
+        catch up on all old Incidents.
+
+        Call unsubscribe() on the returned RISubscription object to stop
+        receiving messages.
+        """
+        return RISubscription
 
     def get_incident(incident_name=str):
         """Given an incident name, return the header dict and list of event

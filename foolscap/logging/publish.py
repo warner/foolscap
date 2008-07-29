@@ -90,6 +90,46 @@ class Subscription(Referenceable):
         #print "PUBLISH FAILED: %s" % f
         self.unsubscribe()
 
+class IncidentSubscription(Referenceable):
+    implements(RISubscription)
+
+    def __init__(self, observer, logger, publisher):
+        self.observer = observer
+        self.logger = logger
+        self.publisher = publisher
+        self.subscribed = False
+
+    def subscribe(self, catch_up=False, since=None):
+        self.subscribed = True
+        self.logger.addImmediateIncidentObserver(self.send)
+        self._nod_marker = self.observer.notifyOnDisconnect(self.unsubscribe)
+        if catch_up:
+            self.catch_up(since)
+
+    def catch_up(self, since):
+        names = list(self.publisher.list_incident_names(since))
+        names.sort()
+        for name in names:
+            trigger = self.publisher.get_incident_trigger(name)
+            self.observer.callRemoteOnly("new_incident", name, trigger)
+        self.observer.callRemoteOnly("done_with_incident_catchup")
+
+    def unsubscribe(self):
+        if self.subscribed:
+            self.logger.removeImmediateIncidentObserver(self.send)
+            self.observer.dontNotifyOnDisconnect(self._nod_marker)
+            self.subscribed = False
+    def remote_unsubscribe(self):
+        return self.unsubscribe()
+
+    def send(self, name, trigger):
+        d = self.observer.callRemote("new_incident", name, trigger)
+        d.addErrback(self._error)
+
+    def _error(self, f):
+        print "INCIDENT PUBLISH FAILED: %s" % f
+        self.unsubscribe()
+
 
 class LogPublisher(Referenceable):
     """Publish log events to anyone subscribed to our 'logport'.
@@ -152,27 +192,35 @@ class LogPublisher(Referenceable):
         return s.unsubscribe()
 
 
-    def remote_list_incidents(self):
+    def list_incident_names(self, since=""):
         basedir = self._logger.logdir
-        filenames = [fn
-                     for fn in os.listdir(basedir)
-                     if fn.startswith("incident") and not fn.endswith(".tmp")]
-        filenames.sort()
+        for fn in os.listdir(basedir):
+            if fn.startswith("incident") and not fn.endswith(".tmp"):
+                if fn > since:
+                    yield fn
+
+    def get_incident_trigger(self, filename):
+        basedir = self._logger.logdir
+        abs_fn = os.path.join(basedir, filename)
+        if abs_fn.endswith(".bz2"):
+            import bz2
+            f = bz2.BZ2File(abs_fn, "r")
+        else:
+            f = open(abs_fn, "rb")
+        try:
+            header = pickle.load(f)
+        except (EOFError, ValueError):
+            return None
+        assert header["header"]["type"] == "incident"
+        trigger = header["header"]["trigger"]
+        return trigger
+
+    def remote_list_incidents(self, since=""):
         incidents = {}
-        for fn in filenames:
-            abs_fn = os.path.join(basedir, fn)
-            if abs_fn.endswith(".bz2"):
-                import bz2
-                f = bz2.BZ2File(abs_fn, "r")
-            else:
-                f = open(abs_fn, "rb")
-            try:
-                header = pickle.load(f)
-            except (EOFError, ValueError):
-                continue
-            assert header["header"]["type"] == "incident"
-            trigger = header["header"]["trigger"]
-            incidents[fn] = ("local", trigger["incarnation"], trigger)
+        for fn in self.list_incident_names(since):
+            trigger = self.get_incident_trigger(fn)
+            if trigger:
+                incidents[fn] = trigger
         return incidents
 
     def remote_get_incident(self, fn):
@@ -195,3 +243,9 @@ class LogPublisher(Referenceable):
             events.append(wrapped["d"])
         f.close()
         return (header, events)
+
+    def remote_subscribe_to_incidents(self, observer, catch_up=False, since=""):
+        s = IncidentSubscription(observer, self._logger, self)
+        eventually(s.subscribe, catch_up, since)
+        # allow the call to return before we send them any events
+        return s
