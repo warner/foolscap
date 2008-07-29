@@ -177,7 +177,8 @@ class LogGatherer(foolscap.Referenceable):
         # nodeid is actually a printable string
         nodeid_s = nodeid
         o = Observer(nodeid_s, self)
-        publisher.callRemote("subscribe_to_all", o)
+        d = publisher.callRemote("subscribe_to_all", o)
+        return d # mostly for testing
 
     def msg(self, nodeid_s, d):
         e = {"from": nodeid_s,

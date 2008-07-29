@@ -1,3 +1,14 @@
+2008-07-29  Brian Warner  <warner@lothar.com>
+
+	* doc/logging.xhtml (Configuring a Log Gatherer): allow multiple
+	log-gatherer furls in the log-gatherer-furlfile
+	* foolscap/pb.py (Tub._maybeConnectToGatherer): same
+	* foolscap/logging/gatherer.py (LogGatherer.remote_logport):
+	return the subscribe_to_all Deferred, for testing
+	* foolscap/test/test_logging.py (Gatherer.test_log_gatherer):
+	refactor, to accomodate new test
+	(Gatherer.test_log_gatherer_furlfile_multiple): test it
+
 2008-07-28  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/interfaces.py (RILogPublisher.list_incidents):

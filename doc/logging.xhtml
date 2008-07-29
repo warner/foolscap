@@ -578,7 +578,8 @@ t.setOption("log-gatherer-furl", gatherer_FURL)
 <code>tub.setOption("log-gatherer-furlfile", "~/gatherer.furl")</code> call
 to tell the Tub about a file where a gatherer FURL might be found. If that
 file exists, the Tub will read a FURL from it, otherwise the Tub will not use
-a gatherer. This is probably the easiest deployment mode:</p>
+a gatherer. The file can contain multiple log-gatherer FURLs, one per line.
+This is probably the easiest deployment mode:</p>
 
 <pre class="python">
 t = Tub()
@@ -788,9 +789,9 @@ sends some or all of its log messages. These messages are saved to a file as
 they arrive, so they can be examined later. The resulting logfiles can be
 compressed, and they can be automatically rotated (saved, rename, reopened)
 on a periodic interval. In addition, sending a SIGHUP to the gatherer will
-cause it to rotate the logfiles.
+cause it to rotate the logfiles.</p>
 
-To create one, choose a new directory for it to live in, and run
+<p>To create one, choose a new directory for it to live in, and run
 "<code>flogtool create-gatherer</code>". You can then start it with "twistd",
 and stop it by using the <code>twistd.pid</code> file:</p>
 

@@ -362,14 +362,20 @@ class Tub(service.MultiService):
         self._maybeConnectToGatherer()
 
     def _maybeConnectToGatherer(self):
-        furl = self._log_gatherer_furl
-        if not furl and self._log_gatherer_furlfile:
+        furls = []
+        if self._log_gatherer_furl:
+            furls.append(self._log_gatherer_furl)
+        if self._log_gatherer_furlfile:
             try:
-                furl = open(self._log_gatherer_furlfile, "r").read().strip()
+                # allow multiple lines
+                for line in open(self._log_gatherer_furlfile, "r").readlines():
+                    furl = line.strip()
+                    if furl:
+                        furls.append(furl)
             except EnvironmentError:
                 pass
-        if furl:
-            connector = self.connectTo(furl, self._log_gatherer_connected)
+        for f in furls:
+            connector = self.connectTo(f, self._log_gatherer_connected)
 
     def _log_gatherer_connected(self, rref):
         # we want the logport's furl to be nailed down now, so we'll use the

@@ -337,8 +337,8 @@ class MyGatherer(gatherer.LogGatherer):
     furlFile = None
 
     def remote_logport(self, nodeid, publisher):
-        gatherer.LogGatherer.remote_logport(self, nodeid, publisher)
-        self.d.callback(publisher)
+        d = gatherer.LogGatherer.remote_logport(self, nodeid, publisher)
+        d.addBoth(lambda res: self.d.callback(publisher))
 
 class SampleError(Exception):
     """a sample error"""
@@ -847,84 +847,75 @@ class Gatherer(PollMixin, unittest.TestCase):
         reactor.callLater(delay, d.callback, res)
         return d
 
-    def _test_gatherer(self, basedir, gatherer, t2):
-        # about now, the node will be contacting the Gatherer and
-        # offering its logport.
-
-        d = gatherer.d
-        d.addCallback(self.stall, 1.0) # give subscribe_to_all() a chance
-        def _go(res):
-            log.msg("gathered message here")
-            try:
-                raise SampleError("whoops1")
-            except:
-                log.err()
-            def _oops():
-                raise SampleError("whoops2")
-            d2 = defer.maybeDeferred(_oops)
-            d2.addErrback(log.err)
-            return d2
-        d.addCallback(_go)
-        d.addCallback(self.stall, 1.0)
+    def _emit_messages_and_flush(self, res, t2):
+        log.msg("gathered message here")
+        try:
+            raise SampleError("whoops1")
+        except:
+            log.err()
+        try:
+            raise SampleError("whoops2")
+        except SampleError:
+            log.err(failure.Failure())
+        d = self.stall(None, 1.0)
         d.addCallback(lambda res: t2.disownServiceParent())
         # that will disconnect from the gatherer, which will flush the logfile
         d.addCallback(self.stall, 1.0)
-        def _check(res):
-            gatherer._savefile.close()
-            fn = os.path.join(basedir, "logs.pickle")
-            f = open(fn, "r")
-            events = []
-            while True:
-                try:
-                    events.append(pickle.load(f))
-                except EOFError:
-                    break
-            self.failUnlessEqual(len(events), 4)
-
-            # header
-            data = events.pop(0)
-            self.failUnless(isinstance(data, dict))
-            self.failUnless("header" in data)
-            self.failUnlessEqual(data["header"]["type"], "gatherer")
-            self.failUnlessEqual(data["header"]["start"], 123.456)
-
-            # grab the first event from the log
-            data = events.pop(0)
-            self.failUnless(isinstance(data, dict))
-            expected_tubid = t2.tubID
-            if t2.tubID is None:
-                expected_tubid = "<unauth>"
-            self.failUnlessEqual(data['from'], expected_tubid)
-            self.failUnlessEqual(data['d']['message'], "gathered message here")
-
-            # grab the second event from the log
-            data = events.pop(0)
-            self.failUnless(isinstance(data, dict))
-            expected_tubid = t2.tubID
-            if t2.tubID is None:
-                expected_tubid = "<unauth>"
-            self.failUnlessEqual(data['from'], expected_tubid)
-            self.failUnlessEqual(data['d']['message'], "")
-            self.failUnless(data['d']["isError"])
-            self.failUnless("failure" in data['d'])
-            self.failUnless(data['d']["failure"].check(SampleError))
-            self.failUnless("whoops1" in str(data['d']["failure"]))
-
-            # grab the third event from the log
-            data = events.pop(0)
-            self.failUnless(isinstance(data, dict))
-            expected_tubid = t2.tubID
-            if t2.tubID is None:
-                expected_tubid = "<unauth>"
-            self.failUnlessEqual(data['from'], expected_tubid)
-            self.failUnlessEqual(data['d']['message'], "")
-            self.failUnless(data['d']["isError"])
-            self.failUnless("failure" in data['d'])
-            self.failUnless(data['d']["failure"].check(SampleError))
-            self.failUnless("whoops2" in str(data['d']["failure"]))
-
-        d.addCallback(_check)
         return d
+
+    def _check_gatherer(self, res, basedir, gatherer, t2):
+        gatherer._savefile.close()
+        fn = os.path.join(basedir, "logs.pickle")
+        f = open(fn, "r")
+        events = []
+        while True:
+            try:
+                events.append(pickle.load(f))
+            except EOFError:
+                break
+        self.failUnlessEqual(len(events), 4)
+
+        # header
+        data = events.pop(0)
+        self.failUnless(isinstance(data, dict))
+        self.failUnless("header" in data)
+        self.failUnlessEqual(data["header"]["type"], "gatherer")
+        self.failUnlessEqual(data["header"]["start"], 123.456)
+
+        # grab the first event from the log
+        data = events.pop(0)
+        self.failUnless(isinstance(data, dict))
+        expected_tubid = t2.tubID
+        if t2.tubID is None:
+            expected_tubid = "<unauth>"
+        self.failUnlessEqual(data['from'], expected_tubid)
+        self.failUnlessEqual(data['d']['message'], "gathered message here")
+
+        # grab the second event from the log
+        data = events.pop(0)
+        self.failUnless(isinstance(data, dict))
+        expected_tubid = t2.tubID
+        if t2.tubID is None:
+            expected_tubid = "<unauth>"
+        self.failUnlessEqual(data['from'], expected_tubid)
+        self.failUnlessEqual(data['d']['message'], "")
+        self.failUnless(data['d']["isError"])
+        self.failUnless("failure" in data['d'])
+        self.failUnless(data['d']["failure"].check(SampleError))
+        self.failUnless("whoops1" in str(data['d']["failure"]))
+
+        # grab the third event from the log
+        data = events.pop(0)
+        self.failUnless(isinstance(data, dict))
+        expected_tubid = t2.tubID
+        if t2.tubID is None:
+            expected_tubid = "<unauth>"
+        self.failUnlessEqual(data['from'], expected_tubid)
+        self.failUnlessEqual(data['d']['message'], "")
+        self.failUnless(data['d']["isError"])
+        self.failUnless("failure" in data['d'])
+        self.failUnless(data['d']["failure"].check(SampleError))
+        self.failUnless("whoops2" in str(data['d']["failure"]))
 
     def test_log_gatherer(self):
         basedir = "logging/Gatherer/log_gatherer"
@@ -948,7 +939,14 @@ class Gatherer(PollMixin, unittest.TestCase):
         t2.setLocation("127.0.0.1:%d" % l.getPortnum())
         t2.setOption("log-gatherer-furl", gatherer_furl)
 
-        return self._test_gatherer(basedir, gatherer, t2)
+        # about now, the node will be contacting the Gatherer and
+        # offering its logport.
+
+        # gatherer.d will be fired when subscribe_to_all() has finished
+        d = gatherer.d
+        d.addCallback(self._emit_messages_and_flush, t2)
+        d.addCallback(self._check_gatherer, basedir, gatherer, t2)
+        return d
     test_log_gatherer.timeout = 20
 
     def test_log_gatherer_furlfile(self):
@@ -978,8 +976,59 @@ class Gatherer(PollMixin, unittest.TestCase):
         t2.setLocation("127.0.0.1:%d" % l.getPortnum())
         t2.setOption("log-gatherer-furlfile", gatherer_fn)
 
-        return self._test_gatherer(basedir, gatherer, t2)
+        d = gatherer.d
+        d.addCallback(self._emit_messages_and_flush, t2)
+        d.addCallback(self._check_gatherer, basedir, gatherer, t2)
+        return d
     test_log_gatherer_furlfile.timeout = 20
+
+    def test_log_gatherer_furlfile_multiple(self):
+        basedir = "logging/Gatherer/log_gatherer_furlfile_multiple"
+        os.makedirs(basedir)
+
+        t = GoodEnoughTub()
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+
+        gatherer1_basedir = os.path.join(basedir, "gatherer1")
+        os.makedirs(gatherer1_basedir)
+        gatherer1 = MyGatherer()
+        gatherer1.d = defer.Deferred()
+        fn = os.path.join(gatherer1_basedir, "logs.pickle")
+        gatherer1._open_savefile(123.456, fn)
+        gatherer1._tub_ready(t)
+        gatherer1_furl = t.registerReference(gatherer1)
+
+        gatherer2_basedir = os.path.join(basedir, "gatherer2")
+        os.makedirs(gatherer2_basedir)
+        gatherer2 = MyGatherer()
+        gatherer2.d = defer.Deferred()
+        fn = os.path.join(gatherer2_basedir, "logs.pickle")
+        gatherer2._open_savefile(123.456, fn)
+        gatherer2._tub_ready(t)
+        gatherer2_furl = t.registerReference(gatherer2)
+
+        gatherer_fn = os.path.join(basedir, "log_gatherer.furl")
+        f = open(gatherer_fn, "w")
+        f.write(gatherer1_furl + "\n")
+        f.write(gatherer2_furl + "\n")
+        f.close()
+
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.parent)
+        l = t2.listenOn("tcp:0:interface=127.0.0.1")
+        t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t2.setOption("log-gatherer-furlfile", gatherer_fn)
+        # now both log gatherer connections will be being established
+
+        d = defer.DeferredList([gatherer1.d, gatherer2.d],
+                               fireOnOneErrback=True)
+        d.addCallback(self._emit_messages_and_flush, t2)
+        d.addCallback(self._check_gatherer, gatherer1_basedir, gatherer1, t2)
+        d.addCallback(self._check_gatherer, gatherer2_basedir, gatherer2, t2)
+        return d
+    test_log_gatherer_furlfile_multiple.timeout = 20
 
     def test_log_gatherer_empty_furlfile(self):
         basedir = "logging/Gatherer/log_gatherer_empty_furlfile"
