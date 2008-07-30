@@ -1,5 +1,32 @@
 2008-07-29  Brian Warner  <warner@lothar.com>
 
+	* doc/logging.xhtml (Setting up the logport): New feature (well,
+	it didn't work before, and now it does, so make it explicit): the
+	log-gatherer FURL can be configured (but will not be connected)
+	until after setLocation. This should resolve a crash I've seen in
+	Tahoe (which runs a slow /sbin/ifconfig command to figure out the
+	addresses to pass to setLocation) in which the app connects to the
+	log gatherer before it figures out its own location, and then gets
+	an exception during registerReference. Closes #55.
+	* foolscap/pb.py (Tub._maybeConnectToGatherer): don't initiate the
+	gatherer connection until locationHints is set
+	(Tub.setLocation): call _maybeConnectToGatherer after the location
+	is set. Also, don't let setLocation be called multiple times.
+	* foolscap/test/test_logging.py
+	(Publish.test_logport_furlfile2): test it
+	(Gatherer.test_log_gatherer2): same
+	(Gatherer.test_log_gatherer_furlfile2): same
+
+	* doc/logging.xhtml (Setting up the logport): slight API
+	restriction: the logport and its FURL are not available until
+	after Tub.setLocation is called. This results in a better error
+	message than the usual one inside registerReference.
+	* foolscap/pb.py (Tub.getLogPort): enforce the API restriction by
+	throwing an exception when it is violated
+	(Tub.getLogPortFURL): same
+	* foolscap/tokens.py (NoLocationError): new exception for it
+	* foolscap/test/test_tub.py (SetLocation.test_set_location): test it
+
 	* doc/logging.xhtml (Configuring a Log Gatherer): allow multiple
 	log-gatherer furls in the log-gatherer-furlfile
 	* foolscap/pb.py (Tub._maybeConnectToGatherer): same

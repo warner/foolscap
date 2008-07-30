@@ -16,7 +16,7 @@ from foolscap import Tub, UnauthenticatedTub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin
-from foolscap.tokens import WrongTubIdError
+from foolscap.tokens import WrongTubIdError, PBError
 
 # we use authenticated tubs if possible. If crypto is not available, fall
 # back to unauthenticated ones
@@ -63,6 +63,14 @@ class SetLocation(unittest.TestCase):
         return d
 
     def test_set_location(self):
+        t = GoodEnoughTub()
+        l = t.listenOn("tcp:0")
+        t.setServiceParent(self.s)
+        t.setLocation("127.0.0.1:12345")
+        # setLocation may only be called once
+        self.failUnlessRaises(PBError, t.setLocation, "127.0.0.1:12345")
+
+    def test_set_location_automatically(self):
         t = GoodEnoughTub()
         l = t.listenOn("tcp:0")
         t.setServiceParent(self.s)

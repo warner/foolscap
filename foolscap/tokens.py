@@ -118,6 +118,8 @@ class WrongTubIdError(Exception):
 class WrongNameError(Exception):
     """getReference(furlFule=) used a FURL with a different name"""
 
+class NoLocationError(Exception):
+    """Tub.setLocation() must be called first"""
 
 class ISlicer(Interface):
     """I know how to slice objects into tokens."""

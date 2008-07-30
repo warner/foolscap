@@ -534,13 +534,16 @@ The <code>logport-furlfile</code> option is used to identify this file. If
 the file exists, the desired FURL will be read out of it. If it does not, the
 newly-generated FURL will be written into it.</p>
 
-<p>Note that this option must be set before you call
+<p>If you use <code>logport-furlfile</code>, it must be set before you call
 <code>getLogPortFURL</code> (and also before you pass the result of
 <code>getLogPort</code> over the wire), otherwise an ephemeral name will have
 already been registered and the persistent one will be ignored. The call to
 <code>setOption</code> can take place before <code>setLocation</code>, and
 the logport-furlfile will be created as soon as both the filename and the
-location hints are known.</p>
+location hints are known. However, note that the logport will not be
+available until after <code>setLocation</code> is called:
+<code>getLogPortFURL</code> and <code>getLogPort</code> will raise
+exceptions.</p>
 
 <pre class="python">
 tub.setOption("logport-furlfile", "~/logport.furl")
@@ -591,6 +594,9 @@ which implements the <code>foolscap.logging.RILogGatherer</code> interface
 (such as the service created by <code>flogtool create-gatherer</code>). The
 Tub will connect to the gatherer and offer it the logport.</p>
 
+<p>The <code>log-gatherer-furl</code> and <code>log-gatherer-furlfile</code>
+options can be set at any time, however the connection to the gatherer will
+not be initiated until <code>setLocation</code> is called.</p>
 
 <h3>Interacting With Other Logging Systems</h3>
 

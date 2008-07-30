@@ -12,6 +12,7 @@ from foolscap.logging import gatherer, log, tail, incident, cli, web, publish
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
+from foolscap.tokens import NoLocationError
 from foolscap.test.common import PollMixin
 
 crypto_available = False
@@ -367,24 +368,32 @@ class Publish(PollMixin, unittest.TestCase):
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
         t = GoodEnoughTub()
+        # setOption before setServiceParent
         t.setOption("logport-furlfile", furlfile)
         t.setServiceParent(self.parent)
+        self.failUnlessRaises(NoLocationError, t.getLogPort)
+        self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         self.failIf(os.path.exists(furlfile))
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         logport_furl = open(furlfile, "r").read().strip()
+        self.failUnlessEqual(logport_furl, t.getLogPortFURL())
 
     def test_logport_furlfile2(self):
         basedir = "logging/Publish/logport_furlfile2"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
         t = GoodEnoughTub()
+        # setServiceParent before setOption
         t.setServiceParent(self.parent)
+        self.failUnlessRaises(NoLocationError, t.getLogPort)
+        self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setOption("logport-furlfile", furlfile)
         self.failIf(os.path.exists(furlfile))
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         logport_furl = open(furlfile, "r").read().strip()
+        self.failUnlessEqual(logport_furl, t.getLogPortFURL())
 
     def test_logpublisher(self):
         basedir = "logging/Publish/logpublisher"
@@ -393,8 +402,10 @@ class Publish(PollMixin, unittest.TestCase):
         t = GoodEnoughTub()
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        self.failUnlessRaises(NoLocationError, t.getLogPort)
+        self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
 
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
         logport_furl2 = open(furlfile, "r").read().strip()
@@ -918,6 +929,7 @@ class Gatherer(PollMixin, unittest.TestCase):
         self.failUnless("whoops2" in str(data['d']["failure"]))
 
     def test_log_gatherer(self):
+        # setLocation, then set log-gatherer-furl
         basedir = "logging/Gatherer/log_gatherer"
         os.makedirs(basedir)
 
@@ -949,7 +961,37 @@ class Gatherer(PollMixin, unittest.TestCase):
         return d
     test_log_gatherer.timeout = 20
 
+    def test_log_gatherer2(self):
+        # set log-gatherer-furl, then setLocation
+        basedir = "logging/Gatherer/log_gatherer2"
+        os.makedirs(basedir)
+
+        t = GoodEnoughTub()
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+
+        gatherer = MyGatherer()
+        gatherer.d = defer.Deferred()
+        fn = os.path.join(basedir, "logs.pickle")
+        gatherer._open_savefile(123.456, fn)
+        gatherer._tub_ready(t)
+        gatherer_furl = t.registerReference(gatherer)
+
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.parent)
+        l = t2.listenOn("tcp:0:interface=127.0.0.1")
+        t2.setOption("log-gatherer-furl", gatherer_furl)
+        t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+
+        d = gatherer.d
+        d.addCallback(self._emit_messages_and_flush, t2)
+        d.addCallback(self._check_gatherer, basedir, gatherer, t2)
+        return d
+    test_log_gatherer2.timeout = 20
+
     def test_log_gatherer_furlfile(self):
+        # setLocation, then set log-gatherer-furlfile
         basedir = "logging/Gatherer/log_gatherer_furlfile"
         os.makedirs(basedir)
 
@@ -981,6 +1023,44 @@ class Gatherer(PollMixin, unittest.TestCase):
         d.addCallback(self._check_gatherer, basedir, gatherer, t2)
         return d
     test_log_gatherer_furlfile.timeout = 20
+
+    def test_log_gatherer_furlfile2(self):
+        # set log-gatherer-furlfile, then setLocation
+        basedir = "logging/Gatherer/log_gatherer_furlfile2"
+        os.makedirs(basedir)
+
+        t = GoodEnoughTub()
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+
+        gatherer = MyGatherer()
+        gatherer.d = defer.Deferred()
+        fn = os.path.join(basedir, "logs.pickle")
+        gatherer._open_savefile(123.456, fn)
+        gatherer._tub_ready(t)
+        gatherer_furl = t.registerReference(gatherer)
+
+        gatherer_fn = os.path.join(basedir, "log_gatherer.furl")
+        f = open(gatherer_fn, "w")
+        f.write(gatherer_furl + "\n")
+        f.close()
+
+        t2 = GoodEnoughTub()
+        t2.setServiceParent(self.parent)
+        l = t2.listenOn("tcp:0:interface=127.0.0.1")
+        t2.setOption("log-gatherer-furlfile", gatherer_fn)
+        # one bug we had was that the log-gatherer was contacted before
+        # setLocation had occurred, so exercise that case
+        d = self.stall(None, 1.0)
+        def _start(res):
+            t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+            return gatherer.d
+        d.addCallback(_start)
+        d.addCallback(self._emit_messages_and_flush, t2)
+        d.addCallback(self._check_gatherer, basedir, gatherer, t2)
+        return d
+    test_log_gatherer_furlfile2.timeout = 20
 
     def test_log_gatherer_furlfile_multiple(self):
         basedir = "logging/Gatherer/log_gatherer_furlfile_multiple"

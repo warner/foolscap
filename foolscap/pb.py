@@ -10,7 +10,7 @@ from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
 from foolscap import util
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
-     WrongNameError
+     WrongNameError, NoLocationError
 from foolscap.reconnector import Reconnector
 from foolscap.logging import log as flog
 from foolscap.logging import log
@@ -274,7 +274,7 @@ class Tub(service.MultiService):
         # entries for which we were the master.
         self.master_table = {} # k:tubid, v:seqnum
         # the slave_table records the (master-IR,master-seqnum) pair for the
-        # last established conenction with the given tubid. It only contains
+        # last established connection with the given tubid. It only contains
         # entries for which we were the slave.
         self.slave_table = {} # k:tubid, v:(master-IR,seqnum)
 
@@ -362,6 +362,8 @@ class Tub(service.MultiService):
         self._maybeConnectToGatherer()
 
     def _maybeConnectToGatherer(self):
+        if not self.locationHints:
+            return
         furls = []
         if self._log_gatherer_furl:
             furls.append(self._log_gatherer_furl)
@@ -390,6 +392,8 @@ class Tub(service.MultiService):
 
 
     def getLogPort(self):
+        if not self.locationHints:
+            raise NoLocationError
         return self._maybeCreateLogPort()
 
     def _maybeCreateLogPort(self):
@@ -410,6 +414,8 @@ class Tub(service.MultiService):
         ignored = self.getLogPortFURL()
 
     def getLogPortFURL(self):
+        if not self.locationHints:
+            raise NoLocationError
         if self._logport_furl:
             return self._logport_furl
         furlfile = self._logport_furlfile
@@ -461,8 +467,11 @@ class Tub(service.MultiService):
         if not self.encrypted and len(hints) > 1:
             raise PBError("Unauthenticated tubs may only have one "
                           "location hint")
+        if self.locationHints:
+            raise PBError("Tub.setLocation() can only be called once")
         self.locationHints = hints
         self._maybeCreateLogPortFURLFile()
+        self._maybeConnectToGatherer()
 
     def setLocationAutomatically(self, *extra_addresses):
         """Determine one of this host's publically-visible IP addresses and
