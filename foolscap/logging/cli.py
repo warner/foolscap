@@ -4,7 +4,8 @@ from twisted.python import usage
 
 import foolscap
 from foolscap.logging.tail import TailOptions
-from foolscap.logging.gatherer import CreateGatherOptions
+from foolscap.logging.gatherer import CreateGatherOptions, \
+     CreateIncidentGatherOptions
 from foolscap.logging.dumper import DumpOptions
 from foolscap.logging.web import WebViewerOptions
 from foolscap.logging.filter import FilterOptions
@@ -16,6 +17,8 @@ class Options(usage.Options):
         ("tail", None, TailOptions, "follow logs of the target node"),
         ("create-gatherer", None, CreateGatherOptions,
          "Make a .tac which will record all logs to a given directory"),
+        ("create-incident-gatherer", None, CreateIncidentGatherOptions,
+         "Make a .tac which will record all incidents to a given directory"),
         ("dump", None, DumpOptions,
          "dump the logs recorded by 'logtool gather'"),
         ("filter", None, FilterOptions,
@@ -48,6 +51,10 @@ def dispatch(command, options):
     elif command == "create-gatherer":
         from foolscap.logging.gatherer import create_log_gatherer
         create_log_gatherer(options)
+
+    elif command == "create-incident-gatherer":
+        from foolscap.logging.gatherer import create_incident_gatherer
+        create_incident_gatherer(options)
 
     elif command == "dump":
         from foolscap.logging.dumper import LogDumper

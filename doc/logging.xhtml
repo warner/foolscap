@@ -825,6 +825,84 @@ provided to all applications whose logs should be gathered here. By using
 the application, you can just copy this .furl file into the application's
 working directory.</p>
 
+<h3>Running an Incident Gatherer</h3>
+
+<p>An "Incident Gatherer" is like a Log Gatherer, but it only gathers
+weirdness-triggered Incidents. It records these incidents into files on the
+local disk, and provides access to them through a web server. The Incident
+Gatherer can also be configured to classify the incidents into various
+categories (perhaps expressions of a specific bug), to facilitate analysis by
+separating known problems from new ones.</p>
+
+<p>To create one, choose a new directory for it to live in, and run
+"<code>flogtool create-incident-gatherer</code>", just like the log
+gatherer:</p>
+
+<pre class="shell">
+% flogtool create-incident-gatherer ig
+Gatherer created in directory ig
+Now run '(cd ig &amp;&amp; twistd -y incident-gatherer.tac)' to launch the daemon
+% cd ig
+% ls
+incident-gatherer.tac
+% twistd -y incident-gatherer.tac
+%
+</pre>
+
+<h4>Incident Storage</h4>
+
+<p>Inside the gatherer's base directory (which we refer to as BASEDIR here),
+the <code>incidents/</code> directory will contain a subdirectory for each
+tub that connects to the gatherer. Each subdir will contain the incident
+files, named <code>incident-TIMESTAMP-UNIQUE.flog.bz2</code>.</p>
+
+<p>A simple unix command like <code>find BASEDIR/incidents -name
+'incident-*.flog.bz2'</code> will locate all incident files. Each incident
+file can be examined with a tool like <code>flogtool dump</code>. The format
+is described in the <a href="specifications/logfiles.xhtml">Logfiles
+specification</a> docs.</p>
+
+<h4>Classification</h4>
+
+<p>The Incident Gatherer uses a collection of user-supplied classification
+functions to analyze each Incident and place it into one or more categories.
+To add a classification function, you will need to modify the
+<code>incident-gatherer.tac</code> file, and make a call to
+<code>ig.add_classifier()</code> with your function. These functions accept a
+triggering event and a pathname (from which preceding log events can be
+extracted, if desired), and should return a list of categories. Each incident
+can wind up in multiple categories. If no function finds a category for the
+incident, it will be added to the "unknown" category. All incidents are added
+to the "all" category.</p>
+
+<p>The <code>classified/</code> directory will contain a file for each
+defined classification. This file will contain one line for each incident
+that falls into that category, containing the BASEDIR-relative pathname of
+the incident file (i.e. each line will look like
+<code>incidents/TUBID/incident-TIMESTAMP-UNIQUE.flog.bz2</code>). The
+<code>classified/all</code> file will contain the same filenames as the
+<code>find</code> command described earlier.</p>
+
+<p>If the <code>classified/</code> directory does not exist when the gatherer
+is started, all stored Incidents will be re-classified. After modifying or
+adding classification functions, you should delete the
+<code>classified/</code> directory and restart the gatherer.</p>
+
+<h4>Incident Gatherer Web Server</h4>
+
+<p>The Incident Gatherer can run a small webserver, to publish information
+about the incidents it collects. The plan is to have it publish an RSS feed
+of incidents by category, and to serve incidents as HTML just like the
+<code>foolscap web-viewer</code> command. This code is not yet written.</p>
+
+<h4>Incident Reports by Email</h4>
+
+<p>The Incident Gatherer can also be configured to send email with a
+description of the incident for various categories. The incident report will
+be included as an attachment for further analysis. This code is not yet
+written.</p>
+
+
 <!--
 <h2>Python <code>logging</code> module</h2>
 

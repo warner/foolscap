@@ -660,6 +660,42 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         d.addCallback(flushEventualQueue)
         return d
 
+    def _write_to(self, logdir, fn, data="stuff"):
+        f = open(os.path.join(logdir, fn), "w")
+        f.write(data)
+        f.close()
+
+    def test_list_incident_names(self):
+        basedir = "logging/IncidentPublisher/list_incident_names"
+        os.makedirs(basedir)
+        t = GoodEnoughTub()
+        t.setLocation("127.0.0.1:1234")
+        t.logger = self.logger = log.FoolscapLogger()
+        logdir = os.path.join(basedir, "logdir")
+        t.logger.setLogDir(logdir)
+        p = t.getLogPort()
+
+        # dump some other files in the incident directory
+        self._write_to(logdir, "distraction.bz2")
+        self._write_to(logdir, "noise")
+        # and a few real-looking incidents
+        I1 = "incident-2008-07-29-204211-aspkxoi"
+        I2 = "incident-2008-07-30-112233-wodaei"
+        I1_abs = os.path.abspath(os.path.join(logdir, I1 + ".flog"))
+        I2_abs = os.path.abspath(os.path.join(logdir, I2 + ".flog.bz2"))
+        self._write_to(logdir, I1 + ".flog")
+        self._write_to(logdir, I2 + ".flog.bz2")
+
+        all = list(p.list_incident_names())
+        self.failUnlessEqual(set([name for (name,fn) in all]), set([I1, I2]))
+        imap = dict(all)
+        self.failUnlessEqual(imap[I1], I1_abs)
+        self.failUnlessEqual(imap[I2], I2_abs)
+
+        new = list(p.list_incident_names(since=I1))
+        self.failUnlessEqual(set([name for (name,fn) in new]), set([I2]))
+
+
     def test_get_incidents(self):
         basedir = "logging/IncidentPublisher/get_incidents"
         os.makedirs(basedir)
@@ -705,8 +741,8 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
                 # to exercise the code that provides access to incidents that
                 # did not finish their trailing-gather by the time the
                 # application was shut down
-                fn1 = os.path.join(logdir, self.i_name)
-                assert fn1.endswith(".bz2")
+                assert not self.i_name.endswith(".bz2")
+                fn1 = os.path.join(logdir, self.i_name) + ".flog.bz2"
                 fn2 = fn1[:-len(".bz2")]
                 f1 = bz2.BZ2File(fn1, "r")
                 f2 = open(fn2, "wb")
@@ -729,6 +765,8 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         self.failUnless(isinstance(incidents, dict))
         self.failUnlessEqual(len(incidents), 1)
         self.i_name = i_name = incidents.keys()[0]
+        self.failUnless(i_name.startswith("incident"))
+        self.failIf(i_name.endswith(".flog") or i_name.endswith(".bz2"))
         trigger = incidents[i_name]
         self.failUnlessEqual(trigger["message"], "three")
     def _check_incident(self, (header, events) ):

@@ -74,11 +74,11 @@ class RILogPublisher(RemoteInterface):
     # Incident support
 
     def list_incidents(since=Optional(str, "")):
-        """Return a dict that maps an 'incident name' (a string) to the
-        triggering event (a single event dictionary). The incident name can
-        be passed to get_incident() to obtain the list of events (including
-        header) contained inside the incident report. Incident names will
-        sort in chronological order.
+        """Return a dict that maps an 'incident name' (a string of the form
+        'incident-TIMESTAMP-UNIQUE') to the triggering event (a single event
+        dictionary). The incident name can be passed to get_incident() to
+        obtain the list of events (including header) contained inside the
+        incident report. Incident names will sort in chronological order.
 
         If the optional since= argument is provided, then this will only
         return incident names that are alphabetically greater (and thus

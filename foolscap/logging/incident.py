@@ -70,9 +70,8 @@ class IncidentReporter:
         now = time.time()
         unique = os.urandom(4)
         unique_s = base32.encode(unique)
-        filename = "incident-%s-%s.flog" % (self.format_time(now),
-                                            unique_s)
-        self.name = filename
+        self.name = "incident-%s-%s" % (self.format_time(now), unique_s)
+        filename = self.name + ".flog"
         self.abs_filename = os.path.join(self.basedir, filename)
         self.abs_filename_bz2 = self.abs_filename + ".bz2"
         self.abs_filename_bz2_tmp = self.abs_filename + ".bz2.tmp"
@@ -146,7 +145,7 @@ class IncidentReporter:
         self.f1.close()
         os.unlink(self.abs_filename)
 
-        # now we can tell the world about our new incident record
+        # now we can tell the world about our new incident report
         eventually(self.logger.incident_recorded,
                    self.abs_filename_bz2, self.name, self.trigger)
 

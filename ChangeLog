@@ -1,3 +1,22 @@
+2008-07-30  Brian Warner  <warner@lothar.com>
+
+	* doc/logging.xhtml (Running an Incident Gatherer): describe the
+	Incident Gatherer, like the Log Gatherer but it only gathers
+	incidents. It also does classification, and will eventually do
+	reporting. No unit tests yet, but some manual system-level tests
+	have been run.
+	* foolscap/logging/gatherer.py (IncidentGatherer): implement it
+	* foolscap/logging/cli.py (Options.subCommands): add the CLI
+	command, named 'flogtool create-incident-gatherer'
+	* foolscap/logging/incident.py
+	(IncidentReporter.incident_declared): clean up incident naming
+	* foolscap/logging/interfaces.py (RILogPublisher.list_incidents): same
+	* foolscap/logging/log.py (FoolscapLogger.incident_recorded): same
+	* foolscap/logging/publish.py (LogPublisher.list_incident_names): same
+	* foolscap/test/test_logging.py
+	(IncidentPublisher.test_list_incident_names): test the
+	incident-naming cleanup
+
 2008-07-29  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/gatherer.py (GatheringBase): refactor the log

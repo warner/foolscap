@@ -107,10 +107,10 @@ class IncidentSubscription(Referenceable):
             self.catch_up(since)
 
     def catch_up(self, since):
-        names = list(self.publisher.list_incident_names(since))
-        names.sort()
-        for name in names:
-            trigger = self.publisher.get_incident_trigger(name)
+        new = dict(self.publisher.list_incident_names(since))
+        for name in sorted(new.keys()):
+            fn = new[name]
+            trigger = self.publisher.get_incident_trigger(fn)
             self.observer.callRemoteOnly("new_incident", name, trigger)
         self.observer.callRemoteOnly("done_with_incident_catchup")
 
@@ -192,16 +192,22 @@ class LogPublisher(Referenceable):
         return s.unsubscribe()
 
 
+    def trim(self, s, *suffixes):
+        for suffix in suffixes:
+            if s.endswith(suffix):
+                s = s[:-len(suffix)]
+        return s
+
     def list_incident_names(self, since=""):
+        # yields (name, absfilename) pairs
         basedir = self._logger.logdir
         for fn in os.listdir(basedir):
             if fn.startswith("incident") and not fn.endswith(".tmp"):
-                if fn > since:
-                    yield fn
+                basename = self.trim(fn, ".bz2", ".flog")
+                if basename > since:
+                    yield (basename, os.path.join(basedir, fn))
 
-    def get_incident_trigger(self, filename):
-        basedir = self._logger.logdir
-        abs_fn = os.path.join(basedir, filename)
+    def get_incident_trigger(self, abs_fn):
         if abs_fn.endswith(".bz2"):
             import bz2
             f = bz2.BZ2File(abs_fn, "r")
@@ -217,22 +223,25 @@ class LogPublisher(Referenceable):
 
     def remote_list_incidents(self, since=""):
         incidents = {}
-        for fn in self.list_incident_names(since):
+        for (name,fn) in self.list_incident_names(since):
             trigger = self.get_incident_trigger(fn)
             if trigger:
-                incidents[fn] = trigger
+                incidents[name] = trigger
         return incidents
 
-    def remote_get_incident(self, fn):
-        if not fn.startswith("incident"):
-            raise KeyError("bad incident name %s" % fn)
+    def remote_get_incident(self, name):
+        if not name.startswith("incident"):
+            raise KeyError("bad incident name %s" % name)
         incident_dir = filepath.FilePath(self._logger.logdir)
-        abs_fn = incident_dir.child(fn).path
-        if abs_fn.endswith(".bz2"):
-            import bz2
-            f = bz2.BZ2File(abs_fn, "r")
-        else:
-            f = open(abs_fn, "rb")
+        abs_fn = incident_dir.child(name).path + ".flog"
+        try:
+            if os.path.exists(abs_fn + ".bz2"):
+                import bz2
+                f = bz2.BZ2File(abs_fn + ".bz2", "r")
+            else:
+                f = open(abs_fn, "rb")
+        except EnvironmentError:
+            raise KeyError("no incident named %s" % name)
         header = pickle.load(f)["header"]
         events = []
         while True:

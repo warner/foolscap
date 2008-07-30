@@ -1,5 +1,5 @@
 
-import os, sys, time, pickle
+import os, sys, time, pickle, bz2
 signal = None
 try:
     import signal
@@ -7,12 +7,13 @@ except ImportError:
     pass
 from zope.interface import implements
 from twisted.internet import reactor, defer, task, utils
-from twisted.python import usage, procutils
+from twisted.python import usage, procutils, filepath
 from twisted.application import service
 import foolscap
 from foolscap.eventual import fireEventually
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.util import get_local_ip_for
+from foolscap import base32
 
 class BadTubID(Exception):
     pass
@@ -280,3 +281,247 @@ def create_log_gatherer(config):
     if not config["quiet"]:
         print "Gatherer created in directory %s" % basedir
         print "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir
+
+
+###################
+# Incident Gatherer
+
+
+class CreateIncidentGatherOptions(usage.Options):
+    """flogtool create-incident-gatherer BASEDIR"""
+
+    optFlags = [
+        ("quiet", "q", "Don't print instructions to stdout"),
+        ]
+    optParameters = [
+        ]
+
+    def parseArgs(self, basedir):
+        self["basedir"] = basedir
+
+
+class IncidentObserver(foolscap.Referenceable):
+    implements(RILogObserver)
+
+    def __init__(self, basedir, nodeid_s, gatherer, publisher):
+        if not os.path.isdir(basedir):
+            os.makedirs(basedir)
+        self.basedir = filepath.FilePath(basedir)
+        self.nodeid_s = nodeid_s # printable string
+        self.gatherer = gatherer
+        self.publisher = publisher
+
+    def connect(self):
+        # look for a local state file, to see what incidents we've already
+        # got
+        statefile = self.basedir.child("latest").path
+        latest = ""
+        try:
+            latest = open(statefile, "r").read().strip()
+        except EnvironmentError:
+            pass
+        print "connected to %s, last known incident is %s" % (self.nodeid_s,
+                                                              latest)
+        # now subscribe to everything since then
+        d = self.publisher.callRemote("subscribe_to_incidents", self,
+                                      catch_up=True, since=latest)
+        return d
+
+    def remote_new_incident(self, name, trigger):
+        print "got incident", name
+        # name= should look like "incident-2008-07-29-204211-aspkxoi". We
+        # prevent name= from containing path metacharacters like / or : by
+        # using FilePath later on.
+        d = self.publisher.callRemote("get_incident", name)
+        d.addCallback(self._got_incident, name, trigger)
+        d.addCallback(lambda res: None)
+        return d
+    def _got_incident(self, incident, name, trigger):
+        # We always save the incident to a .bz2 file.
+        abs_fn = self.basedir.child(name).path # this prevents evil
+        abs_fn += ".flog.bz2"
+        # we need to record the relative pathname of the savefile, for use by
+        # the classifiers (they write it into their output files)
+        rel_fn = os.path.join("incidents", self.nodeid_s, name) + ".flog.bz2"
+        self.save_incident(abs_fn, incident)
+        self.update_latest(name)
+        self.gatherer.new_incident(abs_fn, rel_fn, self.nodeid_s, incident)
+
+    def save_incident(self, filename, incident):
+        now = time.time()
+        (header, events) = incident
+        f = bz2.BZ2File(filename, "w")
+        h = {"header": header}
+        pickle.dump(h, f)
+        for e in events:
+            wrapper = {"from": self.nodeid_s,
+                       "rx_time": now,
+                       "d": e}
+            pickle.dump(wrapper, f)
+        f.close()
+
+    def update_latest(self, name):
+        f = open(self.basedir.child("latest").path, "w")
+        f.write(name + "\n")
+        f.close()
+
+    def remote_done_with_incident_catchup(self):
+        return None
+
+class IncidentGatherer(GatheringBase):
+    """Run a service that gathers Incidents from multiple applications.
+
+    The IncidentGatherer sits in a corner and receives incidents from many
+    applications at once. At startup, it runs a Tub and emits the gatherer's
+    long-term FURL. You can then configure your applications to connect to
+    this FURL when they start and pass it a reference to their LogPublisher.
+    The gatherer will subscribe to the publisher and save all the resulting
+    incidents in the incidents/ directory, organized by the publisher's
+    tubid. The gatherer will also run a set of user-supplied classifier
+    functions on the incidents and put the filenames (one line per incident)
+    into files in the categories/ directory.
+
+    This IncidentGatherer class is meant to be run as a standalone service
+    from bin/flogtool, but by careful subclassing and setup it could be run
+    as part of some other application.
+
+    """
+
+    implements(RILogGatherer)
+    verbose = True
+    furlFile = "incident_gatherer.furl"
+
+    def __init__(self, basedir, classifiers):
+        GatheringBase.__init__(self, basedir)
+        self.classifiers = classifiers
+
+
+    def start(self, res):
+        indir = os.path.join(self.basedir, "incidents")
+        if not os.path.isdir(indir):
+            os.makedirs(indir)
+        outputdir = os.path.join(self.basedir, "classified")
+        if not os.path.isdir(outputdir):
+            os.makedirs(outputdir)
+            self.classify_stored_incidents(indir)
+        return GatheringBase.start(self, res)
+
+    def classify_stored_incidents(self, indir):
+        print "No classified/ directory: reclassifying stored incidents"
+        # now classify all stored incidents
+        for nodeid_s in os.listdir(indir):
+            nodedir = os.path.join(indir, nodeid_s)
+            for fn in os.listdir(nodedir):
+                if fn.startswith("incident-"):
+                    abs_fn = os.path.join(nodedir, fn)
+                    incident = self.load_incident(abs_fn)
+                    rel_fn = os.path.join("incidents", nodeid_s, fn)
+                    self.classify_incident(rel_fn, nodeid_s, incident)
+
+    def load_incident(self, abs_fn):
+        assert abs_fn.endswith(".bz2")
+        f = bz2.BZ2File(abs_fn, "r")
+        header = pickle.load(f)["header"]
+        events = []
+        while True:
+            try:
+                wrapped = pickle.load(f)
+            except (EOFError, ValueError):
+                break
+            events.append(wrapped["d"])
+        f.close()
+        return (header, events)
+
+    def remote_logport(self, nodeid, publisher):
+        # nodeid is actually a printable string
+        tubid_s = nodeid
+        if not base32.is_base32(tubid_s):
+            # we must check it to exclude .. and / and other nasties
+            raise BadTubID("%s is not a valid base32-encoded Tub ID" % tubid_s)
+        basedir = os.path.join(self.basedir, "incidents", tubid_s)
+        o = IncidentObserver(basedir, tubid_s, self, publisher)
+        d = o.connect()
+        d.addCallback(lambda res: None)
+        return d # mostly for testing
+
+    def new_incident(self, abs_fn, rel_fn, nodeid_s, incident):
+        print "NEW INCIDENT", rel_fn
+        self.classify_incident(rel_fn, nodeid_s, incident)
+
+    def classify_incident(self, rel_fn, nodeid_s, incident):
+        categories = set()
+        for f in self.classifiers:
+            c = f(nodeid_s, incident)
+            if c: # allow the classifier to return None, or [], or ["foo"]
+                if isinstance(c, str):
+                    c = [c] # or just "foo"
+                categories.update(c)
+        if not categories:
+            categories.add("unknown")
+        for c in categories:
+            fn = os.path.join(self.basedir, "classified", c)
+            f = open(fn, "a")
+            f.write(rel_fn + "\n")
+            f.close()
+
+
+class IncidentGathererService(service.Service):
+    # create this with 'flogtool create-incident-gatherer BASEDIR'
+    # run this as 'cd BASEDIR && twistd -y gatherer.tac'
+
+    def __init__(self):
+        #service.Service.__init__(self) # Service has no __init__
+        self.classifiers = []
+
+    def addClassifier(self, f):
+        self.classifiers.append(f)
+
+    def startService(self):
+        # confirm that we're running from our BASEDIR, otherwise we'll put
+        # files in the wrong place.
+        basedir = os.getcwd()
+        tac = os.path.join(basedir, "incident-gatherer.tac")
+        if not os.path.exists(tac):
+            raise RuntimeError("running in the wrong directory")
+        service.Service.startService(self)
+        lg = IncidentGatherer(basedir, self.classifiers)
+        d = fireEventually()
+        d.addCallback(lg.start)
+        d.addErrback(lg._error)
+
+INCIDENT_TACFILE = """\
+# -*- python -*-
+
+# we record the path when 'flogtool create-incident-gatherer' is run, in case
+# flogtool was run out of a source tree. This is somewhat fragile, of course.
+
+stashed_path = [
+%(path)s]
+
+import sys
+needed = [p for p in stashed_path if p not in sys.path]
+sys.path = needed + sys.path
+print 'NEEDED', needed
+
+from foolscap.logging import gatherer
+from twisted.application import service
+
+gs = gatherer.IncidentGathererService()
+application = service.Application('incident_gatherer')
+gs.setServiceParent(application)
+"""
+
+def create_incident_gatherer(config):
+    basedir = config["basedir"]
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+    f = open(os.path.join(basedir, "incident-gatherer.tac"), "w")
+    stashed_path = ""
+    for p in sys.path:
+        stashed_path += "  %r,\n" % p
+    f.write(INCIDENT_TACFILE % { 'path': stashed_path,
+                                 })
+    f.close()
+    if not config["quiet"]:
+        print "Incident Gatherer created in directory %s" % basedir
+        print "Now run '(cd %s && twistd -y incident-gatherer.tac)' to launch the daemon" % basedir

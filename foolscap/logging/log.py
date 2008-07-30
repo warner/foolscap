@@ -255,6 +255,8 @@ class FoolscapLogger:
             ir.incident_declared(triggering_event)
 
     def incident_recorded(self, filename, name, trigger):
+        # 'name' is incident-TIMESTAMP-UNIQUE, whereas filename is an
+        # absolute pathname to the NAME.flog.bz2 file.
         self.incidents_recorded += 1
         self.recent_recorded_incidents.append(filename)
         while len(self.recent_recorded_incidents) > self.MAX_RECORDED_INCIDENTS:
