@@ -1,5 +1,8 @@
 2008-07-30  Brian Warner  <warner@lothar.com>
 
+	* trees/tahoe/Makefile (figleaf-output): exclude foolscap/test/ from
+	the HTML results
+
 	* doc/logging.xhtml (Running an Incident Gatherer): describe the
 	Incident Gatherer, like the Log Gatherer but it only gathers
 	incidents. It also does classification, and will eventually do

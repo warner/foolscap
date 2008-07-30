@@ -16,7 +16,7 @@ test-figleaf:
 
 figleaf-output:
 	rm -rf coverage-html
-	PYTHONPATH=misc/testutils python misc/testutils/figleaf2html -d coverage-html -r .
+	PYTHONPATH=misc/testutils python misc/testutils/figleaf2html -d coverage-html -r . -x misc/testutils/figleaf.excludes
 	@echo "now point your browser at coverage-html/index.html"
 .figleaf.el: .figleaf
 	PYTHONPATH=misc/testutils python misc/testutils/figleaf2el.py .figleaf .
