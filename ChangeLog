@@ -1,5 +1,11 @@
 2008-07-29  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/gatherer.py (GatheringBase): refactor the log
+	gatherer to share code with the upcoming incident gatherer
+	(LogGatherer.__init__): add a basedir= argument, rather than
+	using os.getcwd
+	* foolscap/test/test_logging.py (Gatherer): add basedir= argument
+
 	* doc/logging.xhtml (Setting up the logport): New feature (well,
 	it didn't work before, and now it does, so make it explicit): the
 	log-gatherer FURL can be configured (but will not be connected)

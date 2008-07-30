@@ -938,7 +938,7 @@ class Gatherer(PollMixin, unittest.TestCase):
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
-        gatherer = MyGatherer()
+        gatherer = MyGatherer(basedir)
         gatherer.d = defer.Deferred()
         fn = os.path.join(basedir, "logs.pickle")
         gatherer._open_savefile(123.456, fn)
@@ -971,7 +971,7 @@ class Gatherer(PollMixin, unittest.TestCase):
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
-        gatherer = MyGatherer()
+        gatherer = MyGatherer(basedir)
         gatherer.d = defer.Deferred()
         fn = os.path.join(basedir, "logs.pickle")
         gatherer._open_savefile(123.456, fn)
@@ -1000,7 +1000,7 @@ class Gatherer(PollMixin, unittest.TestCase):
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
-        gatherer = MyGatherer()
+        gatherer = MyGatherer(basedir)
         gatherer.d = defer.Deferred()
         fn = os.path.join(basedir, "logs.pickle")
         gatherer._open_savefile(123.456, fn)
@@ -1034,7 +1034,7 @@ class Gatherer(PollMixin, unittest.TestCase):
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
-        gatherer = MyGatherer()
+        gatherer = MyGatherer(basedir)
         gatherer.d = defer.Deferred()
         fn = os.path.join(basedir, "logs.pickle")
         gatherer._open_savefile(123.456, fn)
@@ -1073,7 +1073,7 @@ class Gatherer(PollMixin, unittest.TestCase):
 
         gatherer1_basedir = os.path.join(basedir, "gatherer1")
         os.makedirs(gatherer1_basedir)
-        gatherer1 = MyGatherer()
+        gatherer1 = MyGatherer(gatherer1_basedir)
         gatherer1.d = defer.Deferred()
         fn = os.path.join(gatherer1_basedir, "logs.pickle")
         gatherer1._open_savefile(123.456, fn)
@@ -1082,7 +1082,7 @@ class Gatherer(PollMixin, unittest.TestCase):
 
         gatherer2_basedir = os.path.join(basedir, "gatherer2")
         os.makedirs(gatherer2_basedir)
-        gatherer2 = MyGatherer()
+        gatherer2 = MyGatherer(gatherer2_basedir)
         gatherer2.d = defer.Deferred()
         fn = os.path.join(gatherer2_basedir, "logs.pickle")
         gatherer2._open_savefile(123.456, fn)
