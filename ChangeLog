@@ -1,5 +1,7 @@
 2008-07-30  Brian Warner  <warner@lothar.com>
 
+	* setup.py: update comment about bug #62 (pyopenssl problems)
+
 	* foolscap/test/test_logging.py (CLI.test_create_gatherer):
 	improve test coverage a little bit, by recording stdout
 	(CLI.test_create_incident_gatherer): exercise the 'flogtool

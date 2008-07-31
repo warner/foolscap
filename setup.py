@@ -60,7 +60,8 @@ except ImportError:
 else:
     setup_args['install_requires'] = ['twisted >= 2.4.0']
     setup_args['extras_require'] = { 'secure_connections' : ["pyOpenSSL"] }
-    # note that pyOpenSSL-0.6 causes unit test failures, see bug #62
+    # note that pyOpenSSL-0.7 and recent Twisted causes unit test failures,
+    # see bug #62
 
 if __name__ == '__main__':
     setup(**setup_args)
