@@ -261,7 +261,7 @@ application = service.Application('log_gatherer')
 gs.setServiceParent(application)
 """
 
-def create_log_gatherer(config):
+def create_log_gatherer(config, stdout=sys.stdout):
     basedir = config["basedir"]
     if not os.path.exists(basedir):
         os.makedirs(basedir)
@@ -279,8 +279,8 @@ def create_log_gatherer(config):
                         })
     f.close()
     if not config["quiet"]:
-        print "Gatherer created in directory %s" % basedir
-        print "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir
+        print >>stdout, "Gatherer created in directory %s" % basedir
+        print >>stdout, "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir
 
 
 ###################
@@ -511,7 +511,7 @@ application = service.Application('incident_gatherer')
 gs.setServiceParent(application)
 """
 
-def create_incident_gatherer(config):
+def create_incident_gatherer(config, stdout=sys.stdout):
     basedir = config["basedir"]
     if not os.path.exists(basedir):
         os.makedirs(basedir)
@@ -523,5 +523,5 @@ def create_incident_gatherer(config):
                                  })
     f.close()
     if not config["quiet"]:
-        print "Incident Gatherer created in directory %s" % basedir
-        print "Now run '(cd %s && twistd -y incident-gatherer.tac)' to launch the daemon" % basedir
+        print >>stdout, "Incident Gatherer created in directory %s" % basedir
+        print >>stdout, "Now run '(cd %s && twistd -y incident-gatherer.tac)' to launch the daemon" % basedir

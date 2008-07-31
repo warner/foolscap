@@ -1304,6 +1304,21 @@ class CLI(unittest.TestCase):
         cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
 
+        basedir = "logging/CLI/create_gatherer2"
+        argv = ["flogtool", "create-gatherer", "--rotate", "3600",
+                "--quiet", basedir]
+        cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnless(os.path.exists(basedir))
+
+        basedir = "logging/CLI/create_gatherer3"
+        argv = ["flogtool", "create-gatherer", basedir]
+        (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnless(os.path.exists(basedir))
+        self.failUnless(("Gatherer created in directory %s" % basedir)
+                        in out, out)
+        self.failUnless("Now run" in out, out)
+        self.failUnless("to launch the daemon" in out, out)
+
     def test_create_gatherer_badly(self):
         basedir = "logging/CLI/create_gatherer"
         argv = ["flogtool", "create-gatherer", "--bogus-arg"]
@@ -1315,6 +1330,22 @@ class CLI(unittest.TestCase):
         argv = ["wrapper", "flogtool", "create-gatherer", "--quiet", basedir]
         run_wrapper(argv[1:])
         self.failUnless(os.path.exists(basedir))
+
+    def test_create_incident_gatherer(self):
+        basedir = "logging/CLI/create_incident_gatherer"
+        argv = ["flogtool", "create-incident-gatherer", "--quiet", basedir]
+        cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnless(os.path.exists(basedir))
+
+        basedir = "logging/CLI/create_incident_gatherer2"
+        argv = ["flogtool", "create-incident-gatherer", basedir]
+        (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnless(os.path.exists(basedir))
+        self.failUnless(("Incident Gatherer created in directory %s" % basedir)
+                        in out, out)
+        self.failUnless("Now run" in out, out)
+        self.failUnless("to launch the daemon" in out, out)
+
 
 class Web(unittest.TestCase):
     def setUp(self):

@@ -1,5 +1,14 @@
 2008-07-30  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_logging.py (CLI.test_create_gatherer):
+	improve test coverage a little bit, by recording stdout
+	(CLI.test_create_incident_gatherer): exercise the 'flogtool
+	create-incident-gatherer' command
+	* foolscap/logging/cli.py (run_flogtool): capture stdout+stderr
+	(dispatch): same
+	* foolscap/logging/gatherer.py (create_log_gatherer): same
+	(create_incident_gatherer): same
+
 	* trees/tahoe/Makefile (figleaf-output): exclude foolscap/test/ from
 	the HTML results
 

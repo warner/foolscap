@@ -1,5 +1,6 @@
 
 import sys
+from StringIO import StringIO
 from twisted.python import usage
 
 import foolscap
@@ -42,7 +43,7 @@ class Options(usage.Options):
         sys.exit(0)
 
 
-def dispatch(command, options):
+def dispatch(command, options, stdout, stderr):
     if command == "tail":
         from foolscap.logging.tail import LogTail
         lt = LogTail(options)
@@ -50,11 +51,11 @@ def dispatch(command, options):
 
     elif command == "create-gatherer":
         from foolscap.logging.gatherer import create_log_gatherer
-        create_log_gatherer(options)
+        create_log_gatherer(options, stdout)
 
     elif command == "create-incident-gatherer":
         from foolscap.logging.gatherer import create_incident_gatherer
-        create_incident_gatherer(options)
+        create_incident_gatherer(options, stdout)
 
     elif command == "dump":
         from foolscap.logging.dumper import LogDumper
@@ -94,4 +95,10 @@ def run_flogtool(argv=None, run_by_human=True):
 
     command = config.subCommand
     so = config.subOptions
-    dispatch(command, so)
+    stdout, stderr = sys.stdout, sys.stderr
+    if not run_by_human:
+        stdout = StringIO()
+        stderr = StringIO()
+    dispatch(command, so, stdout, stderr)
+    if not run_by_human:
+        return (stdout.getvalue(), stderr.getvalue())
