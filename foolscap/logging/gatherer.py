@@ -6,11 +6,10 @@ try:
 except ImportError:
     pass
 from zope.interface import implements
-from twisted.internet import reactor, defer, task, utils
+from twisted.internet import reactor, utils, defer
 from twisted.python import usage, procutils, filepath
-from twisted.application import service
+from twisted.application import service, internet
 import foolscap
-from foolscap.eventual import fireEventually
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.util import get_local_ip_for
 from foolscap import base32
@@ -18,61 +17,62 @@ from foolscap import base32
 class BadTubID(Exception):
     pass
 
-class GatheringBase(foolscap.Referenceable):
+class GatheringBase(service.MultiService, foolscap.Referenceable):
+    # requires self.furlFile and self.tacFile to be set on the class, both of
+    # which should be relative to the basedir.
+    use_local_addresses = True
+    tub_class = foolscap.Tub
+
     def __init__(self, basedir):
+        if basedir is None:
+            # This instance was created by a gatherer.tac file. Confirm that
+            # we're running from the right directory (the one with the .tac
+            # file), otherwise we'll put the logfiles in the wrong place.
+            basedir = os.getcwd()
+            tac = os.path.join(basedir, self.tacFile)
+            if not os.path.exists(tac):
+                raise RuntimeError("running in the wrong directory")
         self.basedir = basedir
+        service.MultiService.__init__(self)
 
-    def run(self):
-        d = fireEventually()
-        d.addCallback(self.start)
-        d.addErrback(self._error)
-        if self.verbose:
-            print "starting.."
-        reactor.run()
+    def startService(self):
+        service.MultiService.startService(self)
+        certFile = os.path.join(self.basedir, "gatherer.pem")
+        self._tub = self.tub_class(certFile=certFile)
+        self._tub.setServiceParent(self)
+        local_addresses = ["127.0.0.1"]
+        local_address = get_local_ip_for()
+        if self.use_local_addresses and local_address:
+            local_addresses.insert(0, local_address)
 
-    def _error(self, f):
-        if self.verbose:
-            print "ERROR", f
-        reactor.stop()
-
-    def start(self, res):
-        d = self.setup_tub()
-        d.addCallback(self._tub_ready)
-        return d
-
-    def setup_tub(self):
-        self._tub = foolscap.Tub(certFile="gatherer.pem")
-        self._tub.startService()
-        portnumfile = "portnum"
+        portnumfile = os.path.join(self.basedir, "portnum")
         try:
-            portnum = int(open(portnumfile, "r").read())
+            desired_portnum = int(open(portnumfile, "r").read())
         except (EnvironmentError, ValueError):
-            portnum = 0
-        self._tub.listenOn("tcp:%d" % portnum)
-        d = defer.maybeDeferred(get_local_ip_for)
-        d.addCallback(self._set_location)
-        d.addCallback(lambda res: self._tub)
-        return d
+            desired_portnum = 0
+        l = self._tub.listenOn("tcp:%d" % desired_portnum)
 
-    def _set_location(self, local_address):
-        if local_address is None:
-            local_addresses = ["127.0.0.1"]
-        else:
-            local_addresses = [local_address, "127.0.0.1"]
-        l = self._tub.getListeners()[0]
-        portnum = l.getPortnum()
-        portnumfile = "portnum"
-        open(portnumfile, "w").write("%d\n" % portnum)
-        local_addresses = [ "%s:%d" % (addr, portnum,)
+        got_portnum = l.getPortnum()
+        open(portnumfile, "w").write("%d\n" % got_portnum)
+
+        # we can't do setLocation until we have two things:
+        #  portnum: this requires listenOn, if portnum=0 also startService
+        #  localip: this just requires a call to get_local_ip_for
+        # so it is safe to do everything in startService, after the upcall
+
+        local_addresses = [ "%s:%d" % (addr, got_portnum,)
                             for addr in local_addresses ]
         assert len(local_addresses) >= 1
         location = ",".join(local_addresses)
         self._tub.setLocation(location)
 
-    def _tub_ready(self, tub):
-        me = tub.registerReference(self, furlFile=self.furlFile)
+        self.tub_ready()
+
+    def tub_ready(self):
+        furlFile = os.path.join(self.basedir, self.furlFile)
+        self.my_furl = self._tub.registerReference(self, furlFile=furlFile)
         if self.verbose:
-            print "Gatherer waiting at:", me
+            print "Gatherer waiting at:", self.my_furl
 
 class CreateGatherOptions(usage.Options):
     """flogtool create-gatherer GATHERER_DIRECTORY"""
@@ -100,7 +100,10 @@ class Observer(foolscap.Referenceable):
     def remote_msg(self, d):
         self.gatherer.msg(self.nodeid_s, d)
 
-class LogGatherer(GatheringBase):
+class GathererService(GatheringBase):
+    # create this with 'flogtool create-gatherer BASEDIR'
+    # run this as 'cd BASEDIR && twistd -y gatherer.tac'
+
     """Run a service that gathers logs from multiple applications.
 
     The LogGatherer sits in a corner and receives log events from many
@@ -125,35 +128,51 @@ class LogGatherer(GatheringBase):
      def _log_gatherer_connected(self, rref, lp):
          rref.callRemote('logport', self.nodeid, lp)
 
-    This LogGatherer class is meant to be run as a standalone service from
-    bin/flogtool, but by careful subclassing and setup it could be run as
-    part of some other application.
+    This LogGatherer class is meant to be run by twistd from a .tac file, but
+    applications that want to provide the same functionality can just
+    instantiate it with a distinct basedir= and call startService.
 
     """
 
     implements(RILogGatherer)
     verbose = True
     furlFile = "log_gatherer.furl"
+    tacFile = "gatherer.tac"
     TIME_FORMAT = "%Y-%m-%d-%H%M%S"
 
-    def __init__(self, basedir, bzip=None):
-        self.bzip = bzip
+    def __init__(self, rotate, use_bzip, basedir=None):
         GatheringBase.__init__(self, basedir)
+        if rotate: # int or None
+            rotator = internet.TimerService(rotate, self.do_rotate)
+            rotator.setServiceParent(self)
+        bzip = None
+        if use_bzip:
+            bzips = procutils.which("bzip2")
+            if bzips:
+                bzip = bzips[0]
+        self.bzip = bzip
+        if signal and hasattr(signal, "SIGHUP"):
+            signal.signal(signal.SIGHUP, self._handle_SIGHUP)
+
+    def _handle_SIGHUP(self, *args):
+        reactor.callFromThread(self.do_rotate)
+
+    def startService(self):
+        # note: the rotator (if any) will fire as soon as startService is
+        # called, since TimerService uses now=True. To deal with this,
+        # do_rotate() tests self._savefile before doing anything else, and
+        # we're careful to upcall to startService before we do the first
+        # call to _open_savefile().
+        GatheringBase.startService(self)
+        now = time.time()
+        self._open_savefile(now)
 
     def format_time(self, when):
         return time.strftime(self.TIME_FORMAT, time.localtime(when))
 
-    def start(self, res):
-        now = time.time()
-        self._open_savefile(now)
-        if signal and hasattr(signal, "SIGHUP"):
-            signal.signal(signal.SIGHUP, self._handle_SIGHUP)
-
-        return GatheringBase.start(self, res)
-
-    def _open_savefile(self, now, filename=None):
+    def _open_savefile(self, now):
         new_filename = "from-%s--to-present.flog" % self.format_time(now)
-        self._savefile_name = filename or new_filename
+        self._savefile_name = os.path.join(self.basedir, new_filename)
         self._savefile = open(self._savefile_name, "ab", 0)
         self._starting_timestamp = now
         header = {"header": {"type": "gatherer",
@@ -161,16 +180,15 @@ class LogGatherer(GatheringBase):
                              }}
         pickle.dump(header, self._savefile)
 
-    def _handle_SIGHUP(self, *args):
-        reactor.callFromThread(self.rotate)
-
-    def rotate(self):
+    def do_rotate(self):
         self._savefile.close()
         now = time.time()
         from_time = self.format_time(self._starting_timestamp)
         to_time = self.format_time(now)
         new_name = "from-%s--to-%s.flog" % (from_time, to_time)
+        new_name = os.path.join(self.basedir, new_name)
         os.rename(self._savefile_name, new_name)
+        self._open_savefile(now)
         if self.bzip:
             # we spawn an external bzip process because it's easier than
             # using the stdlib bz2 module and spreading the work out over
@@ -179,10 +197,16 @@ class LogGatherer(GatheringBase):
             # the gatherer might be killed at any moment, and BZ2File doesn't
             # flush its output until the file is closed.
             d = utils.getProcessOutput(self.bzip, [new_name], env=os.environ)
-            def _compressed(f):
+            new_name = new_name + ".bz2"
+            def _compression_error(f):
                 print f
-            d.addErrback(_compressed)
-        self._open_savefile(now)
+            d.addErrback(_compression_error)
+            # note that by returning this Deferred, the rotation timer won't
+            # start again until the bzip process finishes
+        else:
+            d = defer.succeed(None)
+        d.addCallback(lambda res: new_name)
+        return d # for tests
 
     def remote_logport(self, nodeid, publisher):
         # nodeid is actually a printable string
@@ -203,41 +227,7 @@ class LogGatherer(GatheringBase):
             print "GATHERER: unable to pickle %s: %s" % (e, ex)
 
 
-class GathererService(service.Service):
-    # create this with 'flogtool create-gatherer BASEDIR'
-    # run this as 'cd BASEDIR && twistd -y gatherer.tac'
-    def __init__(self, rotate, use_bzip):
-        self.rotate = rotate
-        self.use_bzip = use_bzip
-        self._rotator = None
-
-    def startService(self):
-        # confirm that we're running from our BASEDIR, otherwise we'll put
-        # the logevent file in the wrong place.
-        basedir = os.getcwd()
-        tac = os.path.join(basedir, "gatherer.tac")
-        if not os.path.exists(tac):
-            raise RuntimeError("running in the wrong directory")
-        service.Service.startService(self)
-        bzip = None
-        if self.use_bzip:
-            bzip = procutils.which("bzip2")
-            if bzip:
-                bzip = bzip[0]
-        lg = LogGatherer(basedir, bzip)
-        if self.rotate:
-            self._rotator = task.LoopingCall(lg.rotate)
-            self._rotator.start(self.rotate, now=False)
-        d = fireEventually()
-        d.addCallback(lg.start)
-        d.addErrback(lg._error)
-
-    def stopService(self):
-        if self._rotator:
-            self._rotator.stop()
-        return service.Service.stopService(self)
-
-TACFILE = """\
+LOG_GATHERER_TACFILE = """\
 # -*- python -*-
 
 # we record the path when 'flogtool create-gatherer' is run, in case flogtool
@@ -273,10 +263,10 @@ def create_log_gatherer(config, stdout=sys.stdout):
         rotate = config["rotate"]
     else:
         rotate = "None"
-    f.write(TACFILE % { 'path': stashed_path,
-                        'rotate': rotate,
-                        'use_bzip': bool(config["bzip"]),
-                        })
+    f.write(LOG_GATHERER_TACFILE % { 'path': stashed_path,
+                                     'rotate': rotate,
+                                     'use_bzip': bool(config["bzip"]),
+                                     })
     f.close()
     if not config["quiet"]:
         print >>stdout, "Gatherer created in directory %s" % basedir
@@ -368,7 +358,10 @@ class IncidentObserver(foolscap.Referenceable):
     def remote_done_with_incident_catchup(self):
         return None
 
-class IncidentGatherer(GatheringBase):
+class IncidentGathererService(GatheringBase):
+    # create this with 'flogtool create-incident-gatherer BASEDIR'
+    # run this as 'cd BASEDIR && twistd -y gatherer.tac'
+
     """Run a service that gathers Incidents from multiple applications.
 
     The IncidentGatherer sits in a corner and receives incidents from many
@@ -390,10 +383,15 @@ class IncidentGatherer(GatheringBase):
     implements(RILogGatherer)
     verbose = True
     furlFile = "incident_gatherer.furl"
+    tacFile = "incident-gatherer.tac"
 
-    def __init__(self, basedir, classifiers):
+    def __init__(self, classifiers=[], basedir=None):
         GatheringBase.__init__(self, basedir)
-        self.classifiers = classifiers
+        self.classifiers = []
+        self.classifiers.extend(classifiers)
+
+    def addClassifier(self, f):
+        self.classifiers.append(f)
 
 
     def start(self, res):
@@ -465,31 +463,7 @@ class IncidentGatherer(GatheringBase):
             f.close()
 
 
-class IncidentGathererService(service.Service):
-    # create this with 'flogtool create-incident-gatherer BASEDIR'
-    # run this as 'cd BASEDIR && twistd -y gatherer.tac'
-
-    def __init__(self):
-        #service.Service.__init__(self) # Service has no __init__
-        self.classifiers = []
-
-    def addClassifier(self, f):
-        self.classifiers.append(f)
-
-    def startService(self):
-        # confirm that we're running from our BASEDIR, otherwise we'll put
-        # files in the wrong place.
-        basedir = os.getcwd()
-        tac = os.path.join(basedir, "incident-gatherer.tac")
-        if not os.path.exists(tac):
-            raise RuntimeError("running in the wrong directory")
-        service.Service.startService(self)
-        lg = IncidentGatherer(basedir, self.classifiers)
-        d = fireEventually()
-        d.addCallback(lg.start)
-        d.addErrback(lg._error)
-
-INCIDENT_TACFILE = """\
+INCIDENT_GATHERER_TACFILE = """\
 # -*- python -*-
 
 # we record the path when 'flogtool create-incident-gatherer' is run, in case
@@ -507,6 +481,19 @@ from foolscap.logging import gatherer
 from twisted.application import service
 
 gs = gatherer.IncidentGathererService()
+
+# To add a classifier function, call gs.addClassifier(f) like this:
+#
+#import re
+#TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.negotiate.TubConnector instance at \w+> is not in \[')
+#def is_foolscap(nodeis_s, incident):
+#    (header, events) = incident
+#    trigger = header['trigger']
+#    m = trigger.get('message', '')
+#    if TUBCON_RE.search(m):
+#        return 'foolscap-tubconnector'
+#gs.addClassifier(is_foolscap)
+
 application = service.Application('incident_gatherer')
 gs.setServiceParent(application)
 """
@@ -519,8 +506,8 @@ def create_incident_gatherer(config, stdout=sys.stdout):
     stashed_path = ""
     for p in sys.path:
         stashed_path += "  %r,\n" % p
-    f.write(INCIDENT_TACFILE % { 'path': stashed_path,
-                                 })
+    f.write(INCIDENT_GATHERER_TACFILE % { 'path': stashed_path,
+                                          })
     f.close()
     if not config["quiet"]:
         print >>stdout, "Incident Gatherer created in directory %s" % basedir

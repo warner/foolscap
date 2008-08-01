@@ -333,12 +333,11 @@ class Observer(Referenceable):
     def remote_done_with_incident_catchup(self):
         self.done_with_incidents = True
 
-class MyGatherer(gatherer.LogGatherer):
+class MyGatherer(gatherer.GathererService):
     verbose = False
-    furlFile = None
 
     def remote_logport(self, nodeid, publisher):
-        d = gatherer.LogGatherer.remote_logport(self, nodeid, publisher)
+        d = gatherer.GathererService.remote_logport(self, nodeid, publisher)
         d.addBoth(lambda res: self.d.callback(publisher))
 
 class SampleError(Exception):
@@ -896,7 +895,7 @@ class Gatherer(PollMixin, unittest.TestCase):
         reactor.callLater(delay, d.callback, res)
         return d
 
-    def _emit_messages_and_flush(self, res, t2):
+    def _emit_messages_and_flush(self, res, t):
         log.msg("gathered message here")
         try:
             raise SampleError("whoops1")
@@ -907,14 +906,12 @@ class Gatherer(PollMixin, unittest.TestCase):
         except SampleError:
             log.err(failure.Failure())
         d = self.stall(None, 1.0)
-        d.addCallback(lambda res: t2.disownServiceParent())
+        d.addCallback(lambda res: t.disownServiceParent())
         # that will disconnect from the gatherer, which will flush the logfile
         d.addCallback(self.stall, 1.0)
         return d
 
-    def _check_gatherer(self, res, basedir, gatherer, t2):
-        gatherer._savefile.close()
-        fn = os.path.join(basedir, "logs.pickle")
+    def _check_gatherer(self, fn, starting_timestamp, expected_tubid):
         f = open(fn, "r")
         events = []
         while True:
@@ -922,6 +919,9 @@ class Gatherer(PollMixin, unittest.TestCase):
                 events.append(pickle.load(f))
             except EOFError:
                 break
+        if len(events) != 4:
+            from pprint import pprint
+            pprint(events)
         self.failUnlessEqual(len(events), 4)
 
         # header
@@ -929,23 +929,17 @@ class Gatherer(PollMixin, unittest.TestCase):
         self.failUnless(isinstance(data, dict))
         self.failUnless("header" in data)
         self.failUnlessEqual(data["header"]["type"], "gatherer")
-        self.failUnlessEqual(data["header"]["start"], 123.456)
+        self.failUnlessEqual(data["header"]["start"], starting_timestamp)
 
         # grab the first event from the log
         data = events.pop(0)
         self.failUnless(isinstance(data, dict))
-        expected_tubid = t2.tubID
-        if t2.tubID is None:
-            expected_tubid = "<unauth>"
         self.failUnlessEqual(data['from'], expected_tubid)
         self.failUnlessEqual(data['d']['message'], "gathered message here")
 
         # grab the second event from the log
         data = events.pop(0)
         self.failUnless(isinstance(data, dict))
-        expected_tubid = t2.tubID
-        if t2.tubID is None:
-            expected_tubid = "<unauth>"
         self.failUnlessEqual(data['from'], expected_tubid)
         self.failUnlessEqual(data['d']['message'], "")
         self.failUnless(data['d']["isError"])
@@ -956,9 +950,6 @@ class Gatherer(PollMixin, unittest.TestCase):
         # grab the third event from the log
         data = events.pop(0)
         self.failUnless(isinstance(data, dict))
-        expected_tubid = t2.tubID
-        if t2.tubID is None:
-            expected_tubid = "<unauth>"
         self.failUnlessEqual(data['from'], expected_tubid)
         self.failUnlessEqual(data['d']['message'], "")
         self.failUnless(data['d']["isError"])
@@ -971,31 +962,33 @@ class Gatherer(PollMixin, unittest.TestCase):
         basedir = "logging/Gatherer/log_gatherer"
         os.makedirs(basedir)
 
+        # create a gatherer, which will create its own Tub
+        gatherer = MyGatherer(None, False, basedir)
+        gatherer.tub_class = GoodEnoughTub
+        gatherer.d = defer.Deferred()
+        gatherer.setServiceParent(self.parent)
+        # that will start the gatherer
+        fn = gatherer._savefile_name
+        gatherer_furl = gatherer.my_furl
+        starting_timestamp = gatherer._starting_timestamp
+
         t = GoodEnoughTub()
+        expected_tubid = t.tubID
+        if t.tubID is None:
+            expected_tubid = "<unauth>"
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
-
-        gatherer = MyGatherer(basedir)
-        gatherer.d = defer.Deferred()
-        fn = os.path.join(basedir, "logs.pickle")
-        gatherer._open_savefile(123.456, fn)
-        gatherer._tub_ready(t)
-        gatherer_furl = t.registerReference(gatherer)
-
-        t2 = GoodEnoughTub()
-        t2.setServiceParent(self.parent)
-        l = t2.listenOn("tcp:0:interface=127.0.0.1")
-        t2.setLocation("127.0.0.1:%d" % l.getPortnum())
-        t2.setOption("log-gatherer-furl", gatherer_furl)
+        t.setOption("log-gatherer-furl", gatherer_furl)
 
         # about now, the node will be contacting the Gatherer and
         # offering its logport.
 
         # gatherer.d will be fired when subscribe_to_all() has finished
         d = gatherer.d
-        d.addCallback(self._emit_messages_and_flush, t2)
-        d.addCallback(self._check_gatherer, basedir, gatherer, t2)
+        d.addCallback(self._emit_messages_and_flush, t)
+        d.addCallback(lambda res: gatherer.do_rotate())
+        d.addCallback(self._check_gatherer, starting_timestamp, expected_tubid)
         return d
     test_log_gatherer.timeout = 20
 
@@ -1004,27 +997,29 @@ class Gatherer(PollMixin, unittest.TestCase):
         basedir = "logging/Gatherer/log_gatherer2"
         os.makedirs(basedir)
 
+        # create a gatherer, which will create its own Tub
+        gatherer = MyGatherer(None, False, basedir)
+        gatherer.tub_class = GoodEnoughTub
+        gatherer.d = defer.Deferred()
+        gatherer.setServiceParent(self.parent)
+        # that will start the gatherer
+        fn = gatherer._savefile_name
+        gatherer_furl = gatherer.my_furl
+        starting_timestamp = gatherer._starting_timestamp
+
         t = GoodEnoughTub()
+        expected_tubid = t.tubID
+        if t.tubID is None:
+            expected_tubid = "<unauth>"
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setOption("log-gatherer-furl", gatherer_furl)
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
-        gatherer = MyGatherer(basedir)
-        gatherer.d = defer.Deferred()
-        fn = os.path.join(basedir, "logs.pickle")
-        gatherer._open_savefile(123.456, fn)
-        gatherer._tub_ready(t)
-        gatherer_furl = t.registerReference(gatherer)
-
-        t2 = GoodEnoughTub()
-        t2.setServiceParent(self.parent)
-        l = t2.listenOn("tcp:0:interface=127.0.0.1")
-        t2.setOption("log-gatherer-furl", gatherer_furl)
-        t2.setLocation("127.0.0.1:%d" % l.getPortnum())
-
         d = gatherer.d
-        d.addCallback(self._emit_messages_and_flush, t2)
-        d.addCallback(self._check_gatherer, basedir, gatherer, t2)
+        d.addCallback(self._emit_messages_and_flush, t)
+        d.addCallback(lambda res: gatherer.do_rotate())
+        d.addCallback(self._check_gatherer, starting_timestamp, expected_tubid)
         return d
     test_log_gatherer2.timeout = 20
 
@@ -1033,32 +1028,29 @@ class Gatherer(PollMixin, unittest.TestCase):
         basedir = "logging/Gatherer/log_gatherer_furlfile"
         os.makedirs(basedir)
 
+        # create a gatherer, which will create its own Tub
+        gatherer = MyGatherer(None, False, basedir)
+        gatherer.tub_class = GoodEnoughTub
+        gatherer.d = defer.Deferred()
+        gatherer.setServiceParent(self.parent)
+        # that will start the gatherer
+        fn = gatherer._savefile_name
+        gatherer_furlfile = os.path.join(basedir, gatherer.furlFile)
+        starting_timestamp = gatherer._starting_timestamp
+
         t = GoodEnoughTub()
+        expected_tubid = t.tubID
+        if t.tubID is None:
+            expected_tubid = "<unauth>"
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
-
-        gatherer = MyGatherer(basedir)
-        gatherer.d = defer.Deferred()
-        fn = os.path.join(basedir, "logs.pickle")
-        gatherer._open_savefile(123.456, fn)
-        gatherer._tub_ready(t)
-        gatherer_furl = t.registerReference(gatherer)
-
-        gatherer_fn = os.path.join(basedir, "log_gatherer.furl")
-        f = open(gatherer_fn, "w")
-        f.write(gatherer_furl + "\n")
-        f.close()
-
-        t2 = GoodEnoughTub()
-        t2.setServiceParent(self.parent)
-        l = t2.listenOn("tcp:0:interface=127.0.0.1")
-        t2.setLocation("127.0.0.1:%d" % l.getPortnum())
-        t2.setOption("log-gatherer-furlfile", gatherer_fn)
+        t.setOption("log-gatherer-furlfile", gatherer_furlfile)
 
         d = gatherer.d
-        d.addCallback(self._emit_messages_and_flush, t2)
-        d.addCallback(self._check_gatherer, basedir, gatherer, t2)
+        d.addCallback(self._emit_messages_and_flush, t)
+        d.addCallback(lambda res: gatherer.do_rotate())
+        d.addCallback(self._check_gatherer, starting_timestamp, expected_tubid)
         return d
     test_log_gatherer_furlfile.timeout = 20
 
@@ -1067,36 +1059,33 @@ class Gatherer(PollMixin, unittest.TestCase):
         basedir = "logging/Gatherer/log_gatherer_furlfile2"
         os.makedirs(basedir)
 
+        # create a gatherer, which will create its own Tub
+        gatherer = MyGatherer(None, False, basedir)
+        gatherer.tub_class = GoodEnoughTub
+        gatherer.d = defer.Deferred()
+        gatherer.setServiceParent(self.parent)
+        # that will start the gatherer
+        fn = gatherer._savefile_name
+        gatherer_furlfile = os.path.join(basedir, gatherer.furlFile)
+        starting_timestamp = gatherer._starting_timestamp
+
         t = GoodEnoughTub()
+        expected_tubid = t.tubID
+        if t.tubID is None:
+            expected_tubid = "<unauth>"
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
-
-        gatherer = MyGatherer(basedir)
-        gatherer.d = defer.Deferred()
-        fn = os.path.join(basedir, "logs.pickle")
-        gatherer._open_savefile(123.456, fn)
-        gatherer._tub_ready(t)
-        gatherer_furl = t.registerReference(gatherer)
-
-        gatherer_fn = os.path.join(basedir, "log_gatherer.furl")
-        f = open(gatherer_fn, "w")
-        f.write(gatherer_furl + "\n")
-        f.close()
-
-        t2 = GoodEnoughTub()
-        t2.setServiceParent(self.parent)
-        l = t2.listenOn("tcp:0:interface=127.0.0.1")
-        t2.setOption("log-gatherer-furlfile", gatherer_fn)
+        t.setOption("log-gatherer-furlfile", gatherer_furlfile)
         # one bug we had was that the log-gatherer was contacted before
         # setLocation had occurred, so exercise that case
         d = self.stall(None, 1.0)
         def _start(res):
-            t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+            t.setLocation("127.0.0.1:%d" % l.getPortnum())
             return gatherer.d
         d.addCallback(_start)
-        d.addCallback(self._emit_messages_and_flush, t2)
-        d.addCallback(self._check_gatherer, basedir, gatherer, t2)
+        d.addCallback(self._emit_messages_and_flush, t)
+        d.addCallback(lambda res: gatherer.do_rotate())
+        d.addCallback(self._check_gatherer, starting_timestamp, expected_tubid)
         return d
     test_log_gatherer_furlfile2.timeout = 20
 
@@ -1104,47 +1093,52 @@ class Gatherer(PollMixin, unittest.TestCase):
         basedir = "logging/Gatherer/log_gatherer_furlfile_multiple"
         os.makedirs(basedir)
 
-        t = GoodEnoughTub()
-        t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
-
         gatherer1_basedir = os.path.join(basedir, "gatherer1")
         os.makedirs(gatherer1_basedir)
-        gatherer1 = MyGatherer(gatherer1_basedir)
+        gatherer1 = MyGatherer(None, False, gatherer1_basedir)
+        gatherer1.tub_class = GoodEnoughTub
         gatherer1.d = defer.Deferred()
-        fn = os.path.join(gatherer1_basedir, "logs.pickle")
-        gatherer1._open_savefile(123.456, fn)
-        gatherer1._tub_ready(t)
-        gatherer1_furl = t.registerReference(gatherer1)
+        gatherer1.setServiceParent(self.parent)
+        # that will start the gatherer
+        fn1 = gatherer1._savefile_name
+        gatherer1_furl = gatherer1.my_furl
+        starting_timestamp1 = gatherer1._starting_timestamp
 
         gatherer2_basedir = os.path.join(basedir, "gatherer2")
         os.makedirs(gatherer2_basedir)
-        gatherer2 = MyGatherer(gatherer2_basedir)
+        gatherer2 = MyGatherer(None, False, gatherer2_basedir)
+        gatherer2.tub_class = GoodEnoughTub
         gatherer2.d = defer.Deferred()
-        fn = os.path.join(gatherer2_basedir, "logs.pickle")
-        gatherer2._open_savefile(123.456, fn)
-        gatherer2._tub_ready(t)
-        gatherer2_furl = t.registerReference(gatherer2)
+        gatherer2.setServiceParent(self.parent)
+        # that will start the gatherer
+        fn2 = gatherer2._savefile_name
+        gatherer2_furl = gatherer2.my_furl
+        starting_timestamp2 = gatherer2._starting_timestamp
 
-        gatherer_fn = os.path.join(basedir, "log_gatherer.furl")
-        f = open(gatherer_fn, "w")
+
+        gatherer_furlfile = os.path.join(basedir, "log_gatherer.furl")
+        f = open(gatherer_furlfile, "w")
         f.write(gatherer1_furl + "\n")
         f.write(gatherer2_furl + "\n")
         f.close()
 
-        t2 = GoodEnoughTub()
-        t2.setServiceParent(self.parent)
-        l = t2.listenOn("tcp:0:interface=127.0.0.1")
-        t2.setLocation("127.0.0.1:%d" % l.getPortnum())
-        t2.setOption("log-gatherer-furlfile", gatherer_fn)
+        t = GoodEnoughTub()
+        expected_tubid = t.tubID
+        if t.tubID is None:
+            expected_tubid = "<unauth>"
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setOption("log-gatherer-furlfile", gatherer_furlfile)
         # now both log gatherer connections will be being established
 
         d = defer.DeferredList([gatherer1.d, gatherer2.d],
                                fireOnOneErrback=True)
-        d.addCallback(self._emit_messages_and_flush, t2)
-        d.addCallback(self._check_gatherer, gatherer1_basedir, gatherer1, t2)
-        d.addCallback(self._check_gatherer, gatherer2_basedir, gatherer2, t2)
+        d.addCallback(self._emit_messages_and_flush, t)
+        d.addCallback(lambda res: gatherer1.do_rotate())
+        d.addCallback(self._check_gatherer, starting_timestamp1, expected_tubid)
+        d.addCallback(lambda res: gatherer2.do_rotate())
+        d.addCallback(self._check_gatherer, starting_timestamp2, expected_tubid)
         return d
     test_log_gatherer_furlfile_multiple.timeout = 20
 
@@ -1152,18 +1146,43 @@ class Gatherer(PollMixin, unittest.TestCase):
         basedir = "logging/Gatherer/log_gatherer_empty_furlfile"
         os.makedirs(basedir)
 
-        gatherer_fn = os.path.join(basedir, "log_gatherer.furl")
-        # leave the furlfile blank: use no gatherer
+        gatherer_fn = os.path.join(basedir, "lg.furl")
+        open(gatherer_fn, "w").close()
+        # leave the furlfile empty: use no gatherer
 
-        t2 = GoodEnoughTub()
-        t2.setServiceParent(self.parent)
-        l = t2.listenOn("tcp:0:interface=127.0.0.1")
-        t2.setLocation("127.0.0.1:%d" % l.getPortnum())
-        t2.setOption("log-gatherer-furlfile", gatherer_fn)
+        t = GoodEnoughTub()
+        expected_tubid = t.tubID
+        if t.tubID is None:
+            expected_tubid = "<unauth>"
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setOption("log-gatherer-furlfile", gatherer_fn)
 
-        lp_furl = t2.getLogPortFURL()
-        t2.log("this message shouldn't make anything explode")
+        lp_furl = t.getLogPortFURL()
+        t.log("this message shouldn't make anything explode")
     test_log_gatherer_empty_furlfile.timeout = 20
+
+    def test_log_gatherer_missing_furlfile(self):
+        basedir = "logging/Gatherer/log_gatherer_missing_furlfile"
+        os.makedirs(basedir)
+
+        gatherer_fn = os.path.join(basedir, "missing_lg.furl")
+        open(gatherer_fn, "w").close()
+        # leave the furlfile missing: use no gatherer
+
+        t = GoodEnoughTub()
+        expected_tubid = t.tubID
+        if t.tubID is None:
+            expected_tubid = "<unauth>"
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setOption("log-gatherer-furlfile", gatherer_fn)
+
+        lp_furl = t.getLogPortFURL()
+        t.log("this message shouldn't make anything explode")
+    test_log_gatherer_missing_furlfile.timeout = 20
 
 
 class Tail(unittest.TestCase):

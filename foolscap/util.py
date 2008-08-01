@@ -55,7 +55,8 @@ class AsyncAND(defer.Deferred):
 # adapted from Tahoe: finds a single publically-visible address, or None.
 # Tahoe also uses code to run /bin/ifconfig (or equivalent) to find other
 # addresses, but that's a bit heavy for this. Note that this runs
-# synchronously.
+# synchronously. Also note that this doesn't require the reactor to be
+# running.
 def get_local_ip_for(target='A.ROOT-SERVERS.NET'):
     """Find out what our IP address is for use by a given target.
 

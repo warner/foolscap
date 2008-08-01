@@ -1,3 +1,17 @@
+2008-08-01  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/gatherer.py (GatheringBase): rewrite Gatherers
+	to make them easier to test: now they are a Service (with a
+	subordinate Tub), meant to be run by a .tac file or manually. The
+	intermediate class has been removed. All .tac files are unchanged:
+	gatherers created by old versions of 'flogtool create-gatherer'
+	will continue to work.
+	(GathererService.do_rotate): return the name of the logfile that
+	was just closed and/or compressed, so tests can know where to
+	look.
+	* foolscap/test/test_logging.py (Gatherer): update to match
+	* foolscap/util.py (get_local_ip_for): update reactor comment
+
 2008-07-30  Brian Warner  <warner@lothar.com>
 
 	* setup.py: update comment about bug #62 (pyopenssl problems)
