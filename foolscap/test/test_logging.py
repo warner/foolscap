@@ -13,20 +13,7 @@ from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Tub, UnauthenticatedTub, Referenceable
 from foolscap.tokens import NoLocationError
-from foolscap.test.common import PollMixin
-
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
-
-# we use authenticated tubs if possible. If crypto is not available, fall
-# back to unauthenticated ones
-GoodEnoughTub = UnauthenticatedTub
-if crypto_available:
-    GoodEnoughTub = Tub
+from foolscap.test.common import PollMixin, GoodEnoughTub
 
 
 class Basic(unittest.TestCase):

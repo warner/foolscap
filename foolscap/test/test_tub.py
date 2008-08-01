@@ -5,24 +5,12 @@ from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.application import service
 
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
-
 from foolscap import Tub, UnauthenticatedTub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, flushEventualQueue
-from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin
+from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \
+     crypto_available, GoodEnoughTub
 from foolscap.tokens import WrongTubIdError, PBError
-
-# we use authenticated tubs if possible. If crypto is not available, fall
-# back to unauthenticated ones
-GoodEnoughTub = UnauthenticatedTub
-if crypto_available:
-    GoodEnoughTub = Tub
 
 class TestCertFile(unittest.TestCase):
     def test_generate(self):

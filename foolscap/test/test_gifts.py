@@ -7,22 +7,10 @@ from twisted.internet.error import ConnectionDone, ConnectionLost, \
 from twisted.python import failure
 from foolscap import Tub, UnauthenticatedTub, RemoteInterface, Referenceable
 from foolscap.referenceable import RemoteReference, SturdyRef
-from foolscap.test.common import HelperTarget, RIHelper
+from foolscap.test.common import HelperTarget, RIHelper, \
+     crypto_available, GoodEnoughTub
 from foolscap.eventual import flushEventualQueue
 from foolscap.tokens import BananaError, NegotiationError
-
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
-
-# we use authenticated tubs if possible. If crypto is not available, fall
-# back to unauthenticated ones
-GoodEnoughTub = UnauthenticatedTub
-if crypto_available:
-    GoodEnoughTub = Tub
 
 def ignoreConnectionDone(f):
     f.trap(ConnectionDone, ConnectionLost)

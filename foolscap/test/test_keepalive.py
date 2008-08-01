@@ -6,20 +6,7 @@ from twisted.python.failure import Failure
 from foolscap import Tub, UnauthenticatedTub, DeadReferenceError
 from foolscap.broker import Broker
 from foolscap.eventual import flushEventualQueue
-from foolscap.test.common import TargetWithoutInterfaces
-
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
-
-# we use authenticated tubs if possible. If crypto is not available, fall
-# back to unauthenticated ones
-GoodEnoughTub = UnauthenticatedTub
-if crypto_available:
-    GoodEnoughTub = Tub
+from foolscap.test.common import TargetWithoutInterfaces, GoodEnoughTub
 
 from twisted.python import log
 

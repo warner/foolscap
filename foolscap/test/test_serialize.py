@@ -7,25 +7,13 @@ from twisted.python import failure
 from cStringIO import StringIO
 import gc
 
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
-
 import foolscap
 from foolscap import Tub, UnauthenticatedTub
 from foolscap import Referenceable, Copyable, RemoteCopy
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import flushEventualQueue
 from foolscap.tokens import Violation
-
-# we use authenticated tubs if possible. If crypto is not available, fall
-# back to unauthenticated ones
-GoodEnoughTub = UnauthenticatedTub
-if crypto_available:
-    GoodEnoughTub = Tub
+from foolscap.test.common import GoodEnoughTub
 
 class Foo:
     # instances of non-Copyable classes are not serializable

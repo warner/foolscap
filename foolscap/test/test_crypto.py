@@ -8,13 +8,7 @@ from foolscap import pb
 from foolscap import RemoteInterface, Referenceable, Tub
 from foolscap.remoteinterface import RemoteMethodSchema
 from foolscap.eventual import flushEventualQueue
-
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
+from foolscap.test.common import crypto_available
 
 class RIMyCryptoTarget(RemoteInterface):
     # method constraints can be declared directly:

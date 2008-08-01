@@ -2,15 +2,8 @@
 from twisted.trial import unittest
 from twisted.internet import defer
 import foolscap
-from foolscap.test.common import HelperTarget
+from foolscap.test.common import HelperTarget, crypto_available
 from foolscap.eventual import flushEventualQueue
-
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
 
 
 class ConnectToSelf(unittest.TestCase):

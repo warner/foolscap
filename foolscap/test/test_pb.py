@@ -21,23 +21,10 @@ from foolscap import broker, call
 from foolscap.constraint import IConstraint
 from foolscap.logging import log
 
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
-
-# we use authenticated tubs if possible. If crypto is not available, fall
-# back to unauthenticated ones
-GoodEnoughTub = UnauthenticatedTub
-if crypto_available:
-    GoodEnoughTub = Tub
-
-from foolscap.test.common import HelperTarget, RIHelper, TargetMixin
+from foolscap.test.common import HelperTarget, RIHelper, TargetMixin, \
+     Target, TargetWithoutInterfaces, crypto_available, GoodEnoughTub
 from foolscap.eventual import fireEventually, flushEventualQueue
 
-from foolscap.test.common import Target, TargetWithoutInterfaces
 
 
 class TestRequest(call.PendingRequest):

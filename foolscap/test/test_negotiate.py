@@ -6,18 +6,7 @@ from twisted.application import internet
 from foolscap import pb, negotiate, tokens, eventual
 from foolscap import Referenceable, Tub, UnauthenticatedTub, BananaError
 from foolscap.eventual import flushEventualQueue
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
-
-# we use authenticated tubs if possible. If crypto is not available, fall
-# back to unauthenticated ones
-GoodEnoughTub = UnauthenticatedTub
-if crypto_available:
-    GoodEnoughTub = Tub
+from foolscap.test.common import crypto_available, GoodEnoughTub
 
 tubid_low = "3hemthez7rvgvyhjx2n5kdj7mcyar3yt"
 certData_low = \

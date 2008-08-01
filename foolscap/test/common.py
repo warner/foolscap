@@ -380,3 +380,19 @@ class ShouldFailMixin:
                           (which, expected_failure, res))
         d.addBoth(done)
         return d
+
+# we use authenticated tubs if possible. If crypto is not available, fall
+# back to unauthenticated ones
+
+crypto_available = False
+try:
+    from foolscap import crypto
+    crypto_available = crypto.available
+except ImportError:
+    pass
+
+from foolscap import Tub, UnauthenticatedTub
+def GoodEnoughTub(certData=None, certFile=None, options={}):
+    if crypto_available:
+        return Tub(certData, certFile, options)
+    return UnauthenticatedTub(options=options)
