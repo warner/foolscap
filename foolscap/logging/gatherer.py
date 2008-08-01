@@ -152,6 +152,7 @@ class GathererService(GatheringBase):
         self.bzip = bzip
         if signal and hasattr(signal, "SIGHUP"):
             signal.signal(signal.SIGHUP, self._handle_SIGHUP)
+        self._savefile = None
 
     def _handle_SIGHUP(self, *args):
         reactor.callFromThread(self.do_rotate)
@@ -180,6 +181,8 @@ class GathererService(GatheringBase):
         pickle.dump(header, self._savefile)
 
     def do_rotate(self):
+        if not self._savefile:
+            return
         self._savefile.close()
         now = time.time()
         from_time = self.format_time(self._starting_timestamp)

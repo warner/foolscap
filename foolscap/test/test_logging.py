@@ -1155,12 +1155,12 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
     test_log_gatherer.timeout = 20
 
     def test_log_gatherer2(self):
-        # set log-gatherer-furl, then setLocation
+        # set log-gatherer-furl, then setLocation. Also, use a timed rotator.
         basedir = "logging/Gatherer/log_gatherer2"
         os.makedirs(basedir)
 
         # create a gatherer, which will create its own Tub
-        gatherer = MyGatherer(None, False, basedir)
+        gatherer = MyGatherer(3600, False, basedir)
         gatherer.tub_class = GoodEnoughTub
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)

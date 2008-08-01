@@ -1,5 +1,12 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/gatherer.py (GathererService.do_rotate): oops,
+	implement the precautions claimed by the comment in startService:
+	test self._savefile before doing anything.
+	(GathererService.__init__): set self._savefile to None
+	* foolscap/test/test_logging.py (Gatherer.test_log_gatherer2): add
+	a timed rotator, which caught the problem in do_rotate
+
 	* foolscap/test/test_logging.py (IncidentGatherer.test_emit): add
 	test coverage for re-classifying existing incidents
 	(IncidentGatherer.test_emit._update_classifiers_again): and verify
