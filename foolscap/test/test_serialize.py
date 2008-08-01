@@ -8,7 +8,6 @@ from cStringIO import StringIO
 import gc
 
 import foolscap
-from foolscap import Tub, UnauthenticatedTub
 from foolscap import Referenceable, Copyable, RemoteCopy
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import flushEventualQueue

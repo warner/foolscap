@@ -11,7 +11,7 @@ import foolscap
 from foolscap.logging import gatherer, log, tail, incident, cli, web, publish
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
-from foolscap import Tub, UnauthenticatedTub, Referenceable
+from foolscap import Referenceable
 from foolscap.tokens import NoLocationError
 from foolscap.test.common import PollMixin, GoodEnoughTub
 

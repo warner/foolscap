@@ -6,7 +6,7 @@ from twisted.application import internet
 from foolscap import pb, negotiate, tokens, eventual
 from foolscap import Referenceable, Tub, UnauthenticatedTub, BananaError
 from foolscap.eventual import flushEventualQueue
-from foolscap.test.common import crypto_available, GoodEnoughTub
+from foolscap.test.common import crypto_available
 
 tubid_low = "3hemthez7rvgvyhjx2n5kdj7mcyar3yt"
 certData_low = \

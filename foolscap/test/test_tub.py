@@ -5,7 +5,7 @@ from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.application import service
 
-from foolscap import Tub, UnauthenticatedTub, SturdyRef, Referenceable
+from foolscap import Tub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \

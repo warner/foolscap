@@ -13,7 +13,6 @@ from twisted.internet.interfaces import IAddress
 from twisted.trial import unittest
 
 from foolscap import tokens, referenceable
-from foolscap import Tub, UnauthenticatedTub
 from foolscap import getRemoteURL_TCP
 from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
 from foolscap.tokens import BananaFailure

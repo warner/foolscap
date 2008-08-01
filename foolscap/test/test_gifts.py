@@ -5,7 +5,7 @@ from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionDone, ConnectionLost, \
      ConnectionRefusedError
 from twisted.python import failure
-from foolscap import Tub, UnauthenticatedTub, RemoteInterface, Referenceable
+from foolscap import RemoteInterface, Referenceable
 from foolscap.referenceable import RemoteReference, SturdyRef
 from foolscap.test.common import HelperTarget, RIHelper, \
      crypto_available, GoodEnoughTub

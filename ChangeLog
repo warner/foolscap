@@ -1,5 +1,19 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/common.py (GoodEnoughTub): factor this and
+	crypto_available out of all the other unit tests, make
+	GoodEnoughTub(certFile=) work even if crypto is unavailable and
+	we must therefore discard the certFile= argument.
+	* foolscap/test/test_crypto.py: same
+	* foolscap/test/test_gifts.py: same
+	* foolscap/test/test_keepalive.py: same
+	* foolscap/test/test_logging.py: same
+	* foolscap/test/test_loopback.py: same
+	* foolscap/test/test_negotiate.py: same
+	* foolscap/test/test_pb.py: same
+	* foolscap/test/test_serialize.py: same
+	* foolscap/test/test_tub.py: same
+
 	* foolscap/logging/gatherer.py (GatheringBase): rewrite Gatherers
 	to make them easier to test: now they are a Service (with a
 	subordinate Tub), meant to be run by a .tac file or manually. The

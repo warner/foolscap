@@ -3,7 +3,7 @@ from twisted.trial import unittest
 from twisted.internet import reactor, defer
 from twisted.python.failure import Failure
 
-from foolscap import Tub, UnauthenticatedTub, DeadReferenceError
+from foolscap import DeadReferenceError
 from foolscap.broker import Broker
 from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import TargetWithoutInterfaces, GoodEnoughTub
