@@ -898,15 +898,14 @@ class IncidentGatherer(unittest.TestCase,
         d.addCallback(flushEventualQueue)
         return d
 
-    def create_incident_gatherer(self, basedir):
+    def create_incident_gatherer(self, basedir, classifiers=[]):
         # create an incident gatherer, which will make its own Tub
         ig_basedir = os.path.join(basedir, "ig")
-        os.makedirs(ig_basedir)
         null = StringIO()
-        ig = MyIncidentGathererService(basedir=ig_basedir, stdout=null)
+        ig = MyIncidentGathererService(classifiers=classifiers,
+                                       basedir=ig_basedir, stdout=null)
         ig.tub_class = GoodEnoughTub
         ig.d = defer.Deferred()
-        ig.setServiceParent(self.parent)
         return ig
 
     def create_connected_tub(self, ig):
@@ -923,6 +922,7 @@ class IncidentGatherer(unittest.TestCase,
         self.logger.setLogDir(basedir)
 
         ig = self.create_incident_gatherer(basedir)
+        ig.setServiceParent(self.parent)
         self.create_connected_tub(ig)
 
         d = ig.d
@@ -936,11 +936,13 @@ class IncidentGatherer(unittest.TestCase,
         self.logger.setLogDir(basedir)
 
         ig = self.create_incident_gatherer(basedir)
+        ig.setServiceParent(self.parent)
         incident_d = defer.Deferred()
         ig.cb_new_incident = incident_d.callback
         self.create_connected_tub(ig)
 
         d = ig.d
+
         d.addCallback(lambda res: self.logger.msg("boom", level=log.WEIRD))
         d.addCallback(lambda res: incident_d)
         def _new_incident((abs_fn, rel_fn)):
@@ -958,10 +960,48 @@ class IncidentGatherer(unittest.TestCase,
             self.failUnlessEqual(unknowns[0], rel_fn)
         d.addCallback(_new_incident)
 
+        # now shut down the gatherer, create a new one with the same basedir
+        # (with some classifier functions), remove the existing
+        # classifications, and start it up. It should reclassify everything
+        # at startup.
+
+        # give the call to remote_logport a chance to retire
+        d.addCallback(self.stall, 0.5)
+        d.addCallback(lambda res: ig.disownServiceParent())
+
+        def _update_classifiers(res):
+            self.remove_classified_incidents(ig)
+            def classify_boom(nodeid_s, (header,events)):
+                if "boom" in header["trigger"].get("message",""):
+                    return "boom"
+            def classify_foom(nodeid_s, (header,events)):
+                if "foom" in header["trigger"].get("message",""):
+                    return "foom"
+            ig2 = self.create_incident_gatherer(basedir, [classify_boom])
+            ig2.add_classifier(classify_foom)
+            ig2.setServiceParent(self.parent)
+
+            # incidents should be classified in startService
+            unknowns_fn = os.path.join(ig2.basedir, "classified", "unknown")
+            self.failIf(os.path.exists(unknowns_fn))
+            booms_fn = os.path.join(ig2.basedir, "classified", "boom")
+            booms = [fn.strip() for fn in open(booms_fn,"r").readlines()]
+            self.failUnlessEqual(len(booms), 1)
+            fooms_fn = os.path.join(ig2.basedir, "classified", "foom")
+            self.failIf(os.path.exists(fooms_fn))
+
+            return ig2.d
+        d.addCallback(_update_classifiers)
+
         # give the call to remote_logport a chance to retire
         d.addCallback(self.stall, 0.5)
         return d
 
+    def remove_classified_incidents(self, ig):
+        classified = os.path.join(ig.basedir, "classified")
+        for category in os.listdir(classified):
+            os.remove(os.path.join(classified, category))
+        os.rmdir(classified)
 
 class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
     def setUp(self):
