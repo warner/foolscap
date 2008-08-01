@@ -13,7 +13,7 @@ from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Referenceable
 from foolscap.tokens import NoLocationError
-from foolscap.test.common import PollMixin, GoodEnoughTub
+from foolscap.test.common import PollMixin, StallMixin, GoodEnoughTub
 
 
 class Basic(unittest.TestCase):
@@ -865,7 +865,58 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         return d
     test_subscribe.timeout = 20
 
-class Gatherer(PollMixin, unittest.TestCase, LogfileReaderMixin):
+class MyIncidentGathererService(gatherer.IncidentGathererService):
+    verbose = False
+
+    def remote_logport(self, nodeid, publisher):
+        d = gatherer.IncidentGathererService.remote_logport(self,
+                                                            nodeid, publisher)
+        d.addCallback(lambda res: self.d.callback(publisher))
+        return d
+
+class IncidentGatherer(unittest.TestCase,
+                       PollMixin, StallMixin, LogfileReaderMixin):
+    def setUp(self):
+        self.parent = service.MultiService()
+        self.parent.startService()
+        self.logger = log.FoolscapLogger()
+
+    def tearDown(self):
+        d = defer.succeed(None)
+        d.addCallback(lambda res: self.parent.stopService())
+        d.addCallback(flushEventualQueue)
+        return d
+
+    def test_incident_gatherer(self):
+        basedir = "logging/IncidentGatherer/incident_gatherer"
+        os.makedirs(basedir)
+        self.logger.setLogDir(basedir)
+
+        # create an incident gatherer, which will make its own Tub
+        ig_basedir = os.path.join(basedir, "ig")
+        os.makedirs(ig_basedir)
+        null = StringIO()
+        ig = MyIncidentGathererService(basedir=ig_basedir, stdout=null)
+        ig.tub_class = GoodEnoughTub
+        ig.d = defer.Deferred()
+        ig.setServiceParent(self.parent)
+
+        t = GoodEnoughTub()
+        t.logger = self.logger
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setOption("log-gatherer-furl", ig.my_furl)
+
+        d = ig.d
+
+        # give the call to remote_logport a chance to retire
+        d.addCallback(self.stall, 0.5)
+
+        return d
+
+
+class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
     def setUp(self):
         self.parent = service.MultiService()
         self.parent.startService()
@@ -877,11 +928,6 @@ class Gatherer(PollMixin, unittest.TestCase, LogfileReaderMixin):
         d.addCallback(flushEventualQueue)
         return d
 
-
-    def stall(self, res, delay=1.0):
-        d = defer.Deferred()
-        reactor.callLater(delay, d.callback, res)
-        return d
 
     def _emit_messages_and_flush(self, res, t):
         log.msg("gathered message here")

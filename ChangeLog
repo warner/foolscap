@@ -1,5 +1,13 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/gatherer.py (IncidentGathererService): get
+	control over stdout, so we can exercise more code during tests
+	(IncidentGathererService.startService): oops, this needs to be
+	startService instead of start
+
+	* foolscap/test/test_logging.py (IncidentGatherer): basic test of
+	an incident gatherer, just setup and connection so far
+
 	* foolscap/test/common.py (StallMixin): factor stall() out into a
 	separate class
 	(TargetMixin): same

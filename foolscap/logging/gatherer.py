@@ -293,13 +293,15 @@ class CreateIncidentGatherOptions(usage.Options):
 class IncidentObserver(foolscap.Referenceable):
     implements(RILogObserver)
 
-    def __init__(self, basedir, nodeid_s, gatherer, publisher):
+    def __init__(self, basedir, nodeid_s, gatherer, publisher, stdout):
         if not os.path.isdir(basedir):
             os.makedirs(basedir)
         self.basedir = filepath.FilePath(basedir)
         self.nodeid_s = nodeid_s # printable string
         self.gatherer = gatherer
         self.publisher = publisher
+        self.stdout = stdout
+        self.caught_up_d = defer.Deferred()
 
     def connect(self):
         # look for a local state file, to see what incidents we've already
@@ -310,15 +312,19 @@ class IncidentObserver(foolscap.Referenceable):
             latest = open(statefile, "r").read().strip()
         except EnvironmentError:
             pass
-        print "connected to %s, last known incident is %s" % (self.nodeid_s,
-                                                              latest)
+        print >>self.stdout, "connected to %s, last known incident is %s" \
+              % (self.nodeid_s, latest)
         # now subscribe to everything since then
         d = self.publisher.callRemote("subscribe_to_incidents", self,
                                       catch_up=True, since=latest)
+        # for testing, we arrange for this Deferred (which governs the return
+        # from remote_logport) to not fire until we've finished catching up
+        # on all incidents.
+        d.addCallback(lambda res: self.caught_up_d)
         return d
 
     def remote_new_incident(self, name, trigger):
-        print "got incident", name
+        print >>self.stdout, "got incident", name
         # name= should look like "incident-2008-07-29-204211-aspkxoi". We
         # prevent name= from containing path metacharacters like / or : by
         # using FilePath later on.
@@ -356,6 +362,7 @@ class IncidentObserver(foolscap.Referenceable):
         f.close()
 
     def remote_done_with_incident_catchup(self):
+        self.caught_up_d.callback(None)
         return None
 
 class IncidentGathererService(GatheringBase):
@@ -385,16 +392,17 @@ class IncidentGathererService(GatheringBase):
     furlFile = "incident_gatherer.furl"
     tacFile = "incident-gatherer.tac"
 
-    def __init__(self, classifiers=[], basedir=None):
+    def __init__(self, classifiers=[], basedir=None, stdout=None):
         GatheringBase.__init__(self, basedir)
         self.classifiers = []
         self.classifiers.extend(classifiers)
+        self.stdout = stdout
 
     def addClassifier(self, f):
         self.classifiers.append(f)
 
 
-    def start(self, res):
+    def startService(self):
         indir = os.path.join(self.basedir, "incidents")
         if not os.path.isdir(indir):
             os.makedirs(indir)
@@ -402,10 +410,11 @@ class IncidentGathererService(GatheringBase):
         if not os.path.isdir(outputdir):
             os.makedirs(outputdir)
             self.classify_stored_incidents(indir)
-        return GatheringBase.start(self, res)
+        GatheringBase.startService(self)
 
     def classify_stored_incidents(self, indir):
-        print "No classified/ directory: reclassifying stored incidents"
+        stdout = self.stdout or sys.stdout
+        print >>stdout, "No classified/ directory: reclassifying stored incidents"
         # now classify all stored incidents
         for nodeid_s in os.listdir(indir):
             nodedir = os.path.join(indir, nodeid_s)
@@ -437,13 +446,15 @@ class IncidentGathererService(GatheringBase):
             # we must check it to exclude .. and / and other nasties
             raise BadTubID("%s is not a valid base32-encoded Tub ID" % tubid_s)
         basedir = os.path.join(self.basedir, "incidents", tubid_s)
-        o = IncidentObserver(basedir, tubid_s, self, publisher)
+        stdout = self.stdout or sys.stdout
+        o = IncidentObserver(basedir, tubid_s, self, publisher, stdout)
         d = o.connect()
         d.addCallback(lambda res: None)
         return d # mostly for testing
 
     def new_incident(self, abs_fn, rel_fn, nodeid_s, incident):
-        print "NEW INCIDENT", rel_fn
+        stdout = self.stdout or sys.stdout
+        print >>stdout, "NEW INCIDENT", rel_fn
         self.classify_incident(rel_fn, nodeid_s, incident)
 
     def classify_incident(self, rel_fn, nodeid_s, incident):
