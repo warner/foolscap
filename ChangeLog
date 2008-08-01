@@ -1,5 +1,8 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_logging.py (LogfileReaderMixin): refactor
+	(Gatherer.test_log_gatherer): turn on bzip=True, for more coverage
+
 	* foolscap/test/test_logging.py (Gatherer._check_gatherer): ignore
 	internal foolscap messages (like connection negotiation), since
 	they occur at unpredictable times (specifically in

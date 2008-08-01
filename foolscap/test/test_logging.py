@@ -191,7 +191,24 @@ class ImpatientReporter(incident.IncidentReporter):
     TRAILING_DELAY = 1.0
     TRAILING_EVENT_LIMIT = 3
 
-class Incidents(unittest.TestCase, PollMixin):
+class LogfileReaderMixin:
+    def _read_logfile(self, fn):
+        if fn.endswith(".bz2"):
+            f = bz2.BZ2File(fn, "r")
+        else:
+            f = open(fn, "rb")
+        events = []
+        while True:
+            try:
+                events.append(pickle.load(f))
+            except EOFError:
+                break
+            except ValueError:
+                break
+        f.close()
+        return events
+
+class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
     def test_basic(self):
         l = log.FoolscapLogger()
         self.failUnlessEqual(l.incidents_declared, 0)
@@ -243,22 +260,6 @@ class Incidents(unittest.TestCase, PollMixin):
 
         d.addCallback(_check)
         return d
-
-    def _read_logfile(self, fn):
-        if fn.endswith(".bz2"):
-            f = bz2.BZ2File(fn, "r")
-        else:
-            f = open(fn, "rb")
-        events = []
-        while True:
-            try:
-                events.append(pickle.load(f))
-            except EOFError:
-                break
-            except ValueError:
-                break
-        f.close()
-        return events
 
     def test_qualifier1(self):
         l = log.FoolscapLogger()
@@ -864,7 +865,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         return d
     test_subscribe.timeout = 20
 
-class Gatherer(PollMixin, unittest.TestCase):
+class Gatherer(PollMixin, unittest.TestCase, LogfileReaderMixin):
     def setUp(self):
         self.parent = service.MultiService()
         self.parent.startService()
@@ -899,19 +900,15 @@ class Gatherer(PollMixin, unittest.TestCase):
         return d
 
     def _check_gatherer(self, fn, starting_timestamp, expected_tubid):
-        f = open(fn, "r")
         events = []
-        while True:
-            try:
-                e = pickle.load(f)
-                # discard internal foolscap events, like connection
-                # negotiation
-                if "d" in e and "foolscap" in e["d"].get("facility", ""):
-                    pass
-                else:
-                    events.append(e)
-            except EOFError:
-                break
+        for e in self._read_logfile(fn):
+            # discard internal foolscap events, like connection
+            # negotiation
+            if "d" in e and "foolscap" in e["d"].get("facility", ""):
+                pass
+            else:
+                events.append(e)
+
         if len(events) != 4:
             from pprint import pprint
             pprint(events)
@@ -951,12 +948,13 @@ class Gatherer(PollMixin, unittest.TestCase):
         self.failUnless("whoops2" in str(data['d']["failure"]))
 
     def test_log_gatherer(self):
-        # setLocation, then set log-gatherer-furl
+        # setLocation, then set log-gatherer-furl. Also, use bzip=True for
+        # this one test.
         basedir = "logging/Gatherer/log_gatherer"
         os.makedirs(basedir)
 
         # create a gatherer, which will create its own Tub
-        gatherer = MyGatherer(None, False, basedir)
+        gatherer = MyGatherer(None, True, basedir)
         gatherer.tub_class = GoodEnoughTub
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
