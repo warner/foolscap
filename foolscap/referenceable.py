@@ -338,6 +338,8 @@ class RemoteReferenceOnly(object):
 
     def getSturdyRef(self):
         return SturdyRef(self.tracker.getURL())
+    def getRemoteTubID(self):
+        return SturdyRef(self.tracker.getURL()).getTubRef().getTubID()
 
     def getPeer(self):
         """Return an IAddress-providing object that describes the remote

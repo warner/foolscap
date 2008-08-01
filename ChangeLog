@@ -1,5 +1,10 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReferenceOnly.getRemoteTubID):
+	new method to extract the remote tubid from a RemoteReference. I'm
+	not sure this is a good idea, but it fixes the immediate problem
+	I'm dealing with.
+
 	* foolscap/test/test_logging.py (IncidentGatherer.test_emit): add
 	test of incident generation, publish, recording, and default
 	classification
