@@ -293,11 +293,11 @@ class CreateIncidentGatherOptions(usage.Options):
 class IncidentObserver(foolscap.Referenceable):
     implements(RILogObserver)
 
-    def __init__(self, basedir, nodeid_s, gatherer, publisher, stdout):
+    def __init__(self, basedir, tubid_s, gatherer, publisher, stdout):
         if not os.path.isdir(basedir):
             os.makedirs(basedir)
         self.basedir = filepath.FilePath(basedir)
-        self.nodeid_s = nodeid_s # printable string
+        self.tubid_s = tubid_s # printable string
         self.gatherer = gatherer
         self.publisher = publisher
         self.stdout = stdout
@@ -313,7 +313,7 @@ class IncidentObserver(foolscap.Referenceable):
         except EnvironmentError:
             pass
         print >>self.stdout, "connected to %s, last known incident is %s" \
-              % (self.nodeid_s, latest)
+              % (self.tubid_s, latest)
         # now subscribe to everything since then
         d = self.publisher.callRemote("subscribe_to_incidents", self,
                                       catch_up=True, since=latest)
@@ -338,10 +338,10 @@ class IncidentObserver(foolscap.Referenceable):
         abs_fn += ".flog.bz2"
         # we need to record the relative pathname of the savefile, for use by
         # the classifiers (they write it into their output files)
-        rel_fn = os.path.join("incidents", self.nodeid_s, name) + ".flog.bz2"
+        rel_fn = os.path.join("incidents", self.tubid_s, name) + ".flog.bz2"
         self.save_incident(abs_fn, incident)
         self.update_latest(name)
-        self.gatherer.new_incident(abs_fn, rel_fn, self.nodeid_s, incident)
+        self.gatherer.new_incident(abs_fn, rel_fn, self.tubid_s, incident)
 
     def save_incident(self, filename, incident):
         now = time.time()
@@ -350,7 +350,7 @@ class IncidentObserver(foolscap.Referenceable):
         h = {"header": header}
         pickle.dump(h, f)
         for e in events:
-            wrapper = {"from": self.nodeid_s,
+            wrapper = {"from": self.tubid_s,
                        "rx_time": now,
                        "d": e}
             pickle.dump(wrapper, f)
@@ -416,14 +416,14 @@ class IncidentGathererService(GatheringBase):
         stdout = self.stdout or sys.stdout
         print >>stdout, "No classified/ directory: reclassifying stored incidents"
         # now classify all stored incidents
-        for nodeid_s in os.listdir(indir):
-            nodedir = os.path.join(indir, nodeid_s)
+        for tubid_s in os.listdir(indir):
+            nodedir = os.path.join(indir, tubid_s)
             for fn in os.listdir(nodedir):
                 if fn.startswith("incident-"):
                     abs_fn = os.path.join(nodedir, fn)
                     incident = self.load_incident(abs_fn)
-                    rel_fn = os.path.join("incidents", nodeid_s, fn)
-                    self.classify_incident(rel_fn, nodeid_s, incident)
+                    rel_fn = os.path.join("incidents", tubid_s, fn)
+                    self.classify_incident(rel_fn, tubid_s, incident)
 
     def load_incident(self, abs_fn):
         assert abs_fn.endswith(".bz2")
@@ -440,11 +440,10 @@ class IncidentGathererService(GatheringBase):
         return (header, events)
 
     def remote_logport(self, nodeid, publisher):
-        # nodeid is actually a printable string
-        tubid_s = nodeid
-        if not base32.is_base32(tubid_s):
-            # we must check it to exclude .. and / and other nasties
-            raise BadTubID("%s is not a valid base32-encoded Tub ID" % tubid_s)
+        # we ignore nodeid (which is a printable string), and get the tubid
+        # (or its <unauth> name) from the publisher remoteReference.
+        # getRemoteTubID() protects us from .. and / and other nasties.
+        tubid_s = publisher.getRemoteTubID()
         basedir = os.path.join(self.basedir, "incidents", tubid_s)
         stdout = self.stdout or sys.stdout
         o = IncidentObserver(basedir, tubid_s, self, publisher, stdout)
@@ -452,15 +451,15 @@ class IncidentGathererService(GatheringBase):
         d.addCallback(lambda res: None)
         return d # mostly for testing
 
-    def new_incident(self, abs_fn, rel_fn, nodeid_s, incident):
+    def new_incident(self, abs_fn, rel_fn, tubid_s, incident):
         stdout = self.stdout or sys.stdout
         print >>stdout, "NEW INCIDENT", rel_fn
-        self.classify_incident(rel_fn, nodeid_s, incident)
+        self.classify_incident(rel_fn, tubid_s, incident)
 
-    def classify_incident(self, rel_fn, nodeid_s, incident):
+    def classify_incident(self, rel_fn, tubid_s, incident):
         categories = set()
         for f in self.classifiers:
-            c = f(nodeid_s, incident)
+            c = f(tubid_s, incident)
             if c: # allow the classifier to return None, or [], or ["foo"]
                 if isinstance(c, str):
                     c = [c] # or just "foo"

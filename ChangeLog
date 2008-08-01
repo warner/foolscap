@@ -4,6 +4,10 @@
 	new method to extract the remote tubid from a RemoteReference. I'm
 	not sure this is a good idea, but it fixes the immediate problem
 	I'm dealing with.
+	* foolscap/logging/gatherer.py: use "tubid_s" instead of "nodeid_s"
+	(IncidentGathererService.remote_logport): use getRemoteTubID()
+	instead of trying to sanitize the tubid we receive, since we
+	use it as a directory name
 
 	* foolscap/test/test_logging.py (IncidentGatherer.test_emit): add
 	test of incident generation, publish, recording, and default
