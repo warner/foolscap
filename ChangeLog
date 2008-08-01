@@ -1,5 +1,11 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_logging.py (Gatherer._check_gatherer): ignore
+	internal foolscap messages (like connection negotiation), since
+	they occur at unpredictable times (specifically in
+	test_log_gatherer_furlfile_multiple, which has establishes
+	multiple connections)
+
 	* foolscap/test/common.py (GoodEnoughTub): factor this and
 	crypto_available out of all the other unit tests, make
 	GoodEnoughTub(certFile=) work even if crypto is unavailable and

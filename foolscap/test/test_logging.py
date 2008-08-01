@@ -903,7 +903,13 @@ class Gatherer(PollMixin, unittest.TestCase):
         events = []
         while True:
             try:
-                events.append(pickle.load(f))
+                e = pickle.load(f)
+                # discard internal foolscap events, like connection
+                # negotiation
+                if "d" in e and "foolscap" in e["d"].get("facility", ""):
+                    pass
+                else:
+                    events.append(e)
             except EOFError:
                 break
         if len(events) != 4:
@@ -1101,7 +1107,6 @@ class Gatherer(PollMixin, unittest.TestCase):
         fn2 = gatherer2._savefile_name
         gatherer2_furl = gatherer2.my_furl
         starting_timestamp2 = gatherer2._starting_timestamp
-
 
         gatherer_furlfile = os.path.join(basedir, "log_gatherer.furl")
         f = open(gatherer_furlfile, "w")
