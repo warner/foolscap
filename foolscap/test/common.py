@@ -173,7 +173,13 @@ class PollMixin:
         reactor.callLater(pollinterval, d.callback, None)
         return d
 
-class TargetMixin(PollMixin):
+class StallMixin:
+    def stall(self, res, timeout):
+        d = defer.Deferred()
+        reactor.callLater(timeout, d.callback, res)
+        return d
+
+class TargetMixin(PollMixin, StallMixin):
 
     def setUp(self):
         self.loopbacks = []
@@ -221,11 +227,6 @@ class TargetMixin(PollMixin):
         rtracker = self.callingBroker.getTrackerForYourReference(clid, iname)
         rr = rtracker.getRef()
         return rr, target
-
-    def stall(self, res, timeout):
-        d = defer.Deferred()
-        reactor.callLater(timeout, d.callback, res)
-        return d
 
 
 

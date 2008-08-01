@@ -1,5 +1,9 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/common.py (StallMixin): factor stall() out into a
+	separate class
+	(TargetMixin): same
+
 	* foolscap/test/test_logging.py (LogfileReaderMixin): refactor
 	(Gatherer.test_log_gatherer): turn on bzip=True, for more coverage
 
