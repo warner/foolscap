@@ -8,6 +8,9 @@
 	(IncidentGathererService.remote_logport): use getRemoteTubID()
 	instead of trying to sanitize the tubid we receive, since we
 	use it as a directory name
+	(IncidentGathererService.add_classifier): rename addClassifier to
+	add_classifier, I'm more fond of the latter form these days. Also
+	remove a pyflakes warning.
 
 	* foolscap/test/test_logging.py (IncidentGatherer.test_emit): add
 	test of incident generation, publish, recording, and default

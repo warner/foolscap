@@ -12,7 +12,6 @@ from twisted.application import service, internet
 import foolscap
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.util import get_local_ip_for
-from foolscap import base32
 
 class BadTubID(Exception):
     pass
@@ -398,7 +397,7 @@ class IncidentGathererService(GatheringBase):
         self.classifiers.extend(classifiers)
         self.stdout = stdout
 
-    def addClassifier(self, f):
+    def add_classifier(self, f):
         self.classifiers.append(f)
 
 
@@ -492,17 +491,17 @@ from twisted.application import service
 
 gs = gatherer.IncidentGathererService()
 
-# To add a classifier function, call gs.addClassifier(f) like this:
+# To add a classifier function, call gs.add_classifier(f) like this:
 #
 #import re
 #TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.negotiate.TubConnector instance at \w+> is not in \[')
-#def is_foolscap(nodeis_s, incident):
+#def is_foolscap(nodeid_s, incident):
 #    (header, events) = incident
 #    trigger = header['trigger']
 #    m = trigger.get('message', '')
 #    if TUBCON_RE.search(m):
 #        return 'foolscap-tubconnector'
-#gs.addClassifier(is_foolscap)
+#gs.add_classifier(is_foolscap)
 
 application = service.Application('incident_gatherer')
 gs.setServiceParent(application)
