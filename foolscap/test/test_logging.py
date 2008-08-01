@@ -969,6 +969,7 @@ class IncidentGatherer(unittest.TestCase,
         d.addCallback(self.stall, 0.5)
         d.addCallback(lambda res: ig.disownServiceParent())
 
+        incident_d2 = defer.Deferred()
         def _update_classifiers(res):
             self.remove_classified_incidents(ig)
             def classify_boom(nodeid_s, (header,events)):
@@ -980,18 +981,55 @@ class IncidentGatherer(unittest.TestCase,
             ig2 = self.create_incident_gatherer(basedir, [classify_boom])
             ig2.add_classifier(classify_foom)
             ig2.setServiceParent(self.parent)
+            self.ig2 = ig2
 
             # incidents should be classified in startService
-            unknowns_fn = os.path.join(ig2.basedir, "classified", "unknown")
+            unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
             self.failIf(os.path.exists(unknowns_fn))
-            booms_fn = os.path.join(ig2.basedir, "classified", "boom")
+            booms_fn = os.path.join(ig.basedir, "classified", "boom")
             booms = [fn.strip() for fn in open(booms_fn,"r").readlines()]
             self.failUnlessEqual(len(booms), 1)
-            fooms_fn = os.path.join(ig2.basedir, "classified", "foom")
+            fooms_fn = os.path.join(ig.basedir, "classified", "foom")
             self.failIf(os.path.exists(fooms_fn))
+
+            ig2.cb_new_incident = incident_d2.callback
 
             return ig2.d
         d.addCallback(_update_classifiers)
+        d.addCallback(lambda res: self.logger.msg("foom", level=log.WEIRD))
+        d.addCallback(lambda res: incident_d2)
+        def _new_incident2((abs_fn, rel_fn)):
+            # this one should be classified as "foom"
+
+            # it should have been classified as "unknown"
+            fooms_fn = os.path.join(ig.basedir, "classified", "foom")
+            fooms = [fn.strip() for fn in open(fooms_fn,"r").readlines()]
+            self.failUnlessEqual(len(fooms), 1)
+            self.failUnlessEqual(fooms[0], rel_fn)
+            unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
+            self.failIf(os.path.exists(unknowns_fn))
+        d.addCallback(_new_incident2)
+
+        # and if we remove the classification functions (but do *not* remove
+        # the classified incidents), the new gatherer should not reclassify
+        # anything
+
+        d.addCallback(self.stall, 0.5)
+        d.addCallback(lambda res: self.ig2.disownServiceParent())
+        def _update_classifiers_again(res):
+            ig3 = self.create_incident_gatherer(basedir)
+            ig3.setServiceParent(self.parent)
+
+            unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
+            self.failIf(os.path.exists(unknowns_fn))
+            booms_fn = os.path.join(ig.basedir, "classified", "boom")
+            booms = [fn.strip() for fn in open(booms_fn,"r").readlines()]
+            self.failUnlessEqual(len(booms), 1)
+            fooms_fn = os.path.join(ig.basedir, "classified", "foom")
+            fooms = [fn.strip() for fn in open(fooms_fn,"r").readlines()]
+            self.failUnlessEqual(len(fooms), 1)
+            return ig3.d
+        d.addCallback(_update_classifiers_again)
 
         # give the call to remote_logport a chance to retire
         d.addCallback(self.stall, 0.5)

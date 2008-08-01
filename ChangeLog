@@ -2,6 +2,9 @@
 
 	* foolscap/test/test_logging.py (IncidentGatherer.test_emit): add
 	test coverage for re-classifying existing incidents
+	(IncidentGatherer.test_emit._update_classifiers_again): and verify
+	that leaving the classified/ directory in place properly inhibits
+	reclassification at startup
 
 	* foolscap/referenceable.py (RemoteReferenceOnly.getRemoteTubID):
 	new method to extract the remote tubid from a RemoteReference. I'm
