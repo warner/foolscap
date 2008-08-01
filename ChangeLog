@@ -1,5 +1,9 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_logging.py (IncidentGatherer.test_emit): add
+	test of incident generation, publish, recording, and default
+	classification
+
 	* foolscap/logging/gatherer.py (IncidentGathererService): get
 	control over stdout, so we can exercise more code during tests
 	(IncidentGathererService.startService): oops, this needs to be

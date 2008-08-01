@@ -4,7 +4,7 @@ from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
-from twisted.internet import defer, reactor
+from twisted.internet import defer
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
@@ -190,6 +190,9 @@ class SuperstitiousQualifier(incident.IncidentQualifier):
 class ImpatientReporter(incident.IncidentReporter):
     TRAILING_DELAY = 1.0
     TRAILING_EVENT_LIMIT = 3
+
+class NoFollowUpReporter(incident.IncidentReporter):
+    TRAILING_DELAY = None
 
 class LogfileReaderMixin:
     def _read_logfile(self, fn):
@@ -867,6 +870,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
 
 class MyIncidentGathererService(gatherer.IncidentGathererService):
     verbose = False
+    cb_new_incident = None
 
     def remote_logport(self, nodeid, publisher):
         d = gatherer.IncidentGathererService.remote_logport(self,
@@ -874,12 +878,19 @@ class MyIncidentGathererService(gatherer.IncidentGathererService):
         d.addCallback(lambda res: self.d.callback(publisher))
         return d
 
+    def new_incident(self, abs_fn, rel_fn, nodeid_s, incident):
+        gatherer.IncidentGathererService.new_incident(self, abs_fn, rel_fn,
+                                                      nodeid_s, incident)
+        if self.cb_new_incident:
+            self.cb_new_incident((abs_fn, rel_fn))
+
 class IncidentGatherer(unittest.TestCase,
                        PollMixin, StallMixin, LogfileReaderMixin):
     def setUp(self):
         self.parent = service.MultiService()
         self.parent.startService()
         self.logger = log.FoolscapLogger()
+        self.logger.setIncidentReporterFactory(NoFollowUpReporter)
 
     def tearDown(self):
         d = defer.succeed(None)
@@ -887,11 +898,7 @@ class IncidentGatherer(unittest.TestCase,
         d.addCallback(flushEventualQueue)
         return d
 
-    def test_incident_gatherer(self):
-        basedir = "logging/IncidentGatherer/incident_gatherer"
-        os.makedirs(basedir)
-        self.logger.setLogDir(basedir)
-
+    def create_incident_gatherer(self, basedir):
         # create an incident gatherer, which will make its own Tub
         ig_basedir = os.path.join(basedir, "ig")
         os.makedirs(ig_basedir)
@@ -900,7 +907,9 @@ class IncidentGatherer(unittest.TestCase,
         ig.tub_class = GoodEnoughTub
         ig.d = defer.Deferred()
         ig.setServiceParent(self.parent)
+        return ig
 
+    def create_connected_tub(self, ig):
         t = GoodEnoughTub()
         t.logger = self.logger
         t.setServiceParent(self.parent)
@@ -908,11 +917,49 @@ class IncidentGatherer(unittest.TestCase,
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furl", ig.my_furl)
 
+    def test_connect(self):
+        basedir = "logging/IncidentGatherer/connect"
+        os.makedirs(basedir)
+        self.logger.setLogDir(basedir)
+
+        ig = self.create_incident_gatherer(basedir)
+        self.create_connected_tub(ig)
+
         d = ig.d
+        # give the call to remote_logport a chance to retire
+        d.addCallback(self.stall, 0.5)
+        return d
+
+    def test_emit(self):
+        basedir = "logging/IncidentGatherer/emit"
+        os.makedirs(basedir)
+        self.logger.setLogDir(basedir)
+
+        ig = self.create_incident_gatherer(basedir)
+        incident_d = defer.Deferred()
+        ig.cb_new_incident = incident_d.callback
+        self.create_connected_tub(ig)
+
+        d = ig.d
+        d.addCallback(lambda res: self.logger.msg("boom", level=log.WEIRD))
+        d.addCallback(lambda res: incident_d)
+        def _new_incident((abs_fn, rel_fn)):
+            events = self._read_logfile(abs_fn)
+            header = events[0]["header"]
+            self.failUnless("trigger" in header)
+            self.failUnlessEqual(header["trigger"]["message"], "boom")
+            e = events[1]["d"]
+            self.failUnlessEqual(e["message"], "boom")
+
+            # it should have been classified as "unknown"
+            unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
+            unknowns = [fn.strip() for fn in open(unknowns_fn,"r").readlines()]
+            self.failUnlessEqual(len(unknowns), 1)
+            self.failUnlessEqual(unknowns[0], rel_fn)
+        d.addCallback(_new_incident)
 
         # give the call to remote_logport a chance to retire
         d.addCallback(self.stall, 0.5)
-
         return d
 
 
