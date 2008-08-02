@@ -362,6 +362,8 @@ class LogFileObserver:
                              "threshold": level,
                              }}
         pickle.dump(header, self._logFile)
+
+    def stop_on_shutdown(self):
         from twisted.internet import reactor
         reactor.addSystemEventTrigger("after", "shutdown", self._stop)
 
@@ -391,6 +393,7 @@ if _flogfile:
     try:
         _floglevel = int(os.environ.get("FLOGLEVEL", str(OPERATIONAL)))
         lfo = LogFileObserver(_flogfile, _floglevel)
+        lfo.stop_on_shutdown()
         theLogger.addObserver(lfo.msg)
         #theLogger.set_generation_threshold(UNUSUAL, "foolscap.negotiation")
     except IOError:

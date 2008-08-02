@@ -1,5 +1,10 @@
 2008-08-01  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (LogFileObserver): make these more
+	useful, by not doing the addSystemEventTrigger in __init__
+	(LogFileObserver.stop_on_shutdown): do it here instead
+	(FLOGFILE): when using $FLOGFILE, add call to stop_on_shutdown
+
 	* foolscap/logging/gatherer.py (GathererService.do_rotate): oops,
 	implement the precautions claimed by the comment in startService:
 	test self._savefile before doing anything.
