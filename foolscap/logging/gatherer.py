@@ -396,8 +396,8 @@ class IncidentGathererService(GatheringBase):
 
     implements(RILogGatherer)
     verbose = True
-    furlFile = "incident_gatherer.furl"
-    tacFile = "incident-gatherer.tac"
+    furlFile = "log_gatherer.furl"
+    tacFile = "gatherer.tac"
 
     def __init__(self, classifiers=[], basedir=None, stdout=None):
         GatheringBase.__init__(self, basedir)
@@ -520,7 +520,7 @@ def create_incident_gatherer(config):
     stdout = config.stdout
     if not os.path.exists(basedir):
         os.makedirs(basedir)
-    f = open(os.path.join(basedir, "incident-gatherer.tac"), "w")
+    f = open(os.path.join(basedir, "gatherer.tac"), "w")
     stashed_path = ""
     for p in sys.path:
         stashed_path += "  %r,\n" % p
@@ -529,4 +529,4 @@ def create_incident_gatherer(config):
     f.close()
     if not config["quiet"]:
         print >>stdout, "Incident Gatherer created in directory %s" % basedir
-        print >>stdout, "Now run '(cd %s && twistd -y incident-gatherer.tac)' to launch the daemon" % basedir
+        print >>stdout, "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir

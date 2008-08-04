@@ -841,11 +841,11 @@ gatherer:</p>
 <pre class="shell">
 % flogtool create-incident-gatherer ig
 Gatherer created in directory ig
-Now run '(cd ig &amp;&amp; twistd -y incident-gatherer.tac)' to launch the daemon
+Now run '(cd ig &amp;&amp; twistd -y gatherer.tac)' to launch the daemon
 % cd ig
 % ls
-incident-gatherer.tac
-% twistd -y incident-gatherer.tac
+gatherer.tac
+% twistd -y gatherer.tac
 %
 </pre>
 
@@ -867,7 +867,7 @@ specification</a> docs.</p>
 <p>The Incident Gatherer uses a collection of user-supplied classification
 functions to analyze each Incident and place it into one or more categories.
 To add a classification function, you will need to modify the
-<code>incident-gatherer.tac</code> file, and make a call to
+<code>gatherer.tac</code> file, and make a call to
 <code>ig.add_classifier()</code> with your function. These functions accept a
 triggering event and a pathname (from which preceding log events can be
 extracted, if desired), and should return a list of categories. Each incident
