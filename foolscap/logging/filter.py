@@ -1,9 +1,11 @@
 
 from twisted.python import usage
-import os, pickle, bz2, time
+import sys, os, pickle, bz2, time
 from foolscap.logging import log
 
 class FilterOptions(usage.Options):
+    stdout = sys.stdout
+    stderr = sys.stderr
     synopsis = "Usage: flogtool filter [options] OLDFILE.pickle NEWFILE.pickle"
 
     optParameters = [
@@ -22,7 +24,6 @@ class FilterOptions(usage.Options):
         self.oldfile = oldfile
         self.newfile = newfile
         if newfile is None:
-            print "modifying event file in place"
             self.newfile = oldfile
 
     def opt_after(self, arg):
@@ -50,8 +51,10 @@ class FilterOptions(usage.Options):
 class Filter:
 
     def run(self, options):
+        stdout = options.stdout
         newfilename = options.newfile
         if options.newfile == options.oldfile:
+            print >>stdout, "modifying event file in place"
             newfilename = newfilename + ".tmp"
         if options.newfile.endswith(".bz2"):
             newfile = bz2.BZ2File(newfilename, "w")
@@ -59,27 +62,27 @@ class Filter:
             newfile = open(newfilename, "w")
         after = options['after']
         if after is not None:
-            print " --after: removing events before %s" % time.ctime(after)
+            print >>stdout, " --after: removing events before %s" % time.ctime(after)
         before = options['before']
         if before is not None:
-            print " --before: removing events after %s" % time.ctime(before)
+            print >>stdout, " --before: removing events after %s" % time.ctime(before)
         above = options['above']
         if above:
-            print " --above: removing events below level %d" % above
+            print >>stdout, " --above: removing events below level %d" % above
         from_tubid = options['from']
         if from_tubid:
-            print " --from: retaining events only from tubid prefix %s" % from_tubid
+            print >>stdout, " --from: retaining events only from tubid prefix %s" % from_tubid
         strip_facility = options['strip-facility']
         if strip_facility is not None:
-            print "--strip-facility: removing events for %s and children" % strip_facility
+            print >>stdout, "--strip-facility: removing events for %s and children" % strip_facility
         total = 0
         copied = 0
         for e in self.get_events(options.oldfile):
             if options['verbose']:
                 if "d" in e:
-                    print e['d']['num']
+                    print >>stdout, e['d']['num']
                 else:
-                    print "HEADER"
+                    print >>stdout, "HEADER"
             total += 1
             if "d" in e:
                 if before is not None and e['d']['time'] >= before:
@@ -98,7 +101,7 @@ class Filter:
         newfile.close()
         if options.newfile == options.oldfile:
             os.rename(newfilename, options.newfile)
-        print "copied %d of %d events into new file" % (copied, total)
+        print >>stdout, "copied %d of %d events into new file" % (copied, total)
 
     def get_events(self, fn):
         if fn.endswith(".bz2"):

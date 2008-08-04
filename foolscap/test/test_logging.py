@@ -1527,24 +1527,23 @@ class CLI(unittest.TestCase):
         self.failUnless("Now run" in out, out)
         self.failUnless("to launch the daemon" in out, out)
 
-class Dumper(unittest.TestCase, LogfileReaderMixin):
-    # create a logfile, then dump it, and examine the output to make sure it
-    # worked right.
+class LogfileWriterMixin:
 
     def create_logfile(self):
         if not os.path.exists(self.basedir):
             os.makedirs(self.basedir)
         fn = os.path.join(self.basedir, "dump.flog")
         l = log.FoolscapLogger()
-        lfo = log.LogFileObserver(fn)
+        lfo = log.LogFileObserver(fn, level=0)
         l.addObserver(lfo.msg)
-        l.msg("one")
-        l.msg("two")
+        l.msg("one", facility="big.facility")
+        time.sleep(0.2) # give filter --after something to work with
+        l.msg("two", level=log.OPERATIONAL-1)
         try:
             raise SampleError("whoops1")
         except:
-            l.err()
-        l.msg("three")
+            l.err(message="three")
+        l.msg("four")
         d = fireEventually()
         def _done(res):
             lfo._stop()
@@ -1553,6 +1552,32 @@ class Dumper(unittest.TestCase, LogfileReaderMixin):
             return fn
         d.addCallback(_done)
         return d
+
+    def create_incident(self):
+        if not os.path.exists(self.basedir):
+            os.makedirs(self.basedir)
+        l = log.FoolscapLogger()
+        l.setLogDir(self.basedir)
+        l.setIncidentReporterFactory(NoFollowUpReporter)
+
+        d = defer.Deferred()
+        def _done(name, trigger):
+            d.callback( (name,trigger) )
+        l.addImmediateIncidentObserver(_done)
+
+        l.msg("one")
+        l.msg("two")
+        l.msg("boom", level=log.WEIRD)
+        l.msg("four")
+
+        d.addCallback(lambda (name,trigger):
+                      os.path.join(self.basedir, name+".flog.bz2"))
+
+        return d
+
+class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
+    # create a logfile, then dump it, and examine the output to make sure it
+    # worked right.
 
     def test_dump(self):
         self.basedir = "logging/Dumper/dump"
@@ -1593,7 +1618,7 @@ class Dumper(unittest.TestCase, LogfileReaderMixin):
                      d.format_time(events[1]["rx_time"]),
                      d.format_time(events[1]["d"]["time"]))
             self.failUnlessEqual(lines[0].strip(), line0)
-            self.failUnless(lines[-1].strip().endswith(" three"))
+            self.failUnless(lines[-1].strip().endswith(" four"))
 
             argv = ["flogtool", "dump", "--verbose", fn]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
@@ -1601,31 +1626,9 @@ class Dumper(unittest.TestCase, LogfileReaderMixin):
             lines = list(StringIO(out).readlines())
             self.failUnless("'message': 'one'" in lines[0])
             self.failUnless("'level': 20" in lines[0])
-            self.failUnless(": three: {" in lines[-1])
+            self.failUnless(": four: {" in lines[-1])
 
         d.addCallback(_check)
-        return d
-
-    def create_incident(self):
-        if not os.path.exists(self.basedir):
-            os.makedirs(self.basedir)
-        l = log.FoolscapLogger()
-        l.setLogDir(self.basedir)
-        l.setIncidentReporterFactory(NoFollowUpReporter)
-
-        d = defer.Deferred()
-        def _done(name, trigger):
-            d.callback( (name,trigger) )
-        l.addImmediateIncidentObserver(_done)
-
-        l.msg("one")
-        l.msg("two")
-        l.msg("boom", level=log.WEIRD)
-        l.msg("four")
-
-        d.addCallback(lambda (name,trigger):
-                      os.path.join(self.basedir, name+".flog.bz2"))
-
         return d
 
     def test_incident(self):
@@ -1648,6 +1651,136 @@ class Dumper(unittest.TestCase, LogfileReaderMixin):
             
         d.addCallback(_check)
         return d
+
+class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
+
+    def compare_events(self, a, b):
+        # cmp(a,b) won't quite work, because two instances of CopiedFailure
+        # loaded from the same pickle don't compare as equal
+        self.failUnlessEqual(len(a), len(b))
+        for i in range(len(a)):
+            a1,b1 = a[i],b[i]
+            self.failUnlessEqual(set(a1.keys()), set(b1.keys()))
+            for k in a1:
+                if k == "d":
+                    self.failUnlessEqual(set(a1["d"].keys()),
+                                         set(b1["d"].keys()))
+                    for k2 in a1["d"]:
+                        if k2 == "failure":
+                            f1 = a1["d"][k2]
+                            f2 = b1["d"][k2]
+                            self.failUnlessEqual(f1.value, f2.value)
+                            self.failUnlessEqual(f1.getTraceback(),
+                                                 f2.getTraceback())
+                        else:
+                            self.failUnlessEqual(a1["d"][k2], b1["d"][k2])
+                else:
+                    self.failUnlessEqual(a1[k], b1[k])
+                
+
+    def test_basic(self):
+        self.basedir = "logging/Filter/basic"
+        d = self.create_logfile()
+        def _check(fn):
+            events = self._read_logfile(fn)
+            count = len(events)
+            assert count == 5
+
+            dirname,filename = os.path.split(fn)
+            fn2 = os.path.join(dirname, "filtered-" + filename)
+
+            # pass-through
+            argv = ["flogtool", "filter", fn, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("copied 5 of 5 events into new file" in out, out)
+            self.compare_events(events, self._read_logfile(fn2))
+
+            # convert to .bz2 while we're at it
+            fn2bz2 = fn2 + ".bz2"
+            argv = ["flogtool", "filter", fn, fn2bz2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("copied 5 of 5 events into new file" in out, out)
+            self.compare_events(events, self._read_logfile(fn2bz2))
+
+            # modify the file in place
+            argv = ["flogtool", "filter", "--above", "20", fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("modifying event file in place" in out, out)
+            self.failUnless("--above: removing events below level 20" in out, out)
+            self.failUnless("copied 4 of 5 events into new file" in out, out)
+            self.compare_events([events[0], events[1], events[3], events[4]],
+                                self._read_logfile(fn2))
+
+            # modify the file in place, two-argument version
+            argv = ["flogtool", "filter", fn2, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("modifying event file in place" in out, out)
+            self.failUnless("copied 4 of 4 events into new file" in out, out)
+            self.compare_events([events[0], events[1], events[3], events[4]],
+                                self._read_logfile(fn2))
+
+            # --above with a string argument
+            argv = ["flogtool", "filter", "--above", "OPERATIONAL", fn, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("--above: removing events below level 20" in out, out)
+            self.failUnless("copied 4 of 5 events into new file" in out, out)
+            self.compare_events([events[0], events[1], events[3], events[4]],
+                                self._read_logfile(fn2))
+
+            t_one = events[1]["d"]["time"]
+            # we can only pass integers into --before and --after, so we'll
+            # just test that we get all or nothing
+            argv = ["flogtool", "filter", "--before", str(int(t_one - 10)),
+                    fn, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("copied 1 of 5 events into new file" in out, out)
+            # we always get the header, so it's 1 instead of 0
+            self.compare_events(events[:1], self._read_logfile(fn2))
+
+            argv = ["flogtool", "filter", "--after", str(int(t_one + 10)),
+                    fn, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("copied 1 of 5 events into new file" in out, out)
+            self.compare_events(events[:1], self._read_logfile(fn2))
+
+            # --facility
+            argv = ["flogtool", "filter", "--strip-facility", "big", fn, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("--strip-facility: removing events for big and children" in out, out)
+            self.failUnless("copied 4 of 5 events into new file" in out, out)
+            self.compare_events([events[0],events[2],events[3],events[4]],
+                                self._read_logfile(fn2))
+
+            # pass-through, --verbose, read from .bz2
+            argv = ["flogtool", "filter", "--verbose", fn2bz2, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("copied 5 of 5 events into new file" in out, out)
+            lines = [l.strip() for l in StringIO(out).readlines()]
+            self.failUnlessEqual(lines,
+                                 ["HEADER", "0", "1", "2", "3",
+                                  "copied 5 of 5 events into new file"])
+            self.compare_events(events, self._read_logfile(fn2))
+
+            # --from . This normally takes a base32 tubid prefix, but the
+            # things we've logged all say ["from"]="local". So just test
+            # all-or-nothing.
+            argv = ["flogtool", "filter", "--from", "local", fn, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("--from: retaining events only from tubid prefix local" in out, out)
+            self.failUnless("copied 5 of 5 events into new file" in out, out)
+            self.compare_events(events, self._read_logfile(fn2))
+
+            argv = ["flogtool", "filter", "--from", "NOTlocal", fn, fn2]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnless("--from: retaining events only from tubid prefix NOTlocal" in out, out)
+            self.failUnless("copied 1 of 5 events into new file" in out, out)
+            self.compare_events(events[:1], self._read_logfile(fn2))
+
+
+        d.addCallback(_check)
+        return d
+
+
 
 class Web(unittest.TestCase):
     def setUp(self):

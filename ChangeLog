@@ -1,5 +1,8 @@
 2008-08-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_logging.py (Filter): test 'flogtool filter'
+	* foolscap/logging/filter.py: control stdout/stderr better
+
 	* foolscap/test/test_logging.py (Dumper): test 'flogtool dump'
 
 	* foolscap/logging/cli.py (dispatch): pass stdout/stderr through
