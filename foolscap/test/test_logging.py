@@ -8,7 +8,8 @@ from twisted.internet import defer
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
-from foolscap.logging import gatherer, log, tail, incident, cli, web, publish
+from foolscap.logging import gatherer, log, tail, incident, cli, web, \
+     publish, dumper
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Referenceable
@@ -1526,6 +1527,127 @@ class CLI(unittest.TestCase):
         self.failUnless("Now run" in out, out)
         self.failUnless("to launch the daemon" in out, out)
 
+class Dumper(unittest.TestCase, LogfileReaderMixin):
+    # create a logfile, then dump it, and examine the output to make sure it
+    # worked right.
+
+    def create_logfile(self):
+        if not os.path.exists(self.basedir):
+            os.makedirs(self.basedir)
+        fn = os.path.join(self.basedir, "dump.flog")
+        l = log.FoolscapLogger()
+        lfo = log.LogFileObserver(fn)
+        l.addObserver(lfo.msg)
+        l.msg("one")
+        l.msg("two")
+        try:
+            raise SampleError("whoops1")
+        except:
+            l.err()
+        l.msg("three")
+        d = fireEventually()
+        def _done(res):
+            lfo._stop()
+            #events = self._read_logfile(fn)
+            #self.failUnlessEqual(len(events), 1+3)
+            return fn
+        d.addCallback(_done)
+        return d
+
+    def test_dump(self):
+        self.basedir = "logging/Dumper/dump"
+        d = self.create_logfile()
+        def _check(fn):
+            events = self._read_logfile(fn)
+            d = dumper.LogDumper()
+
+            argv = ["flogtool", "dump", fn]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnlessEqual(err, "")
+            lines = list(StringIO(out).readlines())
+            line0 = "local#%d %s: one" % (events[1]["d"]["num"],
+                                          d.format_time(events[1]["d"]["time"]))
+            self.failUnlessEqual(lines[0].strip(), line0)
+            self.failUnless("FAILURE:" in lines[3])
+            self.failUnless("test_logging.SampleError: whoops1" in lines[-3])
+            self.failUnless(lines[-1].startswith("local#3 "))
+
+            argv = ["flogtool", "dump", "--just-numbers", fn]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnlessEqual(err, "")
+            lines = list(StringIO(out).readlines())
+            line0 = "%s %d" % (d.format_time(events[1]["d"]["time"]),
+                               events[1]["d"]["num"])
+            self.failUnlessEqual(lines[0].strip(), line0)
+            self.failUnless(lines[1].strip().endswith(" 1"))
+            self.failUnless(lines[-1].strip().endswith(" 3"))
+            # failures are not dumped in --just-numbers
+            self.failUnlessEqual(len(lines), 1+3)
+
+            argv = ["flogtool", "dump", "--rx-time", fn]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnlessEqual(err, "")
+            lines = list(StringIO(out).readlines())
+            line0 = "local#%d rx(%s) emit(%s): one" % \
+                    (events[1]["d"]["num"],
+                     d.format_time(events[1]["rx_time"]),
+                     d.format_time(events[1]["d"]["time"]))
+            self.failUnlessEqual(lines[0].strip(), line0)
+            self.failUnless(lines[-1].strip().endswith(" three"))
+
+            argv = ["flogtool", "dump", "--verbose", fn]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnlessEqual(err, "")
+            lines = list(StringIO(out).readlines())
+            self.failUnless("'message': 'one'" in lines[0])
+            self.failUnless("'level': 20" in lines[0])
+            self.failUnless(": three: {" in lines[-1])
+
+        d.addCallback(_check)
+        return d
+
+    def create_incident(self):
+        if not os.path.exists(self.basedir):
+            os.makedirs(self.basedir)
+        l = log.FoolscapLogger()
+        l.setLogDir(self.basedir)
+        l.setIncidentReporterFactory(NoFollowUpReporter)
+
+        d = defer.Deferred()
+        def _done(name, trigger):
+            d.callback( (name,trigger) )
+        l.addImmediateIncidentObserver(_done)
+
+        l.msg("one")
+        l.msg("two")
+        l.msg("boom", level=log.WEIRD)
+        l.msg("four")
+
+        d.addCallback(lambda (name,trigger):
+                      os.path.join(self.basedir, name+".flog.bz2"))
+
+        return d
+
+    def test_incident(self):
+        self.basedir = "logging/Dumper/incident"
+        d = self.create_incident()
+        def _check(fn):
+            events = self._read_logfile(fn)
+            # for sanity, make sure we created the incident correctly
+            assert events[0]["header"]["type"] == "incident"
+            assert events[0]["header"]["trigger"]["num"] == 2
+
+            argv = ["flogtool", "dump", fn]
+            (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+            self.failUnlessEqual(err, "")
+            lines = list(StringIO(out).readlines())
+            self.failUnlessEqual(len(lines), 3)
+            self.failIf("[INCIDENT-TRIGGER]" in lines[0])
+            self.failIf("[INCIDENT-TRIGGER]" in lines[1])
+            self.failUnless(lines[2].strip().endswith(": boom [INCIDENT-TRIGGER]"))
+            
+        d.addCallback(_check)
+        return d
 
 class Web(unittest.TestCase):
     def setUp(self):

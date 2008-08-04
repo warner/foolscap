@@ -43,7 +43,7 @@ class Options(usage.Options):
         sys.exit(0)
 
 
-def dispatch(command, options, stdout, stderr):
+def dispatch(command, options):
     if command == "tail":
         from foolscap.logging.tail import LogTail
         lt = LogTail(options)
@@ -51,11 +51,11 @@ def dispatch(command, options, stdout, stderr):
 
     elif command == "create-gatherer":
         from foolscap.logging.gatherer import create_log_gatherer
-        create_log_gatherer(options, stdout)
+        create_log_gatherer(options)
 
     elif command == "create-incident-gatherer":
         from foolscap.logging.gatherer import create_incident_gatherer
-        create_incident_gatherer(options, stdout)
+        create_incident_gatherer(options)
 
     elif command == "dump":
         from foolscap.logging.dumper import LogDumper
@@ -95,10 +95,9 @@ def run_flogtool(argv=None, run_by_human=True):
 
     command = config.subCommand
     so = config.subOptions
-    stdout, stderr = sys.stdout, sys.stderr
     if not run_by_human:
-        stdout = StringIO()
-        stderr = StringIO()
-    dispatch(command, so, stdout, stderr)
+        so.stdout = StringIO()
+        so.stderr = StringIO()
+    dispatch(command, so)
     if not run_by_human:
-        return (stdout.getvalue(), stderr.getvalue())
+        return (so.stdout.getvalue(), so.stderr.getvalue())

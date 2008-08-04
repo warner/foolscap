@@ -1,3 +1,16 @@
+2008-08-04  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_logging.py (Dumper): test 'flogtool dump'
+
+	* foolscap/logging/cli.py (dispatch): pass stdout/stderr through
+	attributes on the subcommand's Options instance, rather than as
+	separate function arguments.. makes testing easier.
+	* foolscap/logging/gatherer.py (create_log_gatherer): same
+	(create_incident_gatherer): same
+	(CreateGatherOptions): same
+	(CreateIncidentGatherOptions): same
+	* foolscap/logging/dumper.py (DumpOptions): same
+
 2008-08-01  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/log.py (LogFileObserver): make these more

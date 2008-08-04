@@ -4,6 +4,8 @@ from twisted.python import usage
 from foolscap.logging.log import format_message
 
 class DumpOptions(usage.Options):
+    stdout = sys.stdout
+    stderr = sys.stderr
     synopsis = "Usage: flogtool dump DUMPFILE.pickle"
     optFlags = [
         ("verbose", "v", "Show all event arguments"),
@@ -19,31 +21,32 @@ class LogDumper:
         self.trigger = None
 
     def run(self, options):
+        self.options = options
         try:
-            self.start(options)
+            self.start()
         except IOError:
             sys.exit(1)
 
-    def start(self, options):
-        for e in self.get_events(options):
+    def start(self):
+        for e in self.get_events():
             if "header" in e:
                 if e["header"]["type"] == "incident":
                     t = e["header"]["trigger"]
                     self.trigger = (t["incarnation"], t["num"])
             if "d" in e:
-                self.print_event(e, options)
+                self.print_event(e)
 
     def format_time(self, when):
         time_s = time.strftime("%H:%M:%S", time.localtime(when))
         time_s = time_s + ".%03d" % int(1000*(when - int(when)))
         return time_s
 
-    def print_event(self, e, options):
+    def print_event(self, e):
         short = e['from'][:8]
         d = e['d']
         when = self.format_time(d['time'])
-        if options['just-numbers']:
-            print when, d.get('num')
+        if self.options['just-numbers']:
+            print >>self.options.stdout, when, d.get('num')
             return
 
         eid = (d["incarnation"], d["num"])
@@ -53,26 +56,26 @@ class LogDumper:
         text = format_message(d)
 
         t = "%s#%d " % (short, d['num'])
-        if options['rx-time']:
+        if self.options['rx-time']:
             rx_when = self.format_time(e['rx_time'])
             t += "rx(%s) " % rx_when
             t += "emit(%s)" % when
         else:
             t += "%s" % when
         t += ": %s" % text
-        if options['verbose']:
+        if self.options['verbose']:
             t += ": %r" % d
         if is_trigger:
             t += " [INCIDENT-TRIGGER]"
-        print t
+        print >>self.options.stdout, t
         if 'failure' in d:
-            print " FAILURE:"
+            print >>self.options.stdout," FAILURE:"
             lines = str(d['failure']).split("\n")
             for line in lines:
-                print " %s" % (line,)
+                print >>self.options.stdout, " %s" % (line,)
 
-    def get_events(self, options):
-        fn = options.dumpfile
+    def get_events(self):
+        fn = self.options.dumpfile
         if fn.endswith(".bz2"):
             import bz2
             f = bz2.BZ2File(fn, "r")

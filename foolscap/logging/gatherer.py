@@ -75,6 +75,8 @@ class GatheringBase(service.MultiService, foolscap.Referenceable):
 
 class CreateGatherOptions(usage.Options):
     """flogtool create-gatherer GATHERER_DIRECTORY"""
+    stdout = sys.stdout
+    stderr = sys.stderr
 
     optFlags = [
         ("bzip", "b", "Compress each output file with bzip2"),
@@ -253,8 +255,9 @@ application = service.Application('log_gatherer')
 gs.setServiceParent(application)
 """
 
-def create_log_gatherer(config, stdout=sys.stdout):
+def create_log_gatherer(config):
     basedir = config["basedir"]
+    stdout = config.stdout
     if not os.path.exists(basedir):
         os.makedirs(basedir)
     f = open(os.path.join(basedir, "gatherer.tac"), "w")
@@ -281,6 +284,8 @@ def create_log_gatherer(config, stdout=sys.stdout):
 
 class CreateIncidentGatherOptions(usage.Options):
     """flogtool create-incident-gatherer BASEDIR"""
+    stdout = sys.stdout
+    stderr = sys.stderr
 
     optFlags = [
         ("quiet", "q", "Don't print instructions to stdout"),
@@ -510,8 +515,9 @@ application = service.Application('incident_gatherer')
 gs.setServiceParent(application)
 """
 
-def create_incident_gatherer(config, stdout=sys.stdout):
+def create_incident_gatherer(config):
     basedir = config["basedir"]
+    stdout = config.stdout
     if not os.path.exists(basedir):
         os.makedirs(basedir)
     f = open(os.path.join(basedir, "incident-gatherer.tac"), "w")
