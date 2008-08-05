@@ -1,5 +1,9 @@
 2008-08-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/interfaces.py
+	(RILogPublisher.subscribe_to_incidents): small edit, make it more
+	clear that since= is used for catch_up=True
+
 	* NEWS: update for the upcoming release
 
 	* foolscap/referenceable.py (RemoteReferenceOnly.getRemoteTubID):

@@ -102,11 +102,10 @@ class RILogPublisher(RemoteInterface):
         If catch_up=True, then old Incidents will be sent to the observer
         before any new ones are reported. When the publisher has finished
         sending the names of all old events, it will send a
-        done_with_incident_catchup() message to the observer.
-
-        Only old Incidents with a name that is alphabetically greater (and
-        thus later) than the since= argument will be sent. Use since='' to
-        catch up on all old Incidents.
+        done_with_incident_catchup() message to the observer. Only old
+        Incidents with a name that is alphabetically greater (and thus later)
+        than the since= argument will be sent. Use since='' to catch up on
+        all old Incidents.
 
         Call unsubscribe() on the returned RISubscription object to stop
         receiving messages.
