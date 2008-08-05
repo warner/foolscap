@@ -1,5 +1,81 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.3.0 (04 Aug 2008)
+
+** Compatibility: same as 0.2.6
+
+The wire-level protocol remains the same as other recent releases.
+
+The new incident-gatherer will only work with applications that use Foolscap
+0.3.0 or later.
+
+** logging improvements
+
+The "incident gatherer" has finally been implemented. This is a service, like
+the log-gatherer, which subscribes to an application's logport and collects
+incident reports: each is a dump of accumulated log messages, triggered by
+some special event (such as those above a certain severity threshold). The
+"flogtool create-incident-gatherer" command is used to create one, and twistd
+is used to start it. Please see doc/logging.xhtml for more details.
+
+The incident publishing API was changed to support the incident-gatherer. The
+incident-gatherer will only work with logports using foolscap 0.3.0 or newer.
+
+The log-publishing API was changed slightly, to encourage the use of
+subscription.unsubscribe() rather than publisher.unsubscribe(subscription).
+The old API remains in place for backwards compatibility with log-gatherers
+running foolscap 0.2.9 or earlier.
+
+The Tub.setOption("log-gatherer-furlfile") can accept a file with multiple
+FURLs, one per line, instead of just a single FURL. This makes the
+application contact multiple log gatherers, offering its logport to each
+independently, e.g. to connect to both a log-gatherer and an
+incident-gatherer.
+
+** API Additions
+
+RemoteReferences now have a getRemoteTubID() method, which returns a string
+(base32-encoded) representing the secure Tub ID of the remote end of the
+connection. For any given Tub ID, only the possessor of the matching private
+key should be able to provide a RemoteReference for which getRemoteTubID()
+will return that value. I'm not yet sure if getRemoteTubID() is a good idea
+or not (the traditional object-capability model discourages making
+access-control decisions on the basis of "who", instead these decisions
+should be controlled by "what": what objects do they have access to). This
+method is intended for use by application code that needs to use TubIDs as an
+index into a table of some sort. It is used by Tahoe to securely compute
+shared cryptographic secrets for each remote server (by hashing the TubID
+together with some other string).
+
+Note that the rref.getSturdyRef() call (which has been present in Foolscap
+since forever) is *not* secure: the remote application controls all parts of
+the sturdy ref FURL, including the tubid. A future version of foolscap may
+remedy this.
+
+** Bug fixes
+
+The log-gatherer FURL can now be set before Tub.setLocation (the connection
+request will be deferred until setLocation is called), and
+getLogPort/getLogPortFURL cannot be called until after setLocation. These two
+changes, in combination, resolve a problem (#55) in which the gatherer
+connection could be made before the logport was ready, causing the
+log-gatherer to fail to subscribe to receive log events.
+
+** Dependent Libraries
+
+Foolscap uses PyOpenSSL for all of its cryptographic routines. A bug (#62)
+has been found in which the current version of Twisted (8.1.0) and the
+current version of PyOpenSSL (0.7) interact badly, causing Foolscap's unit
+tests to fail. This problem will affect application code as well
+(specifically, Tub.stopService will hang forever). The problem only appears
+to affect the selectreactor, so the current recommended workaround is to run
+unit tests (and applications that need to shut down Tubs) with --reactor=poll
+(or whatever other reactor is appropriate for the platform, perhaps iocp). A
+less-desireable workaround is to downgrade PyOpenSSL to 0.6, or Twisted to
+something older. The Twisted maintainers are aware of the problem and intend
+to fix it in an upcoming Twisted release.
+
+
 * Release 0.2.9 (02 Jul 2008)
 
 ** Compatibility: exactly the same as 0.2.6

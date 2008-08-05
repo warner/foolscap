@@ -1,5 +1,7 @@
 2008-08-04  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the upcoming release
+
 	* foolscap/referenceable.py (RemoteReferenceOnly.getRemoteTubID):
 	make this secure, by using the broker's .remote_tubref field,
 	instead of the remote-side-controlled sturdyref.
