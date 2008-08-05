@@ -1,5 +1,10 @@
 2008-08-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py (verstr): release Foolscap-0.3.0
+	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
+
+2008-08-04  Brian Warner  <warner@lothar.com>
+
 	* foolscap/logging/interfaces.py
 	(RILogPublisher.subscribe_to_incidents): small edit, make it more
 	clear that since= is used for catch_up=True
