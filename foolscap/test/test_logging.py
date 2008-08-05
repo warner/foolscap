@@ -1648,7 +1648,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             self.failIf("[INCIDENT-TRIGGER]" in lines[0])
             self.failIf("[INCIDENT-TRIGGER]" in lines[1])
             self.failUnless(lines[2].strip().endswith(": boom [INCIDENT-TRIGGER]"))
-            
+
         d.addCallback(_check)
         return d
 
@@ -1676,7 +1676,7 @@ class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
                             self.failUnlessEqual(a1["d"][k2], b1["d"][k2])
                 else:
                     self.failUnlessEqual(a1[k], b1[k])
-                
+
 
     def test_basic(self):
         self.basedir = "logging/Filter/basic"
