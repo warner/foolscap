@@ -417,6 +417,7 @@ class TestCallable(unittest.TestCase):
             self.failUnless(IAddress.providedBy(peer))
             self.failUnlessEqual(peer.type, "TCP")
             self.failUnlessEqual(peer.host, "127.0.0.1")
+            self.failUnlessEqual(rref.getRemoteTubID(), self.tubB.getTubID())
         d.addCallback(_check)
         return d
 

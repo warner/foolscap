@@ -1,5 +1,13 @@
 2008-08-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReferenceOnly.getRemoteTubID):
+	make this secure, by using the broker's .remote_tubref field,
+	instead of the remote-side-controlled sturdyref.
+	(RemoteReferenceOnly.getSturdyRef): add a note about the
+	insecurity of this method
+	* foolscap/test/test_pb.py (TestCallable.testGetSturdyRef): add a
+	test for getRemoteTubID
+
 	* doc/logging.xhtml: change filenames in the incident-gatherer to
 	have fewer files starting with incident*, so tab-completion works
 	better.

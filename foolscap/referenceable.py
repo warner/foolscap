@@ -337,9 +337,14 @@ class RemoteReferenceOnly(object):
         self.tracker = tracker
 
     def getSturdyRef(self):
+        # note that this is currently *not* secure: the remote end gets to
+        # control all parts of this FURL, including the tubid
         return SturdyRef(self.tracker.getURL())
     def getRemoteTubID(self):
-        return SturdyRef(self.tracker.getURL()).getTubRef().getTubID()
+        rt = self.tracker.broker.remote_tubref
+        if rt:
+            return rt.getTubID()
+        return "<unauth>"
 
     def getPeer(self):
         """Return an IAddress-providing object that describes the remote
