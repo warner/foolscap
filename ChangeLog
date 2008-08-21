@@ -1,3 +1,10 @@
+2008-08-21  Brian Warner  <warner@lothar.com>
+
+	* foolscap/_version.py (verstr): bump revision to 0.3.0+ while
+	between releases
+	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
+	same
+
 2008-08-04  Brian Warner  <warner@lothar.com>
 
 	* foolscap/_version.py (verstr): release Foolscap-0.3.0
