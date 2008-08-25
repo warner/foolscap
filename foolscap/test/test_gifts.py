@@ -2,8 +2,7 @@
 from zope.interface import implements
 from twisted.trial import unittest
 from twisted.internet import defer, protocol, reactor
-from twisted.internet.error import ConnectionDone, ConnectionLost, \
-     ConnectionRefusedError
+from twisted.internet.error import ConnectionRefusedError
 from twisted.python import failure
 from foolscap import RemoteInterface, Referenceable
 from foolscap.referenceable import RemoteReference, SturdyRef
@@ -11,10 +10,6 @@ from foolscap.test.common import HelperTarget, RIHelper, \
      crypto_available, GoodEnoughTub
 from foolscap.eventual import flushEventualQueue
 from foolscap.tokens import BananaError, NegotiationError
-
-def ignoreConnectionDone(f):
-    f.trap(ConnectionDone, ConnectionLost)
-    return None
 
 class RIConstrainedHelper(RemoteInterface):
     def set(obj=RIHelper): return None
@@ -160,11 +155,8 @@ class Gifts(Base, unittest.TestCase):
             d2 = self.bob.waitfor()
             if self.debug: print "Alice introduces Carol to Bob"
             # send the gift. This might not get acked by the time the test is
-            # done and everything is torn down, so explicitly silence any
-            # ConnectionDone error that might result. When we get
-            # callRemoteOnly(), use that instead.
-            d3 = self.abob.callRemote("set", obj=(self.alice, self.acarol))
-            d3.addErrback(ignoreConnectionDone)
+            # done and everything is torn down, so we use callRemoteOnly
+            self.abob.callRemoteOnly("set", obj=(self.alice, self.acarol))
             return d2 # this fires with the gift that bob got
         d.addCallback(_introduce)
         def _bobGotCarol((balice,bcarol)):
@@ -173,8 +165,7 @@ class Gifts(Base, unittest.TestCase):
             if self.debug: print "Bob says something to Carol"
             d2 = self.carol.waitfor()
             # handle ConnectionDone as described before
-            d3 = self.bcarol.callRemote("set", obj=12)
-            d3.addErrback(ignoreConnectionDone)
+            self.bcarol.callRemoteOnly("set", obj=12)
             return d2
         d.addCallback(_bobGotCarol)
         def _carolCalled(res):
@@ -211,10 +202,9 @@ class Gifts(Base, unittest.TestCase):
             # done and everything is torn down, so explicitly silence any
             # ConnectionDone error that might result. When we get
             # callRemoteOnly(), use that instead.
-            d3 = self.abob.callRemote("set", obj=(self.alice,
-                                                  self.acarol,
-                                                  a_cindy))
-            d3.addErrback(ignoreConnectionDone)
+            self.abob.callRemoteOnly("set", obj=(self.alice,
+                                                 self.acarol,
+                                                 a_cindy))
             return d2 # this fires with the gift that bob got
         d.addCallback(_introduce)
         def _bobGotCarol((b_alice,b_carol,b_cindy)):
@@ -229,10 +219,8 @@ class Gifts(Base, unittest.TestCase):
             d3 = self.cindy.waitfor()
 
             # handle ConnectionDone as described before
-            d4 = b_carol.callRemote("set", obj=4)
-            d4.addErrback(ignoreConnectionDone)
-            d5 = b_cindy.callRemote("set", obj=5)
-            d5.addErrback(ignoreConnectionDone)
+            b_carol.callRemoteOnly("set", obj=4)
+            b_cindy.callRemoteOnly("set", obj=5)
             return defer.DeferredList([d2,d3])
         d.addCallback(_bobGotCarol)
         def _carolAndCindyCalled(res):

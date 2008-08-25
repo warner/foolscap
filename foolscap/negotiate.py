@@ -3,12 +3,12 @@
 import time
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor
-from twisted.internet.error import ConnectionDone
 
 from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
 from foolscap.tokens import SIZE_LIMIT, ERROR, \
      BananaError, NegotiationError, RemoteNegotiationError
+from foolscap.ipb import DeadReferenceError
 from foolscap.banana import int2b128
 from foolscap.logging import log
 from foolscap.logging.log import NOISY, OPERATIONAL, WEIRD, UNUSUAL, CURIOUS
@@ -784,8 +784,8 @@ class Negotiation(protocol.Protocol):
                     # drop the old one
                     self.log("accepting new offer, dropping existing connection",
                              parent=lp)
-                    err = ConnectionDone("[%s] replaced by a new connection"
-                                         % theirTubRef.getShortTubID())
+                    err = DeadReferenceError("[%s] replaced by a new connection"
+                                             % theirTubRef.getShortTubID())
                     why = Failure(err)
                     existing.shutdown(why)
                 else:
@@ -1078,7 +1078,7 @@ class Negotiation(protocol.Protocol):
             # use the one picked by the master
             self.log("master told us to use a new connection, "
                      "so we must drop the existing one", level=UNUSUAL)
-            err = ConnectionDone("replaced by a new connection")
+            err = DeadReferenceError("replaced by a new connection")
             why = Failure(err)
             self.tub.brokers[self.theirTubRef].shutdown(why)
 

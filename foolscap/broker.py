@@ -482,6 +482,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
             raise Violation("non-existent reqID '%d'" % reqID)
 
     def abandonAllRequests(self, why):
+        # map all connection-lost errors to DeadReferenceError, so
+        # application code only needs to check for one exception type
+        if why.check(error.ConnectionLost, error.ConnectionDone):
+            why = failure.Failure(DeadReferenceError("Connection was lost"))
         for req in self.waitingForAnswers.values():
             eventually(req.fail, why)
 

@@ -10,20 +10,21 @@ if False:
 
 from twisted.python import log
 from twisted.trial import unittest
-from twisted.internet.main import CONNECTION_LOST
+from twisted.internet.main import CONNECTION_LOST, CONNECTION_DONE
 from twisted.python.failure import Failure
 
 from foolscap.tokens import Violation
 from foolscap.eventual import flushEventualQueue
-from foolscap.test.common import HelperTarget, TargetMixin
+from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin
 from foolscap.test.common import RIMyTarget, Target, TargetWithoutInterfaces, \
      BrokenTarget
+from foolscap import DeadReferenceError
 
 class Unsendable:
     pass
 
 
-class TestCall(TargetMixin, unittest.TestCase):
+class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def setUp(self):
         TargetMixin.setUp(self)
         self.setupBrokers()
@@ -200,24 +201,11 @@ class TestCall(TargetMixin, unittest.TestCase):
         d.addCallback(lambda res: self.failUnlessEqual(res, None))
         d.addCallback(lambda res: rr.callRemote("choice1", "a"*2000))
         d.addCallback(lambda res: self.failUnlessEqual(res, None))
-        def _check_false(res):
-            # False does not conform
-            d1 = rr.callRemote("choice1", False)
-            d1.addBoth(self.shouldFail, Violation, "testChoiceOf")
-            return d1
-        d.addCallback(_check_false)
+        # False does not conform
+        d.addCallback(lambda res:
+                      self.shouldFail(Violation, "testChoiceOf", None,
+                                      rr.callRemote, "choice1", False))
         return d
-
-    def shouldFail(self, res, expected_failure, which, substring=None):
-        if isinstance(res, Failure):
-            res.trap(expected_failure)
-            if substring:
-                self.failUnless(substring in str(res),
-                                "substring '%s' not in '%s'"
-                                % (substring, str(res)))
-        else:
-            self.fail("%s was supposed to raise %s, not get '%s'" %
-                      (which, expected_failure, res))
 
     def testMegaSchema(self):
         # try to exercise all our constraints at once
@@ -407,6 +395,30 @@ class TestCall(TargetMixin, unittest.TestCase):
         rr.tracker.broker.transport.loseConnection(Failure(e))
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        lambda why: why.trap(RuntimeError) and None)
+        return d
+
+    def test_connection_lost_is_deadref(self):
+        rr, target = self.setupTarget(HelperTarget())
+        d1 = rr.callRemote("hang")
+        def get_d(): return d1
+        rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
+        d = self.shouldFail(DeadReferenceError, "lost_is_deadref.1",
+                            "Connection was lost",
+                            get_d)
+        # and once the connection is down, we should get a DeadReferenceError
+        # for new messages
+        d.addCallback(lambda res:
+                      self.shouldFail(DeadReferenceError, "lost_is_deadref.2",
+                                      "Calling Stale Broker",
+                                      rr.callRemote, "hang"))
+        return d
+
+    def test_connection_done_is_deadref(self):
+        rr, target = self.setupTarget(HelperTarget())
+        d = rr.callRemote("hang")
+        rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_DONE))
+        d.addCallbacks(lambda res: self.fail("should have failed"),
+                       lambda why: why.trap(DeadReferenceError) and None)
         return d
 
     def disconnected(self, *args, **kwargs):

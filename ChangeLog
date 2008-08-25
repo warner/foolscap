@@ -1,3 +1,21 @@
+2008-08-25  Brian Warner  <warner@lothar.com>
+
+	* foolscap/broker.py (Broker.abandonAllRequests): map both
+	ConnectionLost and ConnectionDone into DeadReferenceError, so that
+	application code only needs to check for one exception type.
+	* foolscap/negotiate.py (Negotiation.evaluateNegotiationVersion1):
+	when an existing connection is dropped in favor of a new one, drop
+	it with DeadReferenceError instead of ConnectionDone. The mapping
+	in Broker.abandonAllRequests doesn't seem to quite catch
+	everything in unit tests.
+	(Negotiation.acceptDecisionVersion1): same, when we're the slave
+	* foolscap/test/test_call.py (TestCall.test_connection_lost_is_deadref):
+	test it
+	(TestCall.test_connection_done_is_deadref): same
+	(TestCall.testChoiceOf): switch to use ShouldFailMixin
+	* foolscap/test/test_gifts.py (Gifts): remove
+	ignoreConnectionDone, just look for DeadReferenceError
+
 2008-08-21  Brian Warner  <warner@lothar.com>
 
 	* foolscap/_version.py (verstr): bump revision to 0.3.0+ while
