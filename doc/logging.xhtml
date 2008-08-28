@@ -670,6 +670,26 @@ while the Tub is running (specifically from the time its startService()
 method is until its stopService() method is called). TODO: review this
 behavior, we want earlier messages to be bridged too.</p>
 
+<p>To bridge log events in the other direction (i.e. taking foolscap log
+messages and copying them into twisted), use the
+<code>log.bridgeLogsToTwisted()</code> call, or the
+<code>FLOGTOTWISTED</code> environment variable. This is useful to get
+foolscap.logging.log.msg() events copied into <code>twistd.log</code>. The
+default filter only bridges non-noisy events (i.e. those at level OPERATIONAL
+or higher), and does not bridge foolscal internal events.</p>
+
+<p>You might use this if you don't buy into the foolscap logging philosophy
+and really want log events to be continually written out to disk. You might
+also use it if you want a long-term record of operationally-significant
+events, or a record that will survive application crashes which don't get
+handled by the existing Incident-recording mechanism.</p>
+
+<pre class="python">
+from foolscap.logging import log
+log.bridgeLogsToTwisted()
+</pre>
+
+
 <h4>stdlib 'logging' module</h4>
 
 <p>stdlib <code>logging</code> messages must be bridged in the same way. TODO:

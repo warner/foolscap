@@ -339,11 +339,13 @@ class Tub(service.MultiService):
         elif name == "log-gatherer-furlfile":
             self.setLogGathererFURLFile(value)
         elif name == "bridge-twisted-logs":
-            if value:
-                tlb = flog.TwistedLogBridge(self.tubID)
-                flog.setTwistedLogBridge(tlb)
+            assert value is not False, "cannot unbridge twisted logs"
+            if value is True:
+                return flog.bridgeLogsFromTwisted(self.tubID)
             else:
-                flog.setTwistedLogBridge(None)
+                # for tests, bridge logs from a specific twisted LogPublisher
+                return flog.bridgeLogsFromTwisted(self.tubID,
+                                                  twisted_logger=value)
         elif name == "handle-old-duplicate-connections":
             if value is True:
                 value = 60

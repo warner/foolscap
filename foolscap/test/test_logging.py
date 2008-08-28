@@ -348,7 +348,6 @@ class Publish(PollMixin, unittest.TestCase):
 
     def tearDown(self):
         publish.Subscription.MAX_QUEUE_SIZE = self.saved_queue_size
-        log.setTwistedLogBridge(None) # disable any bridge still in place
         d = defer.succeed(None)
         d.addCallback(lambda res: self.parent.stopService())
         d.addCallback(flushEventualQueue)
@@ -401,13 +400,12 @@ class Publish(PollMixin, unittest.TestCase):
         logport_furl = t.getLogPortFURL()
         logport_furl2 = open(furlfile, "r").read().strip()
         self.failUnlessEqual(logport_furl, logport_furl2)
-        t.setOption("bridge-twisted-logs", True)
+        tw_log = twisted_log.LogPublisher()
+        tlb = t.setOption("bridge-twisted-logs", tw_log)
 
         t2 = GoodEnoughTub()
         t2.setServiceParent(self.parent)
         ob = Observer()
-
-        do_twisted_errors = hasattr(self, "flushLoggedErrors")
 
         d = t2.getReference(logport_furl)
         def _got_logport(logport):
@@ -424,20 +422,26 @@ class Publish(PollMixin, unittest.TestCase):
                 self._subscription = subscription
                 ob.last_received = time.time()
                 log.msg("message 1 here")
-                twisted_log.msg("message 2 here")
+                tw_log.msg("message 2 here")
+
                 # switch to generic (no tubid) bridge
-                log.bridgeTwistedLogs()
-                twisted_log.msg("message 3 here")
-                twisted_log.msg(format="%(foo)s is foo", foo="foo")
+                tw_log.removeObserver(tlb.observer)
+                log.bridgeLogsFromTwisted(None, tw_log)
+
+                tw_log.msg("message 3 here")
+                tw_log.msg(format="%(foo)s is foo", foo="foo")
                 log.err(failure.Failure(SampleError("err1")))
                 log.err(SampleError("err2"))
-                if do_twisted_errors:
-                    twisted_log.err(failure.Failure(SampleError("err3")))
-                    twisted_log.err(SampleError("err4"))
-                    # twisted-2.5.0 added flushLoggedErrors, which makes
-                    # it much easier for unit test to exercise error logging
-                    errors = self.flushLoggedErrors(SampleError)
-                    self.failUnlessEqual(len(errors), 2)
+                # simulate twisted.python.log.err, which is unfortunately
+                # not a method of LogPublisher
+                def err(_stuff=None, _why=None):
+                    if isinstance(_stuff, Exception):
+                        tw_log.msg(failure=failure.Failure(_stuff),
+                                   isError=1, why=_why)
+                    else:
+                        tw_log.msg(failure=_stuff, isError=1, why=_why)
+                err(failure.Failure(SampleError("err3")))
+                err(SampleError("err4"))
             d.addCallback(_emit)
             # now we wait until the observer has seen nothing for a full
             # second. I'd prefer something faster and more deterministic, but
@@ -453,10 +457,7 @@ class Publish(PollMixin, unittest.TestCase):
             #d.addCallback(fireEventually)
             def _check_observer(res):
                 msgs = ob.messages
-                expected = 6
-                if do_twisted_errors:
-                    expected += 2
-                self.failUnlessEqual(len(msgs), expected)
+                self.failUnlessEqual(len(msgs), 8)
                 #print msgs
                 self.failUnlessEqual(msgs[0]["message"], "message 1 here")
                 self.failUnlessEqual(msgs[1]["message"], "message 2 here")
@@ -478,26 +479,25 @@ class Publish(PollMixin, unittest.TestCase):
                 self.failUnless(msgs[5]["failure"].check(SampleError))
                 self.failUnless("err2" in str(msgs[5]["failure"]))
 
-                if do_twisted_errors:
-                    # twisted-8.0 has textFromEventDict, which means we get a
-                    # ["message"] key from log.err . In older version of
-                    # twisted, we don't.
-                    if msgs[6]["message"]:
-                        self.failUnless("Unhandled Error" in msgs[6]["message"])
-                        self.failUnless("SampleError: err3" in msgs[6]["message"])
-                    self.failUnless(msgs[6]["isError"])
-                    self.failUnless("failure" in msgs[6])
-                    self.failUnless(msgs[6]["failure"].check(SampleError))
-                    self.failUnless("err3" in str(msgs[6]["failure"]))
+                # twisted-8.0 has textFromEventDict, which means we get a
+                # ["message"] key from log.err . In older version of
+                # twisted, we don't.
+                if msgs[6]["message"]:
+                    self.failUnless("Unhandled Error" in msgs[6]["message"])
+                    self.failUnless("SampleError: err3" in msgs[6]["message"])
+                self.failUnless(msgs[6]["isError"])
+                self.failUnless("failure" in msgs[6])
+                self.failUnless(msgs[6]["failure"].check(SampleError))
+                self.failUnless("err3" in str(msgs[6]["failure"]))
 
-                    # same
-                    if msgs[7]["message"]:
-                        self.failUnless("Unhandled Error" in msgs[7]["message"])
-                        self.failUnless("SampleError: err4" in msgs[7]["message"])
-                    self.failUnless(msgs[7]["isError"])
-                    self.failUnless("failure" in msgs[7])
-                    self.failUnless(msgs[7]["failure"].check(SampleError))
-                    self.failUnless("err4" in str(msgs[7]["failure"]))
+                # same
+                if msgs[7]["message"]:
+                    self.failUnless("Unhandled Error" in msgs[7]["message"])
+                    self.failUnless("SampleError: err4" in msgs[7]["message"])
+                self.failUnless(msgs[7]["isError"])
+                self.failUnless("failure" in msgs[7])
+                self.failUnless(msgs[7]["failure"].check(SampleError))
+                self.failUnless("err4" in str(msgs[7]["failure"]))
 
             d.addCallback(_check_observer)
             def _done(res):
@@ -1048,7 +1048,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         self.parent.startService()
 
     def tearDown(self):
-        log.setTwistedLogBridge(None) # disable any bridge still in place
         d = defer.succeed(None)
         d.addCallback(lambda res: self.parent.stopService())
         d.addCallback(flushEventualQueue)
@@ -1844,5 +1843,89 @@ class Web(unittest.TestCase):
         d.addCallback(lambda res:
                       client.getPage(self.baseurl + "all-events?sort=time"))
         d.addCallback(_check_all_events)
+        return d
+
+
+class Bridge(unittest.TestCase):
+    def test_foolscap_to_twisted(self):
+        fl = log.FoolscapLogger()
+        tw = twisted_log.LogPublisher()
+        log.bridgeLogsToTwisted(None, fl, tw)
+        tw_out = []
+        tw.addObserver(tw_out.append)
+        fl_out = []
+        fl.addObserver(fl_out.append)
+
+        fl.msg("one")
+        fl.msg(format="two %(two)d", two=2)
+        fl.msg("three", level=log.NOISY) # should be removed
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnlessEqual(len(fl_out), 3)
+            self.failUnlessEqual(fl_out[0]["message"], "one")
+            self.failUnlessEqual(fl_out[1]["format"], "two %(two)d")
+            self.failUnlessEqual(fl_out[2]["message"], "three")
+
+            self.failUnlessEqual(len(tw_out), 2)
+            self.failUnlessEqual(tw_out[0]["message"], ("one",))
+            self.failUnless(tw_out[0]["from-foolscap"])
+            self.failUnlessEqual(tw_out[1]["message"], ("two 2",))
+            self.failUnless(tw_out[1]["from-foolscap"])
+
+        d.addCallback(_check)
+        return d
+
+    def test_twisted_to_foolscap(self):
+        fl = log.FoolscapLogger()
+        tw = twisted_log.LogPublisher()
+        log.bridgeLogsFromTwisted(None, tw, fl)
+        tw_out = []
+        tw.addObserver(tw_out.append)
+        fl_out = []
+        fl.addObserver(fl_out.append)
+
+        tw.msg("one")
+        tw.msg(format="two %(two)d", two=2)
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnlessEqual(len(tw_out), 2)
+            self.failUnlessEqual(tw_out[0]["message"], ("one",))
+            self.failUnlessEqual(tw_out[1]["format"], "two %(two)d")
+            self.failUnlessEqual(tw_out[1]["two"], 2)
+
+            self.failUnlessEqual(len(fl_out), 2)
+            self.failUnlessEqual(fl_out[0]["message"], "one")
+            self.failUnless(fl_out[0]["from-twisted"])
+            self.failUnlessEqual(fl_out[1]["format"], "two %(two)d")
+            self.failUnless(fl_out[1]["from-twisted"])
+
+        d.addCallback(_check)
+        return d
+
+
+    def test_no_loops(self):
+        fl = log.FoolscapLogger()
+        tw = twisted_log.LogPublisher()
+        log.bridgeLogsFromTwisted(None, tw, fl)
+        log.bridgeLogsToTwisted(None, fl, tw)
+        tw_out = []
+        tw.addObserver(tw_out.append)
+        fl_out = []
+        fl.addObserver(fl_out.append)
+
+        tw.msg("one")
+        fl.msg("two")
+
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnlessEqual(len(tw_out), 2)
+            self.failUnlessEqual(tw_out[0]["message"], ("one",))
+            self.failUnlessEqual(tw_out[1]["message"], ("two",))
+
+            self.failUnlessEqual(len(fl_out), 2)
+            self.failUnlessEqual(fl_out[0]["message"], "one")
+            self.failUnlessEqual(fl_out[1]["message"], "two")
+
+        d.addCallback(_check)
         return d
 

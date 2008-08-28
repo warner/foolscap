@@ -294,8 +294,9 @@ get_generation_threshold = theLogger.get_generation_threshold
 # code to bridge twisted.python.log.msg() to foolscap
 
 class TwistedLogBridge:
-    def __init__(self, tubID=None):
+    def __init__(self, tubID=None, foolscap_logger=theLogger):
         self.tubID = tubID
+        self.logger = foolscap_logger
 
         # newer versions of Twisted have a function called
         # textFromEventDict() that we can use to format the message. Older
@@ -314,13 +315,18 @@ class TwistedLogBridge:
         #  ['isError']: bool, usually False
         #  ['system']: string
 
+        if "from-foolscap" in d:
+            return
         event = d.copy()
         event['tubID'] = self.tubID
         message = twisted_log.textFromEventDict(d)
         event.pop('message', None)
-        msg(message, **event)
+        event['from-twisted'] = True
+        self.logger.msg(message, **event)
 
     def _old_twisted_log_observer(self, d):
+        if "from-foolscap" in d:
+            return
         event = d.copy()
         if "format" in d:
             # 'message' will be treated as a format string, with the rest of
@@ -332,23 +338,46 @@ class TwistedLogBridge:
             event['message'] = " ".join([str(m) for m in d['message']])
         event.pop('args', None)
         event['tubID'] = self.tubID
-        msg(**event)
+        event['from-twisted'] = True
+        self.logger.msg(**event)
 
-theTwistedLogBridge = None
+def bridgeLogsFromTwisted(tubID=None,
+                          twisted_logger=twisted_log.theLogPublisher,
+                          foolscap_logger=theLogger):
+    """Called without arguments, this arranges for all twisted log messages
+    to be bridged into the default foolscap logger.
 
-def setTwistedLogBridge(bridge):
-    global theTwistedLogBridge
-    if theTwistedLogBridge:
-        try:
-            twisted_log.removeObserver(theTwistedLogBridge.observer)
-        except ValueError:
-            pass
-    if bridge:
-        theTwistedLogBridge = bridge
-        twisted_log.addObserver(bridge.observer)
+    I can also be called with a specific twisted and/or foolscap logger,
+    mostly for unit tests that don't want to modify the default instances.
+    For their benefit, I return the bridge.
+    """
+    tlb = TwistedLogBridge(tubID, foolscap_logger)
+    twisted_logger.addObserver(tlb.observer)
+    return tlb
 
-def bridgeTwistedLogs():
-    setTwistedLogBridge(TwistedLogBridge())
+def bridgeLogsToTwisted(filter=None,
+                        foolscap_logger=theLogger,
+                        twisted_logger=twisted_log):
+    # foolscap_logger and twisted_logger are for testing purposes
+    def non_foolscap_operational_or_better(e):
+        if e.get("facility","").startswith("foolscap"):
+            return False
+        if e['level'] < OPERATIONAL:
+            return False
+        return True
+    if not filter:
+        filter = non_foolscap_operational_or_better
+    def _to_twisted(event):
+        if "from-twisted" in event:
+            return
+        if not filter(event):
+            return
+        args = {"from-foolscap": True,
+                "num": event["num"],
+                "level": event["level"],
+                }
+        twisted_logger.msg(format_message(event), **args)
+    foolscap_logger.addObserver(_to_twisted)
 
 class LogFileObserver:
     def __init__(self, filename, level=OPERATIONAL):
@@ -401,4 +430,7 @@ if _flogfile:
               (_flogfile,)
 
 if "FLOGTWISTED" in os.environ:
-    bridgeTwistedLogs()
+    bridgeLogsFromTwisted()
+
+if "FLOGTOTWISTED" in os.environ:
+    bridgeLogsToTwisted()
