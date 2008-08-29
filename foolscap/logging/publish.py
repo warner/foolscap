@@ -3,9 +3,7 @@ import os
 import pickle
 from collections import deque
 from zope.interface import implements
-import twisted
 from twisted.python import filepath
-import foolscap
 from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
 from foolscap.logging import app_versions
