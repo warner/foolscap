@@ -1059,6 +1059,7 @@ class IncidentGatherer(unittest.TestCase,
         def _update_classifiers_again(res):
             ig3 = self.create_incident_gatherer(basedir)
             ig3.setServiceParent(self.parent)
+            self.ig3 = ig3
 
             unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
             self.failIf(os.path.exists(unknowns_fn))
@@ -1073,6 +1074,29 @@ class IncidentGatherer(unittest.TestCase,
 
         # give the call to remote_logport a chance to retire
         d.addCallback(self.stall, 0.5)
+        d.addCallback(lambda res: self.ig3.disownServiceParent())
+
+        # and if we remove all the stored incidents (and the 'latest'
+        # record), the gatherer will grab everything. This exercises the
+        # only-grab-one-at-a-time code. I verified this manually, by adding a
+        # print to the avoid-duplicate clause of
+        # IncidentObserver.maybe_fetch_incident .
+
+        def _create_ig4(res):
+            ig4 = self.create_incident_gatherer(basedir)
+            for nodeid in os.listdir(os.path.join(ig4.basedir, "incidents")):
+                nodedir = os.path.join(ig4.basedir, "incidents", nodeid)
+                for fn in os.listdir(nodedir):
+                    os.unlink(os.path.join(nodedir, fn))
+                os.rmdir(nodedir)
+            ig4.setServiceParent(self.parent)
+            self.ig4 = ig4
+        d.addCallback(_create_ig4)
+        d.addCallback(lambda res:
+                      self.poll(lambda : self.ig4.incidents_received == 2))
+
+        d.addCallback(self.stall, 0.5)
+
         return d
 
     def remove_classified_incidents(self, ig):

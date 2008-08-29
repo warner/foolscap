@@ -7,7 +7,7 @@ except ImportError:
     pass
 from zope.interface import implements
 from twisted.internet import reactor, utils, defer
-from twisted.python import usage, procutils, filepath
+from twisted.python import usage, procutils, filepath, log as tw_log
 from twisted.application import service, internet
 import foolscap
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
@@ -309,6 +309,8 @@ class IncidentObserver(foolscap.Referenceable):
         self.publisher = publisher
         self.stdout = stdout
         self.caught_up_d = defer.Deferred()
+        self.incidents_wanted = []
+        self.incident_fetch_outstanding = False
 
     def connect(self):
         # look for a local state file, to see what incidents we've already
@@ -331,15 +333,30 @@ class IncidentObserver(foolscap.Referenceable):
         return d
 
     def remote_new_incident(self, name, trigger):
-        print >>self.stdout, "got incident", name
+        print >>self.stdout, "new incident", name
         # name= should look like "incident-2008-07-29-204211-aspkxoi". We
         # prevent name= from containing path metacharacters like / or : by
         # using FilePath later on.
+        self.incidents_wanted.append( (name, trigger) )
+        self.maybe_fetch_incident()
+
+    def maybe_fetch_incident(self):
+        # only fetch one incident at a time, to keep the sender's outbound
+        # memory usage to a reasonable level
+        if self.incident_fetch_outstanding:
+            return
+        if not self.incidents_wanted:
+            return
+        self.incident_fetch_outstanding = True
+        (name, trigger) = self.incidents_wanted.pop(0)
+        print >>self.stdout, "fetching incident", name
         d = self.publisher.callRemote("get_incident", name)
         d.addCallback(self._got_incident, name, trigger)
-        d.addCallback(lambda res: None)
-        return d
+        d.addErrback(tw_log.err,
+                     "IncidentObserver.get_incident or _got_incident")
+
     def _got_incident(self, incident, name, trigger):
+        self.incident_fetch_outstanding = False
         # We always save the incident to a .bz2 file.
         abs_fn = self.basedir.child(name).path # this prevents evil
         abs_fn += ".flog.bz2"
@@ -349,6 +366,7 @@ class IncidentObserver(foolscap.Referenceable):
         self.save_incident(abs_fn, incident)
         self.update_latest(name)
         self.gatherer.new_incident(abs_fn, rel_fn, self.tubid_s, incident)
+        self.maybe_fetch_incident()
 
     def save_incident(self, filename, incident):
         now = time.time()
@@ -404,6 +422,7 @@ class IncidentGathererService(GatheringBase):
         self.classifiers = []
         self.classifiers.extend(classifiers)
         self.stdout = stdout
+        self.incidents_received = 0 # for tests
 
     def add_classifier(self, f):
         self.classifiers.append(f)
@@ -460,8 +479,9 @@ class IncidentGathererService(GatheringBase):
 
     def new_incident(self, abs_fn, rel_fn, tubid_s, incident):
         stdout = self.stdout or sys.stdout
-        print >>stdout, "NEW INCIDENT", rel_fn
-        self.classify_incident(rel_fn, tubid_s, incident)
+        categories = self.classify_incident(rel_fn, tubid_s, incident)
+        print >>stdout, "GOT INCIDENT %s [%s]" % (rel_fn, ",".join(categories))
+        self.incidents_received += 1
 
     def classify_incident(self, rel_fn, tubid_s, incident):
         categories = set()
@@ -478,6 +498,7 @@ class IncidentGathererService(GatheringBase):
             f = open(fn, "a")
             f.write(rel_fn + "\n")
             f.close()
+        return categories
 
 
 INCIDENT_GATHERER_TACFILE = """\

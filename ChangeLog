@@ -1,5 +1,12 @@
 2008-08-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/gatherer.py (IncidentObserver): only fetch one
+	incident at a time, to limit the size of the sender's outbound
+	queue. This should help close #85.
+	(IncidentGathererService.new_incident): include the classification
+	results in the per-incident log messages
+	* foolscap/test/test_logging.py (IncidentGatherer.test_emit): tests
+
 	* foolscap/logging/log.py (FoolscapLogger.declare_incident):
 	combine overlapping incidents, by passing new triggers to an
 	existing reporter instead of creating a new one. Helps with #85.
