@@ -8,6 +8,7 @@ from twisted.python import filepath
 import foolscap
 from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
+from foolscap.logging import app_versions
 from foolscap.eventual import eventually
 
 class Subscription(Referenceable):
@@ -163,21 +164,17 @@ class LogPublisher(Referenceable):
 
     implements(RILogPublisher)
 
-    # you might want to modify this to include the version of your
-    # application. Just do:
-    #  from foolscap.logging.publish import LogPublisher
-    #  LogPublisher.versions['myapp'] = myversion
-
-    versions = {"twisted": twisted.__version__,
-                "foolscap": foolscap.__version__,
-                }
+    # the 'versions' dict used to live here in LogPublisher, but now it lives
+    # in foolscap.logging.app_versions and should be accessed from there.
+    # This copy remains for backwards-compatibility.
+    versions = app_versions.versions
 
     def __init__(self, logger):
         self._logger = logger
         logger.setLogPort(self)
 
     def remote_get_versions(self):
-        return self.versions
+        return app_versions.versions
     def remote_get_pid(self):
         return os.getpid()
 

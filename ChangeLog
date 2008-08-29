@@ -1,3 +1,19 @@
+2008-08-29  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/app_versions.py (versions): move the
+	application version dict (which gets reported to remote
+	subscribers, and copied into logfiles) to a separate module. It
+	was causing circular import problems when it lived in an attribute
+	of LogPublisher.
+	(add_version): provide a setter method
+	* foolscap/logging/publish.py (LogPublisher.versions): same
+	(LogPublisher.remote_get_versions): same
+	* foolscap/logging/incident.py (IncidentReporter.incident_declared):
+	same
+
+	* foolscap/test/test_logging.py (IncidentGatherer.test_emit):
+	improve test shutdown a little bit
+
 2008-08-28  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/incident.py (IncidentReporter.incident_declared):

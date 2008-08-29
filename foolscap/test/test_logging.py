@@ -1099,7 +1099,7 @@ class IncidentGatherer(unittest.TestCase,
         d.addCallback(lambda res:
                       self.poll(lambda : self.ig4.incidents_received == 2))
 
-        d.addCallback(self.stall, 0.5)
+        d.addBoth(self.stall, 0.5) # allow shutdown even on error
 
         return d
 

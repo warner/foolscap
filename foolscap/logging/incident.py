@@ -3,7 +3,7 @@ import os.path, time, pickle, bz2
 from zope.interface import implements
 from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
-from foolscap.logging import levels
+from foolscap.logging import levels, app_versions
 from foolscap.eventual import eventually
 from foolscap import base32
 
@@ -83,15 +83,10 @@ class IncidentReporter:
         self.f1 = open(self.abs_filename, "wb")
         self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
 
-        # there's some weird circular import that prevents this from being
-        # imported at the top level
-        from foolscap.logging.publish import LogPublisher
-        versions = LogPublisher.versions
-
         # write header with triggering_event
         header = {"header": {"type": "incident",
                              "trigger": triggering_event,
-                             "versions": versions,
+                             "versions": app_versions.versions,
                              }}
         pickle.dump(header, self.f1)
         pickle.dump(header, self.f2)
