@@ -246,6 +246,8 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             self.failUnless("header" in events[0])
             self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
                                  "3-trigger")
+            self.failUnlessEqual(events[0]["header"]["versions"]["foolscap"],
+                                 foolscap.__version__)
             self.failUnlessEqual(events[3]["d"]["message"], "3-trigger")
 
         l.msg("4-trailing")
@@ -259,6 +261,8 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             self.failUnless("header" in events[0])
             self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
                                  "3-trigger")
+            self.failUnlessEqual(events[0]["header"]["versions"]["foolscap"],
+                                 foolscap.__version__)
             self.failUnlessEqual(events[3]["d"]["message"], "3-trigger")
             self.failUnlessEqual(events[4]["d"]["message"], "4-trailing")
 

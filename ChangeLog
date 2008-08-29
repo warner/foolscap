@@ -1,5 +1,9 @@
 2008-08-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/incident.py (IncidentReporter.incident_declared):
+	put versions in the incident header too, also for #80.
+	* foolscap/test/test_logging.py (Incidents.test_basic): test it
+
 	* foolscap/logging/tail.py (LogPrinter.got_versions): record
 	remote application versions to the --save-to file, in the header.
 	Part of #80.

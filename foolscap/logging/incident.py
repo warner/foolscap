@@ -82,9 +82,16 @@ class IncidentReporter:
         # open logfile. We use both an uncompressed one and a compressed one.
         self.f1 = open(self.abs_filename, "wb")
         self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
+
+        # there's some weird circular import that prevents this from being
+        # imported at the top level
+        from foolscap.logging.publish import LogPublisher
+        versions = LogPublisher.versions
+
         # write header with triggering_event
         header = {"header": {"type": "incident",
                              "trigger": triggering_event,
+                             "versions": versions,
                              }}
         pickle.dump(header, self.f1)
         pickle.dump(header, self.f2)
