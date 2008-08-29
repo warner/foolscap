@@ -3,9 +3,11 @@
 	* foolscap/logging/tail.py (LogPrinter.got_versions): record
 	remote application versions to the --save-to file, in the header.
 	Part of #80.
+	(LogPrinter.got_versions): oops, control where stdout goes
 	* foolscap/logging/dumper.py (LogDumper.start): show those
 	versions with --verbose
 	* foolscap/test/test_logging.py (Dumper.test_dump): update to match
+	(Tail.test_logprinter): same, make sure got_versions is called
 
 	* foolscap/logging/gatherer.py (IncidentObserver): only fetch one
 	incident at a time, to limit the size of the sender's outbound

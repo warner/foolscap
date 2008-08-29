@@ -1416,6 +1416,7 @@ class Tail(unittest.TestCase):
                    "verbose": None}
         out = StringIO()
         lp = tail.LogPrinter(options1, target_tubid_s[:8], out)
+        lp.got_versions({})
         lp.remote_msg({"time": 1207005906.527782,
                        "level": 25,
                        "num": 123,
@@ -1460,6 +1461,7 @@ class Tail(unittest.TestCase):
                    "verbose": True}
         out = StringIO()
         lp = tail.LogPrinter(options1, target_tubid_s[:8], out)
+        lp.got_versions({})
         lp.remote_msg({"time": 1207005906.527782,
                        "level": 25,
                        "num": 123,
@@ -1478,6 +1480,7 @@ class Tail(unittest.TestCase):
                    "verbose": False}
         out = StringIO()
         lp = tail.LogPrinter(options, target_tubid_s[:8], out)
+        lp.got_versions({})
         lp.remote_msg({"time": 1207005906.527782,
                        "level": 25,
                        "num": 123,

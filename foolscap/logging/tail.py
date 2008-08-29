@@ -72,9 +72,9 @@ class LogPrinter(foolscap.Referenceable):
         self.output = output
 
     def got_versions(self, versions):
-        print "Remote Versions:"
+        print >>self.output, "Remote Versions:"
         for k in sorted(versions.keys()):
-            print " %s: %s" % (k, versions[k])
+            print >>self.output, " %s: %s" % (k, versions[k])
         if self.saver:
             self.saver.emit_header(versions)
 
