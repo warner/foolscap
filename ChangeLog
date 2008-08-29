@@ -1,5 +1,11 @@
 2008-08-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/tail.py (LogPrinter.got_versions): record
+	remote application versions to the --save-to file, in the header.
+	Part of #80.
+	* foolscap/logging/dumper.py (LogDumper.start): show those
+	versions with --verbose
+
 	* foolscap/logging/gatherer.py (IncidentObserver): only fetch one
 	incident at a time, to limit the size of the sender's outbound
 	queue. This should help close #85.

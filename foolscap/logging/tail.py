@@ -19,6 +19,11 @@ class LogSaver(foolscap.Referenceable):
         self.nodeid_s = nodeid_s
         self.f = savefile
 
+    def emit_header(self, versions):
+        header = {"header": {"type": "tail",
+                             "versions": versions}}
+        pickle.dump(header, self.f)
+
     def remote_msg(self, d):
         e = {"from": self.nodeid_s,
              "rx_time": time.time(),
@@ -63,10 +68,15 @@ class LogPrinter(foolscap.Referenceable):
         self.saver = None
         if options["save-to"]:
             f = open(options["save-to"], "wb")
-            header = {"header": {"type": "tail"}}
-            pickle.dump(header, f)
             self.saver = LogSaver(target_tubid_s[:8], f)
         self.output = output
+
+    def got_versions(self, versions):
+        print "Remote Versions:"
+        for k in sorted(versions.keys()):
+            print " %s: %s" % (k, versions[k])
+        if self.saver:
+            self.saver.emit_header(versions)
 
     def remote_msg(self, d):
         if self.options['verbose']:
@@ -118,11 +128,6 @@ class LogTail:
         self._tub.startService()
         self._tub.connectTo(target_furl, self._got_logpublisher, target_tubid)
 
-    def _print_versions(self, versions):
-        print "Remote Versions:"
-        for k in sorted(versions.keys()):
-            print " %s: %s" % (k, versions[k])
-
     def _got_logpublisher(self, publisher, target_tubid):
         d = publisher.callRemote("get_pid")
         def _announce(pid_or_failure):
@@ -136,7 +141,7 @@ class LogTail:
         publisher.notifyOnDisconnect(self._lost_logpublisher)
         lp = LogPrinter(self.options, target_tubid)
         d.addCallback(lambda res: publisher.callRemote("get_versions"))
-        d.addCallback(self._print_versions)
+        d.addCallback(lp.got_versions)
         catch_up = bool(self.options["catch-up"])
         if catch_up:
             d.addCallback(lambda res:

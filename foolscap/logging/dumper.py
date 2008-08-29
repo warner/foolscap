@@ -33,6 +33,8 @@ class LogDumper:
                 if e["header"]["type"] == "incident":
                     t = e["header"]["trigger"]
                     self.trigger = (t["incarnation"], t["num"])
+                if self.options['verbose']:
+                    print >>self.options.stdout, e
             if "d" in e:
                 self.print_event(e)
 
