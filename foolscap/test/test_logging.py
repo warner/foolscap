@@ -1686,8 +1686,9 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
             self.failUnlessEqual(err, "")
             lines = list(StringIO(out).readlines())
-            self.failUnless("'message': 'one'" in lines[0])
-            self.failUnless("'level': 20" in lines[0])
+            self.failUnless("header" in lines[0])
+            self.failUnless("'message': 'one'" in lines[1])
+            self.failUnless("'level': 20" in lines[1])
             self.failUnless(": four: {" in lines[-1])
 
         d.addCallback(_check)
