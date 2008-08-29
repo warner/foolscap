@@ -228,7 +228,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l.msg("two")
         l.msg("3-trigger", level=log.BAD)
         self.failUnlessEqual(l.incidents_declared, 1)
-        self.failUnlessEqual(len(l.active_incident_reporters), 1)
+        self.failUnless(l.get_active_incident_reporter())
         # at this point, the uncompressed logfile should be present, and it
         # should contain all the events up to and including the trigger
         files = os.listdir(got_logdir)
@@ -306,6 +306,45 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             self.failUnlessEqual(len(events), 1+6)
             self.failUnlessEqual(events[-1]["d"]["message"], "6")
         d.addCallback(_check)
+        return d
+
+    def test_overlapping(self):
+        l = log.FoolscapLogger()
+        l.setLogDir("logging/Incidents/overlapping")
+        got_logdir = l.logdir
+        self.failUnlessEqual(got_logdir,
+                             os.path.abspath("logging/Incidents/overlapping"))
+        d = defer.Deferred()
+        def _go(name, trigger):
+            d.callback( (name, trigger) )
+        l.addImmediateIncidentObserver(_go)
+        l.setIncidentReporterFactory(ImpatientReporter)
+        l.msg("1")
+        l.msg("2-trigger", level=log.BAD)
+        self.failUnlessEqual(l.incidents_declared, 1)
+        self.failUnless(l.get_active_incident_reporter())
+        l.msg("3-trigger", level=log.BAD)
+        self.failUnlessEqual(l.incidents_declared, 2)
+        self.failUnless(l.get_active_incident_reporter())
+
+        def _check(res):
+            self.failUnlessEqual(l.incidents_recorded, 1)
+            self.failUnlessEqual(len(l.recent_recorded_incidents), 1)
+            # at this point, the logfile should be present, and it should
+            # contain all the events up to and including both triggers
+
+            files = os.listdir(got_logdir)
+            self.failUnlessEqual(len(files), 1)
+            events = self._read_logfile(os.path.join(got_logdir, files[0]))
+
+            self.failUnlessEqual(len(events), 1+3)
+            self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
+                                 "2-trigger")
+            self.failUnlessEqual(events[1]["d"]["message"], "1")
+            self.failUnlessEqual(events[2]["d"]["message"], "2-trigger")
+            self.failUnlessEqual(events[3]["d"]["message"], "3-trigger")
+        d.addCallback(_check)
+
         return d
 
 

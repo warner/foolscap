@@ -53,7 +53,7 @@ class FoolscapLogger:
         self.inactive_incident_qualifier = IncidentQualifier()
         self.active_incident_qualifier = None
         self.incident_reporter_factory = IncidentReporter
-        self.active_incident_reporters = weakref.WeakKeyDictionary()
+        self.active_incident_reporter_weakref = None
         self.incidents_declared = 0
         self.incidents_recorded = 0
         self.recent_recorded_incidents = []
@@ -249,10 +249,14 @@ class FoolscapLogger:
 
     def declare_incident(self, triggering_event):
         self.incidents_declared += 1
+        ir = self.get_active_incident_reporter()
+        if ir:
+            ir.new_trigger(triggering_event)
+            return
         if self.logdir: # just in case
             ir = self.incident_reporter_factory(self.logdir, self, "local")
-            self.active_incident_reporters[ir] = None
-            ir.incident_declared(triggering_event)
+            self.active_incident_reporter_weakref = weakref.ref(ir)
+            ir.incident_declared(triggering_event) # this takes a few seconds
 
     def incident_recorded(self, filename, name, trigger):
         # 'name' is incident-TIMESTAMP-UNIQUE, whereas filename is an
@@ -264,6 +268,13 @@ class FoolscapLogger:
         # publish these to interested parties
         for o in self._immediate_incident_observers:
             o(name, trigger)
+
+    def get_active_incident_reporter(self):
+        if self.active_incident_reporter_weakref:
+            ir = self.active_incident_reporter_weakref()
+            if ir and ir.is_active():
+                return ir
+        return None
 
     def setLogPort(self, logport):
         self._logport = logport

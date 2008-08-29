@@ -60,6 +60,10 @@ class IncidentReporter:
         self.basedir = basedir
         self.logger = logger
         self.tubid_s = tubid_s
+        self.active = True
+
+    def is_active(self):
+        return self.active
 
     def format_time(self, when):
         return time.strftime(self.TIME_FORMAT, time.localtime(when))
@@ -105,6 +109,7 @@ class IncidentReporter:
         # the BZ2File has no flush method
 
         if self.TRAILING_DELAY is None:
+            self.active = False
             eventually(self.finished_recording)
         else:
             # now we wait for the trailing events to arrive
@@ -126,8 +131,14 @@ class IncidentReporter:
 
         self.stop_recording()
 
+    def new_trigger(self, ev):
+        # it is too late to add this to the header. We could add it to a
+        # trailer, though.
+        pass
+
     def stop_recording(self):
         self.still_recording = False
+        self.active = False
         if self.timer.active():
             self.timer.cancel()
 

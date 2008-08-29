@@ -1,5 +1,19 @@
 2008-08-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (FoolscapLogger.declare_incident):
+	combine overlapping incidents, by passing new triggers to an
+	existing reporter instead of creating a new one. Helps with #85.
+	* foolscap/logging/incident.py (IncidentReporter.new_trigger): new
+	method to add subsequent triggers to an existing reporter. This
+	doesn't do anything yet. It should be improved to record the other
+	triggers in a trailer (since it's too late to add it to the
+	header). Every triggering event will make it into an incident
+	somewhere, but the report-file analysis tools may not know how to
+	pay attention to the subsequent triggers.
+	* foolscap/logging/interfaces.py (IIncidentReporter.new_trigger): same
+	* foolscap/test/test_logging.py (Incidents.test_overlapping): test it
+	* doc/logging.xhtml: mention incident-coalescing
+
 	* foolscap/logging/log.py: add bridge-foolscap-logs-to-twisted
 	functionality, set up by either calling bridgeLogsToTwisted(), or
 	by setting the FLOGTOTWISTED environment variable (to anything).

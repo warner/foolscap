@@ -480,6 +480,10 @@ similar), then attempt to fix the problem. The post-trigger trailing event
 logging code should capture the otherwise-ordinary events performed by this
 recovery code.</p>
 
+<p>Overlapping incidents will be combined: if an incident reporter is already
+active when the qualifier sees a new triggering event, that event is just
+added to the existing reporter.</p>
+
 <p>The incident reporter can be overridden as well, by calling
 <code>log.setIncidentReporterFactory</code> with a <b>class</b> that will
 produce reporter instances. For example, if you wanted to increase the

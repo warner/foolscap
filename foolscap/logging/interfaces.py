@@ -128,3 +128,20 @@ class RILogGatherer(RemoteInterface):
 class IIncidentReporter(Interface):
     def incident_declared(triggering_event):
         """This is called when an Incident needs to be recorded."""
+    def new_trigger(triggering_event):
+        """This is called when a triggering event occurs while an incident is
+        already being reported. If the event happened later, it would trigger
+        a new incident. Since it overlapped with the existing incident, it
+        will just be added to that incident.
+
+        The triggering event will also be reported through the usual
+        event-publish-subscribe mechanism. This method is provided to give
+        the reporter the opportunity to mark the event somehow, for the
+        benefit of incident-file analysis tools.
+        """
+    def is_active():
+        """Returns True if the reporter is still running. While in this
+        state, new Incident triggers will be passed to the existing reporter
+        instead of causing a new Incident to be declared. This will tend to
+        coalesce back-to-back problems into a single Incident."""
+
