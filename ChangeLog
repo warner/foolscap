@@ -1,5 +1,18 @@
 2008-09-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub._log_gatherer_connected): use callRemoteOnly
+	to pass the logport to the gatherer: we don't need to hear about
+	any problems it has.
+
+	* foolscap/logging/gatherer.py
+	(IncidentGathererService.classify_stored_incidents): reclassify
+	everything that isn't already present in one of the classified/*
+	files. This makes it a lot easier to iterate over the [start
+	gatherer; see what is unknown; update classifiers; remove
+	classified/unknown; repeat] loop. Also log classification events
+	better. Closes #94.
+	* foolscap/test/test_logging.py (IncidentGatherer.test_emit): test it
+
 	* foolscap/test/common.py (PollMixin): replace the use of chained
 	Deferreds with a task.LoopingCall-based version, from Tahoe. This
 	avoids the weird and annoying maximum-recursion-depth-exceeded

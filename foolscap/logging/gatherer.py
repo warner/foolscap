@@ -435,21 +435,34 @@ class IncidentGathererService(GatheringBase):
         outputdir = os.path.join(self.basedir, "classified")
         if not os.path.isdir(outputdir):
             os.makedirs(outputdir)
-            self.classify_stored_incidents(indir)
+        self.classify_stored_incidents(indir)
         GatheringBase.startService(self)
 
     def classify_stored_incidents(self, indir):
         stdout = self.stdout or sys.stdout
-        print >>stdout, "No classified/ directory: reclassifying stored incidents"
-        # now classify all stored incidents
+        print >>stdout, "classifying stored incidents"
+        # now classify all stored incidents that aren't already classified
+        already = set()
+        outputdir = os.path.join(self.basedir, "classified")
+        for category in os.listdir(outputdir):
+            for line in open(os.path.join(outputdir, category), "r"):
+                fn = line.strip()
+                abs_fn = os.path.join(self.basedir, fn)
+                already.add(abs_fn)
+        print >>stdout, "%d incidents already classified" % len(already)
+        count = 0
         for tubid_s in os.listdir(indir):
             nodedir = os.path.join(indir, tubid_s)
             for fn in os.listdir(nodedir):
                 if fn.startswith("incident-"):
                     abs_fn = os.path.join(nodedir, fn)
+                    if abs_fn in already:
+                        continue
                     incident = self.load_incident(abs_fn)
                     rel_fn = os.path.join("incidents", tubid_s, fn)
                     self.classify_incident(rel_fn, tubid_s, incident)
+                    count += 1
+        print >>stdout, "done classifying %d stored incidents" % count
 
     def load_incident(self, abs_fn):
         assert abs_fn.endswith(".bz2")
@@ -479,11 +492,11 @@ class IncidentGathererService(GatheringBase):
 
     def new_incident(self, abs_fn, rel_fn, tubid_s, incident):
         stdout = self.stdout or sys.stdout
-        categories = self.classify_incident(rel_fn, tubid_s, incident)
-        print >>stdout, "GOT INCIDENT %s [%s]" % (rel_fn, ",".join(categories))
+        self.classify_incident(rel_fn, tubid_s, incident)
         self.incidents_received += 1
 
     def classify_incident(self, rel_fn, tubid_s, incident):
+        stdout = self.stdout or sys.stdout
         categories = set()
         for f in self.classifiers:
             c = f(tubid_s, incident)
@@ -498,6 +511,7 @@ class IncidentGathererService(GatheringBase):
             f = open(fn, "a")
             f.write(rel_fn + "\n")
             f.close()
+        print >>stdout, "classified %s as [%s]" % (rel_fn, ",".join(categories))
         return categories
 
 

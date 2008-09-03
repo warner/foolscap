@@ -390,7 +390,7 @@ class Tub(service.MultiService):
         if tubID is None:
             # RILogGatherer.logport requires a string for nodeid=
             tubID = '<unauth>'
-        rref.callRemote('logport', tubID, self.getLogPort())
+        rref.callRemoteOnly('logport', tubID, self.getLogPort())
 
 
     def getLogPort(self):

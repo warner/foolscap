@@ -1009,19 +1009,18 @@ class IncidentGatherer(unittest.TestCase,
         # classifications, and start it up. It should reclassify everything
         # at startup.
 
-        # give the call to remote_logport a chance to retire
-        d.addCallback(self.stall, 0.5)
         d.addCallback(lambda res: ig.disownServiceParent())
+
+        def classify_boom(nodeid_s, (header,events)):
+            if "boom" in header["trigger"].get("message",""):
+                return "boom"
+        def classify_foom(nodeid_s, (header,events)):
+            if "foom" in header["trigger"].get("message",""):
+                return "foom"
 
         incident_d2 = defer.Deferred()
         def _update_classifiers(res):
             self.remove_classified_incidents(ig)
-            def classify_boom(nodeid_s, (header,events)):
-                if "boom" in header["trigger"].get("message",""):
-                    return "boom"
-            def classify_foom(nodeid_s, (header,events)):
-                if "foom" in header["trigger"].get("message",""):
-                    return "foom"
             ig2 = self.create_incident_gatherer(basedir, [classify_boom])
             ig2.add_classifier(classify_foom)
             ig2.setServiceParent(self.parent)
@@ -1053,13 +1052,31 @@ class IncidentGatherer(unittest.TestCase,
             unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
             self.failIf(os.path.exists(unknowns_fn))
         d.addCallback(_new_incident2)
+        d.addCallback(lambda res: self.ig2.disownServiceParent())
+
+        # if we remove just classified/boom, then those incidents should be
+        # reclassified
+
+        def _remove_boom_incidents(res):
+            booms_fn = os.path.join(ig.basedir, "classified", "boom")
+            os.remove(booms_fn)
+
+            ig2a = self.create_incident_gatherer(basedir, [classify_boom,
+                                                           classify_foom])
+            ig2a.setServiceParent(self.parent)
+            self.ig2a = ig2a
+
+            # now classified/boom should be back, and the other files should
+            # have been left untouched
+            booms = [fn.strip() for fn in open(booms_fn,"r").readlines()]
+            self.failUnlessEqual(len(booms), 1)
+        d.addCallback(_remove_boom_incidents)
+        d.addCallback(lambda res: self.ig2a.disownServiceParent())
 
         # and if we remove the classification functions (but do *not* remove
         # the classified incidents), the new gatherer should not reclassify
         # anything
 
-        d.addCallback(self.stall, 0.5)
-        d.addCallback(lambda res: self.ig2.disownServiceParent())
         def _update_classifiers_again(res):
             ig3 = self.create_incident_gatherer(basedir)
             ig3.setServiceParent(self.parent)
@@ -1076,8 +1093,6 @@ class IncidentGatherer(unittest.TestCase,
             return ig3.d
         d.addCallback(_update_classifiers_again)
 
-        # give the call to remote_logport a chance to retire
-        d.addCallback(self.stall, 0.5)
         d.addCallback(lambda res: self.ig3.disownServiceParent())
 
         # and if we remove all the stored incidents (and the 'latest'
@@ -1098,8 +1113,6 @@ class IncidentGatherer(unittest.TestCase,
         d.addCallback(_create_ig4)
         d.addCallback(lambda res:
                       self.poll(lambda : self.ig4.incidents_received == 2))
-
-        d.addBoth(self.stall, 0.5) # allow shutdown even on error
 
         return d
 
