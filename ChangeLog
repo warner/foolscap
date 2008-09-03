@@ -1,3 +1,11 @@
+2008-09-02  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/common.py (PollMixin): replace the use of chained
+	Deferreds with a task.LoopingCall-based version, from Tahoe. This
+	avoids the weird and annoying maximum-recursion-depth-exceeded
+	error that occurs when the check function is called more than
+	about 600 times. Closes #95.
+
 2008-08-29  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/app_versions.py (versions): move the
