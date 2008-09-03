@@ -1,5 +1,94 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.3.1 (03 Sep 2008)
+
+** Compatibility: same as 0.2.6
+
+** callRemote API changes: DeadReferenceError
+
+All partitioning exceptions are now mapped to DeadReferenceError. Previously
+there were three separate exceptions that might indicate a network partition:
+DeadReferenceError, ConnectionLost, and ConnectionDone. (a network partition
+is when one party cannot reach the other party, due to a variety of reasons:
+temporary network failure, the remote program being shut down, the remote
+host being taken offline, etc).
+
+This means that, if you want to send a message and don't care whether that
+message makes it to the recipient or not (but you *do* still care if the
+recipient raises an exception during processing of that message), you can set
+up the Deferred chain like this:
+
+ d = rref.callRemote("message", args)
+ d.addCallback(self.handle_response)
+ d.addErrback(lambda f: f.trap(foolscap.DeadReferenceError))
+ d.addErrback(log.err)
+
+The first d.addErrback will use f.trap to catch DeadReferenceError, but will
+pass other exceptions through to the log.err() errback. This will cause
+DeadReferenceError to be ignored, but other errors to be logged.
+
+DeadReferenceError will be signalled in any of the following situations:
+
+ 1: the TCP connection was lost before callRemote was invoked
+ 2: the connection was lost after the request was sent, but before
+    the response was received
+ 3: when the active connection is dropped because a duplicate connection was
+    established. This can occur when two programs are simultaneously
+    connecting to each other.
+
+** logging improvements
+
+*** bridge foolscap logs into twistd.log
+
+By calling foolscap.logging.log.bridgeLogsToTwisted(), or by setting the
+$FLOGTOTWISTED environment variable (to anything), a subset of Foolscap log
+events will be copied into the Twisted logging system. The default filter
+will not copy events below the log.OPERATIONAL level, nor will it copy
+internal foolscap events (i.e. those with a facility name that starts with
+"foolscap"). This mechanism is careful to avoid loops, so it is safe to use
+both bridgeLogsToTwisted() and bridgeTwistedLogs() at the same time. The
+events that are copied into the Twisted logging system will typically show up
+in the twistd.log file (for applications that are run under twistd).
+
+An alternate filter function can be passed to bridgeLogsToTwisted().
+
+This feature provides a human-readable on-disk record of significant events,
+using a traditional one-line-per-event all-text sequential logging structure.
+It does not record parent/child relationships, structured event data, or
+causality information.
+
+*** Incident Gatherer improvements
+
+If an Incident occurs while a previous Incident is still being recorded (i.e.
+during the "trailing log period"), the two will be folded together.
+Specifically, the second event will not trigger a new Incident, but will be
+recorded in the first Incident as a normal log event. This serves to address
+some performance problems we've seen when incident triggers occur in
+clusters, which used to cause dozens of simultaneous Incident Recorders to
+swing into action.
+
+The Incident Gatherer has been changed to only fetch one Incident at a time
+(per publishing application), to avoid overloading the app with a large
+outbound TCP queue.
+
+The Incident Gatherer has also been changed to scan the classified/* output
+files and reclassify any stored incidents it has that are not mentioned in
+one of these files. This means that you can update the classification
+functions (to add a function for some previously unknown type of incident),
+delete the classified/unknown file, then restart the incident gatherer, and
+it will only reclassify the previously-unknown incidents. This makes it much
+easier to iteratively develop classification functions.
+
+*** Application Version data
+
+The table of application versions, previously displayed only by the 'flogtool
+tail' command, is now recorded in the header of both Incidents and the
+'flogtool tail --save-to' output file.
+
+The API to add application versions has changed: now programs should call
+foolscap.logging.app_versions.add_version(name, verstr).
+
+
 * Release 0.3.0 (04 Aug 2008)
 
 ** Compatibility: same as 0.2.6

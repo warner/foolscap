@@ -1,3 +1,7 @@
+2008-09-03  Brian Warner  <warner@lothar.com>
+
+	* NEWS: update for next release
+
 2008-09-02  Brian Warner  <warner@lothar.com>
 
 	* foolscap/negotiate.py (TubConnector.__repr__): add more
