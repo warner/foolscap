@@ -1,5 +1,9 @@
 2008-09-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.3.1
+	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
+	same
+
 	* NEWS: update for next release
 
 2008-09-02  Brian Warner  <warner@lothar.com>
