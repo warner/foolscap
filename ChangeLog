@@ -1,5 +1,10 @@
 2008-09-02  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (TubConnector.__repr__): add more
+	information to the repr, to help track down #81. Made TubConnector
+	a new-style class in the process, to make upcalling easier.
+	(TubConnector.checkForIdle): improve the log message
+
 	* foolscap/pb.py (Tub._log_gatherer_connected): use callRemoteOnly
 	to pass the logport to the gatherer: we don't need to hear about
 	any problems it has.

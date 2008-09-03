@@ -1253,7 +1253,7 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
         self.tc.clientConnectionFailed(self, reason)
 
 
-class TubConnector:
+class TubConnector(object):
     """I am used to make an outbound connection. I am given a target TubID
     and a list of locationHints, and I try all of them until I establish a
     Broker connected to the target. I will consider redirections returned
@@ -1303,6 +1303,11 @@ class TubConnector:
         # or because someone told us to give up).
         self.pendingConnections = {}
 
+    def __repr__(self):
+        s = object.__repr__(self)
+        s = s[:-1]
+        s += " from %s to %s>" % (self.tub.tubID, self.target.getTubID())
+        return s
 
     def log(self, *args, **kwargs):
         kwargs['parent'] = self._logparent
@@ -1454,5 +1459,5 @@ class TubConnector:
             return
         # we have no more outstanding connections (either in progress or in
         # negotiation), so this connector is finished.
-        self.log("connectorFinished")
+        self.log("connectorFinished (%s)" % self)
         self.tub.connectorFinished(self)
