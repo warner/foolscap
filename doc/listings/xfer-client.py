@@ -46,11 +46,11 @@ tub.startService()
 if opts["furl"]:
     furl = opts["furl"]
 else:
-    furl = open(opts["furlfile"], "r").read().strip()
+    furl = open(os.path.expanduser(opts["furlfile"]), "r").read().strip()
 remotename = os.path.basename(opts["localfile"])
 d = tub.getReference(furl)
 def _push(rref):
-    data = open(opts["localfile"], "r").read()
+    data = open(os.path.expanduser(opts["localfile"]), "r").read()
     return rref.callRemote("putfile", remotename, data)
 d.addCallback(_push)
 def _success(res):
