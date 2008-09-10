@@ -4,6 +4,9 @@
 	for bug #62 (openssl>0.7, twisted<=8.1.0, selectreactor) and print
 	a warning if it is likely that the tests would fail, to remind the
 	user to re-run with -r poll.
+	(Versions.test_required): oops, guard import of OpenSSL on having
+	crypto available, otherwise this test gets an error when OpenSSL
+	is not installed.
 
 2008-09-08  Brian Warner  <warner@lothar.com>
 

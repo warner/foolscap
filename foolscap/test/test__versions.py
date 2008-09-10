@@ -1,12 +1,15 @@
 
 from twisted.trial import unittest
 import time
-import OpenSSL
 import twisted
 from twisted.internet import reactor
+from foolscap.test.common import crypto_available
 
 class Versions(unittest.TestCase):
     def test_required(self):
+        if not crypto_available:
+            return
+        import OpenSSL
         ssl_ver = OpenSSL.__version__.split(".")
         tw_ver = twisted.__version__.split(".")
         # this is gross, but apps aren't supposed to care what sort of
