@@ -1,3 +1,10 @@
+2008-09-10  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/test/test__versions.py (Versions.test_required): check
+	for bug #62 (openssl>0.7, twisted<=8.1.0, selectreactor) and print
+	a warning if it is likely that the tests would fail, to remind the
+	user to re-run with -r poll.
+
 2008-09-08  Brian Warner  <warner@lothar.com>
 
 	* doc/listings/xfer-client.py: use os.path.expanduser() on the
