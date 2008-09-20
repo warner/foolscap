@@ -13,7 +13,7 @@ the name of the local file to be transferred. The last component of the local
 pathname will be used as the remote filename.
 """
 
-import os.path
+import sys, os.path
 from twisted.internet import reactor
 from foolscap import UnauthenticatedTub
 from twisted.python import usage
@@ -61,6 +61,7 @@ def _failure(f):
     reactor.stop()
     print "error while transferring file:"
     print f
+    sys.exit(1)
 d.addCallbacks(_success, _failure)
 
 reactor.run()
