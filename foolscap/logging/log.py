@@ -1,6 +1,5 @@
 
 import os, sys, time, pickle, weakref
-import itertools
 import traceback
 import collections
 from twisted.python import log as twisted_log
@@ -33,6 +32,25 @@ def format_message(e):
         return e.get('message', "[no message]") + " [formatting failed]"
 
 
+class Count:
+    """A fixed version of itertools.count .
+
+    This class counts up from zero, just like the Python 2.5.2 docs claim
+    that itertools.count() does, but this class does not overflow with an
+    error like itertools.count() does:
+
+      File 'foolscap/logging/log.py', line 137, in msg
+          num = self.seqnum.next()
+      exceptions.OverflowError: cannot count beyond PY_SSIZE_T_MAX
+    """
+
+    def __init__(self, firstval=0):
+        self.n = firstval - 1
+
+    def next(self):
+        self.n += 1
+        return self.n
+
 class FoolscapLogger:
     DEFAULT_SIZELIMIT = 100
     DEFAULT_THRESHOLD = NOISY
@@ -40,7 +58,7 @@ class FoolscapLogger:
 
     def __init__(self):
         self.incarnation = self.get_incarnation()
-        self.seqnum = itertools.count(0)
+        self.seqnum = Count()
         self.facility_explanations = {}
         self.buffer_sizes = {} # k: facility or None, v: dict(level->sizelimit)
         self.buffer_sizes[None] = {}

@@ -1,5 +1,10 @@
 2008-10-13  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/log.py (Count): replace itertools.count with a
+	version that doesn't overflow at 2**31-1 (thanks to Zooko for the
+	patch). Closes #99.
+	(FoolscapLogger.__init__): use it
+
 	* foolscap/pb.py (Listener.startFactory): add log facility
 	identifiers
 	(Listener.stopFactory): same
