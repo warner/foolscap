@@ -126,10 +126,10 @@ class Listener(protocol.ServerFactory):
         del self.redirects[tubID]
 
     def startFactory(self):
-        log.msg("Starting factory %r" % self)
+        log.msg("Starting factory %r" % self, facility="foolscap.listener")
         return protocol.ServerFactory.startFactory(self)
     def stopFactory(self):
-        log.msg("Stopping factory %r" % self)
+        log.msg("Stopping factory %r" % self, facility="foolscap.listener")
         return protocol.ServerFactory.stopFactory(self)
 
 
@@ -137,7 +137,8 @@ class Listener(protocol.ServerFactory):
         """Return a Broker attached to me (as the service provider).
         """
         lp = log.msg("%s accepting connection from %s" % (self, addr),
-                     addr=(addr.host, addr.port))
+                     addr=(addr.host, addr.port),
+                     facility="foolscap.listener")
         proto = self.negotiationClass(logparent=lp)
         proto.initServer(self)
         proto.factory = self
@@ -843,7 +844,7 @@ class Tub(service.MultiService):
         if not self.running:
             # queue their request for service once the Tub actually starts
             log.msg("Tub.getReference(%s) queued until Tub.startService called"
-                    % sturdy)
+                    % sturdy, facility="foolscap.tub")
             d = defer.Deferred()
             self._pending_getReferences.append((d, sturdy))
             return d

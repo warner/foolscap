@@ -1,3 +1,11 @@
+2008-10-13  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/pb.py (Listener.startFactory): add log facility
+	identifiers
+	(Listener.stopFactory): same
+	(Listener.buildProtocol): same
+	(Tub.getReference): same
+
 2008-09-20  Brian Warner  <warner@lothar.com>
 
 	* doc/listings/xfer-client.py (_failure): do sys.exit(1) upon
