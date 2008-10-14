@@ -1,6 +1,7 @@
 
-import os.path, time, pickle, bz2
+import sys, os.path, time, pickle, bz2
 from zope.interface import implements
+from twisted.python import usage
 from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
 from foolscap.logging import levels, app_versions
@@ -164,3 +165,76 @@ class IncidentReporter:
 
 class NonTrailingIncidentReporter(IncidentReporter):
     TRAILING_DELAY = None
+
+
+class ClassifyOptions(usage.Options):
+    stdout = sys.stdout
+    stderr = sys.stderr
+    synopsis = "Usage: flogtool classify-incident [options] INCIDENTFILE.."
+
+    optParameters = [
+        ("classifier-directory", "c", ".",
+         "directory with classify_*.py functions to import"),
+        ]
+
+    def parseArgs(self, *files):
+        self.files = files
+
+
+class IncidentClassifierBase:
+
+    def __init__(self):
+        self.classifiers = []
+
+    def add_classifier(self, f):
+        # there are old .tac files that call this explicitly
+        self.classifiers.append(f)
+
+    def add_classify_files(self, plugindir):
+        plugindir = os.path.expanduser(plugindir)
+        for fn in os.listdir(plugindir):
+            if not (fn.startswith("classify_") and fn.endswith(".py")):
+                continue
+            f = open(os.path.join(plugindir, fn), "r")
+            localdict = {}
+            exec f in localdict
+            self.add_classifier(localdict["classify_incident"])
+
+    def load_incident(self, abs_fn):
+        assert abs_fn.endswith(".bz2")
+        f = bz2.BZ2File(abs_fn, "r")
+        header = pickle.load(f)["header"]
+        events = []
+        while True:
+            try:
+                wrapped = pickle.load(f)
+            except (EOFError, ValueError):
+                break
+            events.append(wrapped["d"])
+        f.close()
+        return (header, events)
+
+    def classify_incident(self, incident):
+        categories = set()
+        for f in self.classifiers:
+            (header, events) = incident
+            trigger = header["trigger"]
+            c = f(trigger)
+            if c: # allow the classifier to return None, or [], or ["foo"]
+                if isinstance(c, str):
+                    c = [c] # or just "foo"
+                categories.update(c)
+        if not categories:
+            categories.add("unknown")
+        return categories
+
+class IncidentClassifier(IncidentClassifierBase):
+    def run(self, options):
+        self.add_classify_files(options["classifier-directory"])
+        out = options.stdout
+        for f in options.files:
+            abs_fn = os.path.expanduser(f)
+            incident = self.load_incident(abs_fn)
+            categories = self.classify_incident(incident)
+            print >>out, "%s: %s" % (f, ",".join(sorted(categories)))
+

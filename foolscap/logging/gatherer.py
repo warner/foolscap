@@ -11,6 +11,7 @@ from twisted.python import usage, procutils, filepath, log as tw_log
 from twisted.application import service, internet
 import foolscap
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
+from foolscap.logging.incident import IncidentClassifierBase
 from foolscap.util import get_local_ip_for
 
 class BadTubID(Exception):
@@ -390,7 +391,7 @@ class IncidentObserver(foolscap.Referenceable):
         self.caught_up_d.callback(None)
         return None
 
-class IncidentGathererService(GatheringBase):
+class IncidentGathererService(GatheringBase, IncidentClassifierBase):
     # create this with 'flogtool create-incident-gatherer BASEDIR'
     # run this as 'cd BASEDIR && twistd -y gatherer.tac'
 
@@ -419,14 +420,10 @@ class IncidentGathererService(GatheringBase):
 
     def __init__(self, classifiers=[], basedir=None, stdout=None):
         GatheringBase.__init__(self, basedir)
-        self.classifiers = []
+        IncidentClassifierBase.__init__(self)
         self.classifiers.extend(classifiers)
         self.stdout = stdout
         self.incidents_received = 0 # for tests
-
-    def add_classifier(self, f):
-        # there are old .tac files that call this explicitly
-        self.classifiers.append(f)
 
 
     def startService(self):
@@ -436,18 +433,9 @@ class IncidentGathererService(GatheringBase):
         outputdir = os.path.join(self.basedir, "classified")
         if not os.path.isdir(outputdir):
             os.makedirs(outputdir)
-        self.add_classify_files()
+        self.add_classify_files(self.basedir)
         self.classify_stored_incidents(indir)
         GatheringBase.startService(self)
-
-    def add_classify_files(self):
-        for fn in os.listdir(self.basedir):
-            if not (fn.startswith("classify_") and fn.endswith(".py")):
-                continue
-            f = open(os.path.join(self.basedir, fn), "r")
-            localdict = {}
-            exec f in localdict
-            self.add_classifier(localdict["classify_incident"])
 
     def classify_stored_incidents(self, indir):
         stdout = self.stdout or sys.stdout
@@ -471,23 +459,9 @@ class IncidentGathererService(GatheringBase):
                         continue
                     incident = self.load_incident(abs_fn)
                     rel_fn = os.path.join("incidents", tubid_s, fn)
-                    self.classify_incident(rel_fn, tubid_s, incident)
+                    self.move_incident(rel_fn, tubid_s, incident)
                     count += 1
         print >>stdout, "done classifying %d stored incidents" % count
-
-    def load_incident(self, abs_fn):
-        assert abs_fn.endswith(".bz2")
-        f = bz2.BZ2File(abs_fn, "r")
-        header = pickle.load(f)["header"]
-        events = []
-        while True:
-            try:
-                wrapped = pickle.load(f)
-            except (EOFError, ValueError):
-                break
-            events.append(wrapped["d"])
-        f.close()
-        return (header, events)
 
     def remote_logport(self, nodeid, publisher):
         # we ignore nodeid (which is a printable string), and get the tubid
@@ -503,22 +477,12 @@ class IncidentGathererService(GatheringBase):
 
     def new_incident(self, abs_fn, rel_fn, tubid_s, incident):
         stdout = self.stdout or sys.stdout
-        self.classify_incident(rel_fn, tubid_s, incident)
+        self.move_incident(rel_fn, tubid_s, incident)
         self.incidents_received += 1
 
-    def classify_incident(self, rel_fn, tubid_s, incident):
+    def move_incident(self, rel_fn, tubid_s, incident):
         stdout = self.stdout or sys.stdout
-        categories = set()
-        for f in self.classifiers:
-            (header, events) = incident
-            trigger = header["trigger"]
-            c = f(trigger)
-            if c: # allow the classifier to return None, or [], or ["foo"]
-                if isinstance(c, str):
-                    c = [c] # or just "foo"
-                categories.update(c)
-        if not categories:
-            categories.add("unknown")
+        categories = self.classify_incident(incident)
         for c in categories:
             fn = os.path.join(self.basedir, "classified", c)
             f = open(fn, "a")

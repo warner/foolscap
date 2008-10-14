@@ -1,5 +1,14 @@
 2008-10-14  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/cli.py: new "flogtool classify-incident"
+	subcommand: given an incident, say what categories it falls into.
+	Closes #102.
+	* foolscap/logging/gatherer.py (IncidentGathererService): factor
+	out the classification pieces into IncidentClassifierBase
+	* foolscap/logging/incident.py (IncidentClassifierBase): same
+	(IncidentClassifier.run): support for the new CLI command
+	* foolscap/test/test_logging.py (Incidents.test_classify): test it
+
 	* foolscap/logging/gatherer.py
 	(IncidentGathererService.classify_incident): change the classifier
 	function signature: now it just takes a single 'trigger' dict.

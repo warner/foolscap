@@ -4,12 +4,14 @@ from StringIO import StringIO
 from twisted.python import usage
 
 import foolscap
-from foolscap.logging.tail import TailOptions
-from foolscap.logging.gatherer import CreateGatherOptions, \
-     CreateIncidentGatherOptions
-from foolscap.logging.dumper import DumpOptions
-from foolscap.logging.web import WebViewerOptions
-from foolscap.logging.filter import FilterOptions
+from foolscap.logging.tail import TailOptions, LogTail
+from foolscap.logging.gatherer import \
+     CreateGatherOptions, create_log_gatherer, \
+     CreateIncidentGatherOptions, create_incident_gatherer
+from foolscap.logging.dumper import DumpOptions, LogDumper
+from foolscap.logging.web import WebViewerOptions, WebViewer
+from foolscap.logging.filter import FilterOptions, Filter
+from foolscap.logging.incident import ClassifyOptions, IncidentClassifier
 
 class Options(usage.Options):
     synopsis = "Usage: flogtool (tail|create-gatherer|dump|filter|web-viewer)"
@@ -26,6 +28,8 @@ class Options(usage.Options):
          "produce a new file with a subset of the events from another file"),
         ("web-viewer", None, WebViewerOptions,
          "view the logs through a web page"),
+        ("classify-incident", None, ClassifyOptions,
+         "classify a stored Incident file"),
         ]
 
     def postOptions(self):
@@ -45,32 +49,30 @@ class Options(usage.Options):
 
 def dispatch(command, options):
     if command == "tail":
-        from foolscap.logging.tail import LogTail
         lt = LogTail(options)
         lt.run(options.target_furl)
 
     elif command == "create-gatherer":
-        from foolscap.logging.gatherer import create_log_gatherer
         create_log_gatherer(options)
 
     elif command == "create-incident-gatherer":
-        from foolscap.logging.gatherer import create_incident_gatherer
         create_incident_gatherer(options)
 
     elif command == "dump":
-        from foolscap.logging.dumper import LogDumper
         ld = LogDumper()
         ld.run(options)
 
     elif command == "filter":
-        from foolscap.logging.filter import Filter
         f = Filter()
         f.run(options)
 
     elif command == "web-viewer":
-        from foolscap.logging.web import WebViewer
         wv = WebViewer()
         wv.run(options)
+
+    elif command == "classify-incident":
+        ic = IncidentClassifier()
+        ic.run(options)
 
     else:
         print "unknown command '%s'" % command

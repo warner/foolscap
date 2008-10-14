@@ -351,6 +351,30 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
 
         return d
 
+    def test_classify(self):
+        l = log.FoolscapLogger()
+        l.setIncidentReporterFactory(incident.NonTrailingIncidentReporter)
+        l.setLogDir("logging/Incidents/classify")
+        got_logdir = l.logdir
+        l.msg("foom", level=log.BAD)
+        d = fireEventually()
+        def _check(res):
+            files = [fn for fn in os.listdir(got_logdir) if fn.endswith(".bz2")]
+            self.failUnlessEqual(len(files), 1)
+
+            ic = incident.IncidentClassifier()
+            def classify_foom(trigger):
+                if "foom" in trigger.get("message",""):
+                    return "foom"
+            ic.add_classifier(classify_foom)
+            options = incident.ClassifyOptions()
+            options.parseOptions([os.path.join(got_logdir, fn) for fn in files])
+            options.stdout = StringIO()
+            ic.run(options)
+            out = options.stdout.getvalue()
+            self.failUnless(out.strip().endswith(": foom"), out)
+        d.addCallback(_check)
+        return d
 
 class Observer(Referenceable):
     implements(RILogObserver)
