@@ -897,12 +897,21 @@ To add a classification function, create a file with a name like
 directory. All such files will be loaded and evaluated when the gatherer
 starts.</p>
 
-<p>The <code>classify_incident()</code> function will accept a triggering
-event and a pathname (from which preceding log events can be extracted, if
-desired), and should return a list of categories. Each incident can wind up
-in multiple categories. If no function finds a category for the incident, it
-will be added to the "unknown" category. All incidents are added to the "all"
-category.</p>
+<p>The <code>classify_incident()</code> function will accept a single
+triggering event (a regular log Event dictionary, see logfiles.xhtml for
+details, which can be examined as follows:</p>
+
+<pre class="python">
+def classify_incident(trigger):
+    m = trigger.get('message', '')
+    if "Tub.connectorFinished:" in m:
+        return 'foolscap-tubconnector'
+</pre>
+
+<p>The function should return a list (or set) of categories, or a single
+category string, or None. Each incident can wind up in multiple categories.
+If no function finds a category for the incident, it will be added to the
+"unknown" category. All incidents are added to the "all" category.</p>
 
 <p>The <code>classified/</code> directory will contain a file for each
 defined classification. This file will contain one line for each incident

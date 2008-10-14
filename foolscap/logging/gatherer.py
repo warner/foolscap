@@ -510,7 +510,9 @@ class IncidentGathererService(GatheringBase):
         stdout = self.stdout or sys.stdout
         categories = set()
         for f in self.classifiers:
-            c = f(tubid_s, incident)
+            (header, events) = incident
+            trigger = header["trigger"]
+            c = f(trigger)
             if c: # allow the classifier to return None, or [], or ["foo"]
                 if isinstance(c, str):
                     c = [c] # or just "foo"
@@ -552,10 +554,8 @@ gs = gatherer.IncidentGathererService()
 # %% cat classify_foolscap.py
 # import re
 # TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.negotiate.TubConnector instance at \w+> is not in \[')
-# def classify_incident(nodeid_s, incident):
+# def classify_incident(trigger):
 #     # match some foolscap messages
-#     (header, events) = incident
-#     trigger = header['trigger']
 #     m = trigger.get('message', '')
 #     if TUBCON_RE.search(m):
 #         return 'foolscap-tubconnector'

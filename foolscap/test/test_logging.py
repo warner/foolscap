@@ -1011,11 +1011,11 @@ class IncidentGatherer(unittest.TestCase,
 
         d.addCallback(lambda res: ig.disownServiceParent())
 
-        def classify_boom(nodeid_s, (header,events)):
-            if "boom" in header["trigger"].get("message",""):
+        def classify_boom(trigger):
+            if "boom" in trigger.get("message",""):
                 return "boom"
-        def classify_foom(nodeid_s, (header,events)):
-            if "foom" in header["trigger"].get("message",""):
+        def classify_foom(trigger):
+            if "foom" in trigger.get("message",""):
                 return "foom"
 
         incident_d2 = defer.Deferred()
@@ -1028,8 +1028,8 @@ class IncidentGatherer(unittest.TestCase,
             foomfile = os.path.join(ig2.basedir, "classify_foom.py")
             f = open(foomfile, "w")
             f.write('''
-def classify_incident(nodeid_s, (header,events)):
-    if "foom" in header["trigger"].get("message",""):
+def classify_incident(trigger):
+    if "foom" in trigger.get("message",""):
         return "foom"
 ''')
             f.close()
