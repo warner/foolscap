@@ -1,5 +1,10 @@
 2008-10-14  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/web.py (Reload): add a 'Reload Logfile' button
+	to the web-viewer's Welcome page. Not automatic, but it means you
+	don't have to get back to the shell and restart the viewer. Works
+	well-enough to say Closes #103.
+
 	* misc/classify_foolscap.py: plugin to classify some
 	foolscap-internal incidents
 

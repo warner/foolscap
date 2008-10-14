@@ -101,6 +101,9 @@ class Welcome(resource.Resource):
             data += "none!"
 
         data += '<h2><a href="all-events">View All Events</a></h2>\n'
+        data += '<form action="reload" method="post">\n'
+        data += ' <input type="submit" value="Reload Logfile" />\n'
+        data += '</form>\n'
 
         data += "</body></html>"
         req.setHeader("content-type", "text/html")
@@ -251,6 +254,16 @@ class LogEvent:
                   self.anchor_index, href_base, self.anchor_index, d['num'],
                   level_s, msg)
 
+class Reload(resource.Resource):
+
+    def __init__(self, viewer):
+        self.viewer = viewer
+        resource.Resource.__init__(self)
+
+    def render_POST(self, req):
+        self.viewer.load_logfiles()
+        req.redirect("welcome")
+        return ''
 
 class WebViewer:
 
@@ -269,6 +282,7 @@ class WebViewer:
         root = static.Data("placeholder", "text/plain")
         welcome = Welcome(self)
         root.putChild("welcome", welcome)
+        root.putChild("reload", Reload(self))
         root.putChild("all-events", EventView(self))
         root.putChild("summary", Summary(self))
         root.putChild("flog.css", static.Data(FLOG_CSS, "text/css"))
@@ -281,7 +295,8 @@ class WebViewer:
 
         if not options["quiet"]:
             print "scanning.."
-        self.get_logfiles(options)
+        self.logfiles = [options.dumpfile]
+        self.load_logfiles()
 
         if not options["quiet"]:
             print "please point your browser at:"
@@ -289,8 +304,7 @@ class WebViewer:
 
         return url # for tests
 
-    def get_logfiles(self, options):
-        self.logfiles = [options.dumpfile]
+    def load_logfiles(self):
         #self.summary = {} # keyed by logfile name
         (self.summaries, self.root_events, self.number_map) = \
                          self.process_logfiles(self.logfiles)
