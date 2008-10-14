@@ -110,7 +110,8 @@ class IncidentSubscription(Referenceable):
         for name in sorted(new.keys()):
             fn = new[name]
             trigger = self.publisher.get_incident_trigger(fn)
-            self.observer.callRemoteOnly("new_incident", name, trigger)
+            if trigger:
+                self.observer.callRemoteOnly("new_incident", name, trigger)
         self.observer.callRemoteOnly("done_with_incident_catchup")
 
     def unsubscribe(self):
