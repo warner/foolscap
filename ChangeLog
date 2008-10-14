@@ -1,5 +1,8 @@
 2008-10-14  Brian Warner  <warner@allmydata.com>
 
+	* misc/classify_foolscap.py: plugin to classify some
+	foolscap-internal incidents
+
 	* foolscap/logging/cli.py: new "flogtool classify-incident"
 	subcommand: given an incident, say what categories it falls into.
 	Closes #102.
