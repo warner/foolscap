@@ -1,3 +1,14 @@
+2008-10-14  Brian Warner  <warner@allmydata.com>
+
+	* foolscap/logging/gatherer.py
+	(IncidentGathererService.add_classify_files): make the incident
+	gatherer look in its base directory for "classify_*.py" files, use
+	them as plugins with classification functions.
+	(INCIDENT_GATHERER_TACFILE): update example text to match
+	* foolscap/test/test_logging.py (IncidentGatherer): test it
+	(Gatherer.test_wrongdir): exercise another error case
+	* doc/logging.xhtml (gatherer): document it
+
 2008-10-13  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/logging/publish.py (IncidentSubscription.catch_up):

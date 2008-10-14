@@ -425,6 +425,7 @@ class IncidentGathererService(GatheringBase):
         self.incidents_received = 0 # for tests
 
     def add_classifier(self, f):
+        # there are old .tac files that call this explicitly
         self.classifiers.append(f)
 
 
@@ -435,8 +436,18 @@ class IncidentGathererService(GatheringBase):
         outputdir = os.path.join(self.basedir, "classified")
         if not os.path.isdir(outputdir):
             os.makedirs(outputdir)
+        self.add_classify_files()
         self.classify_stored_incidents(indir)
         GatheringBase.startService(self)
+
+    def add_classify_files(self):
+        for fn in os.listdir(self.basedir):
+            if not (fn.startswith("classify_") and fn.endswith(".py")):
+                continue
+            f = open(os.path.join(self.basedir, fn), "r")
+            localdict = {}
+            exec f in localdict
+            self.add_classifier(localdict["classify_incident"])
 
     def classify_stored_incidents(self, indir):
         stdout = self.stdout or sys.stdout
@@ -534,17 +545,21 @@ from twisted.application import service
 
 gs = gatherer.IncidentGathererService()
 
-# To add a classifier function, call gs.add_classifier(f) like this:
+# To add a classifier function, store it in a neighboring file named
+# classify_*.py, in a function named classify_incident(). All such files will
+# be loaded at startup:
 #
-#import re
-#TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.negotiate.TubConnector instance at \w+> is not in \[')
-#def is_foolscap(nodeid_s, incident):
-#    (header, events) = incident
-#    trigger = header['trigger']
-#    m = trigger.get('message', '')
-#    if TUBCON_RE.search(m):
-#        return 'foolscap-tubconnector'
-#gs.add_classifier(is_foolscap)
+# %% cat classify_foolscap.py
+# import re
+# TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.negotiate.TubConnector instance at \w+> is not in \[')
+# def classify_incident(nodeid_s, incident):
+#     # match some foolscap messages
+#     (header, events) = incident
+#     trigger = header['trigger']
+#     m = trigger.get('message', '')
+#     if TUBCON_RE.search(m):
+#         return 'foolscap-tubconnector'
+# %%
 
 application = service.Application('incident_gatherer')
 gs.setServiceParent(application)

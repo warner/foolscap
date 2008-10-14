@@ -1022,8 +1022,21 @@ class IncidentGatherer(unittest.TestCase,
         def _update_classifiers(res):
             self.remove_classified_incidents(ig)
             ig2 = self.create_incident_gatherer(basedir, [classify_boom])
-            ig2.add_classifier(classify_foom)
+            ##ig2.add_classifier(classify_foom)
+            # we add classify_foom by writing it into a file, to exercise the
+            # look-for-classifier-files code
+            foomfile = os.path.join(ig2.basedir, "classify_foom.py")
+            f = open(foomfile, "w")
+            f.write('''
+def classify_incident(nodeid_s, (header,events)):
+    if "foom" in header["trigger"].get("message",""):
+        return "foom"
+''')
+            f.close()
             ig2.setServiceParent(self.parent)
+            # now that it's been read, delete it to avoid affecting later
+            # runs
+            os.unlink(foomfile)
             self.ig2 = ig2
 
             # incidents should be classified in startService
@@ -1197,6 +1210,16 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         self.failUnless("failure" in data['d'])
         self.failUnless(data['d']["failure"].check(SampleError))
         self.failUnless("whoops2" in str(data['d']["failure"]))
+
+    def test_wrongdir(self):
+        basedir = "logging/Gatherer/wrongdir"
+        os.makedirs(basedir)
+
+        # create a LogGatherer with an unspecified basedir: it should look
+        # for a .tac file in the current directory, not see it, and complain
+        e = self.failUnlessRaises(RuntimeError,
+                                  MyGatherer, None, True, None)
+        self.failUnless("running in the wrong directory" in str(e))
 
     def test_log_gatherer(self):
         # setLocation, then set log-gatherer-furl. Also, use bzip=True for

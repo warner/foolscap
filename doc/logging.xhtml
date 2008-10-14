@@ -890,14 +890,19 @@ specification</a> docs.</p>
 
 <p>The Incident Gatherer uses a collection of user-supplied classification
 functions to analyze each Incident and place it into one or more categories.
-To add a classification function, you will need to modify the
-<code>gatherer.tac</code> file, and make a call to
-<code>ig.add_classifier()</code> with your function. These functions accept a
-triggering event and a pathname (from which preceding log events can be
-extracted, if desired), and should return a list of categories. Each incident
-can wind up in multiple categories. If no function finds a category for the
-incident, it will be added to the "unknown" category. All incidents are added
-to the "all" category.</p>
+To add a classification function, create a file with a name like
+"<code>classify_*.py</code>" (such as <code>classify_foolscap.py</code> or
+<code>classify_db.py</code>), and define a function in it named
+"<code>classify_incident()</code>". Place this file in the gatherer's
+directory. All such files will be loaded and evaluated when the gatherer
+starts.</p>
+
+<p>The <code>classify_incident()</code> function will accept a triggering
+event and a pathname (from which preceding log events can be extracted, if
+desired), and should return a list of categories. Each incident can wind up
+in multiple categories. If no function finds a category for the incident, it
+will be added to the "unknown" category. All incidents are added to the "all"
+category.</p>
 
 <p>The <code>classified/</code> directory will contain a file for each
 defined classification. This file will contain one line for each incident
