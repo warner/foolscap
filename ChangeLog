@@ -1,5 +1,9 @@
 2008-10-15  Brian Warner  <warner@allmydata.com>
 
+	* misc/classify_foolscap.py (TUBCON_RE): update to match
+	foolscap-tubconnector messages for both old and new versions of
+	Foolscap, and for python2.4 and 2.5 .
+
 	* foolscap/logging/incident.py (IncidentClassifier): add --verbose
 	option to 'flogtool classify-incident' to show the trigger
 	dictionary for any unclassifiable incidents. This is useful when

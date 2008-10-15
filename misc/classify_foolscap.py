@@ -3,7 +3,7 @@
 
 import re
 
-TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.negotiate.TubConnector instance at \w+> is not in \[')
+TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.negotiate.TubConnector (instance|object) at [\w ]+> is not in \[')
 def classify_incident(trigger):
     m = trigger.get('message', '')
     if TUBCON_RE.search(m):
