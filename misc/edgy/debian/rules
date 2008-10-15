@@ -9,7 +9,7 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 
 
 install/python-foolscap::
-	dh_installdocs doc/jobs.txt doc/todo.txt doc/use-cases.txt doc/using-foolscap.xhtml doc/copyable.xhtml doc/listings doc/specifications
+	dh_installdocs doc/jobs.txt doc/todo.txt doc/use-cases.txt doc/using-foolscap.xhtml doc/copyable.xhtml doc/listings doc/specifications misc/classify_foolscap.py
 
 clean::
 	-rm -rf build

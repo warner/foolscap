@@ -1,5 +1,10 @@
 2008-10-15  Brian Warner  <warner@allmydata.com>
 
+	* misc/*/debian/rules (install/python-foolscap): include
+	misc/classify_foolscap.py in the debian package, uncompressed, so
+	it goes into /usr/share/doc/python-foolscap/classify_foolscap.py ,
+	so you can make a symlink to it from an incident-gatherer.
+
 	* misc/classify_foolscap.py (TUBCON_RE): update to match
 	foolscap-tubconnector messages for both old and new versions of
 	Foolscap, and for python2.4 and 2.5 .
