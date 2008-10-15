@@ -95,6 +95,17 @@ class Welcome(resource.Resource):
                              'at level %s</li>\n' %
                              (lfnum, level, len(levels[level]),
                               level))
+                if self.viewer.triggers:
+                    data += " <li>Incident Triggers:\n"
+                    data += "  <ul>\n"
+                    for t in self.viewer.triggers:
+                        le = self.viewer.number_map[t]
+                        data += "   <li>"
+                        href_base = "/all-events"
+                        data += le.to_html(href_base)
+                        data += "   </li>\n"
+                    data += "  </ul>\n"
+                    data += " </li>\n"
                 data += " </ul>\n"
             data += "</ul>\n"
         else:
@@ -219,6 +230,7 @@ class LogEvent:
         self.parent_index = None
         if 'parent' in e['d']:
             self.parent_index = (e['from'], e['d']['parent'])
+        self.is_trigger = False
 
     LEVELMAP = {
         log.NOISY: "NOISY",
@@ -249,10 +261,13 @@ class LogEvent:
         level_s = ""
         if level >= log.UNUSUAL:
             level_s = self.LEVELMAP.get(level, "") + " "
-        return '%s [<span id="E%s"><a href="%s#E%s">%d</a></span>]: %s%s' \
+        data = '%s [<span id="E%s"><a href="%s#E%s">%d</a></span>]: %s%s' \
                % (time_s,
                   self.anchor_index, href_base, self.anchor_index, d['num'],
                   level_s, msg)
+        if self.is_trigger:
+            data += " [INCIDENT-TRIGGER]"
+        return data
 
 class Reload(resource.Resource):
 
@@ -306,14 +321,18 @@ class WebViewer:
 
     def load_logfiles(self):
         #self.summary = {} # keyed by logfile name
-        (self.summaries, self.root_events, self.number_map) = \
-                         self.process_logfiles(self.logfiles)
+        (self.summaries,
+         self.root_events,
+         self.number_map,
+         self.triggers) = self.process_logfiles(self.logfiles)
 
     def process_logfiles(self, logfiles):
         summaries = {}
         # build up a tree of events based upon parent/child relationships
         number_map = {}
         roots = []
+        trigger_numbers = []
+        first_event_from = None
 
         for lf in logfiles:
             (first_event_number, first_event_time) = (None, None)
@@ -322,8 +341,14 @@ class WebViewer:
             levels = {}
 
             for e in self.get_events(lf):
+                if "header" in e:
+                    if e["header"]["type"] == "incident":
+                        t = e["header"]["trigger"]
+                        trigger_numbers.append(t["num"])
                 if "d" not in e:
                     continue # skip headers
+                if not first_event_from:
+                    first_event_from = e['from']
                 le = LogEvent(e)
                 if le.index:
                     number_map[le.index] = le
@@ -336,6 +361,8 @@ class WebViewer:
                 level = d.get("level", "NORMAL")
                 number = d.get("num", None)
                 when = d.get("time")
+                if number in trigger_numbers:
+                    le.is_trigger = True
 
                 if False:
                     # this is only meaningful if the logfile contains events
@@ -371,7 +398,9 @@ class WebViewer:
                         num_events, levels )
             summaries[lf] = summary
 
-        return summaries, roots, number_map
+        triggers = [(first_event_from, num) for num in trigger_numbers]
+
+        return summaries, roots, number_map, triggers
 
     def get_events(self, fn):
         if fn.endswith(".bz2"):

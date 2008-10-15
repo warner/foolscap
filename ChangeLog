@@ -1,5 +1,8 @@
 2008-10-14  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/web.py: mark any incident triggers in the
+	logfile, and add links to them from the welcome page. Closes #79.
+
 	* foolscap/logging/web.py (Reload): add a 'Reload Logfile' button
 	to the web-viewer's Welcome page. Not automatic, but it means you
 	don't have to get back to the shell and restart the viewer. Works
