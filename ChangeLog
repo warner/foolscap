@@ -1,5 +1,9 @@
 2008-10-14  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.3.2
+	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
+	same
+
 	* MANIFEST.in: add misc/classify_foolscap.py to source distribution
 
 	* NEWS: update for the next release
