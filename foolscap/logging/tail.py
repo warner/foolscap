@@ -19,9 +19,11 @@ class LogSaver(foolscap.Referenceable):
         self.nodeid_s = nodeid_s
         self.f = savefile
 
-    def emit_header(self, versions):
+    def emit_header(self, versions, pid):
         header = {"header": {"type": "tail",
                              "versions": versions}}
+        if pid is not None:
+            header["header"]["pid"] = pid
         pickle.dump(header, self.f)
 
     def remote_msg(self, d):
@@ -71,12 +73,12 @@ class LogPrinter(foolscap.Referenceable):
             self.saver = LogSaver(target_tubid_s[:8], f)
         self.output = output
 
-    def got_versions(self, versions):
+    def got_versions(self, versions, pid=None):
         print >>self.output, "Remote Versions:"
         for k in sorted(versions.keys()):
             print >>self.output, " %s: %s" % (k, versions[k])
         if self.saver:
-            self.saver.emit_header(versions)
+            self.saver.emit_header(versions, pid)
 
     def remote_msg(self, d):
         if self.options['verbose']:
@@ -133,15 +135,20 @@ class LogTail:
         def _announce(pid_or_failure):
             if isinstance(pid_or_failure, int):
                 print "Connected (to pid %d)" % pid_or_failure
+                return pid_or_failure
             else:
                 # the logport is probably foolscap-0.2.8 or earlier and
                 # doesn't offer get_pid()
                 print "Connected (unable to get pid)"
+                return None
         d.addBoth(_announce)
         publisher.notifyOnDisconnect(self._lost_logpublisher)
         lp = LogPrinter(self.options, target_tubid)
-        d.addCallback(lambda res: publisher.callRemote("get_versions"))
-        d.addCallback(lp.got_versions)
+        def _ask_for_versions(pid):
+            d = publisher.callRemote("get_versions")
+            d.addCallback(lp.got_versions, pid)
+            return d
+        d.addCallback(_ask_for_versions)
         catch_up = bool(self.options["catch-up"])
         if catch_up:
             d.addCallback(lambda res:

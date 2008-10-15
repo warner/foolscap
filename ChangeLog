@@ -1,5 +1,14 @@
 2008-10-14  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/tail.py (LogTail): include the retrieved PID in
+	the saved logfile. Part of #80.
+	* foolscap/logging/incident.py (IncidentReporter.incident_declared):
+	also include the PID in the incident report's header.
+	* doc/specifications/logfiles.xhtml: document the ['versions']
+	and ['pid'] fields in incident reports and the 'flogtool tail'
+	savefile.
+
+
 	* foolscap/logging/web.py: mark any incident triggers in the
 	logfile, and add links to them from the welcome page. Closes #79.
 

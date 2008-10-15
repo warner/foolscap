@@ -88,6 +88,7 @@ class IncidentReporter:
         header = {"header": {"type": "incident",
                              "trigger": triggering_event,
                              "versions": app_versions.versions,
+                             "pid": os.getpid(),
                              }}
         pickle.dump(header, self.f1)
         pickle.dump(header, self.f2)

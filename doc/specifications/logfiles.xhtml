@@ -207,8 +207,17 @@ uses any specific Tub.</p>
 
 <h3>flogtool tail</h3>
 
-<p>The header dict produced by <code>flogtool tail</code> does not contain
-any additional keys at this time.</p>
+<p>The header dict produced by <code>flogtool tail</code> contains the
+following additional keys:</p>
+
+<ul>
+  <li><code>pid</code> (int): if present, this value contains the process id
+  of the process which was being followed by 'flogtool tail'.</li>
+
+  <li><code>versions</code> (dict): this contains a dictionary of component
+  versions, mapping a string component name like "foolscap" to a version
+  string.</li>
+</ul>
 
 <h3>log-gatherer</h3>
 
@@ -236,6 +245,13 @@ following additional keys:</p>
   <li><code>trigger</code> (event dict): a copy of the event which triggered
   the incident. This event will also be present somewhere in the rest of the
   logfile, at its normal position in the event stream. </li>
+
+  <li><code>pid</code> (int): this value contains the process id of the
+  process which experienced the incident.</li>
+
+  <li><code>versions</code> (dict): this contains a dictionary of component
+  versions, mapping a string component name like "foolscap" to a version
+  string.</li>
 </ul>
 
 
