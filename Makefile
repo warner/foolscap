@@ -12,7 +12,7 @@ test:
 
 test-figleaf:
 	rm -f .figleaf
-	PYTHONPATH=misc/testutils trial --reporter=bwverbose-figleaf $(TEST)
+	PYTHONPATH=misc/testutils $(TRIAL) --reporter=bwverbose-figleaf $(TEST)
 
 test-poll:
 	$(MAKE) test TRIAL="trial -r poll"

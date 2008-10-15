@@ -1,5 +1,9 @@
 2008-10-15  Brian Warner  <warner@allmydata.com>
 
+	* Makefile (test-figleaf): oops, fix the test-figleaf-poll target,
+	by making the test-figleaf target use $(TRIAL), not hardcoded
+	'trial'.
+
 	* foolscap/_version.py: bump revision to 0.3.2+ while between releases
 	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
 	same
