@@ -1,5 +1,7 @@
 2008-10-14  Brian Warner  <warner@lothar.com>
 
+	* MANIFEST.in: add misc/classify_foolscap.py to source distribution
+
 	* NEWS: update for the next release
 
 	* Makefile (test-poll): add a convenience target, for running
