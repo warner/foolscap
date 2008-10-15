@@ -1,5 +1,6 @@
 
 import sys, os.path, time, pickle, bz2
+from pprint import pprint
 from zope.interface import implements
 from twisted.python import usage
 from twisted.internet import reactor
@@ -173,6 +174,9 @@ class ClassifyOptions(usage.Options):
     stderr = sys.stderr
     synopsis = "Usage: flogtool classify-incident [options] INCIDENTFILE.."
 
+    optFlags = [
+        ("verbose", "v", "show trigger details for unclassifiable incidents"),
+        ]
     optParameters = [
         ("classifier-directory", "c", ".",
          "directory with classify_*.py functions to import"),
@@ -238,4 +242,16 @@ class IncidentClassifier(IncidentClassifierBase):
             incident = self.load_incident(abs_fn)
             categories = self.classify_incident(incident)
             print >>out, "%s: %s" % (f, ",".join(sorted(categories)))
+            if list(categories) == ["unknown"] and options["verbose"]:
+                (header, events) = incident
+                trigger = header["trigger"]
+                from foolscap.logging.log import format_message
+                print >>out, format_message(trigger)
+                pprint(trigger, stream=out)
+                if 'failure' in trigger:
+                    print >>out," FAILURE:"
+                    lines = str(trigger['failure']).split("\n")
+                    for line in lines:
+                        print >>out, " %s" % (line,)
+                print >>out, ""
 

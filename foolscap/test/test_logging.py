@@ -356,7 +356,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l.setIncidentReporterFactory(incident.NonTrailingIncidentReporter)
         l.setLogDir("logging/Incidents/classify")
         got_logdir = l.logdir
-        l.msg("foom", level=log.BAD)
+        l.msg("foom", level=log.BAD, failure=failure.Failure(RuntimeError()))
         d = fireEventually()
         def _check(res):
             files = [fn for fn in os.listdir(got_logdir) if fn.endswith(".bz2")]
@@ -373,6 +373,20 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             ic.run(options)
             out = options.stdout.getvalue()
             self.failUnless(out.strip().endswith(": foom"), out)
+
+            ic2 = incident.IncidentClassifier()
+            options = incident.ClassifyOptions()
+            options.parseOptions(["--verbose"] +
+                                 [os.path.join(got_logdir, fn) for fn in files])
+            options.stdout = StringIO()
+            ic2.run(options)
+            out = options.stdout.getvalue()
+            self.failUnless(".flog.bz2: unknown\n" in out, out)
+            # this should have a pprinted trigger dictionary
+            self.failUnless("'message': 'foom'," in out, out)
+            self.failUnless("'num': 0," in out, out)
+            self.failUnless("RuntimeError" in out, out)
+
         d.addCallback(_check)
         return d
 

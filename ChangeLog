@@ -1,5 +1,11 @@
 2008-10-15  Brian Warner  <warner@allmydata.com>
 
+	* foolscap/logging/incident.py (IncidentClassifier): add --verbose
+	option to 'flogtool classify-incident' to show the trigger
+	dictionary for any unclassifiable incidents. This is useful when
+	developing classification functions.
+	* foolscap/test/test_logging.py (Incidents.test_classify): test it
+
 	* Makefile (test-figleaf): oops, fix the test-figleaf-poll target,
 	by making the test-figleaf target use $(TRIAL), not hardcoded
 	'trial'.
