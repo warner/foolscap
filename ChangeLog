@@ -1,5 +1,7 @@
 2008-10-14  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the next release
+
 	* Makefile (test-poll): add a convenience target, for running
 	tests on a system with the broken combination of pyopenssl and
 	twisted that requires the pollreactor

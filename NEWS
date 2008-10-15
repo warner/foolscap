@@ -1,5 +1,60 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.3.2 (14 Oct 2008)
+
+** Compatibility: same as 0.2.6
+
+Incident classifier functions (introduced in 0.3.0) have been changed: if you
+have written custom functions for an Incident Gatherer, you will need to
+modify them upon upgrading to this release.
+
+** Logging Changes
+
+The log.msg counter now uses a regular Python integer/bigint. The counter in
+0.3.1 used itertools.count(), which, despite its documentation, stores the
+counter in a C signed int, and thus throws an exception when the message
+number exceeds 2**31-1 . This exception would pretty much kill any program
+which ran long enough to emit this many messages, a situation which was
+observed in a busy production server with an uptime of about three or four
+weeks. The 0.3.2 counter will be promoted to a bigint when necessary,
+removing this limitation. (ticket #99)
+
+The Incident-Gatherer now imports classification functions from files named
+'classify_*.py' in the gatherer's directory. This effectively adds
+"classifier plugins". The signature of the functions has changed since the
+0.3.0 release, making them easier to use. If you have written custom
+functions (and edited the gatherer.tac file to activate them, using
+gs.add_classifier()), you will need to modify the functions to take a single
+'trigger' argument.
+
+These same 'classify_*.py' plugins are used by a new "flogtool
+classify-incident" subcommand, which can be pointed at an incident file, and
+performs the same kind of classification as the Incident Gatherer. (#102).
+
+The logfiles produced by the "flogtool tail" command and the internal
+incident-reporter now include the PID of the reporting process. This can be
+seen by passing the --verbose option to "flogtool dump", and will be made
+more visible in later releases. (#80).
+
+The "flogtool web-viewer" tool now marks Incident triggers (#79), and
+features a "Reload Logfile" button to re-read the logfile on disk (#103).
+This is most useful when running unit tests, in conjunction with the
+FLOGFILE= environment variable.
+
+** Other Changes
+
+When running unit tests, if the #62 bug is encountered (pyopenssl >= 0.7 and
+twisted <= 8.1.0 and selectreactor), the test process will emit a warning and
+pause for ten seconds to give the operator a chance to halt the test and
+re-run it with --reactor=poll. This may help to reduce the confusion of a
+hanging+failing test run.
+
+The xfer-client.py example tool (in doc/listings/) has been made more
+useable, by calling os.path.expanduser() on its input files, and by doing
+sys.exit(1) on failure (instead of hanging), so that external programs can
+react appropriately.
+
+
 * Release 0.3.1 (03 Sep 2008)
 
 ** Compatibility: same as 0.2.6
