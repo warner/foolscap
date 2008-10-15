@@ -14,6 +14,11 @@ test-figleaf:
 	rm -f .figleaf
 	PYTHONPATH=misc/testutils trial --reporter=bwverbose-figleaf $(TEST)
 
+test-poll:
+	$(MAKE) test TRIAL="trial -r poll"
+test-figleaf-poll:
+	$(MAKE) test-figleaf TRIAL="trial -r poll"
+
 figleaf-output:
 	rm -rf coverage-html
 	PYTHONPATH=misc/testutils python misc/testutils/figleaf2html -d coverage-html -r . -x misc/testutils/figleaf.excludes

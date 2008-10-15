@@ -1,3 +1,10 @@
+2008-10-14  Brian Warner  <warner@lothar.com>
+
+	* Makefile (test-poll): add a convenience target, for running
+	tests on a system with the broken combination of pyopenssl and
+	twisted that requires the pollreactor
+	(test-figleaf-poll): same
+
 2008-10-14  Brian Warner  <warner@allmydata.com>
 
 	* foolscap/logging/tail.py (LogTail): include the retrieved PID in
