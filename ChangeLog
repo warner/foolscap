@@ -1,3 +1,10 @@
+2009-05-04  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_banana.py (ThereAndBackAgain.test_decimal):
+	use Decimal("Inf") instead of decimal.Inf, to unbreak python2.6.2
+	which privatized both Inf and Nan. Thanks to ivank for the patch.
+	Closes #121.
+
 2008-10-15  Brian Warner  <warner@allmydata.com>
 
 	* misc/*/debian/rules (install/python-foolscap): include
