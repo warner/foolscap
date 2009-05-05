@@ -7,12 +7,12 @@
 	the new URL too.
 
 	* foolscap/logging/web.py (Welcome.render): display PID of
-	logfile, if available. This will be present in incidents records
-	that were written out by the original process, in the files
-	written by "flogtool tail --save-to=", and in the file written by
-	creating an explicit FileLogObserver (such as done by setting the
-	FLOGFILE environment variable). It is not yet set in the incident
-	record written by a log gatherer. This closes #80.
+	logfile, if available. This will be present in incident records
+	that were written out by the original process or gathered by a log
+	gatherer, in the files written by "flogtool tail --save-to=", and
+	in the file written by creating an explicit FileLogObserver (such
+	as done by setting the FLOGFILE environment variable). This should
+	close #80.
 	* foolscap/logging/log.py (LogFileObserver): record PID in header
 	* foolscap/test/test_logging.py (Web.test_basic): test PID
 
