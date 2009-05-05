@@ -8,7 +8,7 @@ client. The exit code of the client will be the same as the remote command.
 
 import sys
 from twisted.internet import reactor
-from foolscap import UnauthenticatedTub
+from foolscap.api import UnauthenticatedTub
 from twisted.python import usage
 
 class Options(usage.Options):

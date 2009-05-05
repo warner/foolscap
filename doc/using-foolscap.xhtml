@@ -66,7 +66,7 @@ is probably too slow to run python or use a network, so you should seriously
 consider a hardware upgrade</span>.</p>
 
 <pre class="python">
-from foolscap import Referenceable
+from foolscap.api import Referenceable
 
 class MathServer(Referenceable):
     def remote_add(self, a, b):
@@ -179,7 +179,7 @@ the way. If your machine is reachable directly over the internet as
 <q>myhost.example.com</q>, then you could use something like this:</p>
 
 <pre class="python">
-from foolscap import Tub
+from foolscap.api import Tub
 
 tub = Tub()
 tub.listenOn("tcp:12345")  # start listening on TCP port 12345
@@ -215,7 +215,7 @@ possible for someone else to acquire it by guessing the name.</p>
 
 <p>To use an unauthenticated Tub instead, you would do the following:</p>
 <pre class="python">
-from foolscap import UnauthenticatedTub
+from foolscap.api import UnauthenticatedTub
 
 tub = UnauthenticatedTub()
 tub.listenOn("tcp:12345")  # start listening on TCP port 12345
@@ -283,7 +283,7 @@ else's object, just use <code class="API"
 base="foolscap.pb.Tub">getReference</code>:</p>
 
 <pre class="python">
-from foolscap import Tub
+from foolscap.api import Tub
 
 tub = Tub()
 tub.startService()
@@ -307,7 +307,7 @@ the following will work too. But don't forget to call
 forever.</p>
 
 <pre class="python">
-from foolscap import Tub
+from foolscap.api import Tub
 
 tub = Tub()
 d = tub.getReference("pb://ABCD@myhost.example.com:12345/math-service")
@@ -627,16 +627,9 @@ Banana will not know how to unserialize the incoming data stream.</p>
 plus two more. If you raise an exception, the caller's Deferred will have the
 errback fired instead of the callback, with a <code class="API"
 base="foolscap.call">CopiedFailure</code> instance that describes what went
-wrong. The <code>CopiedFailure</code> is not quite as useful as a local <code
-class="API" base="twisted.python.failure">Failure</code> object would be: to
-send it over the wire, some contents are replaced with strings, and the
-actual Exception object (<code>f.value</code>) is replaced with its string
-representation. But you can still use it to find out what went wrong. The
-<code>CopiedFailure</code> may reveal more information about the internals of
-your program than you want: you can set the <code>unsafeTracebacks</code>
-flag on the Tub to limit outgoing <code>CopiedFailure</code>s to contain only
-the exception type (and none of the stack trace information that would reveal
-lines of your source code to the remote end).</p>
+wrong. The <code>CopiedFailure</code> is not quite as useful as a
+local <code class="API" base="twisted.python.failure">Failure</code> object
+would be: see <a href="failures.xhtml">failures.xhtml</a> for details.</p>
 
 <p>The other alternative is for your method to return a <code class="API"
 base="twisted.internet.defer">Deferred</code>. If this happens, the caller
@@ -804,7 +797,7 @@ suitably unique string (like a URI).</p>
 <p>Here's an example:</p>
 
 <pre class="python">
-from foolscap import RemoteInterface, schema
+from foolscap.api import RemoteInterface, schema
 
 class RIMath(RemoteInterface):
     __remote_name__ = "RIMath.using-foolscap.docs.foolscap.twistedmatrix.com"
@@ -877,7 +870,7 @@ serialized.</p>
 following code fragment:</p>
 
 <pre class="python">
-from foolscap import Copyable, RemoteCopy
+from foolscap.api import Copyable, RemoteCopy
 
 class MyPassByCopy(Copyable, RemoteCopy):
     typeToCopy = copytype = "MyPassByCopy"

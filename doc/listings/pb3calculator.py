@@ -2,7 +2,7 @@
 
 from twisted.application import service
 from twisted.internet import reactor
-from foolscap import Referenceable, Tub
+from foolscap.api import Referenceable, Tub
 
 class Calculator(Referenceable):
     def __init__(self):

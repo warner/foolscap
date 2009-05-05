@@ -1,5 +1,9 @@
 """Foolscap"""
 
+# All names here are now deprecated. Please import them from foolscap.api
+# instead. This file will become empty (except for __version__) in the next
+# major release.
+
 from _version import verstr as __version__
 
 # here are the primary entry points
@@ -14,7 +18,6 @@ from foolscap.ipb import DeadReferenceError
 from foolscap.tokens import BananaError
 from foolscap import schema # necessary for the adapter_hooks side-effect
 from foolscap.storage import serialize, unserialize
-# TODO: Violation?
 
 # hush pyflakes
 _unused = [

@@ -15,7 +15,7 @@ pathname will be used as the remote filename.
 
 import sys, os.path
 from twisted.internet import reactor
-from foolscap import UnauthenticatedTub
+from foolscap.api import UnauthenticatedTub
 from twisted.python import usage
 
 class Options(usage.Options):

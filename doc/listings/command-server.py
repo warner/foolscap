@@ -32,7 +32,7 @@ always available.
 
 import os, os.path
 from twisted.internet import reactor, utils
-from foolscap import Tub, Referenceable
+from foolscap.api import Tub, Referenceable
 from twisted.python import usage
 
 class Options(usage.Options):

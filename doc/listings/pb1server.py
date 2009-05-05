@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 from twisted.internet import reactor
-from foolscap import Referenceable, UnauthenticatedTub
+from foolscap.api import Referenceable, UnauthenticatedTub
 
 class MathServer(Referenceable):
     def remote_add(self, a, b):

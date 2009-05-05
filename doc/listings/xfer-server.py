@@ -24,7 +24,7 @@ always available.
 from os import chmod
 import os.path
 from twisted.internet import reactor
-from foolscap import Tub, Referenceable
+from foolscap.api import Tub, Referenceable
 from twisted.python import usage
 
 class Options(usage.Options):

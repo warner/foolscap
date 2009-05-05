@@ -2,7 +2,7 @@
 
 import sys
 from twisted.internet import reactor
-from foolscap import Tub
+from foolscap.api import Tub
 
 def gotError1(why):
     print "unable to get the RemoteReference:", why

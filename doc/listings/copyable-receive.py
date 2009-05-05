@@ -2,7 +2,7 @@
 
 import sys
 from twisted.internet import reactor
-from foolscap import RemoteCopy, Tub
+from foolscap.api import RemoteCopy, Tub
 
 # the receiving side defines the RemoteCopy
 class RemoteUserRecord(RemoteCopy):
@@ -31,7 +31,7 @@ def getRecord(rref, name):
     d.addCallback(_gotRecord)
 
 
-from foolscap import Tub
+from foolscap.api import Tub
 tub = Tub()
 tub.startService()
 

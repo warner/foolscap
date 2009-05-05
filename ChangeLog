@@ -1,5 +1,16 @@
 2009-05-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/api.py: new preferred entry point. Application code
+	should import symbols from "foolscap.api" instead of directly from
+	foolscap/__init__.py . Importing from the __init__.py will be
+	deprecated in the next major release, and removed in the
+	subsequent one. Addresses #122 (but it won't be closed until we
+	remove everything from __init__.py).
+	* foolscap/__init__.py: add comment about preferring foolscap.api
+	* doc/using-foolscap.xhtml: update examples to use e.g.
+	"from foolscap.api import Tub"
+	* doc/listings/*.py: update examples
+
 	* foolscap/pb.py (Tub.setLogGathererFURL): allow users to call
 	both Tub.setOption("log-gatherer-furl") and
 	Tub.setOption("log-gatherer-furlfile") on the same Tub. Previously

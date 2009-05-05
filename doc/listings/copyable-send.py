@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 from twisted.internet import reactor
-from foolscap import Copyable, Referenceable, Tub
+from foolscap.api import Copyable, Referenceable, Tub
 
 # the sending side defines the Copyable
 

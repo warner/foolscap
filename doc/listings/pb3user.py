@@ -2,7 +2,7 @@
 
 import sys
 from twisted.internet import reactor
-from foolscap import Referenceable, Tub
+from foolscap.api import Referenceable, Tub
 
 class Observer(Referenceable):
     def remote_event(self, msg):
