@@ -1,5 +1,13 @@
 2009-05-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.setLogGathererFURL): allow users to call
+	both Tub.setOption("log-gatherer-furl") and
+	Tub.setOption("log-gatherer-furlfile") on the same Tub. Previously
+	this was disallowed. Also avoid making multiple connections to the
+	same gatherer. Closes #114.
+	* foolscap/test/test_logging.py
+	(Gatherer.test_log_gatherer_furlfile_multiple): test it
+
 	* foolscap/test/test_logging.py (Publish.test_logpublisher_catchup):
 	don't use an absolute delay, since it causes spurious test
 	failures on slow systems.

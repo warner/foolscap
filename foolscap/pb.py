@@ -305,6 +305,7 @@ class Tub(service.MultiService):
 
         self._log_gatherer_furl = None
         self._log_gatherer_furlfile = None
+        self._log_gatherer_connectors = {} # maps furl to reconnector
 
         self._handle_old_duplicate_connections = False
 
@@ -355,12 +356,12 @@ class Tub(service.MultiService):
             raise KeyError("unknown option name '%s'" % name)
 
     def setLogGathererFURL(self, gatherer_furl):
-        assert not self._log_gatherer_furl and not self._log_gatherer_furlfile
+        assert not self._log_gatherer_furl
         self._log_gatherer_furl = gatherer_furl
         self._maybeConnectToGatherer()
 
     def setLogGathererFURLFile(self, gatherer_furlfile):
-        assert not self._log_gatherer_furl and not self._log_gatherer_furlfile
+        assert not self._log_gatherer_furlfile
         self._log_gatherer_furlfile = gatherer_furlfile
         self._maybeConnectToGatherer()
 
@@ -380,7 +381,10 @@ class Tub(service.MultiService):
             except EnvironmentError:
                 pass
         for f in furls:
+            if f in self._log_gatherer_connectors:
+                continue
             connector = self.connectTo(f, self._log_gatherer_connected)
+            self._log_gatherer_connectors[f] = connector
 
     def _log_gatherer_connected(self, rref):
         # we want the logport's furl to be nailed down now, so we'll use the

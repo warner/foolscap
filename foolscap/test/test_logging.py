@@ -1419,6 +1419,17 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer2_furl = gatherer2.my_furl
         starting_timestamp2 = gatherer2._starting_timestamp
 
+        gatherer3_basedir = os.path.join(basedir, "gatherer3")
+        os.makedirs(gatherer3_basedir)
+        gatherer3 = MyGatherer(None, False, gatherer3_basedir)
+        gatherer3.tub_class = GoodEnoughTub
+        gatherer3.d = defer.Deferred()
+        gatherer3.setServiceParent(self.parent)
+        # that will start the gatherer
+        fn3 = gatherer3._savefile_name
+        gatherer3_furl = gatherer3.my_furl
+        starting_timestamp3 = gatherer3._starting_timestamp
+
         gatherer_furlfile = os.path.join(basedir, "log_gatherer.furl")
         f = open(gatherer_furlfile, "w")
         f.write(gatherer1_furl + "\n")
@@ -1429,19 +1440,22 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         if t.tubID is None:
             expected_tubid = "<unauth>"
+        t.setOption("log-gatherer-furl", gatherer3_furl)
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furlfile", gatherer_furlfile)
         # now both log gatherer connections will be being established
 
-        d = defer.DeferredList([gatherer1.d, gatherer2.d],
+        d = defer.DeferredList([gatherer1.d, gatherer2.d, gatherer3.d],
                                fireOnOneErrback=True)
         d.addCallback(self._emit_messages_and_flush, t)
         d.addCallback(lambda res: gatherer1.do_rotate())
         d.addCallback(self._check_gatherer, starting_timestamp1, expected_tubid)
         d.addCallback(lambda res: gatherer2.do_rotate())
         d.addCallback(self._check_gatherer, starting_timestamp2, expected_tubid)
+        d.addCallback(lambda res: gatherer3.do_rotate())
+        d.addCallback(self._check_gatherer, starting_timestamp3, expected_tubid)
         return d
     test_log_gatherer_furlfile_multiple.timeout = 20
 
