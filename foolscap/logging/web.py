@@ -278,7 +278,7 @@ class Reload(resource.Resource):
 
     def render_POST(self, req):
         self.viewer.load_logfiles()
-        req.redirect("welcome")
+        req.redirect("/")
         return ''
 
 class WebViewer:
@@ -297,7 +297,8 @@ class WebViewer:
     def start(self, options):
         root = static.Data("placeholder", "text/plain")
         welcome = Welcome(self)
-        root.putChild("welcome", welcome)
+        root.putChild("", welcome)
+        root.putChild("welcome", welcome) # we used to only do this
         root.putChild("reload", Reload(self))
         root.putChild("all-events", EventView(self))
         root.putChild("summary", Summary(self))
@@ -307,7 +308,7 @@ class WebViewer:
         self.serv.startService()
         portnum = self.serv._port.getHost().port
         # TODO: this makes all sort of assumptions: HTTP-vs-HTTPS, localhost.
-        url = "http://localhost:%d/welcome" % portnum
+        url = "http://localhost:%d/" % portnum
 
         if not options["quiet"]:
             print "scanning.."

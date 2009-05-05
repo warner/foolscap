@@ -1,5 +1,11 @@
 2009-05-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/web.py (WebViewer.start): put the welcome page
+	at the root URL, in addition to /welcome . This simplifies the
+	starting URL. Closes #120.
+	(Reload.render_POST): make the "Reload Logfile" button point at
+	the new URL too.
+
 	* foolscap/logging/web.py (Welcome.render): display PID of
 	logfile, if available. This will be present in incidents records
 	that were written out by the original process, in the files
