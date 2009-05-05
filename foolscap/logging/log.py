@@ -418,6 +418,7 @@ class LogFileObserver:
         self._level = level
         header = {"header": {"type": "log-file-observer",
                              "threshold": level,
+                             "pid": os.getpid(),
                              }}
         pickle.dump(header, self._logFile)
 

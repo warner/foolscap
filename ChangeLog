@@ -1,5 +1,15 @@
 2009-05-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/web.py (Welcome.render): display PID of
+	logfile, if available. This will be present in incidents records
+	that were written out by the original process, in the files
+	written by "flogtool tail --save-to=", and in the file written by
+	creating an explicit FileLogObserver (such as done by setting the
+	FLOGFILE environment variable). It is not yet set in the incident
+	record written by a log gatherer. This closes #80.
+	* foolscap/logging/log.py (LogFileObserver): record PID in header
+	* foolscap/test/test_logging.py (Web.test_basic): test PID
+
 	* foolscap/test/test_banana.py (ThereAndBackAgain.test_decimal):
 	use Decimal("Inf") instead of decimal.Inf, to unbreak python2.6.2
 	which privatized both Inf and Nan. Thanks to ivank for the patch.

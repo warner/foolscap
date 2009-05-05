@@ -1963,6 +1963,9 @@ class Web(unittest.TestCase):
         d.addCallback(_created)
         d.addCallback(lambda res: client.getPage(self.url))
         def _check_welcome(page):
+            mypid = os.getpid()
+            self.failUnless("PID %s" % mypid in page,
+                            "didn't see 'PID %s' in '%s'" % (mypid, page))
             self.failUnless("4 events covering" in page)
             self.failUnless('href="summary/0-20">3 events</a> at level 20'
                             in page)

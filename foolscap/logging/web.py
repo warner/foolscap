@@ -76,7 +76,8 @@ class Welcome(resource.Resource):
                 data += " <ul>\n"
                 ((first_number, first_time),
                  (last_number, last_time),
-                 num_events, levels) = self.viewer.summaries[lf]
+                 num_events, levels, pid) = self.viewer.summaries[lf]
+                data += "  <li>PID %s</li>\n" % pid
                 if first_time and last_time:
                     duration = int(last_time - first_time)
                 else:
@@ -129,7 +130,7 @@ class Summary(resource.Resource):
         if "-" in path:
             lfnum,levelnum = map(int, path.split("-"))
             lf = self._viewer.logfiles[lfnum]
-            (first, last, num_events, levels) = self._viewer.summaries[lf]
+            (first, last, num_events, levels, pid) = self._viewer.summaries[lf]
             events = levels[levelnum]
             return SummaryView(events, levelnum)
         return resource.Resource.getChild(self, path, req)
@@ -339,12 +340,14 @@ class WebViewer:
             (last_event_number, last_event_time) = (None, None)
             num_events = 0
             levels = {}
+            pid = None
 
             for e in self.get_events(lf):
                 if "header" in e:
                     if e["header"]["type"] == "incident":
                         t = e["header"]["trigger"]
                         trigger_numbers.append(t["num"])
+                    pid = e["header"].get("pid")
                 if "d" not in e:
                     continue # skip headers
                 if not first_event_from:
@@ -395,7 +398,7 @@ class WebViewer:
 
             summary = ( (first_event_number, first_event_time),
                         (last_event_number, last_event_time),
-                        num_events, levels )
+                        num_events, levels, pid )
             summaries[lf] = summary
 
         triggers = [(first_event_from, num) for num in trigger_numbers]
