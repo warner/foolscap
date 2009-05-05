@@ -686,10 +686,11 @@ class Publish(PollMixin, unittest.TestCase):
                 ob.last_received = time.time()
                 log.msg("this is a later message")
             d.addCallback(_emit)
-            # wait until the observer has seen nothing for a full second
+            # wait until we've received the later message
             def _check_f():
-                if ob.last_received < time.time() - 1.0:
-                    return True
+                for m in ob.messages:
+                    if m.get("message") == "this is a later message":
+                        return True
                 return False
             d.addCallback(lambda res: self.poll(_check_f))
             def _check_observer(res):

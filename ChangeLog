@@ -1,5 +1,9 @@
 2009-05-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_logging.py (Publish.test_logpublisher_catchup):
+	don't use an absolute delay, since it causes spurious test
+	failures on slow systems.
+
 	* foolscap/logging/web.py (WebViewer.start): put the welcome page
 	at the root URL, in addition to /welcome . This simplifies the
 	starting URL. Closes #120.
