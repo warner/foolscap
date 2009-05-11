@@ -74,13 +74,14 @@ debian-sarge:
 	chmod a+x debian/rules
 	debuild -uc -us
 
+LORE=lore
 DOC_TEMPLATE=doc/template.tpl
 docs:
-	lore -p --config template=$(DOC_TEMPLATE) --config ext=.html \
+	$(LORE) -p --config template=$(DOC_TEMPLATE) --config ext=.html \
 	--config baseurl='api/%s-class.html' \
 	`find doc -name '*.xhtml'`
 doc/%.html: doc/%.xhtml
-	lore -p --config template=$(DOC_TEMPLATE) --config ext=.html \
+	$(LORE) -p --config template=$(DOC_TEMPLATE) --config ext=.html \
 	--config baseurl='api/%s-class.html' \
 	$<
 

@@ -14,9 +14,8 @@ body
 pre
 {
   padding: 1em;
-  font-family: Neep Alt, Courier New, Courier;
-  font-size: 12pt;
   border: thin black solid;
+  line-height: 1.2em;
 }
 
 .boxed
@@ -66,12 +65,14 @@ pre
 {
   color: #3333CC;
   font-weight: bold;
+  line-height: 1.0em
 }
 
 .py-src-parameter
 {
   color: #000066;
   font-weight: bold;
+  line-height: 1.0em
 }
 
 .py-src-identifier
@@ -88,6 +89,14 @@ pre
 .py-src-endmarker
 {
   display: block; /* IE hack; prevents following line from being sucked into the py-listing box. */
+}
+
+.py-linenumber
+{
+  background-color: #cdcdcd;
+  float: left;
+  margin-top: 0px;
+  width: 4.0em
 }
 
 .py-listing, .html-listing, .listing 

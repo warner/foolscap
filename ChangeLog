@@ -1,3 +1,9 @@
+2009-05-11  Brian Warner  <warner@lothar.com>
+
+	* Makefile (LORE): parameterize "lore" binary
+	* doc/stylesheet.css: update to new version from Lore
+	* doc/schema.xhtml: fix mis-nested H3 header, to appease new Lore
+
 2009-05-04  Brian Warner  <warner@lothar.com>
 
 	* foolscap/api.py: new preferred entry point. Application code
