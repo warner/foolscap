@@ -1,5 +1,12 @@
 2009-05-12  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/dumper.py: emit PID and embedded versions,
+	except when using --just-numbers or --verbose. Closes #97.
+	* foolscap/logging/web.py (Welcome.render): same
+	* foolscap/logging/log.py (LogFileObserver): store app_versions in
+	the log file created by $FLOGFILE
+	* foolscap/test/test_logging.py: test it all
+
 	* foolscap/tokens.py (RemoteException): add a Tub option that
 	causes remote exceptions to be reported with a special exception
 	type, named foolscap.api.RemoteException, so that they won't

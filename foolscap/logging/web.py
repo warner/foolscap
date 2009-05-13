@@ -76,8 +76,17 @@ class Welcome(resource.Resource):
                 data += " <ul>\n"
                 ((first_number, first_time),
                  (last_number, last_time),
-                 num_events, levels, pid) = self.viewer.summaries[lf]
-                data += "  <li>PID %s</li>\n" % pid
+                 num_events, levels, pid, versions) = self.viewer.summaries[lf]
+                data += "  <li>PID %s</li>\n" % html.escape(str(pid))
+                if versions:
+                    data += "  <li>Application Versions:\n"
+                    data += "   <ul>\n"
+                    for name in sorted(versions.keys()):
+                        ver = versions[name]
+                        data += "    <li>%s: %s</li>\n" % (html.escape(name),
+                                                           html.escape(ver))
+                    data += "   </ul>\n"
+                    data += "  </li>\n"
                 if first_time and last_time:
                     duration = int(last_time - first_time)
                 else:
@@ -130,7 +139,8 @@ class Summary(resource.Resource):
         if "-" in path:
             lfnum,levelnum = map(int, path.split("-"))
             lf = self._viewer.logfiles[lfnum]
-            (first, last, num_events, levels, pid) = self._viewer.summaries[lf]
+            (first, last, num_events, levels,
+             pid, versions) = self._viewer.summaries[lf]
             events = levels[levelnum]
             return SummaryView(events, levelnum)
         return resource.Resource.getChild(self, path, req)
@@ -345,10 +355,12 @@ class WebViewer:
 
             for e in self.get_events(lf):
                 if "header" in e:
-                    if e["header"]["type"] == "incident":
-                        t = e["header"]["trigger"]
+                    h = e["header"]
+                    if h["type"] == "incident":
+                        t = h["trigger"]
                         trigger_numbers.append(t["num"])
-                    pid = e["header"].get("pid")
+                    pid = h.get("pid")
+                    versions = h.get("versions", {})
                 if "d" not in e:
                     continue # skip headers
                 if not first_event_from:
@@ -399,7 +411,7 @@ class WebViewer:
 
             summary = ( (first_event_number, first_event_time),
                         (last_event_number, last_event_time),
-                        num_events, levels, pid )
+                        num_events, levels, pid, versions )
             summaries[lf] = summary
 
         triggers = [(first_event_from, num) for num in trigger_numbers]

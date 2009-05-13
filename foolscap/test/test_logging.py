@@ -1748,6 +1748,11 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
             self.failUnlessEqual(err, "")
             lines = list(StringIO(out).readlines())
+            self.failUnless(lines[0].strip().startswith("Application versions"),
+                            lines[0])
+            mypid = os.getpid()
+            self.failUnlessEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
+            lines = lines[5:]
             line0 = "local#%d %s: one" % (events[1]["d"]["num"],
                                           d.format_time(events[1]["d"]["time"]))
             self.failUnlessEqual(lines[0].strip(), line0)
@@ -1771,6 +1776,11 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
             self.failUnlessEqual(err, "")
             lines = list(StringIO(out).readlines())
+            self.failUnless(lines[0].strip().startswith("Application versions"),
+                            lines[0])
+            mypid = os.getpid()
+            self.failUnlessEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
+            lines = lines[5:]
             line0 = "local#%d rx(%s) emit(%s): one" % \
                     (events[1]["d"]["num"],
                      d.format_time(events[1]["rx_time"]),
@@ -1803,11 +1813,17 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
             self.failUnlessEqual(err, "")
             lines = list(StringIO(out).readlines())
-            self.failUnlessEqual(len(lines), 3)
-            self.failIf("[INCIDENT-TRIGGER]" in lines[0])
-            self.failIf("[INCIDENT-TRIGGER]" in lines[1])
-            self.failUnless(lines[2].strip().endswith(": boom [INCIDENT-TRIGGER]"))
-
+            self.failUnlessEqual(len(lines), 8)
+            self.failUnlessEqual(lines[0].strip(),
+                                 "Application versions (embedded in logfile):")
+            self.failUnless(lines[1].strip().startswith("foolscap:"), lines[1])
+            self.failUnless(lines[2].strip().startswith("twisted:"), lines[2])
+            mypid = os.getpid()
+            self.failUnlessEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
+            self.failUnlessEqual(lines[4].strip(), "")
+            self.failIf("[INCIDENT-TRIGGER]" in lines[5])
+            self.failIf("[INCIDENT-TRIGGER]" in lines[6])
+            self.failUnless(lines[7].strip().endswith(": boom [INCIDENT-TRIGGER]"))
         d.addCallback(_check)
         return d
 
@@ -1981,6 +1997,8 @@ class Web(unittest.TestCase):
             mypid = os.getpid()
             self.failUnless("PID %s" % mypid in page,
                             "didn't see 'PID %s' in '%s'" % (mypid, page))
+            self.failUnless("Application Versions:" in page, page)
+            self.failUnless("foolscap: %s" % foolscap.__version__ in page, page)
             self.failUnless("4 events covering" in page)
             self.failUnless('href="summary/0-20">3 events</a> at level 20'
                             in page)

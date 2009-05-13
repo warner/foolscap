@@ -7,6 +7,7 @@ from twisted.python import failure
 from foolscap import eventual
 from foolscap.logging.interfaces import IIncidentReporter
 from foolscap.logging.incident import IncidentQualifier, IncidentReporter
+from foolscap.logging import app_versions
 
 from foolscap.logging.levels import NOISY, OPERATIONAL, UNUSUAL, \
      INFREQUENT, CURIOUS, WEIRD, SCARY, BAD
@@ -418,6 +419,7 @@ class LogFileObserver:
         self._level = level
         header = {"header": {"type": "log-file-observer",
                              "threshold": level,
+                             "versions": app_versions.versions,
                              "pid": os.getpid(),
                              }}
         pickle.dump(header, self._logFile)

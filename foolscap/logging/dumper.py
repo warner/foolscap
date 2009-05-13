@@ -28,13 +28,26 @@ class LogDumper:
             sys.exit(1)
 
     def start(self):
+        stdout = self.options.stdout
         for e in self.get_events():
             if "header" in e:
-                if e["header"]["type"] == "incident":
-                    t = e["header"]["trigger"]
+                h = e["header"]
+                if h["type"] == "incident":
+                    t = h["trigger"]
                     self.trigger = (t["incarnation"], t["num"])
                 if self.options['verbose']:
-                    print >>self.options.stdout, e
+                    print >>stdout, e
+                if not self.options["just-numbers"] and not self.options["verbose"]:
+                    if "versions" in h:
+                        print >>stdout, "Application versions (embedded in logfile):"
+                        versions = h["versions"]
+                        longest = max([len(name) for name in versions] + [0])
+                        fmt = "%" + str(longest) + "s: %s"
+                        for name in sorted(versions.keys()):
+                            print >>stdout, fmt % (name, versions[name])
+                    if "pid" in h:
+                        print >>stdout, "PID: %s" % (h["pid"],)
+                    print >>stdout
             if "d" in e:
                 self.print_event(e)
 
