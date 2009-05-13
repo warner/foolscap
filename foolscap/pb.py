@@ -308,6 +308,7 @@ class Tub(service.MultiService):
         self._log_gatherer_connectors = {} # maps furl to reconnector
 
         self._handle_old_duplicate_connections = False
+        self._expose_remote_exception_types = True
 
     def setOption(self, name, value):
         if name == "logLocalFailures":
@@ -352,6 +353,8 @@ class Tub(service.MultiService):
             if value is True:
                 value = 60
             self._handle_old_duplicate_connections = int(value)
+        elif name == "expose-remote-exception-types":
+            self._expose_remote_exception_types = bool(value)
         else:
             raise KeyError("unknown option name '%s'" % name)
 

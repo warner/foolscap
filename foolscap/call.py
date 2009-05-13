@@ -10,6 +10,8 @@ from tokens import BananaError, Violation
 from foolscap.util import AsyncAND
 from foolscap.logging import log
 
+def wrap_remote_failure(f):
+    return failure.Failure(tokens.RemoteException(f))
 
 class FailureConstraint(AttributeDictConstraint):
     opentypes = [("copyable", "twisted.python.failure.Failure")]
@@ -639,7 +641,7 @@ class AnswerUnslicer(slicer.ScopedUnslicer):
         # if the Violation was received after we got the reqID, we can tell
         # the broker it was an error
         if self.request != None:
-            self.request.fail(f)
+            self.request.fail(f) # local violation
         return f # give up our sequence
 
     def receiveClose(self):
@@ -666,6 +668,10 @@ class AnswerUnslicer(slicer.ScopedUnslicer):
         def _done(res):
             self.request.complete(res)
         def _fail(f):
+            # we hit here if any of the _ready_deferreds fail (i.e a Gift
+            # failed to resolve), or if the _child_deferred fails (not sure
+            # how this could happen). I think it's ok to return a local
+            # exception (instead of a RemoteException) for both.
             self.request.fail(f)
         d.addCallbacks(_done, _fail)
 
@@ -733,7 +739,10 @@ class ErrorUnslicer(slicer.ScopedUnslicer):
             self.gotFailure = True
 
     def receiveClose(self):
-        self.request.fail(self.failure)
+        f = self.failure
+        if not self.broker._expose_remote_exception_types:
+            f = wrap_remote_failure(f)
+        self.request.fail(f)
         return None, None
 
     def describe(self):

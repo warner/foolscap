@@ -80,6 +80,14 @@ class Violation(Exception):
         else:
             return "Violation: %s" % (self.args,)
 
+class RemoteException(Exception):
+    """When the Tub is in expose-remote-exception-types=False mode, this
+    exception is raised in response to any remote exception. It wraps a
+    CopiedFailure, which can be examined by callers who want to know more
+    than the fact that something failed on the remote end."""
+    def __init__(self, failure):
+        self.failure = failure
+
 
 class BananaError(Exception):
     """This exception is raised in response to a fundamental protocol

@@ -387,6 +387,9 @@ class ShouldFailMixin:
                     self.failUnless(substring in str(res),
                                     "%s: substring '%s' not in '%s'"
                                     % (which, substring, str(res)))
+                # make the Failure available to a subsequent callback, but
+                # keep it from triggering an errback
+                return [res]
             else:
                 self.fail("%s was supposed to raise %s, not get '%s'" %
                           (which, expected_failure, res))

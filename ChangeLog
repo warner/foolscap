@@ -1,3 +1,25 @@
+2009-05-12  Brian Warner  <warner@lothar.com>
+
+	* foolscap/tokens.py (RemoteException): add a Tub option that
+	causes remote exceptions to be reported with a special exception
+	type, named foolscap.api.RemoteException, so that they won't
+	be confused with locally-generated exceptions. Closes #105.
+	* foolscap/api.py: make RemoteException available through api.py
+	* doc/failures.xhtml: explain the new option
+	* foolscap/pb.py (Tub.setOption): handle the new
+	expose-remote-exception-types option, default remains True to
+	retain the old behavior
+	* foolscap/broker.py (Broker.setTub): copy the flag from the Tub
+	into the Broker
+	* foolscap/call.py (ErrorUnslicer.receiveClose): wrap exceptions
+	if the mode says we should
+	* foolscap/test/test_call.py (Failures): test RemoteException
+	wrapping
+	(TubFailures): test setOption() too
+	* foolscap/test/common.py (ShouldFailMixin.shouldFail.done):
+	return the Failure for further testing, but wrapped in an array to
+	avoid triggering the errback
+
 2009-05-11  Brian Warner  <warner@lothar.com>
 
 	* Makefile (LORE): parameterize "lore" binary

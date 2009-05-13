@@ -23,7 +23,7 @@ from foolscap.tokens import BananaError
 from foolscap.schema import StringConstraint, ListOf, TupleOf, SetOf, \
     DictOf, Any
 from foolscap.storage import serialize, unserialize
-from foolscap.tokens import Violation
+from foolscap.tokens import Violation, RemoteException
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.logging import app_versions
 

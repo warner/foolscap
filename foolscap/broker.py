@@ -149,6 +149,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def __init__(self, remote_tubref, params={},
                  keepaliveTimeout=None, disconnectTimeout=None):
         banana.Banana.__init__(self, params)
+        self._expose_remote_exception_types = True
         self.remote_tubref = remote_tubref
         self.keepaliveTimeout = keepaliveTimeout
         self.disconnectTimeout = disconnectTimeout
@@ -192,6 +193,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         assert ipb.ITub.providedBy(tub)
         self.tub = tub
         self.unsafeTracebacks = tub.unsafeTracebacks
+        self._expose_remote_exception_types = tub._expose_remote_exception_types
         if tub.debugBanana:
             self.debugSend = True
             self.debugReceive = True
