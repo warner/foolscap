@@ -517,11 +517,7 @@ class TestCallOnly(TargetMixin, unittest.TestCase):
         return d
     testCallOnly.timeout = 2
 
-class Failures(TargetMixin, ShouldFailMixin, unittest.TestCase):
-    def setUp(self):
-        TargetMixin.setUp(self)
-        self.setupBrokers()
-
+class ExamineFailuresMixin:
     def _examine_raise(self, r, should_be_remote):
         f = r[0]
         if should_be_remote:
@@ -536,6 +532,62 @@ class Failures(TargetMixin, ShouldFailMixin, unittest.TestCase):
         self.failUnless(isinstance(f2, CopiedFailure))
         self.failUnlessSubstring("you asked me to fail", f2.value)
         self.failIf(f2.check(RemoteException))
+
+    def _examine_local_violation(self, r):
+        f = r[0]
+        self.failUnless(f.check(Violation))
+        self.failUnless(re.search(r'RIMyTarget\(.*\) does not offer bogus',
+                                  str(f)))
+        self.failIf(f.check(RemoteException))
+
+    def _examine_remote_violation(self, r, should_be_remote):
+        f = r[0]
+        if should_be_remote:
+            self.failUnless(f.check(RemoteException))
+            self.failIf(f.check(Violation))
+            f2 = f.value.failure
+        else:
+            self.failIf(f.check(RemoteException))
+            self.failUnless(f.check(Violation))
+            f2 = f
+        self.failUnless(isinstance(f2, CopiedFailure))
+        self.failUnless(f2.check(Violation))
+        self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
+                                 f2.value)
+        self.failUnlessSubstring("<RootUnslicer>.<methodcall", f2.value)
+        self.failUnlessSubstring(" methodname=add", f2.value)
+        self.failUnlessSubstring("<arguments arg[b]>", f2.value)
+        self.failIf(f2.check(RemoteException))
+
+    def _examine_remote_attribute_error(self, r, should_be_remote):
+        f = r[0]
+        if should_be_remote:
+            self.failUnless(f.check(RemoteException))
+            self.failIf(f.check(AttributeError))
+            f2 = f.value.failure
+        else:
+            self.failUnless(f.check(AttributeError))
+            self.failIf(f.check(RemoteException))
+            f2 = f
+        self.failUnless(isinstance(f2, CopiedFailure))
+        self.failUnless(f2.check(AttributeError))
+        self.failUnlessSubstring(" has no attribute 'remote_bogus'", str(f2))
+        self.failIf(f2.check(RemoteException))
+
+    def _examine_local_return_violation(self, r):
+        f = r[0]
+        self.failUnless(f.check(Violation))
+        self.failUnlessSubstring("INT token rejected by ByteStringConstraint",
+                                 str(f))
+        self.failUnlessSubstring("in inbound method results", str(f))
+        self.failUnlessSubstring("<RootUnslicer>.Answer(req=1)", str(f))
+        self.failIf(f.check(RemoteException))
+
+class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
+               unittest.TestCase):
+    def setUp(self):
+        TargetMixin.setUp(self)
+        self.setupBrokers()
 
     def _set_expose(self, value):
         self.callingBroker._expose_remote_exception_types = value
@@ -563,13 +615,6 @@ class Failures(TargetMixin, ShouldFailMixin, unittest.TestCase):
         return d
 
 
-    def _examine_local_violation(self, r):
-        f = r[0]
-        self.failUnless(f.check(Violation))
-        self.failUnless(re.search(r'RIMyTarget\(.*\) does not offer bogus',
-                                  str(f)))
-        self.failIf(f.check(RemoteException))
-
     def test_local_violation_not_exposed(self):
         self._set_expose(False)
         # the caller knows that this method does not really exist, so we
@@ -593,25 +638,6 @@ class Failures(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d.addCallback(self._examine_local_violation)
         return d
 
-
-    def _examine_remote_violation(self, r, should_be_remote):
-        f = r[0]
-        if should_be_remote:
-            self.failUnless(f.check(RemoteException))
-            self.failIf(f.check(Violation))
-            f2 = f.value.failure
-        else:
-            self.failIf(f.check(RemoteException))
-            self.failUnless(f.check(Violation))
-            f2 = f
-        self.failUnless(isinstance(f2, CopiedFailure))
-        self.failUnless(f2.check(Violation))
-        self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
-                                 f2.value)
-        self.failUnlessSubstring("<RootUnslicer>.<methodcall", f2.value)
-        self.failUnlessSubstring(" methodname=add", f2.value)
-        self.failUnlessSubstring("<arguments arg[b]>", f2.value)
-        self.failIf(f2.check(RemoteException))
 
     def test_remote_violation_not_exposed(self):
         self._set_expose(False)
@@ -639,21 +665,6 @@ class Failures(TargetMixin, ShouldFailMixin, unittest.TestCase):
         return d
 
 
-    def _examine_remote_attribute_error(self, r, should_be_remote):
-        f = r[0]
-        if should_be_remote:
-            self.failUnless(f.check(RemoteException))
-            self.failIf(f.check(AttributeError))
-            f2 = f.value.failure
-        else:
-            self.failUnless(f.check(AttributeError))
-            self.failIf(f.check(RemoteException))
-            f2 = f
-        self.failUnless(isinstance(f2, CopiedFailure))
-        self.failUnless(f2.check(AttributeError))
-        self.failUnlessSubstring(" has no attribute 'remote_bogus'", str(f2))
-        self.failIf(f2.check(RemoteException))
-
     def test_remote_attribute_error_not_exposed(self):
         self._set_expose(False)
         # the target doesn't specify an interface, so the sender can't know
@@ -679,15 +690,6 @@ class Failures(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d.addCallback(self._examine_remote_attribute_error, False)
         return d
 
-
-    def _examine_local_return_violation(self, r):
-        f = r[0]
-        self.failUnless(f.check(Violation))
-        self.failUnlessSubstring("INT token rejected by ByteStringConstraint",
-                                 str(f))
-        self.failUnlessSubstring("in inbound method results", str(f))
-        self.failUnlessSubstring("<RootUnslicer>.Answer(req=1)", str(f))
-        self.failIf(f.check(RemoteException))
 
     def test_local_return_violation_not_exposed(self):
         self._set_expose(False)
@@ -721,7 +723,7 @@ class Failures(TargetMixin, ShouldFailMixin, unittest.TestCase):
     # TODO: test Tub.setOption("expose-remote-exception-types")
     # TODO: A calls B. B calls C. C raises an exception. What does A get?
 
-class TubFailures(ShouldFailMixin, unittest.TestCase):
+class TubFailures(ExamineFailuresMixin, ShouldFailMixin, unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
         self.s.startService()
@@ -740,10 +742,6 @@ class TubFailures(ShouldFailMixin, unittest.TestCase):
         d = self.source_tub.getReference(furl)
         return d
 
-    def _examine_raise(self, r, should_be_remote):
-        # delegate to the code in Failures(), above
-        tc = Failures()
-        tc._examine_raise(r, should_be_remote)
 
     def test_raise_not_exposed(self):
         self.source_tub.setOption("expose-remote-exception-types", False)
