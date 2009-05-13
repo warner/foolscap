@@ -1,3 +1,7 @@
+2009-05-13  Brian Warner  <warner@lothar.com>
+
+	* foolscap/api.py (RemoteException): hush pyflakes
+
 2009-05-12  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/dumper.py: emit PID and embedded versions,

@@ -39,7 +39,7 @@ _unused = [
     BananaError,
     StringConstraint, ListOf, TupleOf, SetOf, DictOf, Any,
     serialize, unserialize,
-    Violation,
+    Violation, RemoteException,
     eventually, fireEventually, flushEventualQueue,
     app_versions,
     ]
