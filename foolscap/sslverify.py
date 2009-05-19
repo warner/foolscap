@@ -1,6 +1,7 @@
 # Copyright 2005 Divmod, Inc.  See LICENSE file for details
 
-import itertools, md5
+import itertools
+from hashutil import md5_hasher
 from OpenSSL import SSL, crypto
 
 from twisted.python import reflect
@@ -411,7 +412,7 @@ class PublicKey:
     def keyHash(self):
         """MD5 hex digest of signature on an empty certificate request with this key.
         """
-        return md5.md5(self._emptyReq).hexdigest()
+        return md5_hasher(self._emptyReq).hexdigest()
 
     def inspect(self):
         return 'Public Key with Hash: %s' % (self.keyHash(),)
@@ -668,7 +669,7 @@ class OpenSSLCertificateOptions(object):
             ctx.set_options(self._OP_ALL)
 
         if self.enableSessions:
-            sessionName = md5.md5("%s-%d" % (reflect.qual(self.__class__), _sessionCounter())).hexdigest()
+            sessionName = md5_hasher("%s-%d" % (reflect.qual(self.__class__), _sessionCounter())).hexdigest()
             ctx.set_session_id(sessionName)
 
         return ctx

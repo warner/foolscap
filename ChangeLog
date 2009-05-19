@@ -1,5 +1,13 @@
 2009-05-19  Brian Warner  <warner@lothar.com>
 
+	* foolscap/hashutil.py: new file to smoothly use hashlib when
+	available and fall back to sha1/md5 when not (i.e. python2.4).
+	When we eventually drop py2.4 support, we'll get rid of this file.
+	Thanks to Stephan Peijnik for the patch. Closes #118.
+	* foolscap/sslverify.py: use hashutil instead of the md5 module
+	* foolscap/vocab.py (hashVocabTable): use hashutil instead of the
+	sha module
+
 	* foolscap/schema.py (PolyConstraint.checkToken): remove unused
 	code, thanks to Stephan Peijnik for the patch.
 

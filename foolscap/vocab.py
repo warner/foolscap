@@ -1,5 +1,5 @@
 
-import sha
+from foolscap.hashutil import sha1_hasher
 
 # here is the list of initial vocab tables. If the two ends negotiate to use
 # initial-vocab-table-index N, then both sides will start with the words from
@@ -26,7 +26,7 @@ INITIAL_VOCAB_TABLES = { 0: vocab_v0, 1: vocab_v1 }
 
 def hashVocabTable(table_index):
     data = "\x00".join(INITIAL_VOCAB_TABLES[table_index])
-    digest = sha.new(data).hexdigest()
+    digest = sha1_hasher(data).hexdigest()
     return digest[:4]
 
 def getVocabRange():
