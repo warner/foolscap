@@ -1,5 +1,17 @@
 2009-05-19  Brian Warner  <warner@lothar.com>
 
+	* foolscap/banana.py (Banana.handleData): increment the inbound
+	objectCounter as soon as we see the OPEN token, rather than doing
+	it in handleOpen(), since the latter is skipped if we're dropping
+	tokens due to a Violation. This avoids the loss-of-sync that
+	occurred when the dropped tokens included more OPEN
+	sequences (e.g. when a remote method call used a bad method name,
+	and its arguments contained lists or tuples or other sequences).
+	This fixes the bug in which subsequent method calls that used
+	shared arguments saw their "reference" sequences point to the
+	wrong value. Closes #104.
+	* foolscap/test/test_call.py (ReferenceCounting): test it
+
 	* foolscap/referenceable.py (RemoteReferenceTracker.__init__):
 	require the proposed per-my-reference FURL to match the TubID that
 	we're using for the parent Broker. This prevents the far end from

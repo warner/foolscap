@@ -754,6 +754,8 @@ class Banana(protocol.Protocol):
 
             wasInOpen = self.inOpen
             if typebyte == OPEN:
+                self.inboundObjectCount = self.objectCounter
+                self.objectCounter += 1
                 if self.inOpen:
                     raise BananaError("OPEN token followed by OPEN")
                 self.inOpen = True
@@ -763,13 +765,13 @@ class Banana(protocol.Protocol):
                 # handled somehow (either discarded or given to a new
                 # Unslicer).
 
-                # The inOpen flag is cleared when the Index Phase ends.
-                # There are two possibilities: 1) a new Unslicer is pushed,
-                # and tokens are delivered to it normally. 2) a Violation
-                # was raised, and the tokens must be discarded
-                # (self.discardCount++). *any* True->False transition of
-                # self.inOpen must be accompanied by exactly one increment
-                # of self.discardCount
+                # The inOpen flag is cleared when the Index Phase ends. There
+                # are two possibilities: 1) a new Unslicer is pushed, and
+                # tokens are delivered to it normally. 2) a Violation was
+                # raised, and the tokens must be discarded
+                # (self.discardCount++). *any* rejection-caused True->False
+                # transition of self.inOpen must be accompanied by exactly
+                # one increment of self.discardCount
 
             # determine if this token will be accepted, and if so, how large
             # it is allowed to be (for STRING and LONGINT/LONGNEG)
@@ -980,7 +982,9 @@ class Banana(protocol.Protocol):
 
             if not rejected:
                 if self.inOpen:
-                    self.handleOpen(self.inboundOpenCount, obj)
+                    self.handleOpen(self.inboundOpenCount,
+                                    self.inboundObjectCount,
+                                    obj)
                     # handleOpen might push a new unslicer and clear
                     # .inOpen, or leave .inOpen true and append the object
                     # to .indexOpen
@@ -996,12 +1000,11 @@ class Banana(protocol.Protocol):
         self.buffer = ''
 
 
-    def handleOpen(self, openCount, indexToken):
+    def handleOpen(self, openCount, objectCount, indexToken):
         self.opentype.append(indexToken)
         opentype = tuple(self.opentype)
         if self.debugReceive:
-            print "handleOpen(%d,%s)" % (openCount, indexToken)
-        objectCount = self.objectCounter
+            print "handleOpen(%d,%d,%s)" % (openCount, objectCount, indexToken)
         top = self.receiveStack[-1]
         try:
             # obtain a new Unslicer to handle the object
@@ -1021,7 +1024,6 @@ class Banana(protocol.Protocol):
             return
 
         assert tokens.IUnslicer.providedBy(child), "child is %s" % child
-        self.objectCounter += 1
         self.inOpen = False
         child.protocol = self
         child.openCount = openCount
