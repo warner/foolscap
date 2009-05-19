@@ -285,7 +285,9 @@ class RemoteReferenceTracker(object):
         # not yet positive it would work.. how exactly does the base url get
         # sent, anyway? What about Tubs visible through multiple names?
         self.url = url
-        if url is not None: # unit tests frequently set url=None
+        if url is not None and self.broker.remote_tubref:
+            # unit tests frequently set url=None, and UnauthenticatedTubs
+            # don't have a remote_tubref
             expected_tubid = self.broker.remote_tubref.getTubID()
             url_tubid = SturdyRef(url).getTubRef().getTubID()
             if expected_tubid != url_tubid:

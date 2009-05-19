@@ -8,6 +8,9 @@
 	because the spoofed FURL would only be added to the per-Broker
 	table, but they could confuse someone who relied upon the
 	correctness of getSturdyRef). This closes #84.
+	(RemoteReferenceTracker.__init__): oops, don't compare tubids when
+	using an UnauthenticatedTub, since that fails the non-crypto tests
+
 	* foolscap/test/test_reference.py (TubID): test it
 	* foolscap/test/test_schema.py (Interfaces.test_remotereference):
 	update to match
