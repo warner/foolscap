@@ -5,6 +5,7 @@ from twisted.python import failure
 from foolscap.ipb import IRemoteReference
 from foolscap.test.common import HelperTarget, Target
 from foolscap.eventual import flushEventualQueue
+from foolscap import broker, referenceable, api
 
 class Remote:
     implements(IRemoteReference)
@@ -69,3 +70,18 @@ class LocalReference(unittest.TestCase):
         d.addBoth(self.shouldFail, ValueError, "test_fail",
                   "you asked me to fail")
         return d
+
+class TubID(unittest.TestCase):
+    def test_tubid_must_match(self):
+        good_tubid = "fu2bixsrymp34hwrnukv7hzxc2vrhqqa"
+        bad_tubid = "v5mwmba42j4hu5jxuvgciasvo4aqldkq"
+        good_furl = "pb://" + good_tubid + "@127.0.0.1:1234/swissnum"
+        bad_furl = "pb://" + bad_tubid + "@127.0.0.1:1234/swissnum"
+        ri = "remote_interface_name"
+        good_broker = broker.Broker(referenceable.TubRef(good_tubid))
+        good_tracker = referenceable.RemoteReferenceTracker(good_broker,
+                                                            0, good_furl, ri)
+        self.failUnlessRaises(api.BananaError,
+                              referenceable.RemoteReferenceTracker,
+                              good_broker, 0, bad_furl, ri)
+

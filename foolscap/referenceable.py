@@ -278,13 +278,19 @@ class RemoteReferenceTracker(object):
         # TODO: the remote end sends us a global URL, when really it should
         # probably send us a per-Tub name, which can can then concatenate to
         # their TubID if/when we pass it on to others. By accepting a full
-        # URL, we give them the ability to sort-of spoof others. We could
-        # check that url.startswith(broker.remoteTub.baseURL), but the Right
-        # Way is to just not have them send the base part in the first place.
-        # I haven't yet made this change because I'm not yet positive it
-        # would work.. how exactly does the base url get sent, anyway? What
-        # about Tubs visible through multiple names?
+        # URL, we give them the ability to sort-of spoof others. For now, we
+        # check that their URL uses the same tubid as our broker is
+        # expecting, but the Right Way is to just not have them send the base
+        # part in the first place. I haven't yet made this change because I'm
+        # not yet positive it would work.. how exactly does the base url get
+        # sent, anyway? What about Tubs visible through multiple names?
         self.url = url
+        if url is not None: # unit tests frequently set url=None
+            expected_tubid = self.broker.remote_tubref.getTubID()
+            url_tubid = SturdyRef(url).getTubRef().getTubID()
+            if expected_tubid != url_tubid:
+                raise BananaError("inbound reference claims bad tubid, %s vs %s"
+                                  % (expected_tubid, url_tubid))
         self.interfaceName = interfaceName
         self.interface = getRemoteInterfaceByName(interfaceName)
         self.received_count = 0

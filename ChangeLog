@@ -1,5 +1,17 @@
 2009-05-19  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReferenceTracker.__init__):
+	require the proposed per-my-reference FURL to match the TubID that
+	we're using for the parent Broker. This prevents the far end from
+	sending a bogus FURL and thus breaking the security properties of
+	rref.getSturdyRef(). (they couldn't confuse Tub.getReference,
+	because the spoofed FURL would only be added to the per-Broker
+	table, but they could confuse someone who relied upon the
+	correctness of getSturdyRef). This closes #84.
+	* foolscap/test/test_reference.py (TubID): test it
+	* foolscap/test/test_schema.py (Interfaces.test_remotereference):
+	update to match
+
 	* foolscap/hashutil.py: new file to smoothly use hashlib when
 	available and fall back to sha1/md5 when not (i.e. python2.4).
 	When we eventually drop py2.4 support, we'll get rid of this file.

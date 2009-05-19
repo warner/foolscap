@@ -1,13 +1,13 @@
 
 import sets, re
 from twisted.trial import unittest
-from foolscap import schema, copyable
+from foolscap import schema, copyable, broker
 from foolscap.tokens import Violation, InvalidRemoteInterface
 from foolscap.constraint import IConstraint
 from foolscap.remoteinterface import RemoteMethodSchema, \
      RemoteInterfaceConstraint, LocalInterfaceConstraint
 from foolscap.referenceable import RemoteReferenceTracker, \
-     RemoteReference, Referenceable
+     RemoteReference, Referenceable, TubRef
 from foolscap.test import common
 
 have_builtin_set = False
@@ -527,9 +527,9 @@ class Interfaces(unittest.TestCase):
 
     def test_remotereference(self):
         # we need to create a fake RemoteReference here
-        parent, clid, url = None, 0, ""
-        interfaceName = common.RIHelper.__remote_name__
-        tracker = RemoteReferenceTracker(parent, clid, url, interfaceName)
+        tracker = RemoteReferenceTracker(broker.Broker(TubRef("fake-tubid")),
+                                         0, None,
+                                         common.RIHelper.__remote_name__)
         rr = RemoteReference(tracker)
 
         c1 = RemoteInterfaceConstraint(common.RIHelper)
