@@ -1,5 +1,11 @@
 2009-05-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_tub.py (TestCertFile.test_tubid): confirm
+	that we get the TubID right when using a pre-recorded cert. If we
+	were to accidentally change the TubID-computing hash function in
+	the future, this test should catch it.
+	(CERT_DATA): stash the contents of a pre-recorded cert
+
 	* bin/flogtool: let 'base' default to abs("."), to help windows and
 	systems where somebody has managed to copy it to /tmp/flogtool or
 	/sbin/flogtool . Closes #108.

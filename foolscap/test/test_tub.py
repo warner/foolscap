@@ -12,6 +12,39 @@ from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \
      crypto_available, GoodEnoughTub
 from foolscap.tokens import WrongTubIdError, PBError
 
+# create this data with:
+#  t = Tub()
+#  print t.getCertData()
+CERT_TUBID = "kyc7sslzzyl4evmk7imxrdfcdzvq7qjk"
+CERT_DATA = """\
+-----BEGIN CERTIFICATE-----
+MIIBnjCCAQcCAgCEMA0GCSqGSIb3DQEBBAUAMBcxFTATBgNVBAMUDG5ld3BiX3Ro
+aW5neTAeFw0wOTA1MTkwMTEyMDNaFw0xMDA1MTkwMTEyMDNaMBcxFTATBgNVBAMU
+DG5ld3BiX3RoaW5neTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEA0xVspHI+
+YPkkBAposW5G3CBA8fa8kqBeBoqIiGfJq7uDrT4MYqe96DOs6ehd/1MTtbvK0mhd
+4BDOurMS/+rBdMDAcfZlM4PMq+aqNRLBobFHrVH+H6h7v3V7grEOeZkSSvJbJdXT
+xTKRu7AQrKXXAMHpOfMWfyZYDzYxKm4TY00CAwEAATANBgkqhkiG9w0BAQQFAAOB
+gQA2HfwiApHoIc50eq/KO8tQqXC1PLTnb3Q8wy5OK5PZuBPlafloBRjRw8I14tfq
+2puvr61rQt6AEjXGrhhndg5d8KIvY6LzZT4AHFQ0L4iL8zJ/GAHSBVY88Q1r2PyD
+Dy8XFzPuxEo3WRzL2ncaFcPbYzsLFQBmwJaav725VFbTbg==
+-----END CERTIFICATE-----
+-----BEGIN RSA PRIVATE KEY-----
+MIICXAIBAAKBgQDTFWykcj5g+SQECmixbkbcIEDx9rySoF4GioiIZ8mru4OtPgxi
+p73oM6zp6F3/UxO1u8rSaF3gEM66sxL/6sF0wMBx9mUzg8yr5qo1EsGhsUetUf4f
+qHu/dXuCsQ55mRJK8lsl1dPFMpG7sBCspdcAwek58xZ/JlgPNjEqbhNjTQIDAQAB
+AoGAah63Q+V7nt0iUjW5dJpwXXKJtBvLqhudqcQz5//lz8Sx6oLrTx3tx7NTFzWP
+LDHkEtWanjWCHIfWpt4oiyjGoLWwon32wfgahEiDBKpmY61by/xo4RSDAzm5Oogu
+E4WGIPtpduc+GZf5C0m7zwhP0fC57MGfAX/xyctx6z7qzzECQQD2tJwvfkdSk+5f
+qvg7iUnP5mLcjKGjHFL8s9sIQysyjpwXloBgIWztuJdp5vFt0ojV+8NKUFxtmBmf
+yYpWPHe3AkEA2wlBCtzafGYNCSGiHfa/94M4Duf0dAua3hBQ9+Ld3ZD3KgBU5ZMC
+qRbm5ul8CKFmuwKGE//TWnX6JYbur6VVGwJAesCZKiR6FoOWyzFFvFHuUSzAKh8r
+Wf6A6E4RgQXy24AL+Myg6bQYAByl8kLABDYKcfaIUFS1+K4CqffdBlWl9wJAX3Ii
+46blljuqBoafbEsvz51gei5deYvtCkM15S742ynmamkGlZuAF0qhh5HKuMAMUgWB
+g4mBAfRS8rNfoy56bQJBAMShPEINsuumVaUnrEQg6g/misPPycO4MIEm5G1hHvli
+uXVWwCwZgjHHsG5+jhGheZjvKXl+RS71Z6dQjwOYkng=
+-----END RSA PRIVATE KEY-----
+"""
+
 class TestCertFile(unittest.TestCase):
     def test_generate(self):
         t = Tub()
@@ -35,6 +68,10 @@ class TestCertFile(unittest.TestCase):
         t2 = Tub(certFile=fn)
         data2 = t2.getCertData()
         self.failUnless(data1 == data2)
+
+    def test_tubid(self):
+        t = Tub(certData=CERT_DATA)
+        self.failUnlessEqual(t.getTubID(), CERT_TUBID)
 
 if not crypto_available:
     del TestCertFile
