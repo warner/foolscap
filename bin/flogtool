@@ -6,6 +6,8 @@ import sys, os.path
 where = os.path.realpath(sys.argv[0]).split(os.sep)
 if len(where) >= 2 and where[-2] == "bin":
     base = os.sep.join(where[:-2])
+else:
+    base = os.path.realpath(".")
 if (os.path.exists(os.path.join(base, "setup.py")) and
     os.path.exists(os.path.join(base, "foolscap"))):
     sys.path.insert(0, base)
