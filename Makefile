@@ -94,3 +94,4 @@ pyflakes:
 
 find-trailing-spaces:
 	find-trailing-spaces -r bin foolscap
+
