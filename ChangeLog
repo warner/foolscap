@@ -1,5 +1,8 @@
 2009-05-19  Brian Warner  <warner@lothar.com>
 
+	* foolscap/schema.py (PolyConstraint.checkToken): remove unused
+	code, thanks to Stephan Peijnik for the patch.
+
 	* foolscap/test/test_banana.py (VocabTest1.test_table_hashes):
 	make sure we don't change the pre-agreed vocab tables, or the hash
 	algorithm that we use to confirm their contents. This is in

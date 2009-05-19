@@ -106,7 +106,7 @@ class PolyConstraint(Constraint):
             try:
                 c.checkToken(typebyte, size)
                 ok = True
-            except (Violation, BananaError), e:
+            except (Violation, BananaError):
                 pass
         if not ok:
             raise Violation("typebyte %s does not satisfy any of %s"
