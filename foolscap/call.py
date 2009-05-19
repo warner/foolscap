@@ -141,7 +141,7 @@ class CallSlicer(slicer.ScopedSlicer):
     def describe(self):
         return "<call-%s-%s-%s>" % (self.reqID, self.clid, self.methodname)
 
-class InboundDelivery:
+class InboundDelivery(object):
     """An inbound message that has not yet been delivered.
 
     This is created when a 'call' sequence has finished being received. The

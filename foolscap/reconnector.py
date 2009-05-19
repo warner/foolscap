@@ -1,11 +1,12 @@
 # -*- test-case-name: foolscap.test.test_reconnector -*-
 
-import random, time
+import random
+import time
 from twisted.internet import reactor
 from twisted.python import log
 from foolscap.tokens import NegotiationError, RemoteNegotiationError
 
-class Reconnector:
+class Reconnector(object):
     """Establish (and maintain) a connection to a given PBURL.
 
     I establish a connection to the PBURL and run a callback to inform the

@@ -68,7 +68,7 @@ class IRemoteMethodConstraint(IConstraint):
 
         This should either raise Violation or return None."""
 
-class Constraint:
+class Constraint(object):
     """
     Each __schema__ attribute is turned into an instance of this class, and
     is eventually given to the unserializer (the 'Unslicer') to enforce as

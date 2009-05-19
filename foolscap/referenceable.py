@@ -4,7 +4,8 @@
 # Referenceable (callable) objects. All details of actually invoking methods
 # live in call.py
 
-import weakref, re
+import weakref
+import re
 
 from zope.interface import interface
 from zope.interface import implements
@@ -61,7 +62,7 @@ class Referenceable(OnlyReferenceable):
 
 constraintMap[Referenceable] = RemoteInterfaceConstraint(None)
 
-class ReferenceableTracker:
+class ReferenceableTracker(object):
     """I hold the data which tracks a local Referenceable that is in used by
     a remote Broker.
 
@@ -255,7 +256,7 @@ class ReferenceUnslicer(slicer.BaseUnslicer):
 
 
 
-class RemoteReferenceTracker:
+class RemoteReferenceTracker(object):
     """I hold the data necessary to locate (or create) a RemoteReference.
 
     @ivar url: the target Referenceable's global URL
@@ -581,7 +582,7 @@ class RemoteMethodReference(RemoteReference):
         methodSchema = None
         return interfaceName, methodName, methodSchema
 
-class LocalReferenceable:
+class LocalReferenceable(object):
     implements(ipb.IRemoteReference)
     def __init__(self, original):
         self.original = original
@@ -864,7 +865,7 @@ class SturdyRef(Copyable, RemoteCopy):
                 cmp(self._distinguishers(), them._distinguishers()))
 
 
-class TubRef:
+class TubRef(object):
     """This is a little helper class which provides a comparable identifier
     for Tubs. TubRefs can be used as keys in dictionaries that track
     connections to remote Tubs."""

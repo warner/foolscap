@@ -1,3 +1,15 @@
+2009-05-18  Stephan Peijnik  <stephan@peijnik.at>
+
+	* foolscap/call.py, foolscap/constraint.py, foolscap/eventual.py,
+	foolscap/observer.py, foolscap/promise.py,
+	foolscap/reconnector.py, foolscap/remoteinterface.py,
+	foolscap/slicer.py: Convert all old-style classes to new-style
+	classes. Should close #96.
+
+	* foolscap/reconnector.py, foolscap/referenceable.py,
+	foolscap/remoteinterface.py: Import each module with a separate
+	import statement.
+
 2009-05-18  Brian Warner  <warner@lothar.com>
 
 	* foolscap/test/test_tub.py (TestCertFile.test_tubid): confirm

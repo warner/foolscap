@@ -1,5 +1,6 @@
 
-import types, inspect
+import types
+import inspect
 from zope.interface import interface, providedBy, implements
 from foolscap.constraint import Constraint, OpenerConstraint, nothingTaster, \
      IConstraint, UnboundedSchema, IRemoteMethodConstraint, Optional, Any
@@ -130,7 +131,7 @@ def getRemoteInterfaceByName(iname):
 
 
 
-class RemoteMethodSchema:
+class RemoteMethodSchema(object):
     """
     This is a constraint for a single remotely-invokable method. It gets to
     require, deny, or impose further constraints upon a set of named
@@ -309,7 +310,7 @@ class RemoteMethodSchema:
         # TODO: implement the rest of maxSize, just like a dictionary
         raise NotImplementedError
 
-class UnconstrainedMethod:
+class UnconstrainedMethod(object):
     """I am a method constraint that accepts any arguments and any return
     value.
 
