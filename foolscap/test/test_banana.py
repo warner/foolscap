@@ -8,7 +8,7 @@ from twisted.internet import defer
 from foolscap.tokens import ISlicer, Violation, BananaError
 from foolscap.tokens import BananaFailure, tokenNames, \
      OPEN, CLOSE, ABORT, INT, LONGINT, NEG, LONGNEG, FLOAT, STRING
-from foolscap import slicer, schema, storage, banana
+from foolscap import slicer, schema, storage, banana, vocab
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
 from foolscap.constraint import IConstraint
@@ -1906,6 +1906,15 @@ class VocabTest1(unittest.TestCase):
         b.setOutgoingVocabulary(strings)
         vocabTokens = b.tokens
         self.failUnlessEqual(vocabTokens, setVdict)
+
+    def test_table_hashes(self):
+        # make sure that we don't change any published vocab tables, and that
+        # we don't change the hash algorithm that they use
+        hash_v0 = vocab.hashVocabTable(0)
+        self.failUnlessEqual(hash_v0, "da39")
+        hash_v1 = vocab.hashVocabTable(1)
+        self.failUnlessEqual(hash_v1, "bb33")
+
 
 class VocabTest2(TestBananaMixin, unittest.TestCase):
     def vbOPEN(self, count, opentype):

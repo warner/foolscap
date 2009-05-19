@@ -1,3 +1,11 @@
+2009-05-19  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_banana.py (VocabTest1.test_table_hashes):
+	make sure we don't change the pre-agreed vocab tables, or the hash
+	algorithm that we use to confirm their contents. This is in
+	preparation for the conditional switch to 'hashlib', from
+	Stephan's patch in ticket #118
+
 2009-05-18  Stephan Peijnik  <stephan@peijnik.at>
 
 	* foolscap/call.py, foolscap/constraint.py, foolscap/eventual.py,
