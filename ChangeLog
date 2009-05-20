@@ -1,5 +1,7 @@
 2009-05-19  Brian Warner  <warner@lothar.com>
 
+	* foolscap/api.py: add some more symbols: ChoiceOf, IntegerConstraint
+
 	* foolscap/banana.py (Banana.handleData): increment the inbound
 	objectCounter as soon as we see the OPEN token, rather than doing
 	it in handleOpen(), since the latter is skipped if we're dropping

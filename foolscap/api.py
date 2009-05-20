@@ -20,8 +20,8 @@ from foolscap.copyable import Copyable, RemoteCopy, registerRemoteCopy
 from foolscap.copyable import registerCopier, registerRemoteCopyFactory
 from foolscap.ipb import DeadReferenceError
 from foolscap.tokens import BananaError
-from foolscap.schema import StringConstraint, ListOf, TupleOf, SetOf, \
-    DictOf, Any
+from foolscap.schema import StringConstraint, IntegerConstraint, \
+    ListOf, TupleOf, SetOf, DictOf, ChoiceOf, Any
 from foolscap.storage import serialize, unserialize
 from foolscap.tokens import Violation, RemoteException
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
@@ -37,7 +37,8 @@ _unused = [
     registerCopier, registerRemoteCopyFactory,
     DeadReferenceError,
     BananaError,
-    StringConstraint, ListOf, TupleOf, SetOf, DictOf, Any,
+    StringConstraint, IntegerConstraint,
+    ListOf, TupleOf, SetOf, DictOf, ChoiceOf, Any,
     serialize, unserialize,
     Violation, RemoteException,
     eventually, fireEventually, flushEventualQueue,
