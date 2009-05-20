@@ -1,5 +1,11 @@
 2009-05-19  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.4.0
+	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
+	same
+
+2009-05-19  Brian Warner  <warner@lothar.com>
+
 	* NEWS: update for the next release
 	* README: mention python2.6 compatibility
 
