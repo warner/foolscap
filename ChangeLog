@@ -1,5 +1,8 @@
 2009-05-19  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update for the next release
+	* README: mention python2.6 compatibility
+
 	* foolscap/test/test__versions.py (Versions.test_record): record
 	versions of platform/python/twisted/foolscap in the test logs
 

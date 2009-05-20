@@ -1,5 +1,76 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.4.0 (19 May 2009)
+
+** Compatibility
+
+The wire protocol remains the same as before, unchanged since 0.2.6 .
+
+The main API entry point has moved to "foolscap.api": e.g. you should do
+"from foolscap.api import Tub" instead of "from foolscap import Tub".
+Importing symbols directly from the "foolscap" module is now deprecated.
+(this makes it easier to reorganize the internal structure of Foolscap
+without causing circular dependencies). (#122)
+
+A near-future release (probably 0.4.1) will add proper
+DeprecationWarnings-raising wrappers to all classes and functions in
+foolscap/__init__.py . The next major release (probably 0.5.0) will remove
+these symbols from foolscap/__init__.py altogether.
+
+Logging functions are still meant to be imported from foolscap.logging.* .
+
+** expose-remote-exception-types (#105)
+
+Remote exception reporting is changing. Please see the new document
+docs/failures.xhtml for full details. This release adds a new option:
+
+ tub.setOption("expose-remote-exception-types", BOOL)
+
+The default is True, which provides the same behavior as previous releases:
+remote exceptions are presented to look as much as possible like local
+exceptions.
+
+If you set it to False, then all remote exceptions will be collapsed into a
+single "foolscap.api.RemoteException" type, with an attribute named .failure
+that can be used to get more details about the remote exception. This means
+that callRemote will either fire its Deferred with a regular value, or
+errback with one of three exception types from foolscap.api:
+DeadReferenceError, Violation, or RemoteException. (When the option is True,
+it could errback with any exception type, limited only by what the remote
+side chose to raise)
+
+A future version of Foolscap may change the default value of this option.
+We're not sure yet: we need more experience to see which mode is safer and
+easier to code with. If the default is changed, the deprecation sequence will
+probably be:
+
+ 0.5.0: require expose-remote-exception-types to be set
+ 0.6.0: change the default to False, stop requiring the option to be set
+ 0.7.0: remove the option
+
+** major bugs fixed:
+
+Shared references now work after a Violation (#104)
+
+The tubid returned by rref.getSturdyRef() is now reliable (#84)
+
+Foolscap should work with python-2.6: Decimal usage fixed, sha/md5
+deprecation warnings fixed, import of 'sets' still causes a warning. (#118,
+#121)
+
+Foolscap finally uses new-style classes everywhere (#96)
+
+bin/flogtool might work better on windows now (#108)
+
+logfiles now store library versions and process IDs (#80, #97)
+
+The "flogtool web-viewer" tool listens at a URL of "/" instead of "/welcome",
+making it slightly easier to use (#120)
+
+You can now setOption() on both log-gatherer-furl and log-gatherer-furlfile
+on the same Tub. Previously this caused an error. (#114)
+
+
 * Release 0.3.2 (14 Oct 2008)
 
 ** Compatibility: same as 0.2.6
