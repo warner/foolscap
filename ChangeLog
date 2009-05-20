@@ -1,5 +1,8 @@
 2009-05-19  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test__versions.py (Versions.test_record): record
+	versions of platform/python/twisted/foolscap in the test logs
+
 	* foolscap/api.py: add some more symbols: ChoiceOf, IntegerConstraint
 
 	* foolscap/banana.py (Banana.handleData): increment the inbound

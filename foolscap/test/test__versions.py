@@ -1,9 +1,12 @@
 
 from twisted.trial import unittest
 import time
+import platform
 import twisted
 from twisted.internet import reactor
+from twisted.python import log
 from foolscap.test.common import crypto_available
+from foolscap.api import __version__
 
 class Versions(unittest.TestCase):
     def test_required(self):
@@ -41,3 +44,10 @@ class Versions(unittest.TestCase):
             # give them a chance to read it and re-run the tests with -r poll
             time.sleep(10)
             # but we don't flunk the test, that would be gratuitous
+
+    def test_record(self):
+        log.msg("Versions:")
+        log.msg("foolscap-%s" % __version__)
+        log.msg("twisted-%s" % twisted.__version__)
+        log.msg("python-%s" % platform.python_version())
+        log.msg("platform: %s" % platform.version())
