@@ -1,5 +1,12 @@
 2009-05-22  Brian Warner  <warner@lothar.com>
 
+	* foolscap/tokens.py (RemoteException): override __str__, since we
+	don't put arguments in .args . Otherwise, attempting to stringify
+	a RemoteException will fail under python2.4 (but not 2.5).
+	* foolscap/test/test_logging.py (Basic.testFailure): test it
+	* foolscap/test/test_call.py (ExamineFailuresMixin._examine_raise):
+	more thorough test
+
 	* foolscap/_version.py: bump version between releases
 
 2009-05-19  Brian Warner  <warner@lothar.com>

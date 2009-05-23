@@ -22,6 +22,7 @@ from foolscap.test.common import RIMyTarget, Target, TargetWithoutInterfaces, \
 from foolscap import DeadReferenceError
 from foolscap.api import RemoteException, UnauthenticatedTub
 from foolscap.call import CopiedFailure
+from foolscap.logging import log as flog
 
 class Unsendable:
     pass
@@ -93,6 +94,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # f should be a CopiedFailure
         self.failUnless(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
+        self.failUnless(isinstance(f, CopiedFailure),
+                        "not CopiedFailure: %s" % f)
         self.failUnless(f.check(ValueError),
                         "wrong exception type: %s" % f)
         self.failUnlessSubstring("you asked me to fail", f.value)
@@ -532,6 +535,9 @@ class ExamineFailuresMixin:
         self.failUnless(isinstance(f2, CopiedFailure))
         self.failUnlessSubstring("you asked me to fail", f2.value)
         self.failIf(f2.check(RemoteException))
+        l = flog.FoolscapLogger()
+        l.msg("f1", failure=f)
+        l.msg("f2", failure=f2)
 
     def _examine_local_violation(self, r):
         f = r[0]

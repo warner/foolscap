@@ -15,6 +15,7 @@ from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap import Referenceable
 from foolscap.tokens import NoLocationError
 from foolscap.test.common import PollMixin, StallMixin, GoodEnoughTub
+from foolscap.api import RemoteException
 
 
 class Basic(unittest.TestCase):
@@ -42,6 +43,18 @@ class Basic(unittest.TestCase):
     def testStacktrace(self):
         l = log.FoolscapLogger()
         l.msg("how did we get here?", stacktrace=True)
+
+    def testFailure(self):
+        l = log.FoolscapLogger()
+        f1 = failure.Failure(ValueError("bad value"))
+        l.msg("failure1", failure=f1)
+        # real RemoteExceptions always wrap CopiedFailure, so this is not
+        # really accurate. However, it's a nuisance to create a real
+        # CopiedFailure: look in
+        # test_call.ExamineFailuresMixin._examine_raise for test code that
+        # exercises this properly.
+        f2 = failure.Failure(RemoteException(f1))
+        l.msg("failure2", failure=f2)
 
     def testParent(self):
         l = log.FoolscapLogger()

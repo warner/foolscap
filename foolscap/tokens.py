@@ -87,6 +87,8 @@ class RemoteException(Exception):
     than the fact that something failed on the remote end."""
     def __init__(self, failure):
         self.failure = failure
+    def __str__(self):
+        return "<RemoteException around '%s'>" % str(self.failure)
 
 
 class BananaError(Exception):
