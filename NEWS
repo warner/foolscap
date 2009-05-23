@@ -1,5 +1,19 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.4.1 (22 May 2009)
+
+** Compatibility
+
+Same as 0.4.0
+
+** Bug fixes
+
+The new RemoteException class was not stringifiable under python2.4 (i.e.
+str(RemoteException(f)) would raise an AttributeError), causing problems
+especially when callRemote errbacks attempted to record the received Failure
+with log.msg(failure=f). This has been fixed.
+
+
 * Release 0.4.0 (19 May 2009)
 
 ** Compatibility

@@ -1,5 +1,7 @@
 2009-05-22  Brian Warner  <warner@lothar.com>
 
+	* NEWS: udpate for upcoming release
+
 	* foolscap/tokens.py (RemoteException): override __str__, since we
 	don't put arguments in .args . Otherwise, attempting to stringify
 	a RemoteException will fail under python2.4 (but not 2.5).
