@@ -1,5 +1,11 @@
 2009-05-22  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.4.1
+	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
+	same
+
+2009-05-22  Brian Warner  <warner@lothar.com>
+
 	* NEWS: udpate for upcoming release
 
 	* foolscap/tokens.py (RemoteException): override __str__, since we
