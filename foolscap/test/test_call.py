@@ -434,10 +434,12 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def testNotifyOnDisconnect(self):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
+        self.failUnlessEqual(rr.isConnected(), True)
         rr.notifyOnDisconnect(self.disconnected)
         rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
         d = flushEventualQueue()
         def _check(res):
+            self.failUnlessEqual(rr.isConnected(), False)
             self.failUnless(self.lost)
             self.failUnlessEqual(self.lost_args, ((),{}))
             # it should be safe to unregister now, even though the callback

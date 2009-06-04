@@ -1,5 +1,11 @@
 2009-06-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReferenceOnly.isConnected): new
+	method, tests the same thing as notifyOnDisconnect but this one is
+	immediate instead of callback-based
+	* foolscap/test/test_call.py (TestCall.testNotifyOnDisconnect):
+	test it
+
 	* foolscap/test/test_call.py
 	(ReferenceCounting.test_reference_counting):
 	oops, turn off debugging noise which was accidentally left in back

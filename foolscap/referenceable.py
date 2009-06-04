@@ -391,6 +391,10 @@ class RemoteReferenceOnly(object):
     def dontNotifyOnDisconnect(self, marker):
         self.tracker.broker.dontNotifyOnDisconnect(marker)
 
+    def isConnected(self):
+        """Return False if this reference is known to be dead."""
+        return not self.tracker.broker.disconnected
+
     def __repr__(self):
         r = "<%s at 0x%x" % (self.__class__.__name__, abs(id(self)))
         if self.tracker.url:
