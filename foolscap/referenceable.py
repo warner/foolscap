@@ -364,6 +364,10 @@ class RemoteReferenceOnly(object):
         transport = self.tracker.broker.transport
         return transport.getPeer()
 
+    def isConnected(self):
+        """Return False if this reference is known to be dead."""
+        return not self.tracker.broker.disconnected
+
     def notifyOnDisconnect(self, callback, *args, **kwargs):
         """Register a callback to run when we lose this connection.
 
@@ -390,10 +394,6 @@ class RemoteReferenceOnly(object):
         return marker
     def dontNotifyOnDisconnect(self, marker):
         self.tracker.broker.dontNotifyOnDisconnect(marker)
-
-    def isConnected(self):
-        """Return False if this reference is known to be dead."""
-        return not self.tracker.broker.disconnected
 
     def __repr__(self):
         r = "<%s at 0x%x" % (self.__class__.__name__, abs(id(self)))
