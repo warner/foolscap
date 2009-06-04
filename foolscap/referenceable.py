@@ -208,8 +208,8 @@ class ReferenceUnslicer(slicer.BaseUnslicer):
     clid = None
     interfaceName = None
     url = None
-    inameConstraint = ByteStringConstraint(200) # TODO: only known RI names?
-    urlConstraint = ByteStringConstraint(200)
+    inameConstraint = ByteStringConstraint() # TODO: only known RI names?
+    urlConstraint = ByteStringConstraint()
 
     def checkToken(self, typebyte, size):
         if self.state == 0:
@@ -679,7 +679,7 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
     state = 0
     giftID = None
     url = None
-    urlConstraint = ByteStringConstraint(200)
+    urlConstraint = ByteStringConstraint()
 
     def checkToken(self, typebyte, size):
         if self.state == 0:

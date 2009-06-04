@@ -1,5 +1,9 @@
 2009-06-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (TheirReferenceUnslicer): remove the
+	200-byte limit on FURLs which are passed as third-party "gifts".
+	(ReferenceUnslicer): same, for inbound my-references
+
 	* foolscap/_version.py: bump version between releases
 	* misc/*/debian/changelog: same
 

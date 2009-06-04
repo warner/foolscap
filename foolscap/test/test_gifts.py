@@ -34,7 +34,8 @@ class Base:
         for s in self.services:
             s.startService()
             l = s.listenOn("tcp:0:interface=127.0.0.1")
-            s.setLocation("127.0.0.1:%d" % l.getPortnum())
+            loc = "127.0.0.1:%d" % l.getPortnum()
+            s.setLocation(loc)
 
     def tearDown(self):
         d = defer.DeferredList([s.stopService() for s in self.services])
@@ -537,3 +538,42 @@ class Bad(Base, unittest.TestCase):
         d.addCallback(lambda res: self.failUnlessEqual(self.bob.obj, 14))
         return d
     testReturn_swissnum.timeout = 10
+
+class LongFURL(Base, unittest.TestCase):
+    # make sure the old 200-byte limit on gift FURLs is gone
+    def setUp(self):
+        self.services = [GoodEnoughTub() for i in range(4)]
+        self.tubA, self.tubB, self.tubC, self.tubD = self.services
+        for s in self.services:
+            s.startService()
+            l = s.listenOn("tcp:0:interface=127.0.0.1")
+            loc = "127.0.0.1:%d" % l.getPortnum()
+            loc = ",".join([loc]*15) # 239 bytes of location, 281 of FURL
+            s.setLocation(loc)
+
+    def testGift(self):
+        self.createCharacters()
+        d = self.createInitialReferences()
+        def _introduce(res):
+            d2 = self.bob.waitfor()
+            if self.debug: print "Alice introduces Carol to Bob"
+            # send the gift. This might not get acked by the time the test is
+            # done and everything is torn down, so we use callRemoteOnly
+            self.abob.callRemoteOnly("set", obj=(self.alice, self.acarol))
+            return d2 # this fires with the gift that bob got
+        d.addCallback(_introduce)
+        def _bobGotCarol((balice,bcarol)):
+            if self.debug: print "Bob got Carol"
+            self.bcarol = bcarol
+            if self.debug: print "Bob says something to Carol"
+            d2 = self.carol.waitfor()
+            # handle ConnectionDone as described before
+            self.bcarol.callRemoteOnly("set", obj=12)
+            return d2
+        d.addCallback(_bobGotCarol)
+        def _carolCalled(res):
+            if self.debug: print "Carol heard from Bob"
+            self.failUnlessEqual(res, 12)
+        d.addCallback(_carolCalled)
+        return d
+    testGift.timeout = 10
