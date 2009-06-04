@@ -1,5 +1,10 @@
 2009-06-03  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_call.py
+	(ReferenceCounting.test_reference_counting):
+	oops, turn off debugging noise which was accidentally left in back
+	at 0.4.0
+
 	* foolscap/referenceable.py (TheirReferenceUnslicer): remove the
 	200-byte limit on FURLs which are passed as third-party "gifts".
 	(ReferenceUnslicer): same, for inbound my-references

@@ -807,10 +807,6 @@ class ReferenceCounting(ShouldFailMixin, unittest.TestCase):
             # forget
             rref.tracker.interfaceName = None
             rref.tracker.interface = None
-            for b in self.target_tub.unauthenticatedBrokers:
-                b.debugReceive = True
-                #print b
-                pass
             self.rref = rref
         d.addCallback(_stash)
 
@@ -840,7 +836,6 @@ class ReferenceCounting(ShouldFailMixin, unittest.TestCase):
         def _check_shared(ign):
             # the off-by-two bug would cause the second tuple shared-ref to
             # point at the set instead of the first tuple
-            print target.obj
             self.failUnlessEqual(type(target.obj), list)
             one, two, three, four = target.obj
             self.failUnlessEqual(type(one), tuple)
