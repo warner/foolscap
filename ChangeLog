@@ -1,3 +1,16 @@
+2009-06-05  Brian Warner  <warner@lothar.com>
+
+	* foolscap/referenceable.py (RemoteReferenceOnly.getLocationHints):
+	new method
+	(RemoteReferenceOnly.getSturdyRef): remove "this is not secure"
+	comment: getSturdyRef now *does* check the tubid against the
+	connection
+	(SturdyRef): factor out encode_furl/decode_furl into new functions
+	* foolscap/test/test_pb.py (TestReferenceable): test both
+	getLocationHints() and isConnected()
+	(TestCallable.testGetSturdyRef): same
+	* foolscap/test/test_gifts.py: update to use encode_furl
+
 2009-06-03  Brian Warner  <warner@lothar.com>
 
 	* foolscap/referenceable.py (RemoteReferenceOnly.isConnected): new

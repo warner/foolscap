@@ -210,9 +210,13 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         d.addCallback(self._testRef1_1, r)
         return d
     def _testRef1_1(self, res, r):
-        self.failUnless(isinstance(res.getPeer(), broker.LoopbackAddress))
-        t = res.tracker
         self.failUnless(isinstance(res, referenceable.RemoteReference))
+        rref = res
+        self.failUnless(isinstance(rref.getPeer(), broker.LoopbackAddress))
+        self.failUnlessEqual(rref.isConnected(), True)
+        self.failUnlessEqual(rref.getLocationHints(), []) # loopback
+        self.failUnlessEqual(rref.getSturdyRef().getURL(), None)
+        t = rref.tracker
         self.failUnlessEqual(t.broker, self.targetBroker)
         self.failUnless(type(t.clid) is int)
         self.failUnless(self.callingBroker.getMyReferenceByCLID(t.clid) is r)
@@ -389,10 +393,12 @@ class TestCallable(unittest.TestCase):
     def setUp(self):
         self.services = [GoodEnoughTub(), GoodEnoughTub()]
         self.tubA, self.tubB = self.services
+        self.tub_ports = []
         for s in self.services:
             s.startService()
             l = s.listenOn("tcp:0:interface=127.0.0.1")
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
+            self.tub_ports.append(l.getPortnum())
         self._log_observers_to_remove = []
 
     def addLogObserver(self, observer):
@@ -418,6 +424,9 @@ class TestCallable(unittest.TestCase):
             self.failUnlessEqual(peer.type, "TCP")
             self.failUnlessEqual(peer.host, "127.0.0.1")
             self.failUnlessEqual(rref.getRemoteTubID(), self.tubB.getTubID())
+            self.failUnlessEqual(rref.isConnected(), True)
+            self.failUnlessEqual(rref.getLocationHints(),
+                                 [('ipv4', '127.0.0.1', self.tub_ports[1])])
         d.addCallback(_check)
         return d
 

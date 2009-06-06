@@ -346,8 +346,6 @@ class RemoteReferenceOnly(object):
         self.tracker = tracker
 
     def getSturdyRef(self):
-        # note that this is currently *not* secure: the remote end gets to
-        # control all parts of this FURL, including the tubid
         return SturdyRef(self.tracker.getURL())
     def getRemoteTubID(self):
         rt = self.tracker.broker.remote_tubref
@@ -367,6 +365,8 @@ class RemoteReferenceOnly(object):
     def isConnected(self):
         """Return False if this reference is known to be dead."""
         return not self.tracker.broker.disconnected
+    def getLocationHints(self):
+        return SturdyRef(self.tracker.url).locationHints
 
     def notifyOnDisconnect(self, callback, *args, **kwargs):
         """Register a callback to run when we lose this connection.
@@ -778,6 +778,51 @@ def decode_location_hints(hints_s):
 class BadFURLError(Exception):
     pass
 
+def decode_furl(furl):
+    """Returns (encrypted, tubID, location_hints, name)"""
+    # pb://key@{ip:port,host:port,[ipv6]:port}[/unix]/swissnumber
+    # i.e. pb://tubID@{locationHints..}/name
+    #
+    # it can live at any one of a (TODO) variety of network-accessible
+    # locations, or (TODO) at a single UNIX-domain socket.
+    #
+    # there is also an unauthenticated form, which does not have a TubID
+
+    mo_auth_furl = AUTH_STURDYREF_RE.search(furl)
+    mo_nonauth_furl = NONAUTH_STURDYREF_RE.search(furl)
+    if mo_auth_furl:
+        encrypted = True
+        # we only pay attention to the first 32 base32 characters
+        # of the tubid string. Everything else is left for future
+        # extensions.
+        tubID_s = mo_auth_furl.group(1)
+        tubID = tubID_s[:32]
+        if not base32.is_base32(tubID):
+            raise BadFURLError("'%s' is not a valid tubid" % (tubID,))
+        hints = mo_auth_furl.group(2)
+        location_hints = decode_location_hints(hints)
+        name = mo_auth_furl.group(3)
+
+    elif mo_nonauth_furl:
+        encrypted = False
+        tubID = None
+        hints = mo_nonauth_furl.group(1)
+        location_hints = decode_location_hints(hints)
+        name = mo_nonauth_furl.group(2)
+
+    else:
+        raise ValueError("unknown FURL prefix in %r" % (furl,))
+    return (encrypted, tubID, location_hints, name)
+
+def encode_furl(encrypted, tubID, location_hints, name):
+    location_hints_s = ",".join([encode_location_hint(hint)
+                                 for hint in location_hints])
+    if encrypted:
+        return "pb://" + tubID + "@" + location_hints_s + "/" + name
+    else:
+        return "pbu://" + location_hints + "/" + name
+
+
 class SturdyRef(Copyable, RemoteCopy):
     """I am a pointer to a Referenceable that lives in some (probably remote)
     Tub. This pointer is long-lived, however you cannot send messages with it
@@ -799,65 +844,22 @@ class SturdyRef(Copyable, RemoteCopy):
 
     def __init__(self, url=None):
         self.locationHints = [] # list of ("ipv4", host, port) tuples
+        self.url = url
         if url:
-            self.url = url
-            self._init_from_url(url)
-
-    def _init_from_url(self, url):
-        # pb://key@{ip:port,host:port,[ipv6]:port}[/unix]/swissnumber
-        # i.e. pb://tubID@{locationHints..}/name
-        #
-        # it can live at any one of a (TODO) variety of network-accessible
-        # locations, or (TODO) at a single UNIX-domain socket.
-        #
-        # there is also an unauthenticated form, which does not have a TubID
-
-        mo_auth_furl = AUTH_STURDYREF_RE.search(url)
-        mo_nonauth_furl = NONAUTH_STURDYREF_RE.search(url)
-        if mo_auth_furl:
-            self.encrypted = True
-            # we only pay attention to the first 32 base32 characters
-            # of the tubid string. Everything else is left for future
-            # extensions.
-            tubID_s = mo_auth_furl.group(1)
-            self.tubID = tubID_s[:32]
-            if not base32.is_base32(self.tubID):
-                raise BadFURLError("'%s' is not a valid tubid" % (self.tubID,))
-            hints = mo_auth_furl.group(2)
-            self.locationHints = decode_location_hints(hints)
-            self.name = mo_auth_furl.group(3)
-
-        elif mo_nonauth_furl:
-            self.encrypted = False
-            self.tubID = None
-            hints = mo_nonauth_furl.group(1)
-            self.locationHints = decode_location_hints(hints)
-            self.name = mo_nonauth_furl.group(2)
-
-        else:
-            raise ValueError("unknown FURL prefix in %r" % (url,))
+            self.encrypted, self.tubID, self.locationHints, self.name = \
+                decode_furl(url)
 
     def getTubRef(self):
         if self.encrypted:
             return TubRef(self.tubID, self.locationHints)
         return NoAuthTubRef(self.locationHints)
 
-    def _encode_location_hints(self):
-        return ",".join([encode_location_hint(hint)
-                         for hint in self.locationHints])
 
     def getURL(self):
-        if not self.url:
-            location_hints = self._encode_location_hints()
-            if self.encrypted:
-                self.url = ("pb://" + self.tubID + "@" +
-                            location_hints + "/" + self.name)
-            else:
-                self.url = "pbu://" + location_hints + "/" + self.name
         return self.url
 
     def __str__(self):
-        return self.getURL()
+        return str(self.url)
 
     def _distinguishers(self):
         """Two SturdyRefs are equivalent if they point to the same object.

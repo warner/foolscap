@@ -5,7 +5,7 @@ from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionRefusedError
 from twisted.python import failure
 from foolscap import RemoteInterface, Referenceable
-from foolscap.referenceable import RemoteReference, SturdyRef
+from foolscap.referenceable import RemoteReference, encode_furl, decode_furl
 from foolscap.test.common import HelperTarget, RIHelper, \
      crypto_available, GoodEnoughTub
 from foolscap.eventual import flushEventualQueue
@@ -428,10 +428,7 @@ class Bad(Base, unittest.TestCase):
             # which will result in a failure in remote_getReferenceByName.
             # NOTE: this will have to change when we modify the way gifts are
             # referenced, since tracker.url is scheduled to go away.
-            r = SturdyRef(adave.tracker.url)
-            r.name += ".MANGLED"
-            r.url = None
-            adave.tracker.url = r.getURL()
+            adave.tracker.url = adave.tracker.url + ".MANGLED"
             return self.acarol.callRemote("set", adave)
         d.addCallback(_introduce)
         d.addBoth(self.shouldFail, KeyError, "Bad.test_swissnum")
@@ -452,10 +449,11 @@ class Bad(Base, unittest.TestCase):
             # unlikely to remain the same. NOTE: this will have to change
             # when we modify the way gifts are referenced, since tracker.url
             # is scheduled to go away.
-            r = SturdyRef(adave.tracker.url)
-            r.tubID = "".join(reversed(r.tubID))
-            r.url = None
-            adave.tracker.url = r.getURL()
+            (encrypted, tubid, location_hints, name) = \
+                decode_furl(adave.tracker.url)
+            tubid = "".join(reversed(tubid))
+            adave.tracker.url = encode_furl(encode_furl, tubid,
+                                            location_hints, name)
             return self.acarol.callRemote("set", adave)
         d.addCallback(_introduce)
         d.addBoth(self.shouldFail, BananaError, "Bad.test_tubid",
@@ -471,11 +469,13 @@ class Bad(Base, unittest.TestCase):
             # The third way is to mangle the location hints, which will
             # result in a failure during negotiation as it attempts to
             # establish a TCP connection.
-            r = SturdyRef(adave.tracker.url)
+
+            (encrypted, tubid, location_hints, name) = \
+                decode_furl(adave.tracker.url)
             # highly unlikely that there's anything listening on this port
-            r.locationHints = [ ("ipv4", "127.0.0.1", 2) ]
-            r.url = None
-            adave.tracker.url = r.getURL()
+            location_hints = [ ("ipv4", "127.0.0.1", 2) ]
+            adave.tracker.url = encode_furl(encode_furl, tubid,
+                                            location_hints, name)
             return self.acarol.callRemote("set", adave)
         d.addCallback(_introduce)
         d.addBoth(self.shouldFail, ConnectionRefusedError, "Bad.test_location")
@@ -496,10 +496,11 @@ class Bad(Base, unittest.TestCase):
             # case, but we can connect to a port which accepts the connection
             # and then stays silent. This should trigger the overall
             # connection timeout.
-            r = SturdyRef(adave.tracker.url)
-            r.locationHints = [ ("ipv4", "127.0.0.1", p.getHost().port) ]
-            r.url = None
-            adave.tracker.url = r.getURL()
+            (encrypted, tubid, location_hints, name) = \
+                decode_furl(adave.tracker.url)
+            location_hints = [ ("ipv4", "127.0.0.1", p.getHost().port) ]
+            adave.tracker.url = encode_furl(encode_furl, tubid,
+                                            location_hints, name)
             self.tubD.options['connect_timeout'] = 2
             return self.acarol.callRemote("set", adave)
         d.addCallback(_introduce)
@@ -525,10 +526,7 @@ class Bad(Base, unittest.TestCase):
             # which will result in a failure in remote_getReferenceByName.
             # NOTE: this will have to change when we modify the way gifts are
             # referenced, since tracker.url is scheduled to go away.
-            r = SturdyRef(self.bdave.tracker.url)
-            r.name += ".MANGLED"
-            r.url = None
-            self.bdave.tracker.url = r.getURL()
+            self.bdave.tracker.url = self.bdave.tracker.url + ".MANGLED"
             self.bob.obj = self.bdave
             return self.abob.callRemote("get")
         d.addCallback(_introduce)
