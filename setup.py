@@ -48,7 +48,7 @@ object reference system, and a capability-based security model.
 
         'packages': ["foolscap", "foolscap/slicers", "foolscap/logging",
                   "foolscap/test"],
-        'scripts': ["bin/flogtool"],
+        'scripts': ["bin/flogtool", "bin/flappserver"],
 }
 
 try:

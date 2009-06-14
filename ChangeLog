@@ -1,3 +1,18 @@
+2009-06-14  Brian Warner  <warner@lothar.com>
+
+	* doc/flappserver.xhtml: start to create an "application server":
+	an easy tool to deploy pre-written foolscap-based services in a
+	shared server process. This first step creates the bin/flappserver
+	tool, and implements the "create", "add", "list", "start", and
+	"stop" commands. The next step will be to write some basic tests,
+	then implement some built-in services (file-upload and
+	exec-command), then write some clients to drive those services.
+	Eventually new services will be loaded with a plugin architecture.
+	Tracked in ticket #82.
+	* bin/flappserver: this tool is used to manipulate app servers
+	* foolscap/appserver/*.py: the actual code
+	* setup.py: bin/flappserver is a script too
+
 2009-06-05  Brian Warner  <warner@lothar.com>
 
 	* foolscap/referenceable.py (RemoteReferenceOnly.getLocationHints):
