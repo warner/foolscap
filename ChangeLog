@@ -1,3 +1,14 @@
+2009-06-15  Brian Warner  <warner@lothar.com>
+
+	* foolscap/appserver/services.py (FileUploader): implement it for
+	real, using twisted's FilePath. Not sure it actually works yet.
+
+	* foolscap/test/test_appserver.py: begin unit tests for appserver
+	* foolscap/appserver/*: clean up Create, add
+	AppServer.when_ready() to handle setLocationAutomatically()
+	better, display simple UsageError/BadServiceArguments exceptions
+	better (no traceback)
+
 2009-06-14  Brian Warner  <warner@lothar.com>
 
 	* foolscap/appserver/server.py (AppServer.__init__): improve

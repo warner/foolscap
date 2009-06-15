@@ -2,13 +2,14 @@
 import os, sys, shutil, errno, time, signal
 from StringIO import StringIO
 from twisted.python import usage
+from twisted.internet import defer
 
 # does "flappserver start" need us to refrain from importing the reactor here?
 import foolscap
 from foolscap.api import Tub, Referenceable, fireEventually
 from foolscap.pb import generateSwissnumber
-from foolscap.appserver.services import build_service
-from foolscap.appserver.server import create_tub
+from foolscap.appserver.services import build_service, BadServiceArguments
+from foolscap.appserver.server import AppServer
 
 class CreateOptions(usage.Options):
     synopsis = "Usage: flappserver create [options] BASEDIR"
@@ -17,9 +18,13 @@ class CreateOptions(usage.Options):
         ("quiet", "q", "Be silent upon success"),
         ]
     optParameters = [
-        ("port", "p", "tcp:0", "TCP port to listen on"),
-        ("location", "l", None, "Tub location hints to use in generated FURLs"),
+        ("port", "p", "tcp:0", "TCP port to listen on (strports string)"),
+        ("location", "l", "", "Tub location hints to use in generated FURLs. An empty location means to generate one automatically, by looking at the active network interfaces."),
         ]
+
+    def opt_port(self, port):
+        assert not port.startswith("ssl:")
+        self["port"] = port
 
     def parseArgs(self, basedir):
         self.basedir = basedir
@@ -66,35 +71,48 @@ class Create:
         # running).
 
         f = open(os.path.join(basedir, "port"), "w")
-        f.write("%r\n" % options["port"])
+        f.write("%s\n" % options["port"])
         f.close()
         # we'll overwrite BASEDIR/port if necessary
 
         f = open(os.path.join(basedir, "location"), "w")
-        f.write("%r\n" % options["location"])
+        f.write("%s\n" % options["location"])
         f.close()
 
-        tub = create_tub(basedir)
-        tub.startService()
-        d = fireEventually()
-        d.addCallback(self.create, tub, options)
-        d.addBoth(lambda ign: tub.stopService())
+        self.server = None
+        d = fireEventually(basedir)
+        d.addCallback(AppServer, stdout)
+        d.addCallback(self.stash_and_start_appserver)
+        d.addCallback(self.appserver_ready, options)
+        d.addBoth(self.stop_appserver)
         d.addCallback(lambda ign: 0)
         return d
 
-    def create(self, _ign, tub, options):
+    def stash_and_start_appserver(self, ap):
+        self.server = ap
+        self.server.startService()
+        return ap.when_ready()
+
+    def appserver_ready(self, _ignored, options):
         basedir = options.basedir
         stdout = options.stdout
         quiet = options["quiet"]
 
+        tub = self.server.tub
         # what port is it actually listening on?
         l0 = tub.getListeners()[0]
-        got_port = "tcp:%d" % l0.getPortnum()
 
         port = options["port"]
-        if port == "0" or port == "tcp:0":
-            # If it wasn't tightly specified, write it down so we use to the
+        got_port = port
+        pieces = port.split(":")
+        if "0" in pieces:
+            # If the --port argument didn't tightly specify the port to use,
+            # write down the one we actually got, so we'll keep using the
             # same one later
+            pieces[pieces.index("0")] = str(l0.getPortnum())
+            if pieces[0] != "tcp":
+                pieces = ["tcp"] + pieces
+            got_port = ":".join(pieces)
             f = open(os.path.join(basedir, "port"), "w")
             f.write(got_port + "\n")
             f.close()
@@ -118,6 +136,13 @@ class Create:
             print >>stdout, "Foolscap Application Server created in %s" % basedir
             print >>stdout, "TubID %s, listening on port %s" % (tubid, got_port)
             print >>stdout, "Now launch the daemon with 'flappserver start %s'" % basedir
+
+    def stop_appserver(self, res):
+        d = defer.succeed(None)
+        if self.server:
+            d.addCallback(lambda ign: self.server.stopService())
+        d.addCallback(lambda ign: res)
+        return d
 
 class AddOptions(usage.Options):
     synopsis = "Usage: flappserver add [--comment C] BASEDIR SERVICE-TYPE SERVICE-ARGS.."
@@ -390,7 +415,7 @@ def dispatch(command, options):
 
 def run_flappserver(argv=None, run_by_human=True):
     if argv:
-        command_name = argv[0]
+        command_name,argv = argv[0],argv[1:]
     else:
         command_name = sys.argv[0]
     config = Options()
@@ -413,7 +438,11 @@ def run_flappserver(argv=None, run_by_human=True):
     else:
         so.stdout = StringIO()
         so.stderr = StringIO()
-    r = dispatch(command, so)
+    try:
+        r = dispatch(command, so)
+    except (usage.UsageError, BadServiceArguments), e:
+        r = 1
+        print >>so.stderr, "Error:", e
     from twisted.internet import defer
     if run_by_human:
         if isinstance(r, defer.Deferred):
