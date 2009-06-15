@@ -6,6 +6,7 @@ from twisted.python import usage
 # does "flappserver start" need us to refrain from importing the reactor here?
 import foolscap
 from foolscap.api import Tub, Referenceable, fireEventually
+from foolscap.pb import generateSwissnumber
 from foolscap.appserver.services import build_service
 from foolscap.appserver.server import create_tub
 
@@ -50,7 +51,6 @@ class Create:
         basedir = options.basedir
         stdout = options.stdout
         stderr = options.stderr
-        quiet = options["quiet"]
         if os.path.exists(basedir):
             print >>stderr, "Refusing to touch pre-existing directory %s" % basedir
             return 1
@@ -58,40 +58,66 @@ class Create:
         os.makedirs(basedir)
         os.makedirs(os.path.join(basedir, "services"))
 
-        # start the server briefly, to let the Tub spin up and create the
-        # key, and decide upon a port
-        t = Tub(certFile=os.path.join(basedir, "tub.pem"))
-        t.startService()
+        # start the server and let it run briefly. This lets the Tub spin up,
+        # create the key, decide upon a port, and auto-determine its location
+        # (if one was not provided with --location=). The base FURL will be
+        # written to a file so that subsequent 'add' and 'list' can compute
+        # FURLs without needing to run the Tub (which might already be
+        # running).
+
+        f = open(os.path.join(basedir, "port"), "w")
+        f.write("%r\n" % options["port"])
+        f.close()
+        # we'll overwrite BASEDIR/port if necessary
+
+        f = open(os.path.join(basedir, "location"), "w")
+        f.write("%r\n" % options["location"])
+        f.close()
+
+        tub = create_tub(basedir)
+        tub.startService()
+        d = fireEventually()
+        d.addCallback(self.create, tub, options)
+        d.addBoth(lambda ign: tub.stopService())
+        d.addCallback(lambda ign: 0)
+        return d
+
+    def create(self, _ign, tub, options):
+        basedir = options.basedir
+        stdout = options.stdout
+        quiet = options["quiet"]
+
+        # what port is it actually listening on?
+        l0 = tub.getListeners()[0]
+        got_port = "tcp:%d" % l0.getPortnum()
+
         port = options["port"]
         if port == "0" or port == "tcp:0":
-            got_port = "tcp:%d" % t.listenOn(port).getPortnum() # handle port=0
-        else:
-            got_port = port
-        tubid = t.getTubID()
-        t.stopService()
+            # If it wasn't tightly specified, write it down so we use to the
+            # same one later
+            f = open(os.path.join(basedir, "port"), "w")
+            f.write(got_port + "\n")
+            f.close()
+
+        tubid = tub.getTubID()
+
+        sample_furl = tub.registerReference(Referenceable())
+        furl_prefix = sample_furl[:sample_furl.rfind("/")+1]
+        f = open(os.path.join(basedir, "furl_prefix"), "w")
+        f.write(furl_prefix + "\n")
+        f.close()
 
         f = open(os.path.join(basedir, "flappserver.tac"), "w")
         stashed_path = ""
         for p in sys.path:
             stashed_path += "  %r,\n" % p
-        location = options["location"]
-        f.write(FLAPPSERVER_TACFILE % { 'path': stashed_path,
-                                        })
-        f.close()
-
-        f = open(os.path.join(basedir, "port"), "w")
-        f.write("%r\n" % got_port)
-        f.close()
-
-        f = open(os.path.join(basedir, "location"), "w")
-        f.write("%r\n" % location)
+        f.write(FLAPPSERVER_TACFILE % { 'path': stashed_path })
         f.close()
 
         if not quiet:
             print >>stdout, "Foolscap Application Server created in %s" % basedir
             print >>stdout, "TubID %s, listening on port %s" % (tubid, got_port)
             print >>stdout, "Now launch the daemon with 'flappserver start %s'" % basedir
-        return 0
 
 class AddOptions(usage.Options):
     synopsis = "Usage: flappserver add [--comment C] BASEDIR SERVICE-TYPE SERVICE-ARGS.."
@@ -110,22 +136,19 @@ class AddOptions(usage.Options):
 
 class Add:
     def run(self, options):
-        server_basedir = options.basedir
+        basedir = options.basedir
         stdout = options.stdout
         stderr = options.stderr
         service_type = options.service_type
         service_args = options.service_args
 
-        tub = create_tub(server_basedir)
-
-        swissnum = tub.generateSwissnumber(tub.NAMEBITS)
-        service_basedir = os.path.join(server_basedir, "services", swissnum)
+        swissnum = generateSwissnumber(Tub.NAMEBITS)
+        service_basedir = os.path.join(basedir, "services", swissnum)
         os.makedirs(service_basedir)
 
         try:
             # validate the service args by instantiating one
-            s = build_service(service_basedir, tub, service_type, service_args)
-            print "service args look ok"
+            s = build_service(service_basedir, None, service_type, service_args)
         except:
             shutil.rmtree(service_basedir)
             raise
@@ -141,8 +164,12 @@ class Add:
             f.write(options["comment"] + "\n")
             f.close()
 
+        furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
+        furl = furl_prefix + swissnum
         if not options["quiet"]:
             print >>stdout, "Service added in %s" % service_basedir
+            print >>stdout, "FURL is %s" % furl
+
         return 0
 
 class ListOptions(usage.Options):
@@ -158,21 +185,13 @@ class ListOptions(usage.Options):
 
 class List:
     def run(self, options):
-        server_basedir = options.basedir
+        basedir = options.basedir
         stdout = options.stdout
         stderr = options.stderr
 
-        tub = create_tub(server_basedir)
-        # the Tub needs to be running before we can use registerReference to
-        # build URLs, especially if we don't provide it with an explicit
-        # location.
-        tub.startService()
-        d = fireEventually()
-        d.addCallback(self.list, tub, server_basedir, stdout)
-        return d
+        furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
 
-    def list(self, _ign, tub, server_basedir, stdout):
-        services_basedir = os.path.join(server_basedir, "services")
+        services_basedir = os.path.join(basedir, "services")
 
         for swissnum in sorted(os.listdir(services_basedir)):
             service_basedir = os.path.join(services_basedir, swissnum)
@@ -187,7 +206,7 @@ class List:
             if os.path.exists(comment_f):
                 comment = open(comment_f).read().strip()
                 print >>stdout, " # %s" % comment
-            furl = tub.registerReference(Referenceable(), swissnum)
+            furl = furl_prefix + swissnum
             print >>stdout, " %s" % furl
         print >>stdout
         return 0
@@ -240,7 +259,7 @@ class Start:
 
         args = ["--no_save", "--python", tac] + list(options.twistd_args)
 
-        print >>stderr, "Launching server"
+        print >>stderr, "Launching Server..."
         os.chdir(options.basedir)
         try_to_run_command("twistd", args)
         # if we get here, we couldn't find twistd

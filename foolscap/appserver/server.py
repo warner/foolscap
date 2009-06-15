@@ -1,4 +1,5 @@
 
+import sys
 import os.path
 from twisted.application import service
 from foolscap.api import Tub
@@ -16,13 +17,13 @@ def create_tub(basedir):
     return tub
 
 class AppServer(service.MultiService):
-    def __init__(self, basedir="."):
+    def __init__(self, basedir=".", stdout=sys.stdout):
         service.MultiService.__init__(self)
         self.basedir = os.path.abspath(basedir)
         self.tub = create_tub(basedir)
         self.tub.setServiceParent(self)
         self.tub.registerNameLookupHandler(self.lookup)
-        print "SERVER RUNNING"
+        print >>stdout, "Server Running"
 
     def lookup(self, name):
         # walk through our configured services, see if we know about this one

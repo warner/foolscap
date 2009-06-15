@@ -1,5 +1,20 @@
 2009-06-14  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/server.py (AppServer.__init__): improve
+	startup message
+
+	* foolscap/appserver/services.py (FileUploader.__init__): note
+	that tub= might be None (such as in 'add' when we're merely
+	validating the service arguments)
+
+	* foolscap/appserver/cli.py: run Tub for 'create', but not for
+	'add' or 'list'. Stash the furl-prefix to support this. The idea
+	will be to rewrite furl-prefix each time the server is started.
+	This also allows 'add' and 'list' to be used while the server is
+	already running.
+
+	* doc/flappserver.xhtml: add example transcript
+
 	* foolscap/pb.py (generateSwissnumber): pull this out to a
 	seperate function, to be called externally
 	(Tub.generateSwissnumber): same

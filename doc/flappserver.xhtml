@@ -211,6 +211,23 @@ will only write to subdirectories of TARGETDIR if configured with
 <code>--allow-subdirectories</code>, in which case the client controls which
 subdirectory is used (and created if necessary).</p>
 
+<p>Example:</p>
+
+<pre class="shell">
+% flappserver create --listen 12345 --location example.com:12345 ~/fl
+Foolscap Application Server created in /usr/home/warner/fl
+TubID u5bca3u2wklkyyv7wzjetmfltyqeb6kv, listening on port tcp:12345
+Now launch the daemon with 'flappserver start /usr/home/warner/fl'
+% flappserver add ~/fl file-uploader ~/incoming
+Service added in /usr/home/warner/fl/services/vx3s2tb62ywct4pdgdicdpbxgz4ly7po
+FURL is pb://u5bca3u2wklkyyv7wzjetmfltyqeb6kv@example.com:12345/vx3s2tb62ywct4pdgdicdpbxgz4ly7po
+% flappserver start ~/fl
+Launching Server...
+Server Running
+%
+</pre>
+
+
 <h3><code>exec [options] TARGETDIR COMMAND..</code></h3>
 
 <p>This service invokes a preconfigured command in response to requests from

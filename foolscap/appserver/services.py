@@ -17,6 +17,7 @@ class FileUploaderOptions(usage.Options):
 
 class FileUploader(service.MultiService, Referenceable):
     def __init__(self, basedir, tub, options):
+        # tub might be None
         service.MultiService.__init__(self)
         self.basedir = basedir
         self.tub = tub
