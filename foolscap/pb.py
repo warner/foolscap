@@ -147,6 +147,9 @@ class Listener(protocol.ServerFactory):
     def lookupTubID(self, tubID):
         return self.tubs.get(tubID), self.redirects.get(tubID)
 
+def generateSwissnumber(bits):
+    bytes = os.urandom(bits/8)
+    return base32.encode(bytes)
 
 class Tub(service.MultiService):
     """I am a presence in the PB universe, also known as a Tub.
@@ -649,8 +652,7 @@ class Tub(service.MultiService):
         return defer.DeferredList(dl)
 
     def generateSwissnumber(self, bits):
-        bytes = os.urandom(bits/8)
-        return base32.encode(bytes)
+        return generateSwissnumber(bits)
 
     def buildURL(self, name):
         if self.encrypted:
