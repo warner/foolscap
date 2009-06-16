@@ -8,12 +8,12 @@ from twisted.internet import defer
 import foolscap
 from foolscap.api import Tub, Referenceable, fireEventually
 
-class UploadOptions(usage.Options):
+class UploadFileOptions(usage.Options):
     #synopsis = "flappclient upload SOURCEFILE"
     def parseArgs(self, sourcefile):
         self.sourcefile = sourcefile
 
-class Upload(Referenceable):
+class UploadFile(Referenceable):
     def run(self, rref, options):
         name = os.path.basename(options.sourcefile)
         self.f = open(options.sourcefile, "rb")
@@ -29,13 +29,13 @@ class Upload(Referenceable):
         return 0
 
 
-class ExecOptions(usage.Options):
+class RunCommandOptions(usage.Options):
     pass
 
 from twisted.internet.stdio import StandardIO
 from twisted.internet.protocol import Protocol
 
-class Exec(Referenceable, Protocol):
+class RunCommand(Referenceable, Protocol):
     def run(self, rref, options):
         self.done = False
         self.d = defer.Deferred()
@@ -91,8 +91,8 @@ class ClientOptions(usage.Options):
         ]
 
     subCommands = [
-        ("upload", None, UploadOptions, "upload a file (to file-uploader)"),
-        ("exec", None, ExecOptions, "cause a command to be run (to exec)"),
+        ("upload-file", None, UploadFileOptions, "upload a file"),
+        ("run-command", None, RunCommandOptions, "cause a command to be run"),
         ]
 
     def read_furlfile(self):
@@ -122,8 +122,8 @@ class ClientOptions(usage.Options):
         sys.exit(0)
 
 dispatch_table = {
-    "upload": Upload,
-    "exec": Exec,
+    "upload-file": UploadFile,
+    "run-command": RunCommand,
     }
 
 

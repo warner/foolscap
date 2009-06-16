@@ -126,7 +126,7 @@ class FileUploader(service.MultiService, Referenceable):
         d.addCallbacks(_done, _err)
         return d
 
-class ExecOptions(usage.Options):
+class CommandRunnerOptions(usage.Options):
     synopsis = "Usage: flappserver add BASEDIR exec [options] TARGETDIR COMMAND.."
 
     optFlags = [
@@ -230,7 +230,7 @@ class Command(Referenceable):
                 log.msg("stdin closed")
             self.process.closeStdin()
 
-class Exec(service.MultiService, Referenceable):
+class CommandRunner(service.MultiService, Referenceable):
     def __init__(self, basedir, tub, options):
         service.MultiService.__init__(self)
         self.basedir = basedir
@@ -263,8 +263,8 @@ class Exec(service.MultiService, Referenceable):
         return None
 
 all_services = {
-    "file-uploader": (FileUploaderOptions, FileUploader),
-    "exec": (ExecOptions, Exec),
+    "upload-file": (FileUploaderOptions, FileUploader),
+    "run-command": (CommandRunnerOptions, CommandRunner),
     }
 
 def build_service(basedir, tub, service_type, service_args):

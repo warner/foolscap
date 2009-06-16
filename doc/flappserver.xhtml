@@ -20,7 +20,7 @@ S% flappserver create ~/fs
 Listening on 127.0.0.1:12345
 Foolscap Application Server created in ~/fs
 S% mkdir ~/incoming
-S% flappserver add ~/fs file-uploader ~/incoming
+S% flappserver add ~/fs upload-file ~/incoming
 Service created, FURL is pb://kykr3p2hsippfgxqq2icrbrncee2f6ef@127.0.0.1:12345/47nvyzu6dj6apyrdl7alpe2xasmi52jt
 S% flappserver start ~/fs
 Server Started
@@ -28,7 +28,7 @@ S%
 
 ## run this on the client machine
 C% echo "pb://kykr3p2hsippfgxqq2icrbrncee2f6ef@127.0.0.1:12345/47nvyzu6dj6apyrdl7alpe2xasmi52jt" >~/.upload.furl
-C% flapp-upload-client --furlfile ~/.upload.furl foo.jpg
+C% flappclient --furlfile ~/.upload.furl upload-file foo.jpg
 ## that uploads the local file "foo.jpg" to the server
 C%
 
@@ -81,19 +81,19 @@ implement a named service.</p>
 <p>The basic services that ship with Foolscap are:</p>
 
 <ul>
-  <li>file-uploader: allow files to be written into a single directory by the
-  corresponding "flapp-upload-client". Files are streamed to a neighboring
-  temporary file before being atomically moved into place. The client gets to
-  choose the target filename. Optionally allow the creation and use of
-  subdirectories.</li>
+  <li>upload-file: allow files to be written into a single directory by the
+  corresponding "flappclient upload-file" command. Files are streamed to a
+  neighboring temporary file before being atomically moved into place. The
+  client gets to choose the target filename. Optionally allow the creation
+  and use of subdirectories.</li>
 
-  <li>exec: allow a preconfigured shell command to be executed by the
-  corresponding "flapp-exec-client". Client receives stdout/stderr/rc.
-  Command runs in a preconfigured working directory. Optionally allow the
-  client to provide arguments to the command. Optionally allow the client to
-  provide stdin to the command. Optionally provide locking around the command
-  (allow only one instance to run at a time). Optionally merge multiple
-  pending invocations.</li>
+  <li>run-command: allow a preconfigured shell command to be executed by the
+  corresponding "flappclient run-command" invocation. Client receives
+  stdout/stderr/rc. Command runs in a preconfigured working directory.
+  Optionally allow the client to provide arguments to the command. Optionally
+  allow the client to provide stdin to the command. In a future version:
+  optionally provide locking around the command (allow only one instance to
+  run at a time), optionally merge multiple pending invocations.</li>
 </ul>
 
 <h2>Commands</h2>
@@ -121,8 +121,8 @@ not already exist, and nothing else should touch its contents.</p>
 <h3><code>flappserver add BASEDIR [options] SERVICE-TYPE SERVICE-ARGS</code></h3>
 
 <p>Add a new service to the existing server that lives in BASEDIR. The new
-service will be of type SERVICE-TYPE (such as "file-uploader" or "exec"), and
-will be configured with SERVICE-ARGS.</p>
+service will be of type SERVICE-TYPE (such as "upload-fil" or "run-command"),
+and will be configured with SERVICE-ARGS.</p>
 
 <p>A new unguessable "swissnum" will be generated for the service, from which
 a FURL will be computed. Clients must use this FURL to contact the service.
@@ -159,16 +159,16 @@ the add command, finishing with the access FURL:</p>
 % flappserver list ~/fs
 
 47nvyzu6dj6apyrdl7alpe2xasmi52jt:
- file-uploader ~/incoming --allow-subdirectories
+ upload-file ~/incoming --allow-subdirectories
  # --comment text appears here
  pb://kykr3p2hsippfgxqq2icrbrncee2f6ef@127.0.0.1:12345/47nvyzu6dj6apyrdl7alpe2xasmi52jt
 
 jgdqovf3tfd5xog34bxmkqwd3dxgycak:
- file-uploader ~/repo/packages
+ upload-file ~/repo/packages
  pb://kykr3p2hsippfgxqq2icrbrncee2f6ef@127.0.0.1:12345/jgdqovf3tfd5xog34bxmkqwd3dxgycak
 
 22ngipsyp2smmgguemf5hu45prz4jeui:
- exec --directory ~/repo make update-repository
+ run-command ~/repo make update-repository
  pb://kykr3p2hsippfgxqq2icrbrncee2f6ef@127.0.0.1:12345/22ngipsyp2smmgguemf5hu45prz4jeui
 
 %
@@ -199,17 +199,27 @@ BASEDIR &amp;&amp; kill `cat twistd.pid`".</p>
 
 <p>"stop" options: none</p>
 
+
+<h3><code>flappserver restart BASEDIR [twistd options]</code></h3>
+
+<p>Terminate and restart the server that is running in BASEDIR. This is
+equivalent to "flappserver stop BASEDIR &amp;&amp; flappserver start BASEDIR
+[options]".</p>
+
+
 <h2>Services</h2>
 
-<h3><code>file-uploader [options] TARGETDIR</code></h3>
+<h3><code>upload-file [options] TARGETDIR</code></h3>
 
-<p>This service accepts files from <code>flapp-upload-client</code>, placing
-them in TARGETDIR (which must already exist and be writable by the
+<p>This service accepts files from <code>flappclient upload-file</code>,
+placing them in TARGETDIR (which must already exist and be writable by the
 flappserver). The filenames are chosen by the client. Existing files will be
 overwritten. This service will never write client files above TARGETDIR. It
 will only write to subdirectories of TARGETDIR if configured with
 <code>--allow-subdirectories</code>, in which case the client controls which
 subdirectory is used (and created if necessary).</p>
+
+<p>TODO: <code>--allow-subdirectories</code> is not yet implemented.</p>
 
 <p>Example:</p>
 
@@ -218,7 +228,7 @@ subdirectory is used (and created if necessary).</p>
 Foolscap Application Server created in /usr/home/warner/fl
 TubID u5bca3u2wklkyyv7wzjetmfltyqeb6kv, listening on port tcp:12345
 Now launch the daemon with 'flappserver start /usr/home/warner/fl'
-% flappserver add ~/fl file-uploader ~/incoming
+% flappserver add ~/fl upload-file ~/incoming
 Service added in /usr/home/warner/fl/services/vx3s2tb62ywct4pdgdicdpbxgz4ly7po
 FURL is pb://u5bca3u2wklkyyv7wzjetmfltyqeb6kv@example.com:12345/vx3s2tb62ywct4pdgdicdpbxgz4ly7po
 % flappserver start ~/fl
@@ -228,12 +238,13 @@ Server Running
 </pre>
 
 
-<h3><code>exec [options] TARGETDIR COMMAND..</code></h3>
+<h3><code>run-command [options] TARGETDIR COMMAND..</code></h3>
 
 <p>This service invokes a preconfigured command in response to requests from
-<code>flapp-exec-client</code>. The command is always run from TARGETDIR.</p>
+<code>flappclient run-command</code>. The command is always run from
+TARGETDIR.</p>
 
-<p>"exec" options:</p>
+<p>"run-command" options:</p>
 
 <ul>
   <li><code>--accept-stdin</code>: if set, any data written to the client's
@@ -241,28 +252,37 @@ Server Running
   closed, the COMMAND's stdin will also be closed. If omitted, the client
   will be instructed to not read from its stdin, and COMMAND will not receive
   any stdin (the pipe will be left open, however).</li>
+  <li><code>--no-stdin</code>: [default] opposite of --accept-stdin.</li>
 
-  <li><code>--no-stdin</code>: opposite of --accept-stdin. This is the
-  default.</li>
-
-  <li><code>--send-stdout</code>: if set, any data written by COMMAND to its
-  stdout will be streamed to the client, which will deliver the data to its
-  own stdout pipe. This is the default.</li>
-
+  <li><code>--send-stdout</code>: [default] if set, any data written by
+  COMMAND to its stdout will be streamed to the client, which will deliver
+  the data to its own stdout pipe.</li>
   <li><code>--no-stdout</code>: if set, any data written by COMMAND to its
   stdout will be discarded, and not sent to the client.</li>
 
-  <li><code>--send-stderr</code>: if set, any data written by COMMAND to its
-  stderr will be streamed to the client, which will deliver the data to its
-  own stderr pipe. This is the default.</li>
-
+  <li><code>--send-stderr</code>: [default] if set, any data written by
+  COMMAND to its stderr will be streamed to the client, which will deliver
+  the data to its own stderr pipe.</li>
   <li><code>--no-stderr</code>: if set, any data written by COMMAND to its
   stderr will be discarded, and not sent to the client.</li>
+
+  <li><code>--log-stdin</code>: if set, all incoming stdin data will be
+  written to the twistd.log</li>
+  <li><code>--no-log-stdin</code>: [default] do not log incoming stdin</li>
+
+  <li><code>--log-stdout</code>: if set, all outgoing stdout data will be
+  written to the twistd.log</li>
+  <li><code>--no-log-stdout</code>: [default] do not log outgoing stdout</li>
+
+  <li><code>--log-stderr</code>: [default] if set, all outgoing stderr data
+  will be written to the twistd.log</li>
+  <li><code>--no-log-stderr</code>: do not log outgoing stderr</li>
+
 </ul>
 
 <p>The numeric exit status of COMMAND will be delivered to the client, which
 will exit with the same status. If COMMAND terminates with a signal, a
-suitable non-zero exit status will be delivered (maybe 127?).</p>
+suitable non-zero exit status will be delivered (127).</p>
 
 <p>Future options will allow the client to modify COMMAND (in tightly
 controlled ways), and to wrap a semaphore around the invocation of COMMAND so
@@ -273,40 +293,64 @@ invocation.</p>
 
 <h2>Clients</h2>
 
-<p>To talk to the services described above, Foolscap comes with two simple
-clients.</p>
+<p>To talk to the services described above, Foolscap comes with a simple
+multipurpose client tool named <code>flappclient</code>. This tool always
+takes a <code>--furl=</code> or <code>--furlfile=</code> argument to specify
+the FURL of the target server.</p>
 
-<h3><code>flapp-upload-client [options] SOURCEFILES..</code></h3>
+<p>For <code>--furlfile=</code>, the FURL should be stored in the given file.
+The client will ignore blank lines and comment lines (those which begin with
+"#"). It will use the first FURL it sees in the file, ignoring everything
+beyond that point. It is a good practice to put a comment in your furlfiles
+to remind you what the FURL points to and where you got it from:</p>
+
+<pre class="shell">
+% cat ~/upload.furl
+# this FURL points to a file-uploader on ftp.example.com:~/incoming
+pb://kykr3p2hsippfgxqq2icrbrncee2f6ef@127.0.0.1:12345/47nvyzu6dj6apyrdl7alpe2xasmi52jt
+%
+% flappclient --furlfile ~/upload.furl upload-file foo.txt
+File uploaded
+%
+</pre>
+
+<p>The --furlfile form is useful to keep the secret FURL out of a transcript
+of the command being run, such as in a buildbot logfile. Naming your
+furlfiles after their purpose is a good practice: the filename then behaves
+like a "pet name": a local identifier that hides the secure connection
+information.</p>
+
+<h3><code>flappclient [--furl|--furlfile] upload-file SOURCEFILES..</code></h3>
 
 <p>This contacts a file-uploader service as created with <code>flappserver
-add BASEDIR file-uploader TARGETDIR</code> and sends it one or more local
-files. The FURL used can be passed directly to a <code>--furl=</code>
-argument, or indirectly by writing it into a file and then passing a
-<code>--furlfile=</code> argument. (the --furlfile form is useful to keep the
-secret FURL out of a transcript of the command being run, such as in a
-buildbot logfile).</p>
+add BASEDIR upload-file TARGETDIR</code> and sends it one or more local
+files.</p>
 
 <p>The basename of each SOURCEFILE will be used to provide the remote
-filename. If there is only one SOURCEFILE argument, then the
-<code>--target-filename=</code> option can be used to override the remote
+filename.</p>
+
+<p>TODO (not yet implemented): If there is only one SOURCEFILE argument, then
+the <code>--target-filename=</code> option can be used to override the remote
 filename. If the server side has enabled subdirectories, then
 <code>--target-subdirectory=</code> can be used to place the file in a
 subdirectory of the server's targetdir.</p>
 
 
-<h3><code>flapp-exec-client [options]</code></h3>
+<h3><code>flappclient [--furl|--furlfile] run-command</code></h3>
 
 <p>This contacts a command-executing service as created with
-<code>flappserver add BASEDIR exec COMMAND</code> and asks it to invoke the
-preconfigured command. It accepts the same <code>--furl=</code> and
-<code>--furlfile=</code> arguments as flapp-upload-client.</p>
+<code>flappserver add BASEDIR run-command TARGETDIR COMMAND</code> and asks
+it to invoke the preconfigured command.</p>
 
 <p>If the server was configured with <code>--accept-stdin</code>, the client
 will read from stdin until it is closed, continuously sending data to the
-server. If not, the client will ignore its stdin.</p>
+server, then closing the server's stdin pipe (this is useful for commands
+like 'grep' which read from stdin). If not, the client will ignore its
+stdin.</p>
 
-<p>The client will write to its stdout and stderr as data arrives from the
-server. Once the server's process exits, the client will exit with the same
+<p>By default, the client will write to its stdout and stderr as data arrives
+from the server (however the server can be configured to not send stdout or
+stderr). Once the server's process exits, the client will exit with the same
 exit code.</p>
 
 </body></html>

@@ -104,7 +104,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             self.failUnless(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add", serverdir,
-                                               "file-uploader", incomingdir))
+                                               "upload-file", incomingdir))
         def _check_add((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             lines = out.splitlines()
@@ -133,7 +133,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         d.addCallback(lambda ign: self.run_cli("add",
                                                "--comment", "commentary here",
                                                serverdir,
-                                               "file-uploader", incomingdir))
+                                               "upload-file", incomingdir))
         def _check_add((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             lines = out.splitlines()
@@ -164,7 +164,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add",
                                                serverdir,
-                                               "file-uploader",
+                                               "upload-file",
                                                # missing targetdir
                                                ))
         def _check_add((rc,out,err)):
@@ -176,7 +176,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
 
         d.addCallback(lambda ign: self.run_cli("add",
                                                serverdir,
-                                               "file-uploader",
+                                               "upload-file",
                                                "nonexistent-targetdir",
                                                ))
         def _check_add2((rc,out,err)):
@@ -201,7 +201,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             self.failUnless(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add", serverdir,
-                                               "file-uploader", incomingdir))
+                                               "upload-file", incomingdir))
         def _check_add((rc,out,err)):
             self.failUnlessEqual(rc, 0)
         d.addCallback(_check_add)
@@ -216,7 +216,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             lines = out.splitlines()
             self.failUnlessEqual(lines[0], "")
             self.failUnlessEqual(lines[1], swissnum+":")
-            self.failUnlessEqual(lines[2], " file-uploader %s" % incomingdir)
+            self.failUnlessEqual(lines[2], " upload-file %s" % incomingdir)
             self.failUnlessEqual(lines[3], " " + expected_furl)
         d.addCallback(_check_list)
         return d
@@ -236,7 +236,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         d.addCallback(lambda ign: self.run_cli("add",
                                                "--comment", "commentary here",
                                                serverdir,
-                                               "file-uploader", incomingdir))
+                                               "upload-file", incomingdir))
         def _check_add((rc,out,err)):
             self.failUnlessEqual(rc, 0)
         d.addCallback(_check_add)
@@ -251,7 +251,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             lines = out.splitlines()
             self.failUnlessEqual(lines[0], "")
             self.failUnlessEqual(lines[1], swissnum+":")
-            self.failUnlessEqual(lines[2], " file-uploader %s" % incomingdir)
+            self.failUnlessEqual(lines[2], " upload-file %s" % incomingdir)
             self.failUnlessEqual(lines[3], " # commentary here")
             self.failUnlessEqual(lines[4], " " + expected_furl)
         d.addCallback(_check_list)
@@ -285,7 +285,7 @@ class Server(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
             self.failUnless(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add", serverdir,
-                                               "file-uploader", incomingdir))
+                                               "upload-file", incomingdir))
         def _check_add((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             lines = out.splitlines()
@@ -344,7 +344,7 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
             self.failUnless(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add", serverdir,
-                                               "file-uploader", incomingdir))
+                                               "upload-file", incomingdir))
         def _check_add((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             lines = out.splitlines()
@@ -371,7 +371,7 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
         f.write(DATA)
         f.close()
         d.addCallback(lambda _ign: self.run_client("--furl", self.furl,
-                                                   "upload",
+                                                   "upload-file",
                                                    sourcefile))
         def _check_client((rc,out,err)):
             self.failUnlessEqual(rc, 0)
@@ -389,7 +389,7 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
         f.write(DATA2)
         f.close()
         d.addCallback(lambda _ign: self.run_client("--furlfile", furlfile,
-                                                   "upload",
+                                                   "upload-file",
                                                    sourcefile2))
         def _check_client2((rc,out,err)):
             self.failUnlessEqual(rc, 0)
@@ -404,7 +404,7 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
         empty_furlfile = furlfile + ".empty"
         open(empty_furlfile, "wb").close()
         d.addCallback(lambda _ign: self.run_client("--furlfile", empty_furlfile,
-                                                   "upload",
+                                                   "upload-file",
                                                    sourcefile2))
         def _check_client3((rc,out,err)):
             self.failIfEqual(rc, 0)
@@ -521,7 +521,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
 
         d.addCallback(lambda ign:
                       self.add(serverdir,
-                               "exec",
+                               "run-command",
                                "--no-log-stdin", "--log-stdout",
                                "--no-log-stderr",
                                incomingdir, "cat", "foo.txt"))
@@ -534,7 +534,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
         d.addCallback(_start_server)
 
         d.addCallback(lambda _ign:
-                      self.run_client("--furl", self.furls[0], "exec"))
+                      self.run_client("--furl", self.furls[0], "run-command"))
         def _check_client((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnlessEqual(out, DATA)
@@ -546,7 +546,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
         d.addCallback(_delete_foo)
 
         d.addCallback(lambda _ign:
-                      self.run_client("--furl", self.furls[0], "exec"))
+                      self.run_client("--furl", self.furls[0], "run-command"))
         def _check_client2((rc,out,err)):
             self.failIfEqual(rc, 0)
             self.failUnlessEqual(out, "")
@@ -556,7 +556,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
 
         d.addCallback(lambda ign:
                       self.add(serverdir,
-                               "exec", "--accept-stdin",
+                               "run-command", "--accept-stdin",
                                "--log-stdin", "--no-log-stdout", "--log-stderr",
                                incomingdir,
                                "dd", "of=bar.txt"))
@@ -566,7 +566,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
         DATA2 = "Pass this\ninto stdin\n"
         d.addCallback(lambda _ign:
                       self.run_client_with_stdin(DATA2,
-                                                 "--furl", self.furls[1], "exec"))
+                                                 "--furl", self.furls[1], "run-command"))
         def _check_client3((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             bardata = open(barfile,"rb").read()
@@ -580,7 +580,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
 
         d.addCallback(lambda ign:
                       self.add(serverdir,
-                               "exec",
+                               "run-command",
                                "--no-stdin", "--send-stdout", "--no-stderr",
                                incomingdir,
                                "cat", "foo.txt"))
@@ -588,7 +588,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
 
         d.addCallback(lambda ign:
                       self.add(serverdir,
-                               "exec",
+                               "run-command",
                                "--no-stdin", "--no-stdout", "--send-stderr",
                                incomingdir,
                                "cat", "foo.txt"))
@@ -597,7 +597,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
         d.addCallback(_populate_foo)
             
         d.addCallback(lambda _ign:
-                      self.run_client("--furl", self.furls[2], "exec"))
+                      self.run_client("--furl", self.furls[2], "run-command"))
         def _check_client4((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnlessEqual(out, DATA)
@@ -605,7 +605,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
         d.addCallback(_check_client4)
 
         d.addCallback(lambda _ign:
-                      self.run_client("--furl", self.furls[3], "exec"))
+                      self.run_client("--furl", self.furls[3], "run-command"))
         def _check_client5((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnlessEqual(out, "") # --no-stdout
@@ -614,7 +614,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
 
         d.addCallback(_delete_foo)
         d.addCallback(lambda _ign:
-                      self.run_client("--furl", self.furls[2], "exec"))
+                      self.run_client("--furl", self.furls[2], "run-command"))
         def _check_client6((rc,out,err)):
             self.failIfEqual(rc, 0)
             self.failUnlessEqual(out, "")
@@ -622,7 +622,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
         d.addCallback(_check_client6)
 
         d.addCallback(lambda _ign:
-                      self.run_client("--furl", self.furls[3], "exec"))
+                      self.run_client("--furl", self.furls[3], "run-command"))
         def _check_client7((rc,out,err)):
             self.failIfEqual(rc, 0)
             self.failUnlessEqual(out, "") # --no-stdout

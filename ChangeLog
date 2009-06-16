@@ -1,5 +1,11 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* doc/flappserver.xhtml: rename tools: use "upload-file" and
+	"run-command" instead of file-uploader and exe
+	* doc/foolscap/appserver/client.py: same
+	* doc/foolscap/appserver/services.py: same
+	* foolscap/test/test_appserver.py: same
+
 	* foolscap/test/test_appserver.py (RunCommand): improve coverage
 
 	* foolscap/appserver/cli.py: move flappclient code out of cli.py ..
