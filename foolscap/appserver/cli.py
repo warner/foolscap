@@ -371,6 +371,18 @@ class Stop:
         try_to_remove_pidfile(pidfile)
         return 0
 
+class RestartOptions(usage.Options):
+    synopsis = "Usage: flappserver restart BASEDIR [twistd options]"
+
+    def parseArgs(self, basedir, *twistd_args):
+        self.basedir = basedir
+        self.twistd_args = twistd_args
+
+class Restart:
+    def run(self, options):
+        rc = Stop().run(options) # ignore rc
+        rc = Start().run(options)
+        return rc
 
 class Options(usage.Options):
     synopsis = "Usage: flappserver (create|add|list|start|stop)"
@@ -381,6 +393,7 @@ class Options(usage.Options):
         ("list", None, ListOptions, "list services in an app server"),
         ("start", None, StartOptions, "launch an app server"),
         ("stop", None, StopOptions, "shut down an app server"),
+        ("restart", None, RestartOptions, "(first stop if necessary, then) start a server"),
         ]
 
     def postOptions(self):
@@ -403,6 +416,7 @@ dispatch_table = {
     "list": List,
     "start": Start,
     "stop": Stop,
+    "restart": Restart,
     }
 
 def dispatch(command, options):

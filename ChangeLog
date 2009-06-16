@@ -1,5 +1,7 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/cli.py (Restart): add 'flappserver restart'
+
 	* foolscap/appserver/services.py (Exec): make run-command work,
 	including optional stdin/stdout/stderr, logging of each, and
 	return of exitcode. Still needs unit tests and a better name.
