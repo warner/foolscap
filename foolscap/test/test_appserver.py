@@ -434,16 +434,16 @@ class Client(unittest.TestCase):
         d.addCallback(_check_client2)
         return d
 
-    def OFF_test_help(self):
+    def test_help(self):
         d = self.run_client("--help")
         def _check_client((rc,out,err)):
             self.failUnlessEqual(rc, 0)
-            self.failUnlessIn("XXX", out)
+            self.failUnlessIn("Usage: flappclient [--furl=|--furlfile=] ", out)
             self.failUnlessEqual("", err.strip())
         d.addCallback(_check_client)
         return d
 
-    def OFF_test_version(self):
+    def test_version(self):
         d = self.run_client("--version")
         def _check_client((rc,out,err)):
             self.failUnlessEqual(rc, 0)

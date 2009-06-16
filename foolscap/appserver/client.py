@@ -9,6 +9,7 @@ import foolscap
 from foolscap.api import Tub, Referenceable, fireEventually
 
 class UploadOptions(usage.Options):
+    #synopsis = "flappclient upload SOURCEFILE"
     def parseArgs(self, sourcefile):
         self.sourcefile = sourcefile
 
@@ -35,7 +36,7 @@ class Exec:
         pass
 
 class ClientOptions(usage.Options):
-    synopsis = "Usage: flappclient (upload|exec)"
+    synopsis = "Usage: flappclient [--furl=|--furlfile=] (upload|exec)"
 
     optParameters = [
         ("furl", None, None, "FURL of the service to contact"),
@@ -64,13 +65,13 @@ class ClientOptions(usage.Options):
             raise usage.UsageError("must specify a command")
 
     def opt_help(self):
-        print self.synopsis
+        print >>self.stdout, self.synopsis
         sys.exit(0)
 
     def opt_version(self):
         from twisted import copyright
-        print "Foolscap version:", foolscap.__version__
-        print "Twisted version:", copyright.version
+        print >>self.stdout, "Foolscap version:", foolscap.__version__
+        print >>self.stdout, "Twisted version:", copyright.version
         sys.exit(0)
 
 dispatch_table = {
@@ -90,50 +91,65 @@ def run_cli(argv=None, run_by_human=True):
     else:
         command_name = sys.argv[0]
 
-    config = ClientOptions()
-
-    try:
-        config.parseOptions(argv)
-    except usage.error, e:
-        print >>stderr, "%s:  %s" % (command_name, e)
-        print >>stderr
-        c = getattr(config, 'subOptions', config)
-        print >>stderr, str(c)
-        if run_by_human:
-            sys.exit(1)
-        else:
-            return defer.succeed((1, stdout.getvalue(), stderr.getvalue()))
-
-    command = config.subCommand
-    so = config.subOptions
-    so.stdout = stdout
-    so.stderr = stderr
-
-    c = dispatch_table[command]()
-    tub = Tub()
     d = fireEventually()
-    d.addCallback(lambda _ign: tub.startService())
-    d.addCallback(lambda _ign: tub.getReference(config.furl))
-    d.addCallback(c.run, so) # might provide tub here
-    d.addBoth(lambda res: tub.stopService().addCallback(lambda _ign: res))
+    d.addCallback(lambda _ign: parse_options(command_name, argv,
+                                             stdout, stderr))
+    d.addCallback(run_command)
 
     if run_by_human:
-        # this command needs a reactor
+        # we need to spin up our own reactor
         from twisted.internet import reactor
         stash_rc = []
         def good(rc):
             stash_rc.append(rc)
             reactor.stop()
         def oops(f):
-            print "Command failed:"
-            print f
-            stash_rc.append(-1)
+            if f.check(SystemExit):
+                stash_rc.append(f.value.args[0])
+            else:
+                print "Command failed:"
+                print f
+                stash_rc.append(-1)
             reactor.stop()
         d.addCallbacks(good, oops)
         reactor.run()
         sys.exit(stash_rc[0])
     else:
+        def _convert_system_exit(f):
+            f.trap(SystemExit)
+            return f.value.args[0]
+        d.addErrback(_convert_system_exit)
         def done(rc):
             return (rc, stdout.getvalue(), stderr.getvalue())
         d.addCallback(done)
         return d
+
+
+def parse_options(command_name, argv, stdout, stderr):
+    try:
+        config = ClientOptions()
+        config.stdout = stdout
+        config.stderr = stderr
+        config.parseOptions(argv)
+
+        config.subOptions.stdout = stdout
+        config.subOptions.stderr = stderr
+
+    except usage.error, e:
+        print >>stderr, "%s:  %s" % (command_name, e)
+        print >>stderr
+        c = getattr(config, 'subOptions', config)
+        print >>stderr, str(c)
+        sys.exit(1)
+
+    return config
+
+def run_command(config):
+    c = dispatch_table[config.subCommand]()
+    tub = Tub()
+    d = defer.succeed(None)
+    d.addCallback(lambda _ign: tub.startService())
+    d.addCallback(lambda _ign: tub.getReference(config.furl))
+    d.addCallback(c.run, config.subOptions) # might provide tub here
+    d.addBoth(lambda res: tub.stopService().addCallback(lambda _ign: res))
+    return d
