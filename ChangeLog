@@ -1,5 +1,13 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py (Broker.doNextCall): don't run any calls
+	after we've been shut down. This fixes a racy bug in which two
+	calls arrive and get queued in the same input hunk, the first one
+	provokes a Tub.stopService, and the second one gets run after the
+	Tub has been shutdown, leaving an "Unhandled Error in Deferred"
+	lying around. This was occasionally flunking an appserver test.
+	* foolscap/test/test_tub.py (CancelPendingDeliveries): test it
+
 	* foolscap/appserver/cli.py (Restart): add 'flappserver restart'
 
 	* foolscap/appserver/services.py (Exec): make run-command work,

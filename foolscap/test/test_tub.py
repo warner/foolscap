@@ -4,12 +4,13 @@ import os.path
 from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.application import service
+from twisted.python import log, failure
 
 from foolscap import Tub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
-from foolscap.eventual import eventually, flushEventualQueue
+from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \
-     crypto_available, GoodEnoughTub
+     crypto_available, GoodEnoughTub, StallMixin
 from foolscap.tokens import WrongTubIdError, PBError
 
 # create this data with:
@@ -365,3 +366,53 @@ class Shutdown(unittest.TestCase, ShouldFailMixin):
                                       tub.connectTo, "furl", None))
         return d
 
+class Receiver(Referenceable):
+    def __init__(self, tub):
+        self.tub = tub
+        self.done_d = defer.Deferred()
+    def remote_one(self):
+        d = self.tub.stopService()
+        d.addBoth(lambda r: fireEventually(r))
+        d.addBoth(self.done_d.callback)
+    def remote_two(self):
+        msg = "Receiver.remote_two: I shouldn't be called"
+        print msg
+        f = failure.Failure(ValueError(msg))
+        log.err(f)
+
+class CancelPendingDeliveries(unittest.TestCase, StallMixin):
+    def tearDown(self):
+        dl = [defer.succeed(None)]
+        if self.tubA.running:
+            dl.append(defer.maybeDeferred(self.tubA.stopService))
+        if self.tubB.running:
+            dl.append(defer.maybeDeferred(self.tubB.stopService))
+        d = defer.DeferredList(dl)
+        d.addCallback(flushEventualQueue)
+        return d
+
+    def test_cancel_pending_deliveries(self):
+        # when a Tub is stopped, any deliveries that were pending should be
+        # discarded. TubA sends remote_one+remote_two (and we hope they
+        # arrive in the same chunk). TubB responds to remote_one by shutting
+        # down. remote_two should be discarded. The bug was that remote_two
+        # would cause an unhandled error on the TubB side.
+        self.tubA = GoodEnoughTub()
+        self.tubB = GoodEnoughTub()
+        self.tubA.startService()
+        self.tubB.startService()
+
+        l = self.tubB.listenOn("tcp:0")
+        d = self.tubB.setLocationAutomatically()
+        r = Receiver(self.tubB)
+        d.addCallback(lambda res: self.tubB.registerReference(r))
+        d.addCallback(lambda furl: self.tubA.getReference(furl))
+        def _go(rref):
+            # we want these two to get sent and received in the same hunk
+            rref.callRemoteOnly("one")
+            rref.callRemoteOnly("two")
+            return r.done_d
+        d.addCallback(_go)
+        # let remote_two do its log.err before we move on to the next test
+        d.addCallback(self.stall, 1.0)
+        return d

@@ -512,6 +512,8 @@ class Broker(banana.Banana, referenceable.Referenceable):
         eventually(self.doNextCall)
 
     def doNextCall(self):
+        if self.disconnected:
+            return
         if self._waiting_for_call_to_be_ready:
             return
         if not self.inboundDeliveryQueue:
