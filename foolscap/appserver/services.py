@@ -17,7 +17,7 @@ class FileUploaderOptions(usage.Options):
         ("allow-subdirectories", None, "allow client to write to subdirectories"),
         ]
     optParameters = [
-        ("mode", None, "0644",
+        ("mode", None, 0644,
          "(octal) mode to set uploaded files to, use 0644 for world-readable")
         ]
 
@@ -103,7 +103,7 @@ class FileUploader(service.MultiService, Referenceable):
         # building scripts until the whole file is present, so we want an
         # atomic rename from foo.deb.partial to foo.deb
 
-        tmpfile = targetfile.siblingExtensionSearch(".partial")
+        tmpfile = targetfile.siblingExtension(".partial")
 
         # TODO: use os.open and set the file mode earlier
         #f = open(tmpfile, "w")

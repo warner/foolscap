@@ -12,7 +12,7 @@ if (os.path.exists(os.path.join(base, "setup.py")) and
     os.path.exists(os.path.join(base, "foolscap"))):
     sys.path.insert(0, base)
 
-from foolscap.appserver.cli import run_flappserver
+from foolscap.appserver.cli import run_flappclient
 
 if __name__ == '__main__':
-    run_flappserver()
+    run_flappclient()
