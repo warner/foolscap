@@ -6,8 +6,8 @@ from twisted.internet import defer
 from twisted.application import service
 
 from foolscap.api import Tub
-from foolscap.appserver import cli, server
-from foolscap.test.common import ShouldFailMixin, crypto_available
+from foolscap.appserver import cli, server, client
+from foolscap.test.common import ShouldFailMixin, crypto_available, StallMixin
 
 class RequiresCryptoBase:
     def setUp(self):
@@ -327,7 +327,7 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
 
     def run_client(self, *args):
         argv = ["flappclient"] + list(args)
-        d = defer.maybeDeferred(cli.run_flappclient, argv=argv, run_by_human=False)
+        d = defer.maybeDeferred(client.run_flappclient, argv=argv, run_by_human=False)
         return d # fires with (rc,out,err)
 
     def test_run(self):
@@ -417,7 +417,7 @@ class Client(unittest.TestCase):
 
     def run_client(self, *args):
         argv = ["flappclient"] + list(args)
-        d = defer.maybeDeferred(cli.run_flappclient, argv=argv, run_by_human=False)
+        d = defer.maybeDeferred(client.run_flappclient, argv=argv, run_by_human=False)
         return d # fires with (rc,out,err)
 
     def test_no_command(self):
@@ -450,4 +450,78 @@ class Client(unittest.TestCase):
             self.failUnlessIn("Foolscap version:", out)
             self.failUnlessEqual("", err.strip())
         d.addCallback(_check_client)
+        return d
+
+class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
+    def setUp(self):
+        RequiresCryptoBase.setUp(self)
+        self.s = service.MultiService()
+        self.s.startService()
+    def tearDown(self):
+        return self.s.stopService()
+
+    def run_cli(self, *args):
+        argv = ["flappserver"] + list(args)
+        d = defer.maybeDeferred(cli.run_flappserver, argv=argv, run_by_human=False)
+        return d # fires with (rc,out,err)
+
+    def run_client(self, *args):
+        argv = ["flappclient"] + list(args)
+        d = defer.maybeDeferred(client.run_flappclient,
+                                argv=argv, run_by_human=False,
+                                stdio=None)
+        return d # fires with (rc,out,err)
+
+    def test_run(self):
+        basedir = "appserver/RunCommand/run"
+        os.makedirs(basedir)
+        serverdir = os.path.join(basedir, "fl")
+        incomingdir = os.path.join(basedir, "incoming")
+        os.mkdir(incomingdir)
+        furlfile = os.path.join(basedir, "furlfile")
+
+        d = self.run_cli("create", serverdir)
+        def _check((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            self.failUnless(os.path.isdir(serverdir))
+        d.addCallback(_check)
+        targetfile = os.path.join(incomingdir, "foo.txt")
+        f = open(targetfile, "wb")
+        DATA = "Contents of foo.txt.\n"
+        f.write(DATA)
+        f.close()
+        d.addCallback(lambda ign:
+                      self.run_cli("add", serverdir,
+                                   "exec", incomingdir, "cat", "foo.txt"))
+        def _check_add((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            lines = out.splitlines()
+            self.failUnless(lines[1].startswith("FURL is pb://"))
+            self.furl = lines[1].split()[-1]
+            f = open(furlfile,"w")
+            f.write(self.furl+"\n")
+            f.close()
+        d.addCallback(_check_add)
+        stdout = StringIO()
+        def _start_server(ign):
+            ap = server.AppServer(serverdir, stdout)
+            ap.setServiceParent(self.s)
+            return ap.when_ready()
+        d.addCallback(_start_server)
+
+        d.addCallback(lambda _ign: self.run_client("--furl", self.furl, "exec"))
+        def _check_client((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            self.failUnlessEqual(out, DATA)
+            self.failUnlessEqual(err.strip(), "")
+        d.addCallback(_check_client)
+
+        d.addCallback(lambda _ign: os.unlink(targetfile))
+        d.addCallback(lambda _ign: self.run_client("--furl", self.furl, "exec"))
+        def _check_client2((rc,out,err)):
+            self.failIfEqual(rc, 0)
+            self.failUnlessEqual(out, "")
+            self.failUnlessEqual(err.strip(), "cat: foo.txt: No such file or directory")
+        d.addCallback(_check_client2)
+
         return d

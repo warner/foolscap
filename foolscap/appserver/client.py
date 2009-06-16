@@ -40,11 +40,8 @@ class Exec(Referenceable, Protocol):
         self.done = False
         self.d = defer.Deferred()
         rref.notifyOnDisconnect(self._done, 3)
-        self.buffered_stdin = []
-        self.stdin_closed = False
         self.stdin_writer = None
-        stdio = options.stdio
-        stdio(self)
+        self.stdio = options.stdio
         self.stdout = options.stdout
         self.stderr = options.stderr
         d = rref.callRemote("execute", self)
@@ -52,34 +49,20 @@ class Exec(Referenceable, Protocol):
         d.addErrback(self._err)
         return self.d
 
-    #def makeConnection(self):
-    #    pass
     def dataReceived(self, data):
-        # this is from stdin
-        if self.stdin_writer is None:
-            self.buffered_stdin.append(data)
-        elif self.stdin_writer is False:
-            pass # discard
-        else:
-            self.stdin_writer.callRemoteOnly("feed_stdin", data)
+        # this is from stdin. It shouldn't be called until after _started
+        # sets up stdio and self.stdin_writer
+        self.stdin_writer.callRemoteOnly("feed_stdin", data)
 
     def connectionLost(self, reason):
-        self.stdin_closed = True
-        if self.stdin_writer:
-            self.stdin_writer.callRemoteOnly("close_stdin")
+        # likewise, this won't be called unless _started wanted stdin
+        self.stdin_writer.callRemoteOnly("close_stdin")
 
     def _started(self, stdin_writer):
         if stdin_writer:
             self.stdin_writer = stdin_writer # rref
-            if self.buffered_stdin:
-                self.stdin_writer.callRemoteOnly("feed_stdin",
-                                                 "".join(self.buffered_stdin))
-            if self.stdin_closed:
-                self.stdin_writer.callRemoteOnly("close_stdin")
-        else:
-            # they don't want our stdin
-            self.stdin_writer = False
-        del self.buffered_stdin
+            self.stdio(self) # start accepting stdin
+        # otherwise they don't want our stdin, so leave stdin_writer=None
 
     def remote_stdout(self, data):
         self.stdout.write(data)
@@ -143,7 +126,39 @@ dispatch_table = {
     "exec": Exec,
     }
 
-def run_cli(argv=None, run_by_human=True, stdio=StandardIO):
+
+def parse_options(command_name, argv, stdio, stdout, stderr):
+    try:
+        config = ClientOptions()
+        config.stdout = stdout
+        config.stderr = stderr
+        config.parseOptions(argv)
+
+        config.subOptions.stdio = stdio # for streaming input
+        config.subOptions.stdout = stdout
+        config.subOptions.stderr = stderr
+
+    except usage.error, e:
+        print >>stderr, "%s:  %s" % (command_name, e)
+        print >>stderr
+        c = getattr(config, 'subOptions', config)
+        print >>stderr, str(c)
+        sys.exit(1)
+
+    return config
+
+def run_command(config):
+    c = dispatch_table[config.subCommand]()
+    tub = Tub()
+    d = defer.succeed(None)
+    d.addCallback(lambda _ign: tub.startService())
+    d.addCallback(lambda _ign: tub.getReference(config.furl))
+    d.addCallback(c.run, config.subOptions) # might provide tub here
+    d.addBoth(lambda res: tub.stopService().addCallback(lambda _ign: res))
+    return d
+
+
+def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
     if run_by_human:
         stdout = sys.stdout
         stderr = sys.stderr
@@ -187,34 +202,3 @@ def run_cli(argv=None, run_by_human=True, stdio=StandardIO):
             return (rc, stdout.getvalue(), stderr.getvalue())
         d.addCallback(done)
         return d
-
-
-def parse_options(command_name, argv, stdio, stdout, stderr):
-    try:
-        config = ClientOptions()
-        config.stdout = stdout
-        config.stderr = stderr
-        config.parseOptions(argv)
-
-        config.subOptions.stdio = stdio # for streaming input
-        config.subOptions.stdout = stdout
-        config.subOptions.stderr = stderr
-
-    except usage.error, e:
-        print >>stderr, "%s:  %s" % (command_name, e)
-        print >>stderr
-        c = getattr(config, 'subOptions', config)
-        print >>stderr, str(c)
-        sys.exit(1)
-
-    return config
-
-def run_command(config):
-    c = dispatch_table[config.subCommand]()
-    tub = Tub()
-    d = defer.succeed(None)
-    d.addCallback(lambda _ign: tub.startService())
-    d.addCallback(lambda _ign: tub.getReference(config.furl))
-    d.addCallback(c.run, config.subOptions) # might provide tub here
-    d.addBoth(lambda res: tub.stopService().addCallback(lambda _ign: res))
-    return d

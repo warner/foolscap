@@ -1,5 +1,14 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/cli.py: move flappclient code out of cli.py ..
+	* foolscap/appserver/client.py (run_flappclient): .. into client.py
+	(Exec.dataReceived): don't spin up StandardIO until after the
+	server tells us they want stdin. This also means we can stop
+	buffering stdin.
+	* foolscap/test/test_appserver.py: match client.run_flappclient
+	change
+	(RunCommand.test_run): first test of run-command/exec code
+
 	* foolscap/broker.py (Broker.doNextCall): don't run any calls
 	after we've been shut down. This fixes a racy bug in which two
 	calls arrive and get queued in the same input hunk, the first one

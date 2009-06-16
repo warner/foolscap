@@ -484,7 +484,3 @@ def run_flappserver(argv=None, run_by_human=True):
             return r
         else:
             return (r, so.stdout.getvalue(), so.stderr.getvalue())
-
-def run_flappclient(argv=None, run_by_human=True):
-    from foolscap.appserver import client
-    return client.run_cli(argv, run_by_human)
