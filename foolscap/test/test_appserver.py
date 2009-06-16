@@ -5,7 +5,7 @@ from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.application import service
 
-from foolscap.api import Tub
+from foolscap.api import Tub, eventually
 from foolscap.appserver import cli, server, client
 from foolscap.test.common import ShouldFailMixin, crypto_available, StallMixin
 
@@ -472,13 +472,38 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
                                 stdio=None)
         return d # fires with (rc,out,err)
 
+    def run_client_with_stdin(self, stdin, *args):
+        argv = ["flappclient"] + list(args)
+        def my_stdio(proto):
+            eventually(proto.connectionMade)
+            eventually(proto.dataReceived, stdin)
+            eventually(proto.connectionLost, None)
+        d = defer.maybeDeferred(client.run_flappclient,
+                                argv=argv, run_by_human=False,
+                                stdio=my_stdio)
+        return d # fires with (rc,out,err)
+
+    def add(self, serverdir, *args):
+        d = self.run_cli("add", serverdir, *args)
+        def _get_furl((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            lines = out.splitlines()
+            self.failUnless(lines[1].startswith("FURL is pb://"))
+            furl = lines[1].split()[-1]
+            return furl
+        d.addCallback(_get_furl)
+        return d
+
+    def stash_furl(self, furl, which):
+        self.furls[which] = furl
+
     def test_run(self):
         basedir = "appserver/RunCommand/run"
         os.makedirs(basedir)
         serverdir = os.path.join(basedir, "fl")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
-        furlfile = os.path.join(basedir, "furlfile")
+        self.furls = {}
 
         d = self.run_cli("create", serverdir)
         def _check((rc,out,err)):
@@ -486,22 +511,21 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
             self.failUnless(os.path.isdir(serverdir))
         d.addCallback(_check)
         targetfile = os.path.join(incomingdir, "foo.txt")
-        f = open(targetfile, "wb")
         DATA = "Contents of foo.txt.\n"
-        f.write(DATA)
-        f.close()
-        d.addCallback(lambda ign:
-                      self.run_cli("add", serverdir,
-                                   "exec", incomingdir, "cat", "foo.txt"))
-        def _check_add((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            lines = out.splitlines()
-            self.failUnless(lines[1].startswith("FURL is pb://"))
-            self.furl = lines[1].split()[-1]
-            f = open(furlfile,"w")
-            f.write(self.furl+"\n")
+
+        def _populate_foo(ign):
+            f = open(targetfile, "wb")
+            f.write(DATA)
             f.close()
-        d.addCallback(_check_add)
+        d.addCallback(_populate_foo)
+
+        d.addCallback(lambda ign:
+                      self.add(serverdir,
+                               "exec",
+                               "--no-log-stdin", "--log-stdout",
+                               "--no-log-stderr",
+                               incomingdir, "cat", "foo.txt"))
+        d.addCallback(self.stash_furl, 0)
         stdout = StringIO()
         def _start_server(ign):
             ap = server.AppServer(serverdir, stdout)
@@ -509,19 +533,102 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
             return ap.when_ready()
         d.addCallback(_start_server)
 
-        d.addCallback(lambda _ign: self.run_client("--furl", self.furl, "exec"))
+        d.addCallback(lambda _ign:
+                      self.run_client("--furl", self.furls[0], "exec"))
         def _check_client((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnlessEqual(out, DATA)
             self.failUnlessEqual(err.strip(), "")
         d.addCallback(_check_client)
 
-        d.addCallback(lambda _ign: os.unlink(targetfile))
-        d.addCallback(lambda _ign: self.run_client("--furl", self.furl, "exec"))
+        def _delete_foo(ign):
+            os.unlink(targetfile)
+        d.addCallback(_delete_foo)
+
+        d.addCallback(lambda _ign:
+                      self.run_client("--furl", self.furls[0], "exec"))
         def _check_client2((rc,out,err)):
             self.failIfEqual(rc, 0)
             self.failUnlessEqual(out, "")
-            self.failUnlessEqual(err.strip(), "cat: foo.txt: No such file or directory")
+            self.failUnlessEqual(err.strip(),
+                                 "cat: foo.txt: No such file or directory")
         d.addCallback(_check_client2)
 
+        d.addCallback(lambda ign:
+                      self.add(serverdir,
+                               "exec", "--accept-stdin",
+                               "--log-stdin", "--no-log-stdout", "--log-stderr",
+                               incomingdir,
+                               "dd", "of=bar.txt"))
+        d.addCallback(self.stash_furl, 1)
+
+        barfile = os.path.join(incomingdir, "bar.txt")
+        DATA2 = "Pass this\ninto stdin\n"
+        d.addCallback(lambda _ign:
+                      self.run_client_with_stdin(DATA2,
+                                                 "--furl", self.furls[1], "exec"))
+        def _check_client3((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            bardata = open(barfile,"rb").read()
+            self.failUnlessEqual(bardata, DATA2)
+            # these checks depend upon /bin/dd behaving consistently
+            self.failUnlessEqual(out, "")
+            self.failUnlessIn("records in", err.strip())
+        d.addCallback(_check_client3)
+
+        # exercise some more options
+
+        d.addCallback(lambda ign:
+                      self.add(serverdir,
+                               "exec",
+                               "--no-stdin", "--send-stdout", "--no-stderr",
+                               incomingdir,
+                               "cat", "foo.txt"))
+        d.addCallback(self.stash_furl, 2)
+
+        d.addCallback(lambda ign:
+                      self.add(serverdir,
+                               "exec",
+                               "--no-stdin", "--no-stdout", "--send-stderr",
+                               incomingdir,
+                               "cat", "foo.txt"))
+        d.addCallback(self.stash_furl, 3)
+
+        d.addCallback(_populate_foo)
+            
+        d.addCallback(lambda _ign:
+                      self.run_client("--furl", self.furls[2], "exec"))
+        def _check_client4((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            self.failUnlessEqual(out, DATA)
+            self.failUnlessEqual(err, "")
+        d.addCallback(_check_client4)
+
+        d.addCallback(lambda _ign:
+                      self.run_client("--furl", self.furls[3], "exec"))
+        def _check_client5((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            self.failUnlessEqual(out, "") # --no-stdout
+            self.failUnlessEqual(err, "")
+        d.addCallback(_check_client5)
+
+        d.addCallback(_delete_foo)
+        d.addCallback(lambda _ign:
+                      self.run_client("--furl", self.furls[2], "exec"))
+        def _check_client6((rc,out,err)):
+            self.failIfEqual(rc, 0)
+            self.failUnlessEqual(out, "")
+            self.failUnlessEqual(err, "") # --no-stderr
+        d.addCallback(_check_client6)
+
+        d.addCallback(lambda _ign:
+                      self.run_client("--furl", self.furls[3], "exec"))
+        def _check_client7((rc,out,err)):
+            self.failIfEqual(rc, 0)
+            self.failUnlessEqual(out, "") # --no-stdout
+            self.failUnlessEqual(err.strip(),
+                                 "cat: foo.txt: No such file or directory")
+        d.addCallback(_check_client7)
+
         return d
+    

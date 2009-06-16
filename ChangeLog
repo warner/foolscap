@@ -1,5 +1,7 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_appserver.py (RunCommand): improve coverage
+
 	* foolscap/appserver/cli.py: move flappclient code out of cli.py ..
 	* foolscap/appserver/client.py (run_flappclient): .. into client.py
 	(Exec.dataReceived): don't spin up StandardIO until after the
