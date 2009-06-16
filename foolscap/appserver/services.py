@@ -115,7 +115,9 @@ class FileUploader(service.MultiService, Referenceable):
             if runtime.platform.isWindows() and targetfile.exists():
                 os.unlink(targetfile.path)
             tmpfile.moveTo(targetfile)
-            targetfile.chmod(self.options["mode"])
+            #targetfile.chmod(self.options["mode"])
+            # older Twisteds do not have FilePath.chmod
+            os.chmod(targetfile.path, self.options["mode"])
             return None
         def _err(f):
             f.close()
