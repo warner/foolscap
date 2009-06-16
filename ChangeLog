@@ -1,3 +1,12 @@
+2009-06-16  Brian Warner  <warner@lothar.com>
+
+	* foolscap/appserver/services.py (Exec): make run-command work,
+	including optional stdin/stdout/stderr, logging of each, and
+	return of exitcode. Still needs unit tests and a better name.
+	* foolscap/appserver/client.py (Exec): same
+	(parse_options): pass a 'stdio' object in separately, to let
+	unit tests control stdin
+
 2009-06-15  Brian Warner  <warner@lothar.com>
 
 	* foolscap/appserver/services.py (FileUploader.remote_putfile):

@@ -1,8 +1,8 @@
 
 import os
-from twisted.python import usage, runtime, filepath
+from twisted.python import usage, runtime, filepath, log
 from twisted.application import service
-from twisted.internet import defer
+from twisted.internet import defer, reactor, protocol
 from foolscap.api import Referenceable
 
 class BadServiceArguments(Exception):
@@ -132,17 +132,103 @@ class ExecOptions(usage.Options):
     optFlags = [
         ("accept-stdin", None, "allow client to write to COMMAND stdin"),
         ("no-stdin", None, "do not write to COMMAND stdin [default]"),
+        ("log-stdin", None, "log incoming stdin (to twistd.log)"),
+        ("no-log-stdin", None, "do not log incoming stdin [default]"),
+
         ("send-stdout", None, "send COMMAND stdout to client [default]"),
         ("no-stdout", None, "do not send COMMAND stdout to client"),
+        ("log-stdout", None, "log outbound stdout (to twistd.log)"),
+        ("no-log-stdout", None, "do not log oubound stdout [default]"),
+
         ("send-stderr", None, "send COMMAND stderr to client [default]"),
         ("no-stderr", None, "do not send COMMAND stderr to client"),
+        ("log-stderr", None, "log outbound stderr (to twistd.log) [default]"),
+        ("no-log-stderr", None, "do not log outbound stderr"),
         ]
     optParameters = [
         ]
 
+    accept_stdin = False
+    def opt_accept_stdin(self):
+        self.accept_stdin = True
+    def opt_no_stdin(self):
+        self.accept_stdin = False
+
+    send_stdout = True
+    def opt_send_stdout(self):
+        self.send_stdout = True
+    def opt_no_stdout(self):
+        self.send_stdout = False
+
+    send_stderr = True
+    def opt_send_stderr(self):
+        self.send_stderr = True
+    def opt_no_stderr(self):
+        self.send_stderr = False
+
+    log_stdin = False
+    def opt_log_stdin(self):
+        self.log_stdin = True
+    def opt_no_log_stdin(self):
+        self.log_stdin = False
+
+    log_stdout = False
+    def opt_log_stdout(self):
+        self.log_stdout = True
+    def opt_no_log_stdout(self):
+        self.log_stdout = False
+
+    log_stderr = True
+    def opt_log_stderr(self):
+        self.log_stderr = True
+    def opt_no_log_stderr(self):
+        self.log_stderr = False
+
     def parseArgs(self, targetdir, *command_argv):
         self.targetdir = targetdir
         self.command_argv = command_argv
+
+class CommandPP(protocol.ProcessProtocol):
+    def __init__(self, outpipe, errpipe, watcher, log_stdout, log_stderr):
+        self.outpipe = outpipe
+        self.errpipe = errpipe
+        self.watcher = watcher
+        self.log_stdout = log_stdout
+        self.log_stderr = log_stderr
+    def outReceived(self, data):
+        if self.outpipe:
+            self.outpipe.callRemoteOnly("stdout", data)
+        if self.log_stdout:
+            sent = {True:"sent", False:"not sent"}[bool(self.outpipe)]
+            log.msg("stdout (%s): %r" % (sent, data))
+    def errReceived(self, data):
+        if self.errpipe:
+            self.errpipe.callRemoteOnly("stderr", data)
+        if self.log_stderr:
+            sent = {True:"sent", False:"not sent"}[bool(self.errpipe)]
+            log.msg("stderr (%s): %r" % (sent, data))
+
+    def processEnded(self, reason):
+        e = reason.value
+        code = e.exitCode
+        log.msg("process ended (signal=%s, rc=%s)" % (e.signal, code))
+        self.watcher.callRemoteOnly("done", e.signal, code)
+
+class Command(Referenceable):
+    def __init__(self, process, log_stdin):
+        self.process = process
+        self.log_stdin = log_stdin
+        self.closed = False
+    def remote_feed_stdin(self, data):
+        if self.log_stdin:
+            log.msg("stdin: %r" % data)
+        self.process.write(data)
+    def remote_close_stdin(self):
+        if not self.closed:
+            self.closed = True
+            if self.log_stdin:
+                log.msg("stdin closed")
+            self.process.closeStdin()
 
 class Exec(service.MultiService, Referenceable):
     def __init__(self, basedir, tub, options):
@@ -150,6 +236,31 @@ class Exec(service.MultiService, Referenceable):
         self.basedir = basedir
         self.tub = tub
         self.options = options
+
+    def remote_execute(self, watcher):
+        o = self.options
+        outpipe = None
+        if o.send_stdout:
+            outpipe = watcher
+        errpipe = None
+        if o.send_stderr:
+            errpipe = watcher
+        pp = CommandPP(outpipe, errpipe, watcher, o.log_stdout, o.log_stderr)
+
+        # spawnProcess uses os.execvpe, which will search your $PATH
+        executable = o.command_argv[0]
+
+        log.msg("command started in dir %s: %s" % (o.targetdir, o.command_argv))
+        p = reactor.spawnProcess(pp,
+                                 executable,
+                                 o.command_argv,
+                                 os.environ,
+                                 o.targetdir)
+        if o.accept_stdin:
+            c = Command(p, o.log_stdin)
+            watcher.notifyOnDisconnect(c.remote_close_stdin)
+            return c
+        return None
 
 all_services = {
     "file-uploader": (FileUploaderOptions, FileUploader),

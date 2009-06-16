@@ -31,9 +31,73 @@ class Upload(Referenceable):
 
 class ExecOptions(usage.Options):
     pass
-class Exec:
+
+from twisted.internet.stdio import StandardIO
+from twisted.internet.protocol import Protocol
+
+class Exec(Referenceable, Protocol):
     def run(self, rref, options):
-        pass
+        self.done = False
+        self.d = defer.Deferred()
+        rref.notifyOnDisconnect(self._done, 3)
+        self.buffered_stdin = []
+        self.stdin_closed = False
+        self.stdin_writer = None
+        stdio = options.stdio
+        stdio(self)
+        self.stdout = options.stdout
+        self.stderr = options.stderr
+        d = rref.callRemote("execute", self)
+        d.addCallback(self._started)
+        d.addErrback(self._err)
+        return self.d
+
+    #def makeConnection(self):
+    #    pass
+    def dataReceived(self, data):
+        # this is from stdin
+        if self.stdin_writer is None:
+            self.buffered_stdin.append(data)
+        elif self.stdin_writer is False:
+            pass # discard
+        else:
+            self.stdin_writer.callRemoteOnly("feed_stdin", data)
+
+    def connectionLost(self, reason):
+        self.stdin_closed = True
+        if self.stdin_writer:
+            self.stdin_writer.callRemoteOnly("close_stdin")
+
+    def _started(self, stdin_writer):
+        if stdin_writer:
+            self.stdin_writer = stdin_writer # rref
+            if self.buffered_stdin:
+                self.stdin_writer.callRemoteOnly("feed_stdin",
+                                                 "".join(self.buffered_stdin))
+            if self.stdin_closed:
+                self.stdin_writer.callRemoteOnly("close_stdin")
+        else:
+            # they don't want our stdin
+            self.stdin_writer = False
+        del self.buffered_stdin
+
+    def remote_stdout(self, data):
+        self.stdout.write(data)
+        self.stdout.flush()
+    def remote_stderr(self, data):
+        self.stderr.write(data)
+        self.stderr.flush()
+    def remote_done(self, signal, exitcode):
+        if signal:
+            self._done(127)
+        else:
+            self._done(exitcode)
+    def _err(self, f):
+        self._done(f)
+    def _done(self, res):
+        if not self.done:
+            self.done = True
+            self.d.callback(res)
 
 class ClientOptions(usage.Options):
     synopsis = "Usage: flappclient [--furl=|--furlfile=] (upload|exec)"
@@ -79,7 +143,7 @@ dispatch_table = {
     "exec": Exec,
     }
 
-def run_cli(argv=None, run_by_human=True):
+def run_cli(argv=None, run_by_human=True, stdio=StandardIO):
     if run_by_human:
         stdout = sys.stdout
         stderr = sys.stderr
@@ -93,7 +157,7 @@ def run_cli(argv=None, run_by_human=True):
 
     d = fireEventually()
     d.addCallback(lambda _ign: parse_options(command_name, argv,
-                                             stdout, stderr))
+                                             stdio, stdout, stderr))
     d.addCallback(run_command)
 
     if run_by_human:
@@ -125,13 +189,14 @@ def run_cli(argv=None, run_by_human=True):
         return d
 
 
-def parse_options(command_name, argv, stdout, stderr):
+def parse_options(command_name, argv, stdio, stdout, stderr):
     try:
         config = ClientOptions()
         config.stdout = stdout
         config.stderr = stderr
         config.parseOptions(argv)
 
+        config.subOptions.stdio = stdio # for streaming input
         config.subOptions.stdout = stdout
         config.subOptions.stderr = stderr
 
