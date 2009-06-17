@@ -1,5 +1,102 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.4.2 (16 Jun 2009)
+
+** Compatibility
+
+Same as 0.4.1
+
+** the Foolscap Application Server
+
+The big new feature in this release is the "Foolscap Application Server".
+This is both a demo of what you can do with Foolscap, and an easy way to
+deploy a few simple services that run over secure connections. You create and
+start a "flappserver" on one machine, and then use the new "flappclient" on
+the other side. The server can contain multiple services, each with a
+separate FURL. You give the client a FURL for a specific services, it
+connects, does a job, and shuts down.
+
+See doc/flappserver.xhtml for details.
+
+Two service types are provided in this release. The first is a simple
+file-uploader: the holder of the FURL gets to upload arbitrary files into a
+specific target directory, and nowhere else. The second is a pre-configured
+command runner: the service is configured with a shell command, and the
+client gets to make it run (but doesn't get to influence anything about what
+gets run). The run-command service defaults to sending stdout/stderr/exitcode
+to the client program, which will behave as if it were the command being run
+(stdout and stderr appear at right time, and it exits with the same
+exitcode). The service can be configured to accept stdin, or to turn off
+stdout or stderr. The service always runs in a preconfigured working
+directory.
+
+To do this with SSH, you'd need to create a new keypair, then set up an
+authorized_keys entry to limit that pubkey to a single command, and hope that
+environment variables and the working directory don't cause any surprises.
+Implementing the fixed-directory file-uploader would probably require a
+specialized helper program.
+
+The flappserver provides an easy-to-configure capability-based replacement
+those sorts of SSH setups. The first use-case is to allow buildslaves to
+upload newly-created debian packages to a central repository and then trigger
+a package-index rebuild script. By using FURLs instead of raw SSH keys, the
+buildslaves will be unable to affect any .debs in other directories, or any
+other files on the repository host, nor will they be able to run arbitrary
+commands on that host. By storing the FURLs in a file and using the
+--furlfile argument to "flappclient", a buildbot transcript of the upload
+step will not leak the upload authority.
+
+** new RemoteReference APIs
+
+RemoteReference now features two new methods. rref.isConnected() returns a
+boolean, True if the remote connection is currently live, False if it has
+been lost. This is an immediate form of the rref.notifyOnDisconnect()
+callback-registration mechanism, and can make certain types of
+publish-subscribe code easier to write.
+
+
+The second is rref.getLocationHints(), which returns a list of location hints
+as advertised by the host Tub. Most hints are a ("ipv4",host,portnum) tuple,
+but other types may be defined in the future. Note that this is derived from
+the FURL that each Tub sends with its my-reference sequence (i.e. it is
+entirely controlled by the Tub in which that Referenceable lives), so
+getLocationHints() is quite distinct from rref.getPeer() (which returns an
+IPv4Address or LoopbackAddress instance describing the other end of the
+actual network connection). getLocationHints() indicates what the other Tub
+wants you to use for new connections, getPeer() indicates what was used for
+the existing connection (which might not accept new connections due to NAT or
+proxy issues).
+
+getLocationHints() is meant to make it easier to write connection-status
+display code, for example in a server which holds connections to a number of
+peers. A status web page can loop over the peer RemoteReferences and display
+location information for each one without needing to look deep inside the
+hidden RemoteReferenceTracker instance to find it.
+
+** giving up on resource-consumtion defenses
+
+Ticket #127 contains more detail, but beginning with this release, Foolscap
+will be slowly removing the code that attempted to prevent memory-exhaustion
+attacks. Doing this in a single process is just too hard, and the limits that
+were enforced provided more problems than protection. To this end, an
+internal 200-byte limit on FURL length (applied in Gifts) has been removed.
+Later releases will remove more code, hopefully simplifying the deserization
+path.
+
+** other bugfixes
+
+Previous releases would throw an immediate exception when Tub.getReference()
+or Tub.connectTo() was called with an unreachable FURL (one with a corrupted
+or empty set of location hints). In code which walks a list of FURLs and
+tries to initiate connections to all of them, this synchronous exception
+would bypass all FURLs beyond the troublesome one.
+
+This has been improved: Tub.getReference() now always returns a Deferred,
+even if the connection is doomed to fail because of a bad FURL. These
+problems are now indicated by a Deferred that errbacks instead of a
+synchronous exception.
+
+
 * Release 0.4.1 (22 May 2009)
 
 ** Compatibility
