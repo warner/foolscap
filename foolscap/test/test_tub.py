@@ -11,7 +11,7 @@ from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \
      crypto_available, GoodEnoughTub, StallMixin
-from foolscap.tokens import WrongTubIdError, PBError
+from foolscap.tokens import WrongTubIdError, PBError, NoLocationHintsError
 
 # create this data with:
 #  t = Tub()
@@ -416,3 +416,81 @@ class CancelPendingDeliveries(unittest.TestCase, StallMixin):
         # let remote_two do its log.err before we move on to the next test
         d.addCallback(self.stall, 1.0)
         return d
+
+class BadLocationFURL(unittest.TestCase):
+    def setUp(self):
+        self.s = service.MultiService()
+        self.s.startService()
+
+    def tearDown(self):
+        d = self.s.stopService()
+        d.addCallback(flushEventualQueue)
+        return d
+
+    def test_empty_location(self):
+        # bug #129: a FURL with no location hints causes a synchronous
+        # exception in Tub.getReference(), instead of an errback'ed Deferred.
+
+        tubA = GoodEnoughTub()
+        tubA.setServiceParent(self.s)
+        tubB = GoodEnoughTub()
+        tubB.setServiceParent(self.s)
+
+        tubB.setLocation("")
+        r = Receiver(tubB)
+        furl = tubB.registerReference(r)
+        # the buggy behavior is that the following call raises an exception
+        d = tubA.getReference(furl)
+        # whereas it ought to return a Deferred
+        self.failUnless(isinstance(d, defer.Deferred))
+        def _check(f):
+            self.failUnless(isinstance(f, failure.Failure), f)
+            self.failUnless(f.check(ValueError), f) # unparseable FURL
+        d.addBoth(_check)
+        return d
+
+    def test_empty_location2(self):
+        tubA = GoodEnoughTub()
+        tubA.setServiceParent(self.s)
+        tubB = GoodEnoughTub()
+        tubB.setServiceParent(self.s)
+
+        # "," is two empty locations. This passes the regexp, unlike "".
+        tubB.setLocation(",")
+        r = Receiver(tubB)
+        furl = tubB.registerReference(r)
+        # the buggy behavior is that the following call raises an exception
+        d = tubA.getReference(furl)
+        # whereas it ought to return a Deferred
+        self.failUnless(isinstance(d, defer.Deferred))
+        def _check(f):
+            self.failUnless(isinstance(f, failure.Failure), f)
+            self.failUnless(f.check(NoLocationHintsError), f) # unparseable FURL
+        d.addBoth(_check)
+        return d
+
+    def test_unrouteable(self):
+        # bug #129: a FURL with no location hints causes a synchronous
+        # exception in Tub.getReference(), instead of an errback'ed Deferred.
+
+        tubA = GoodEnoughTub()
+        tubA.setServiceParent(self.s)
+        tubB = GoodEnoughTub()
+        tubB.setServiceParent(self.s)
+
+        # "-unrouteable-" is interpreted as a "location hint format from the
+        # future", which we're supposed to ignore, and are thus left with no
+        # hints
+        tubB.setLocation("-unrouteable-")
+        r = Receiver(tubB)
+        furl = tubB.registerReference(r)
+        # the buggy behavior is that the following call raises an exception
+        d = tubA.getReference(furl)
+        # whereas it ought to return a Deferred
+        self.failUnless(isinstance(d, defer.Deferred))
+        def _check(f):
+            self.failUnless(isinstance(f, failure.Failure), f)
+            self.failUnless(f.check(NoLocationHintsError), f) # unparseable FURL
+        d.addBoth(_check)
+        return d
+    

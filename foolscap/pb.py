@@ -15,7 +15,7 @@ from foolscap.reconnector import Reconnector
 from foolscap.logging import log as flog
 from foolscap.logging import log
 from foolscap.logging import publish as flog_publish
-from foolscap.logging.log import WEIRD, UNUSUAL
+from foolscap.logging.log import UNUSUAL
 
 crypto_available = False
 try:
@@ -585,20 +585,10 @@ class Tub(service.MultiService):
         assert self.running
         self._activeConnectors.append(c)
     def connectorFinished(self, c):
-        if c not in self._activeConnectors:
-            # TODO: I've seen this happen, but I can't figure out how it
-            # could possibly happen. Log and ignore rather than exploding
-            # when we try to do .remove, since this whole connector-tracking
-            # thing is mainly for the benefit of the unit tests (applications
-            # which never shut down a Tub aren't going to care), and it is
-            # more important to let application code run normally than to
-            # force an error here.
-            self.log("Tub.connectorFinished: WEIRD, %s is not in %s"
-                     % (c, self._activeConnectors), level=WEIRD)
-            return
-        self._activeConnectors.remove(c)
-        if not self.running and not self._activeConnectors:
-            self._allConnectorsAreFinished.fire(self)
+        if c in self._activeConnectors:
+            self._activeConnectors.remove(c)
+            if not self.running and not self._activeConnectors:
+                self._allConnectorsAreFinished.fire(self)
 
     def startService(self):
         service.MultiService.startService(self)
@@ -833,9 +823,13 @@ class Tub(service.MultiService):
         The Tub must be running (i.e. Tub.startService()) when this is
         invoked. Future releases may relax this requirement.
 
-        @return: a Deferred that fires with the RemoteReference
+        @return: a Deferred that fires with the RemoteReference. Any failures
+        are returned asynchronously.
         """
 
+        return defer.maybeDeferred(self._getReference, sturdyOrURL)
+
+    def _getReference(self, sturdyOrURL):
         if isinstance(sturdyOrURL, SturdyRef):
             sturdy = sturdyOrURL
         else:

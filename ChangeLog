@@ -1,5 +1,25 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (TubConnector.connect): if we have no
+	location hints, set self.failureReason so we can error out
+	cleanly. Closes #129.
+	* foolscap/tokens.py (NoLocationHintsError): new exception for
+	this purpose
+	* foolscap/negotiate.py (TubConnector.failed): call
+	tub.connectorFinished() too, so any pending Tub.stopService can be
+	retired.
+	* foolscap/pb.py (Tub.getReference): wrap in a maybeDeferred, so
+	that unparseable FURLs give us errbacks instead of synchronous
+	exceptions. This is the other half of #129.
+	(Tub.connectorFinished): stop complaining (at log.WEIRD) if the
+	connector wasn't in our table. I don't know what was causing this,
+	and I don't really care. Closes #81.
+	* foolscap/test/test_tub.py (BadLocationFURL): test #129 stuff
+
+	* foolscap/pb.py (Tub.getReference): always return a Deferred,
+	even if given an unparseable FURL. Addresses #129.
+	* foolscap/test/test_tub.py (NoLocationFURL): test it
+
 	* foolscap/appserver/client.py (UploadFile): accept multiple files
 	* foolscap/test/test_appserver.py (Upload.test_run): test it
 	* doc/flappserver.xhtml: update example to match

@@ -131,6 +131,9 @@ class WrongNameError(Exception):
 class NoLocationError(Exception):
     """Tub.setLocation() must be called first"""
 
+class NoLocationHintsError(Exception):
+    """We cannot make a connection without some location hints"""
+
 class ISlicer(Interface):
     """I know how to slice objects into tokens."""
 

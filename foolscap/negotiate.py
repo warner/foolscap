@@ -6,7 +6,7 @@ from twisted.internet import protocol, reactor
 
 from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
-from foolscap.tokens import SIZE_LIMIT, ERROR, \
+from foolscap.tokens import SIZE_LIMIT, ERROR, NoLocationHintsError, \
      BananaError, NegotiationError, RemoteNegotiationError
 from foolscap.ipb import DeadReferenceError
 from foolscap.banana import int2b128
@@ -1320,6 +1320,11 @@ class TubConnector(object):
         the parent Tub's brokerAttached() method, our us calling the Tub's
         connectionFailed() method."""
         self.tub.connectorStarted(self)
+        if not self.remainingLocations:
+            # well, that's going to make it difficult. connectToAll() will
+            # pass through to checkForFailure(), which will notice our lack
+            # of options and deliver this failureReason to the caller.
+            self.failureReason = Failure(NoLocationHintsError())
         timeout = self.tub.options.get('connect_timeout',
                                        self.CONNECTION_TIMEOUT)
         self.timer = reactor.callLater(timeout, self.connectionTimedOut)
@@ -1451,6 +1456,7 @@ class TubConnector(object):
         self.stopConnectionTimer()
         self.active = False
         self.tub.connectionFailed(self.target, self.failureReason)
+        self.tub.connectorFinished(self)
 
     def checkForIdle(self):
         if self.remainingLocations:
