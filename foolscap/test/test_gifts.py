@@ -436,7 +436,6 @@ class Bad(Base, unittest.TestCase):
         d.addCallback(lambda res: self.acarol.callRemote("set", 14))
         d.addCallback(lambda res: self.failUnlessEqual(self.carol.obj, 14))
         return d
-    test_swissnum.timeout = 10
 
     def test_tubid(self):
         self.createCharacters()
@@ -459,7 +458,6 @@ class Bad(Base, unittest.TestCase):
         d.addBoth(self.shouldFail, BananaError, "Bad.test_tubid",
                   "unknown TubID")
         return d
-    test_tubid.timeout = 10
 
     def test_location(self):
         self.createCharacters()
@@ -480,7 +478,6 @@ class Bad(Base, unittest.TestCase):
         d.addCallback(_introduce)
         d.addBoth(self.shouldFail, ConnectionRefusedError, "Bad.test_location")
         return d
-    test_location.timeout = 10
 
     def test_hang(self):
         f = protocol.Factory()
@@ -514,7 +511,6 @@ class Bad(Base, unittest.TestCase):
             return d1
         d.addBoth(_stop_listening)
         return d
-    test_hang.timeout = 10
 
 
     def testReturn_swissnum(self):
@@ -535,7 +531,6 @@ class Bad(Base, unittest.TestCase):
         d.addCallback(lambda res: self.abob.callRemote("set", 14))
         d.addCallback(lambda res: self.failUnlessEqual(self.bob.obj, 14))
         return d
-    testReturn_swissnum.timeout = 10
 
 class LongFURL(Base, unittest.TestCase):
     # make sure the old 200-byte limit on gift FURLs is gone
@@ -574,4 +569,3 @@ class LongFURL(Base, unittest.TestCase):
             self.failUnlessEqual(res, 12)
         d.addCallback(_carolCalled)
         return d
-    testGift.timeout = 10

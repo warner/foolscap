@@ -1,5 +1,9 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_gifts.py: remove all timeouts.. I think one
+	buildslave took slightly too long, which flunked the test, and
+	then screwed up every test after that point.
+
 	* setup.py (packages): add foolscap/appserver
 
 	* NEWS: update for upcoming release
