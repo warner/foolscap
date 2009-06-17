@@ -1,5 +1,7 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* setup.py (packages): add foolscap/appserver
+
 	* NEWS: update for upcoming release
 
 	* setup.py (setup_args): include flappclient as a script
