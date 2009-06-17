@@ -375,7 +375,7 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
                                                    sourcefile))
         def _check_client((rc,out,err)):
             self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out.strip(), "File uploaded")
+            self.failUnlessEqual(out.strip(), "foo.txt: uploaded")
             self.failUnlessEqual(err.strip(), "")
             fn = os.path.join(incomingdir, "foo.txt")
             self.failUnless(os.path.exists(fn))
@@ -393,7 +393,7 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
                                                    sourcefile2))
         def _check_client2((rc,out,err)):
             self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out.strip(), "File uploaded")
+            self.failUnlessEqual(out.strip(), "bar.txt: uploaded")
             self.failUnlessEqual(err.strip(), "")
             fn = os.path.join(incomingdir, "bar.txt")
             self.failUnless(os.path.exists(fn))
@@ -410,6 +410,36 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
             self.failIfEqual(rc, 0)
             self.failUnlessIn("must provide --furl or --furlfile", err.strip())
         d.addCallback(_check_client3)
+
+        sourcefile3 = os.path.join(basedir, "file3.txt")
+        f = open(sourcefile3, "wb")
+        DATA3 = "file number 3\n"
+        f.write(DATA3)
+        f.close()
+
+        sourcefile4 = os.path.join(basedir, "file4.txt")
+        f = open(sourcefile4, "wb")
+        DATA4 = "file number 4\n"
+        f.write(DATA4)
+        f.close()
+
+        d.addCallback(lambda _ign:
+                      self.run_client("--furl", self.furl, "upload-file",
+                                      sourcefile3, sourcefile4))
+        def _check_client4((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            self.failUnlessIn("file3.txt: uploaded", out)
+            self.failUnlessIn("file4.txt: uploaded", out)
+            self.failUnlessEqual(err.strip(), "")
+            fn = os.path.join(incomingdir, "file3.txt")
+            self.failUnless(os.path.exists(fn))
+            contents = open(fn,"rb").read()
+            self.failUnlessEqual(contents, DATA3)
+            fn = os.path.join(incomingdir, "file4.txt")
+            self.failUnless(os.path.exists(fn))
+            contents = open(fn,"rb").read()
+            self.failUnlessEqual(contents, DATA4)
+        d.addCallback(_check_client4)
 
         return d
     

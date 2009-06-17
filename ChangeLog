@@ -1,5 +1,9 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/client.py (UploadFile): accept multiple files
+	* foolscap/test/test_appserver.py (Upload.test_run): test it
+	* doc/flappserver.xhtml: update example to match
+
 	* doc/flappserver.xhtml: rename tools: use "upload-file" and
 	"run-command" instead of file-uploader and exe
 	* doc/foolscap/appserver/client.py: same

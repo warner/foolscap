@@ -10,23 +10,29 @@ from foolscap.api import Tub, Referenceable, fireEventually
 
 class UploadFileOptions(usage.Options):
     #synopsis = "flappclient upload SOURCEFILE"
-    def parseArgs(self, sourcefile):
-        self.sourcefile = sourcefile
+    def parseArgs(self, *sourcefiles):
+        self.sourcefiles = sourcefiles
 
-class UploadFile(Referenceable):
-    def run(self, rref, options):
-        name = os.path.basename(options.sourcefile)
-        self.f = open(options.sourcefile, "rb")
-        d = rref.callRemote("putfile", name, self)
-        d.addCallback(self._done, options)
-        return d
+class Uploader(Referenceable):
+    def run(self, rref, sourcefile, name):
+        self.f = open(sourcefile, "rb")
+        return rref.callRemote("putfile", name, self)
 
     def remote_read(self, size):
         return self.f.read(size)
 
-    def _done(self, _ignored, options):
-        print >>options.stdout, "File uploaded"
-        return 0
+class UploadFile(Referenceable):
+    def run(self, rref, options):
+        d = defer.succeed(None)
+        for sf in options.sourcefiles:
+            name = os.path.basename(sf)
+            d.addCallback(lambda _ign: Uploader().run(rref, sf, name))
+            d.addCallback(self._done, options, name)
+        d.addCallback(lambda _ign: 0)
+        return d
+
+    def _done(self, _ignored, options, name):
+        print >>options.stdout, "%s: uploaded" % name
 
 
 class RunCommandOptions(usage.Options):
