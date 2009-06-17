@@ -1,5 +1,7 @@
 2009-06-16  Brian Warner  <warner@lothar.com>
 
+	* setup.py (setup_args): include flappclient as a script
+
 	* foolscap/negotiate.py (TubConnector.connect): if we have no
 	location hints, set self.failureReason so we can error out
 	cleanly. Closes #129.
