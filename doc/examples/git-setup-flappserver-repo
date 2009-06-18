@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+'''
+add a service (to a pre-existing flappserver) that will grant FURL-based
+access to a single Git repository. Use this in conjunction with
+"git-proxy-flappclient".
+'''
+
+from twisted.python import usage
+import os
+from os.path import abspath, join, exists
+
+def probably_git_repo(repodir):
+    return exists(join(repodir, "objects")) and exists(join(repodir, "refs"))
+
+class Options(usage.Options):
+    optFlags = [
+        ("allow-push", "p", "allow client to push changes into this repository"),
+        ]
+    def parseArgs(self, serverdir, repodir):
+        serverdir = abspath(serverdir)
+        if not exists(join(serverdir, "flappserver.tac")):
+            print >>sys.stderr, "serverdir %s doesn't look like a flappserver basedir" % serverdir
+            raise usage.UsageError("SERVERDIR must be a flappserver basedir")
+        self.serverdir = serverdir
+        repodir = abspath(repodir)
+        if not probably_git_repo(repodir):
+            print >>sys.stderr, "repodir %s doesn't look like a bare git repo" % repodir
+            if probably_git_repo(join(repodir, ".git")):
+                print >>sys.stderr, "(but I see a .git subdirectory: please point me at that, or use a bare repo)"
+            raise usage.UsageError("REPODIR must be a git repository")
+        self.repodir = abspath(repodir)
+
+o = Options()
+o.parseOptions()
+
+ok = join(o.repodir, "git-daemon-export-ok")
+if not exists(ok):
+    open(ok, "w").close()
+
+comment = "allow read "
+if o["allow-push"]:
+    comment += "(and write) "
+comment += "access to the Git repository at " + o.repodir
+cmd = ["flappclient", "add", o.serverdir, "--comment", comment,
+       "run-command", "--accept-stdin", "/",
+       "git", "daemon", "--inetd", "--syslog",
+       "--interpolated-path=%s" % o.repodir,
+       ]
+if o["allow-push"]:
+    cmd.append("--enable=receive-pack")
+os.execvp(cmd[0], cmd)

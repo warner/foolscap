@@ -2,6 +2,7 @@ include ChangeLog MANIFEST.in NEWS LICENSE
 include doc/*.txt doc/*.xhtml doc/*.css doc/template.tpl
 include doc/listings/*.py
 include doc/specifications/*.xhtml
+include doc/examples/*
 include Makefile
 include misc/dapper/debian/*
 include misc/edgy/debian/*

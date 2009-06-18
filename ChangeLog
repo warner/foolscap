@@ -1,5 +1,11 @@
 2009-06-18  Brian Warner  <warner@lothar.com>
 
+	* doc/examples/git-proxy-flappclient:
+	* doc/examples/git-setup-flappserver-repo: new pair of tools to
+	run the Git remote-access protocol over a flappserver-based
+	connection
+	* MANIFEST.in: include them in the source tarball
+
 	* foolscap/_version.py: bump version between releases
 	* misc/*/debian/changelog: same
 
