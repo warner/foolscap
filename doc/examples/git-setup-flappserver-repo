@@ -43,7 +43,7 @@ comment = "allow read "
 if o["allow-push"]:
     comment += "(and write) "
 comment += "access to the Git repository at " + o.repodir
-cmd = ["flappclient", "add", o.serverdir, "--comment", comment,
+cmd = ["flappserver", "add", o.serverdir, "--comment", comment,
        "run-command", "--accept-stdin", "/",
        "git", "daemon", "--inetd", "--syslog",
        "--interpolated-path=%s" % o.repodir,
