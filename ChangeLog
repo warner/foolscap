@@ -1,3 +1,15 @@
+2009-06-19  Brian Warner  <warner@lothar.com>
+
+	* doc/flappserver.xhtml: add --umask= to "flappserver create",
+	since twisted forces it to 077 on startup, and the
+	git-proxy-flappclient system was winding up with overly
+	restrictive filemodes
+	* foolscap/appserver/cli.py (CreateOptions): same
+	* foolscap/appserver/server.py (AppServer): same
+	* foolscap/test/test_appserver.py (CLI.test_create2): test it
+
+	* doc/examples/git-setup-flappserver-repo: suggest --umask
+
 2009-06-18  Brian Warner  <warner@lothar.com>
 
 	* doc/examples/git-proxy-flappclient:

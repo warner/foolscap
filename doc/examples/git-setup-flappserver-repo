@@ -23,6 +23,8 @@ class Options(usage.Options):
         if not exists(join(serverdir, "flappserver.tac")):
             print >>sys.stderr, "serverdir %s doesn't look like a flappserver basedir" % serverdir
             raise usage.UsageError("SERVERDIR must be a flappserver basedir")
+        if not exists(join(serverdir, "umask")):
+            print >>sys.stderr, "flappserver doesn't have --umask set: consider setting it to 022, otherwise permissions on working files may be messed up"
         self.serverdir = serverdir
         repodir = abspath(repodir)
         if not probably_git_repo(repodir):

@@ -12,6 +12,11 @@ class AppServer(service.MultiService):
     def __init__(self, basedir=".", stdout=sys.stdout):
         service.MultiService.__init__(self)
         self.basedir = os.path.abspath(basedir)
+        try:
+            umask = open(os.path.join(basedir, "umask")).read().strip()
+            self.umask = eval(umask) # frequently an octal string like 0022
+        except EnvironmentError:
+            self.umask = None
         port = open(os.path.join(basedir, "port")).read().strip()
         self.tub = Tub(certFile=os.path.join(basedir, "tub.pem"))
         self.tub.listenOn(port)
@@ -28,6 +33,8 @@ class AppServer(service.MultiService):
         return self.ready_observers.whenFired()
 
     def startService(self):
+        if self.umask is not None:
+            os.umask(self.umask)
         service.MultiService.startService(self)
         d = self.setMyLocation()
         d.addBoth(self.ready_observers.fire)

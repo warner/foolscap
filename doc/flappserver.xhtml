@@ -115,6 +115,13 @@ not already exist, and nothing else should touch its contents.</p>
   it finds. If you have configured an external NAT or port forwarding for
   this server, you will need to set --location with the externally-visible
   listening port.</li>
+
+  <li><code>--umask</code>: since twistd forces the server umask to 077 at
+  startup (which means that all files created by the services you've added
+  will be unreadable by any other users), you may want to override that umask
+  by providing a value here. <code>--umask=022</code> is a good way to let
+  these files be world-readable.</li>
+
 </ul>
 
 
@@ -243,6 +250,11 @@ Server Running
 <p>This service invokes a preconfigured command in response to requests from
 <code>flappclient run-command</code>. The command is always run from
 TARGETDIR.</p>
+
+<p>Consider setting the <code>--umask=022</code> when you create the
+flappserver, otherwise COMMAND will usually be run with a more restrictive
+umask (077), and any files that are created by COMMAND will not be readable
+by other systems.</p>
 
 <p>"run-command" options:</p>
 

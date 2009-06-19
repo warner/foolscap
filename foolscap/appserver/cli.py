@@ -20,6 +20,7 @@ class CreateOptions(usage.Options):
     optParameters = [
         ("port", "p", "tcp:0", "TCP port to listen on (strports string)"),
         ("location", "l", "", "Tub location hints to use in generated FURLs. An empty location means to generate one automatically, by looking at the active network interfaces."),
+        ("umask", None, None, "set umask on startup (use 0022 to let any files created by services be world-readable"),
         ]
 
     def opt_port(self, port):
@@ -78,6 +79,11 @@ class Create:
         f = open(os.path.join(basedir, "location"), "w")
         f.write("%s\n" % options["location"])
         f.close()
+
+        if options["umask"] is not None:
+            f = open(os.path.join(basedir, "umask"), "w")
+            f.write("%s\n" % options["umask"])
+            f.close()
 
         self.server = None
         d = fireEventually(basedir)

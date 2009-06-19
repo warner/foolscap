@@ -49,7 +49,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         basedir = "appserver/CLI/create2"
         os.makedirs(basedir)
         serverdir = os.path.join(basedir, "fl")
-        d = self.run_cli("create", "--port", "tcp:0", serverdir)
+        d = self.run_cli("create", "--port","tcp:0", "--umask","022", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -58,6 +58,8 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             portnum = int(got_port[got_port.find(":")+1:])
             prefix = open(os.path.join(serverdir, "furl_prefix"), "r").read().strip()
             self.failUnless(prefix.endswith(":%d/" % portnum), prefix)
+            umask = open(os.path.join(serverdir, "umask")).read().strip()
+            self.failUnlessEqual(umask, "022")
         d.addCallback(_check)
         return d
 
