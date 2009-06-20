@@ -116,11 +116,14 @@ not already exist, and nothing else should touch its contents.</p>
   this server, you will need to set --location with the externally-visible
   listening port.</li>
 
-  <li><code>--umask</code>: since twistd forces the server umask to 077 at
-  startup (which means that all files created by the services you've added
-  will be unreadable by any other users), you may want to override that umask
-  by providing a value here. <code>--umask=022</code> is a good way to let
-  these files be world-readable.</li>
+  <li><code>--umask</code>: set the (octal) file-creation mask that the
+  server will use at runtime. When your services are invoked, any files they
+  create will have accesss-permissions (the file "mode") controlled by this
+  value. <code>flappserver create</code> will copy your current umask and use
+  it in the server unless you override it with this option.
+  <code>--umask=022</code> is a good way to let those created files be
+  world-readable, and <code>--umask=077</code> is used to make them
+  non-world-redable.</li>
 
 </ul>
 

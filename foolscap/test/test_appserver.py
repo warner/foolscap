@@ -59,7 +59,7 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             prefix = open(os.path.join(serverdir, "furl_prefix"), "r").read().strip()
             self.failUnless(prefix.endswith(":%d/" % portnum), prefix)
             umask = open(os.path.join(serverdir, "umask")).read().strip()
-            self.failUnlessEqual(umask, "022")
+            self.failUnlessEqual(umask, "0022")
         d.addCallback(_check)
         return d
 

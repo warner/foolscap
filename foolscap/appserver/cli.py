@@ -11,6 +11,11 @@ from foolscap.pb import generateSwissnumber
 from foolscap.appserver.services import build_service, BadServiceArguments
 from foolscap.appserver.server import AppServer
 
+def get_umask():
+    oldmask = os.umask(0)
+    os.umask(oldmask)
+    return oldmask
+
 class CreateOptions(usage.Options):
     synopsis = "Usage: flappserver create [options] BASEDIR"
 
@@ -20,15 +25,20 @@ class CreateOptions(usage.Options):
     optParameters = [
         ("port", "p", "tcp:0", "TCP port to listen on (strports string)"),
         ("location", "l", "", "Tub location hints to use in generated FURLs. An empty location means to generate one automatically, by looking at the active network interfaces."),
-        ("umask", None, None, "set umask on startup (use 0022 to let any files created by services be world-readable"),
+        ("umask", None, None, "(octal) file creation mask to use for the server. If not provided, the current umask (%04o) is copied." % get_umask()),
         ]
 
     def opt_port(self, port):
         assert not port.startswith("ssl:")
         self["port"] = port
+    def opt_umask(self, value):
+        self["umask"] = int(value, 8)
 
     def parseArgs(self, basedir):
         self.basedir = basedir
+    def postOptions(self):
+        if self["umask"] is None:
+            self["umask"] = get_umask()
 
 FLAPPSERVER_TACFILE = """\
 # -*- python -*-
@@ -80,10 +90,9 @@ class Create:
         f.write("%s\n" % options["location"])
         f.close()
 
-        if options["umask"] is not None:
-            f = open(os.path.join(basedir, "umask"), "w")
-            f.write("%s\n" % options["umask"])
-            f.close()
+        f = open(os.path.join(basedir, "umask"), "w")
+        f.write("%04o\n" % options["umask"])
+        f.close()
 
         self.server = None
         d = fireEventually(basedir)

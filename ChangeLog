@@ -1,3 +1,13 @@
+2009-06-20  Brian Warner  <warner@lothar.com>
+
+	* foolscap/appserver/cli.py (CreateOptions.opt_umask): capture the
+	current umask at "flappserver create" time for use by the eventual
+	server. This should reduce surprises.
+	* doc/flappserver.xhtml: explain the new behavior
+	* foolscap/appserver/server.py (AppServer): require the
+	umask file to contain an octal string, don't use eval()
+	* foolscap/test/test_appserver.py: update tests
+
 2009-06-19  Brian Warner  <warner@lothar.com>
 
 	* doc/flappserver.xhtml: add --umask= to "flappserver create",

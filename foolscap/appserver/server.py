@@ -14,7 +14,7 @@ class AppServer(service.MultiService):
         self.basedir = os.path.abspath(basedir)
         try:
             umask = open(os.path.join(basedir, "umask")).read().strip()
-            self.umask = eval(umask) # frequently an octal string like 0022
+            self.umask = int(umask, 8) # octal string like 0022
         except EnvironmentError:
             self.umask = None
         port = open(os.path.join(basedir, "port")).read().strip()
