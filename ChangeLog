@@ -1,5 +1,7 @@
 2009-06-20  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/client.py: improve --help strings
+
 	* foolscap/appserver/cli.py (CreateOptions.opt_umask): capture the
 	current umask at "flappserver create" time for use by the eventual
 	server. This should reduce surprises.

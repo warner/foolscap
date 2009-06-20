@@ -8,10 +8,19 @@ from twisted.internet import defer
 import foolscap
 from foolscap.api import Tub, Referenceable, fireEventually
 
-class UploadFileOptions(usage.Options):
-    #synopsis = "flappclient upload SOURCEFILE"
+class BaseOptions(usage.Options):
+    def opt_h(self):
+        return self.opt_help()
+
+class UploadFileOptions(BaseOptions):
+    def getSynopsis(self):
+        return "Usage: flappclient [--furl=|--furlfile] upload-file SOURCEFILES.."
     def parseArgs(self, *sourcefiles):
         self.sourcefiles = sourcefiles
+    longdesc = """This client sends one or more files to the upload-file
+    service waiting at the given FURL. All files will be placed in the
+    pre-configured target directory, using the basename of each SOURCEFILE
+    argument."""
 
 class Uploader(Referenceable):
     def run(self, rref, sourcefile, name):
@@ -35,8 +44,21 @@ class UploadFile(Referenceable):
         print >>options.stdout, "%s: uploaded" % name
 
 
-class RunCommandOptions(usage.Options):
-    pass
+class RunCommandOptions(BaseOptions):
+    def getSynopsis(self):
+        return "Usage: flappclient [--furl=|--furlfile] run-command"
+    longdesc = """This client triggers a prearranged command to be executed
+    by the run-command service waiting at the given FURL. The executable, its
+    working directory, and all arguments are configured by the server. Unless
+    the server has overridden the defaults, this client will emit the
+    command's stdout and stderr as it runs, and will exit with the same
+    result code as the remote command. If the server desires it, this client
+    will read data from stdin and send everything (plus a close-stdin event)
+    to the server.
+
+    This client has no control over the command being run or its
+    arguments."""
+
 
 from twisted.internet.stdio import StandardIO
 from twisted.internet.protocol import Protocol
@@ -89,12 +111,23 @@ class RunCommand(Referenceable, Protocol):
             self.d.callback(res)
 
 class ClientOptions(usage.Options):
-    synopsis = "Usage: flappclient [--furl=|--furlfile=] (upload|exec)"
+    synopsis = "Usage: flappclient [--furl=|--furlfile=] COMMAND"
 
     optParameters = [
         ("furl", None, None, "FURL of the service to contact"),
         ("furlfile", "f", None, "file containing the FURL of the service"),
         ]
+
+    longdesc = """This client invokes a remote service that is running as
+    part of a 'flappserver'. Each service lives at a specific secret FURL,
+    which starts with 'pb://'. This FURL can be passed on the command line
+    with --furl=FURL, or it can be stored in a file (along with comment lines
+    that start with '#') and passed with --furlfile=FILE.
+
+    Each service has a specific COMMAND type, and the client invocation must
+    match the service. For more details on a specific command, run
+    'flappclient COMMAND --help', e.g. 'flappclient upload-file --help'.
+    """
 
     subCommands = [
         ("upload-file", None, UploadFileOptions, "upload a file"),
