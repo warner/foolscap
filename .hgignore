@@ -2,6 +2,7 @@
 (^|/)\.hg($|/)
 (^|/)\.hgtags($|/)
 ^build($|/)
+^foolscap.egg-info($|/)
 \.pyc$
 ^_trial_temp/
 ^doc/.*\.html$
