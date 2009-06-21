@@ -1,0 +1,63 @@
+# -*- python -*-
+
+# if this were built into Git, then you'd just type "git clone FURL". So this
+# tool is named "git-clone-furl", but it takes an extra DIRECTORY argument
+# because the furl won't give us any hints.
+
+import os, sys, subprocess
+from twisted.python import usage
+
+class Options(usage.Options):
+    synopsis = "git-clone-furl FURL DIRECTORYNAME"
+
+    longdesc = """Clones a Git repository into a newly created directory, by
+    pulling a copy of the tree from the given FURL. The corresponding remote
+    repository must be prepared with the neighboring
+    git-publish-with-furl script.
+
+    This offers none of the options that 'git clone' has. In addition, a
+    local DIRECTORY name must be provided, in which the new repository will
+    be placed (unlike 'git clone' which can use the repository url to pick a
+    reasonable local name)."""
+
+    def opt_h(self):
+        return self.opt_help()
+
+    def parseArgs(self, furl, directory):
+        if not furl.startswith("pb://"):
+            raise usage.UsageError("second argument must be a FURL starting with pb://.. , and '%s' doesn't look like one" % furl)
+        self.furl = furl
+        if os.path.exists(directory):
+            raise usage.UsageError("'%s' already exists, and I refuse to touch it. Try git-remote-add-furl to modify an existing Git repository" % directory)
+        self.directory = directory
+
+o = Options()
+try:
+    o.parseOptions()
+except usage.UsageError, e:
+    print "Error:", e
+    print o
+    sys.exit(1)
+
+def call(*cmd):
+    if len(cmd) == 1:
+        print cmd[0]
+        rc = subprocess.call(cmd[0], shell=True)
+    else:
+        print " ".join(cmd)
+        rc = subprocess.call(cmd)
+    if rc != 0:
+        print >>sys.stderr, "ERROR"
+        sys.exit(rc)
+
+os.mkdir(o.directory)
+os.chdir(o.directory)
+call("git init")
+call("git", "config", "--add", "core.gitProxy","git-proxy-flappclient for furl")
+call("git config --add core.gitProxy none")
+call("git remote add origin git://origin.furl/")
+call("git config --add remote.origin.furl %s" % o.furl)
+call("git config --add branch.master.remote origin")
+call("git config --add branch.master.merge refs/heads/master")
+call("git pull")
+print "All done!"

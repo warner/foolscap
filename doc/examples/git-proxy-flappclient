@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 
 '''
-Use a FURL to access a single remote Git repository. To set this up:
+Use a FURL to access a single remote Git repository. To set this up, use
+git-publish-with-furl on one machine, and git-clone-furl (to make a new repo)
+or git-remote-add-furl (to add a remote to an existing repo) on the other
+machine. Those tools automate the following overall process:
 
  1: create a bare Git repository on the remote host:
      % mkdir ~/repo && cd ~/repo && git init --bare
  2: create a flappserver on the remote host:
      % flappserver create ~/.fs
      % flappserver start ~/.fs
- 3: use git-setup-flappserver-repo on the remote host to grant access:
-     % git-setup-flappserver-repo ~/.fs ~/repo
+ 3: use git-publish-with-furl on the remote host to grant access:
+     % git-publish-with-furl ~/.fs ~/repo
      Service added, furl is FURL
  4: copy that FURL to your local host
  5: create a local Git repo to track the remote one:

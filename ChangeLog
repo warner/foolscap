@@ -1,5 +1,12 @@
 2009-06-20  Brian Warner  <warner@lothar.com>
 
+	* doc/examples/git-clone-furl: easier tool to set up FURL-based
+	git repo
+	* doc/examples/git-remote-add-furl: same
+	* doc/examples/git-publish-with-furl: better name for
+	git-setup-flappserver-repo
+	* doc/examples/git-proxy-flappclient: mention those scripts
+
 	* foolscap/appserver/client.py: improve --help strings
 
 	* foolscap/appserver/cli.py (CreateOptions.opt_umask): capture the

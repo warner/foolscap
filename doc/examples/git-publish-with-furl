@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-'''
-Add a service (to a pre-existing flappserver) that will grant FURL-based
-access to a single Git repository. Use this in conjunction with
-git-proxy-flappclient.
-'''
-
 from twisted.python import usage
 import os, sys
 from os.path import abspath, join, exists
@@ -14,10 +8,20 @@ def probably_git_repo(repodir):
     return exists(join(repodir, "objects")) and exists(join(repodir, "refs"))
 
 class Options(usage.Options):
-    synopsis = "git-setup-flappserver-repo [-p] SERVERDIR REPODIR"
+    synopsis = "git-publish-with-furl [--allow-push] SERVERDIR REPODIR"
     optFlags = [
         ("allow-push", "p", "allow client to push changes into this repository"),
         ]
+    longdesc = """Add a service (to a pre-existing flappserver) that will
+grant FURL-based access to a single Git repository in REPODIR. Use
+'flappserver create' and 'flappserver start' to launch the server, then run
+me to connect the server and a repository. I will emit a FURL, which can be
+passed to 'git-clone-furl' and 'git-remote-add-furl' (on some other machine)
+to create repos that can access my REPODIR."""
+
+    def opt_h(self):
+        return self.opt_help()
+
     def parseArgs(self, serverdir, repodir):
         serverdir = abspath(serverdir)
         if not exists(join(serverdir, "flappserver.tac")):
