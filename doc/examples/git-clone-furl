@@ -1,4 +1,4 @@
-# -*- python -*-
+#!/usr/bin/env python
 
 # if this were built into Git, then you'd just type "git clone FURL". So this
 # tool is named "git-clone-furl", but it takes an extra DIRECTORY argument

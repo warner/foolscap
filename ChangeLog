@@ -1,3 +1,8 @@
+2009-06-22  Brian Warner  <warner@lothar.com>
+
+	* doc/examples/git-remote-add-furl: fix shbang line
+	* doc/examples/git-clone-furl: same
+
 2009-06-20  Brian Warner  <warner@lothar.com>
 
 	* doc/examples/git-clone-furl: easier tool to set up FURL-based

@@ -1,4 +1,4 @@
-# -*- python -*-
+#!/usr/bin/env python
 
 # if this were built into Git, then you'd just type "git remote add $NAME
 # $FURL". So this tool is named "git-remote-add-furl".
