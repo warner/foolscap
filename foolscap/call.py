@@ -36,16 +36,21 @@ class PendingRequest(object):
     # someone else, that will be executed on their end.
     active = True
 
-    def __init__(self, reqID, rref=None):
+    def __init__(self, reqID, rref, interface_name, method_name):
         self.reqID = reqID
         self.rref = rref # keep it alive
         self.broker = None # if set, the broker knows about us
         self.deferred = defer.Deferred()
         self.constraint = None # this constrains the results
         self.failure = None
+        self.interface_name = interface_name # for error messages
+        self.method_name = method_name # same
 
     def setConstraint(self, constraint):
         self.constraint = constraint
+
+    def getMethodNameInfo(self):
+        return (self.interface_name, self.method_name)
 
     def complete(self, res):
         if self.broker:

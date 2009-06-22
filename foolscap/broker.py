@@ -484,11 +484,17 @@ class Broker(banana.Banana, referenceable.Referenceable):
             raise Violation("non-existent reqID '%d'" % reqID)
 
     def abandonAllRequests(self, why):
-        # map all connection-lost errors to DeadReferenceError, so
-        # application code only needs to check for one exception type
-        if why.check(error.ConnectionLost, error.ConnectionDone):
-            why = failure.Failure(DeadReferenceError("Connection was lost"))
         for req in self.waitingForAnswers.values():
+            if why.check(error.ConnectionLost, error.ConnectionDone):
+                # map all connection-lost errors to DeadReferenceError, so
+                # application code only needs to check for one exception type
+                tubid = None
+                # since we're creating a new exception object for each call,
+                # let's add more information to it
+                if self.remote_tubref:
+                    tubid = self.remote_tubref.getShortTubID()
+                e = DeadReferenceError("Connection was lost", tubid, req)
+                why = failure.Failure(e)
             eventually(req.fail, why)
 
     # target-side, invoked by CallUnslicer

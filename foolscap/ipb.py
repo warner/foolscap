@@ -9,6 +9,21 @@ _ignored = [ISlicer, IRootSlicer, IUnslicer] # hush pyflakes
 
 class DeadReferenceError(Exception):
     """The RemoteReference is dead, Jim."""
+    def __init__(self, why=None, remote_tubid=None, request=None):
+        self.why = why
+        self.remote_tubid = remote_tubid
+        self.request = request
+
+    def __str__(self):
+        args = []
+        if self.why:
+            args.append(self.why)
+        if self.remote_tubid:
+            args.append("(to tubid=%s)" % self.remote_tubid)
+        if self.request:
+            iname, mname = self.request.getMethodNameInfo()
+            args.append("(during method=%s:%s)" % (iname, mname))
+        return " ".join([str(a) for a in args])
 
 
 class IReferenceable(Interface):

@@ -1,5 +1,22 @@
 2009-06-22  Brian Warner  <warner@lothar.com>
 
+	* foolscap/ipb.py (DeadReferenceError): improve the string form by
+	adding remote tubid, and information from the PendingRequest.
+	Since DeadReferenceError frequently happens in an eventually()
+	context, there's not usually a useful stack trace, so any piece of
+	information will help.
+	* foolscap/referenceable.py (RemoteReference._callRemote): give
+	interfacename+methodname to PendingRequest, so it can give that
+	information to DeadReferenceError.__str__ . Some day it'd be cool
+	to include a stack trace here.
+	* foolscap/call.py (PendingRequest.__init__): store it
+	(PendingRequest.getMethodNameInfo): return it
+	* foolscap/broker.py (Broker.abandonAllRequests): pass
+	PendingRequest to DeadReferenceError
+	* foolscap/test/test_call.py (TestCall.test_connection_lost_is_deadref):
+	test it
+	* foolscap/test/test_pb.py: update to match, remove dead code
+
 	* doc/examples/git-remote-add-furl: fix shbang line
 	* doc/examples/git-clone-furl: same
 

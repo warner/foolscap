@@ -411,6 +411,13 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d = self.shouldFail(DeadReferenceError, "lost_is_deadref.1",
                             "Connection was lost",
                             get_d)
+        def _examine_error((f,)):
+            # the (to tubid=XXX) part will see "tub=call", which is an
+            # abbreviation of "callingBroker" as created in
+            # TargetMixin.setupBrokers
+            self.failUnlessIn("(to tubid=call)", str(f.value))
+            self.failUnlessIn("(during method=None:hang)", str(f.value))
+        d.addCallback(_examine_error)
         # and once the connection is down, we should get a DeadReferenceError
         # for new messages
         d.addCallback(lambda res:

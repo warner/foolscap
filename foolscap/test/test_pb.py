@@ -29,7 +29,7 @@ from foolscap.eventual import fireEventually, flushEventualQueue
 class TestRequest(call.PendingRequest):
     def __init__(self, reqID, rref=None):
         self.answers = []
-        call.PendingRequest.__init__(self, reqID, rref)
+        call.PendingRequest.__init__(self, reqID, rref, None, None)
     def complete(self, res):
         self.answers.append((True, res))
     def fail(self, why):
@@ -107,9 +107,6 @@ class TestAnswer(unittest.TestCase):
         unslicer.opener = self.broker.rootUnslicer
         unslicer.protocol = self.broker
         return unslicer
-
-    def makeRequest(self):
-        req = call.PendingRequest(defer.Deferred())
 
     def testAccept1(self):
         req = TestRequest(12)

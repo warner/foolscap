@@ -446,14 +446,18 @@ class RemoteReference(RemoteReferenceOnly):
             # newRequestID() could fail with a DeadReferenceError
             reqID = broker.newRequestID()
 
-        # in this clause, we validate the outbound arguments against our
+        # in this section, we validate the outbound arguments against our
         # notion of what the other end will accept (the RemoteInterface)
-        req = call.PendingRequest(reqID, self)
 
         # first, figure out which method they want to invoke
         (interfaceName,
          methodName,
          methodSchema) = self._getMethodInfo(_name)
+
+        req = call.PendingRequest(reqID, self, interfaceName, methodName)
+        # TODO: consider adding a stringified stack trace to that
+        # PendingRequest creation, so that DeadReferenceError can emit even
+        # more information about the call which failed
 
         # for debugging: these are put into the messages emitted when
         # logRemoteFailures is turned on
