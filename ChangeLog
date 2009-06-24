@@ -1,3 +1,12 @@
+2009-06-24  Brian Warner  <warner@lothar.com>
+
+	* foolscap/*: stop importing functions/classes directly from the
+	top-level 'foolscap' module, instead import them from the
+	'foolscap.api' module (i.e. 'from foolscap.api import Tub' instead
+	of 'from foolscap import Tub'). I'm planning to add deprecation
+	wrappers around the things you can get from 'foolscap', and this
+	is to make sure our own code doesn't run afoul of those warnings.
+
 2009-06-22  Brian Warner  <warner@lothar.com>
 
 	* foolscap/ipb.py (DeadReferenceError): improve the string form by

@@ -19,8 +19,7 @@ from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin
 from foolscap.test.common import RIMyTarget, Target, TargetWithoutInterfaces, \
      BrokenTarget
-from foolscap import DeadReferenceError
-from foolscap.api import RemoteException, UnauthenticatedTub
+from foolscap.api import RemoteException, UnauthenticatedTub, DeadReferenceError
 from foolscap.call import CopiedFailure
 from foolscap.logging import log as flog
 

@@ -3,7 +3,7 @@
 from twisted.trial import unittest
 
 import os, weakref, gc
-from foolscap import UnauthenticatedTub
+from foolscap.api import UnauthenticatedTub
 from foolscap.test.common import HelperTarget
 from foolscap.tokens import WrongNameError
 

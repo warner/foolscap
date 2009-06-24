@@ -3,9 +3,8 @@ import os, sys, time, pickle
 from zope.interface import implements
 from twisted.internet import reactor
 from twisted.python import usage
-import foolscap
 from foolscap import base32
-from foolscap.eventual import fireEventually
+from foolscap.api import Tub, Referenceable, fireEventually
 from foolscap.logging import log
 from foolscap.referenceable import SturdyRef
 from interfaces import RILogObserver
@@ -13,7 +12,7 @@ from interfaces import RILogObserver
 def short_tubid_b2a(tubid):
     return base32.encode(tubid)[:8]
 
-class LogSaver(foolscap.Referenceable):
+class LogSaver(Referenceable):
     implements(RILogObserver)
     def __init__(self, nodeid_s, savefile):
         self.nodeid_s = nodeid_s
@@ -62,7 +61,7 @@ class TailOptions(usage.Options):
         else:
             raise RuntimeError("Can't use tail target: %s" % target)
 
-class LogPrinter(foolscap.Referenceable):
+class LogPrinter(Referenceable):
     implements(RILogObserver)
 
     def __init__(self, options, target_tubid_s, output=sys.stdout):
@@ -126,7 +125,7 @@ class LogTail:
 
     def start(self, target_furl, target_tubid):
         print "Connecting.."
-        self._tub = foolscap.Tub()
+        self._tub = Tub()
         self._tub.startService()
         self._tub.connectTo(target_furl, self._got_logpublisher, target_tubid)
 

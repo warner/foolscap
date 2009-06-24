@@ -5,8 +5,8 @@ from zope.interface import implements, implementsOnly, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer, reactor, task
 from foolscap import broker
-from foolscap import Referenceable, RemoteInterface
-from foolscap.eventual import eventually, fireEventually, flushEventualQueue
+from foolscap.api import Referenceable, RemoteInterface, \
+     eventually, fireEventually, flushEventualQueue
 from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema, \
      UnconstrainedMethod
 from foolscap.schema import Any, SetOf, DictOf, ListOf, TupleOf, \
@@ -406,7 +406,7 @@ try:
 except ImportError:
     pass
 
-from foolscap import Tub, UnauthenticatedTub
+from foolscap.api import Tub, UnauthenticatedTub
 def GoodEnoughTub(certData=None, certFile=None, options={}):
     if crypto_available:
         return Tub(certData, certFile, options)

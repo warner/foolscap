@@ -6,7 +6,7 @@ from twisted.internet import defer
 from twisted.application import service
 from twisted.python import log, failure
 
-from foolscap import Tub, SturdyRef, Referenceable
+from foolscap.api import Tub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \

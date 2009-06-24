@@ -1,12 +1,11 @@
 # -*- test-case-name: foolscap.test.test_reconnector -*-
 
 from twisted.trial import unittest
-from foolscap import UnauthenticatedTub
+from foolscap.api import UnauthenticatedTub, eventually, flushEventualQueue
 from foolscap.test.common import HelperTarget
 from twisted.internet.main import CONNECTION_LOST
 from twisted.internet import defer, reactor, error
 from twisted.python.failure import Failure
-from foolscap.eventual import eventually, flushEventualQueue
 from foolscap import negotiate
 
 class AlwaysFailNegotiation(negotiate.Negotiation):

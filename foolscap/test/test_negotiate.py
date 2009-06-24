@@ -4,7 +4,7 @@ from twisted.trial import unittest
 from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
 from foolscap import pb, negotiate, tokens, eventual
-from foolscap import Referenceable, Tub, UnauthenticatedTub, BananaError
+from foolscap.api import Referenceable, Tub, UnauthenticatedTub, BananaError
 from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import crypto_available
 

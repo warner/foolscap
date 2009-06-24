@@ -4,7 +4,7 @@ from zope.interface import implementsOnly
 from twisted.trial import unittest
 
 from foolscap import schema, remoteinterface
-from foolscap import RemoteInterface
+from foolscap.api import RemoteInterface
 from foolscap.remoteinterface import getRemoteInterface, RemoteMethodSchema
 from foolscap.remoteinterface import RemoteInterfaceRegistry
 from foolscap.tokens import Violation

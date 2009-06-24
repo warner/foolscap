@@ -5,7 +5,7 @@ from twisted.python import components, failure, reflect
 from foolscap.test.common import TargetMixin, HelperTarget
 
 from foolscap import copyable, tokens
-from foolscap import Copyable, RemoteCopy
+from foolscap.api import Copyable, RemoteCopy
 from foolscap.tokens import Violation
 from foolscap.schema import StringConstraint
 

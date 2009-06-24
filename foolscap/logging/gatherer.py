@@ -9,7 +9,7 @@ from zope.interface import implements
 from twisted.internet import reactor, utils, defer
 from twisted.python import usage, procutils, filepath, log as tw_log
 from twisted.application import service, internet
-import foolscap
+from foolscap.api import Tub, Referenceable
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.logging.incident import IncidentClassifierBase
 from foolscap.util import get_local_ip_for
@@ -17,11 +17,11 @@ from foolscap.util import get_local_ip_for
 class BadTubID(Exception):
     pass
 
-class GatheringBase(service.MultiService, foolscap.Referenceable):
+class GatheringBase(service.MultiService, Referenceable):
     # requires self.furlFile and self.tacFile to be set on the class, both of
     # which should be relative to the basedir.
     use_local_addresses = True
-    tub_class = foolscap.Tub
+    tub_class = Tub
 
     def __init__(self, basedir):
         if basedir is None:
@@ -92,7 +92,7 @@ class CreateGatherOptions(usage.Options):
         self["basedir"] = gatherer_dir
 
 
-class Observer(foolscap.Referenceable):
+class Observer(Referenceable):
     implements(RILogObserver)
 
     def __init__(self, nodeid_s, gatherer):
@@ -298,7 +298,7 @@ class CreateIncidentGatherOptions(usage.Options):
         self["basedir"] = basedir
 
 
-class IncidentObserver(foolscap.Referenceable):
+class IncidentObserver(Referenceable):
     implements(RILogObserver)
 
     def __init__(self, basedir, tubid_s, gatherer, publisher, stdout):

@@ -7,10 +7,9 @@ from twisted.python import failure
 from cStringIO import StringIO
 import gc
 
-import foolscap
-from foolscap import Referenceable, Copyable, RemoteCopy
+from foolscap.api import Referenceable, Copyable, RemoteCopy, \
+     flushEventualQueue, serialize, unserialize
 from foolscap.referenceable import RemoteReference
-from foolscap.eventual import flushEventualQueue
 from foolscap.tokens import Violation
 from foolscap.test.common import GoodEnoughTub
 
@@ -38,15 +37,15 @@ class Serialize(unittest.TestCase):
     def NOT_test_data_synchronous(self):
         obj = ["look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
-        data = foolscap.serialize(obj)
-        obj2 = foolscap.unserialize(data)
+        data = serialize(obj)
+        obj2 = unserialize(data)
         self.failUnlessEqual(obj2[1], 3)
         self.failUnlessIdentical(obj2[3], obj2)
 
     def test_data(self):
         obj = ["simple graph", 3, True]
-        d = foolscap.serialize(obj)
-        d.addCallback(lambda data: foolscap.unserialize(data))
+        d = serialize(obj)
+        d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
             self.failUnlessEqual(obj2[1], 3)
         d.addCallback(_check)
@@ -55,8 +54,8 @@ class Serialize(unittest.TestCase):
     def test_cycle(self):
         obj = ["look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
-        d = foolscap.serialize(obj)
-        d.addCallback(lambda data: foolscap.unserialize(data))
+        d = serialize(obj)
+        d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
             self.failUnlessEqual(obj2[1], 3)
             self.failUnlessIdentical(obj2[3], obj2)
@@ -65,8 +64,8 @@ class Serialize(unittest.TestCase):
 
     def test_copyable(self):
         obj = ["fire pretty", Bar()]
-        d = foolscap.serialize(obj)
-        d.addCallback(lambda data: foolscap.unserialize(data))
+        d = serialize(obj)
+        d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
             self.failUnless(isinstance(obj2[1], Bar))
             self.failIfIdentical(obj[1], obj2[1])
@@ -77,12 +76,12 @@ class Serialize(unittest.TestCase):
         obj = ["look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
         b = StringIO()
-        d = foolscap.serialize(obj, outstream=b)
+        d = serialize(obj, outstream=b)
         def _out(res):
             self.failUnlessIdentical(res, b)
             return b.getvalue()
         d.addCallback(_out)
-        d.addCallback(lambda data: foolscap.unserialize(data))
+        d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
             self.failUnlessEqual(obj2[1], 3)
             self.failUnlessIdentical(obj2[3], obj2)
@@ -112,12 +111,12 @@ class Serialize(unittest.TestCase):
         d = defer.succeed(None)
         d.addCallback(self.shouldFail, Violation,
                       "This object can only be serialized by a broker",
-                      foolscap.serialize, obj1)
+                      serialize, obj1)
         obj2 = [1, Foo()]
         d.addCallback(self.shouldFail, Violation,
                       "cannot serialize <foolscap.test.test_serialize.Foo "
                       "instance",
-                      foolscap.serialize, obj2)
+                      serialize, obj2)
         return d
 
 

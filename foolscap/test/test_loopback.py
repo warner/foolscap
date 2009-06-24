@@ -1,7 +1,7 @@
 
 from twisted.trial import unittest
 from twisted.internet import defer
-import foolscap
+from foolscap.api import UnauthenticatedTub, Tub
 from foolscap.test.common import HelperTarget, crypto_available
 from foolscap.eventual import flushEventualQueue
 
@@ -28,7 +28,7 @@ class ConnectToSelf(unittest.TestCase):
         return d
 
     def testConnectUnauthenticated(self):
-        tub = foolscap.UnauthenticatedTub()
+        tub = UnauthenticatedTub()
         self.startTub(tub)
         target = HelperTarget("bob")
         target.obj = "unset"
@@ -53,7 +53,7 @@ class ConnectToSelf(unittest.TestCase):
 
     def testConnectAuthenticated(self):
         self.requireCrypto()
-        tub = foolscap.Tub()
+        tub = Tub()
         self.startTub(tub)
         target = HelperTarget("bob")
         target.obj = "unset"

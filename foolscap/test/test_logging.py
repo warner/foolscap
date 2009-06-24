@@ -12,10 +12,9 @@ from foolscap.logging import gatherer, log, tail, incident, cli, web, \
      publish, dumper
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.eventual import fireEventually, flushEventualQueue
-from foolscap import Referenceable
 from foolscap.tokens import NoLocationError
 from foolscap.test.common import PollMixin, StallMixin, GoodEnoughTub
-from foolscap.api import RemoteException
+from foolscap.api import RemoteException, Referenceable
 
 
 class Basic(unittest.TestCase):

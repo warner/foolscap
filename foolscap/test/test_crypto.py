@@ -5,9 +5,8 @@ from twisted.trial import unittest
 from zope.interface import implements
 from twisted.internet import defer
 from foolscap import pb
-from foolscap import RemoteInterface, Referenceable, Tub
+from foolscap.api import RemoteInterface, Referenceable, Tub, flushEventualQueue
 from foolscap.remoteinterface import RemoteMethodSchema
-from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import crypto_available
 
 class RIMyCryptoTarget(RemoteInterface):

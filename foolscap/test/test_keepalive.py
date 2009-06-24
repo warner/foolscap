@@ -3,9 +3,8 @@ from twisted.trial import unittest
 from twisted.internet import reactor, defer
 from twisted.python.failure import Failure
 
-from foolscap import DeadReferenceError
+from foolscap.api import DeadReferenceError, flushEventualQueue
 from foolscap.broker import Broker
-from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import TargetWithoutInterfaces, GoodEnoughTub
 
 from twisted.python import log
@@ -96,7 +95,7 @@ class Keepalives(unittest.TestCase):
             d2 = rref.callRemote("add", 1, 2)
             def _check(res):
                 self.failUnless(isinstance(res, Failure))
-                self.failUnless(res.check(DeadReferenceError))
+                self.failUnless(res.check(DeadReferenceError), res.type)
             d2.addBoth(_check)
             return d2
         d.addCallback(_check_ref)

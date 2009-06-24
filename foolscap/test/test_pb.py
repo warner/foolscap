@@ -13,7 +13,7 @@ from twisted.internet.interfaces import IAddress
 from twisted.trial import unittest
 
 from foolscap import tokens, referenceable
-from foolscap import getRemoteURL_TCP
+from foolscap.api import getRemoteURL_TCP
 from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
 from foolscap.tokens import BananaFailure
 from foolscap import broker, call
