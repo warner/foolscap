@@ -12,15 +12,14 @@ from twisted.internet import defer
 from twisted.internet.interfaces import IAddress
 from twisted.trial import unittest
 
-from foolscap import tokens, referenceable
-from foolscap.api import getRemoteURL_TCP
+from foolscap import referenceable
 from foolscap.tokens import BananaError, Violation, INT, STRING, OPEN
 from foolscap.tokens import BananaFailure
 from foolscap import broker, call
 from foolscap.constraint import IConstraint
 from foolscap.logging import log
 
-from foolscap.test.common import HelperTarget, RIHelper, TargetMixin, \
+from foolscap.test.common import HelperTarget, TargetMixin, \
      Target, TargetWithoutInterfaces, crypto_available, GoodEnoughTub
 from foolscap.eventual import fireEventually, flushEventualQueue
 
@@ -667,60 +666,6 @@ class TestService(unittest.TestCase):
         self.failUnlessSubstring("TargetWithoutInterfaces", f.value)
         self.failUnlessSubstring(" has no attribute 'remote_missing'", f.value)
 
-
-class ThreeWayHelper:
-    passed = False
-
-    def start(self):
-        d = getRemoteURL_TCP("127.0.0.1", self.portnum1, "", RIHelper)
-        d.addCallback(self.step2)
-        d.addErrback(self.err)
-        return d
-
-    def step2(self, remote1):
-        # .remote1 is our RRef to server1's "t1" HelperTarget
-        self.clients.append(remote1)
-        self.remote1 = remote1
-        d = getRemoteURL_TCP("127.0.0.1", self.portnum2, "", RIHelper)
-        d.addCallback(self.step3)
-        return d
-
-    def step3(self, remote2):
-        # and .remote2 is our RRef to server2's "t2" helper target
-        self.clients.append(remote2)
-        self.remote2 = remote2
-        # sending a RemoteReference back to its source should be ok
-        d = self.remote1.callRemote("set", obj=self.remote1)
-        d.addCallback(self.step4)
-        return d
-
-    def step4(self, res):
-        assert self.target1.obj is self.target1
-        # but sending one to someone else is not
-        d = self.remote2.callRemote("set", obj=self.remote1)
-        d.addCallback(self.step5_callback)
-        d.addErrback(self.step5_errback)
-        return d
-
-    def step5_callback(self, res):
-        why = unittest.FailTest("sending a 3rd-party reference did not fail")
-        self.err(failure.Failure(why))
-        return None
-
-    def step5_errback(self, why):
-        bad = None
-        if why.type != tokens.Violation:
-            bad = "%s failure should be a Violation" % why.type
-        elif why.value.args[0].find("RemoteReferences can only be sent back to their home Broker") == -1:
-            bad = "wrong error message: '%s'" % why.value.args[0]
-        if bad:
-            why = unittest.FailTest(bad)
-            self.passed = failure.Failure(why)
-        else:
-            self.passed = True
-
-    def err(self, why):
-        self.passed = why
 
 
 # TODO:

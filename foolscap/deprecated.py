@@ -37,7 +37,6 @@ from foolscap import pb, remoteinterface, referenceable
 
 Tub = _wrap_class(pb.Tub, "Tub")
 UnauthenticatedTub = _wrap_class(pb.UnauthenticatedTub, "UnauthenticatedTub")
-getRemoteURL_TCP = _wrap_function(pb.getRemoteURL_TCP, "getRemoteURL_TCP")
 
 _DeprecatedRemoteInterfaceClass = _wrap_metaclass(remoteinterface.RemoteInterfaceClass,
                                                   "RemoteInterface")

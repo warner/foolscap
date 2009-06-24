@@ -11,7 +11,7 @@
 from foolscap._version import verstr as __version__
 
 # here are the primary entry points
-from foolscap.pb import Tub, UnauthenticatedTub, getRemoteURL_TCP
+from foolscap.pb import Tub, UnauthenticatedTub
 
 # names we import so that others can reach them as foolscap.api.foo
 from foolscap.remoteinterface import RemoteInterface
@@ -30,7 +30,7 @@ from foolscap.logging import app_versions
 # hush pyflakes
 _unused = [
     __version__,
-    Tub, UnauthenticatedTub, getRemoteURL_TCP,
+    Tub, UnauthenticatedTub,
     RemoteInterface,
     Referenceable, SturdyRef,
     Copyable, RemoteCopy, registerRemoteCopy,

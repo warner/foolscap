@@ -1076,12 +1076,3 @@ class UnauthenticatedTub(Tub):
         return "<unauth>"
     def getShortTubID(self):
         return "<unauth>"
-
-def getRemoteURL_TCP(host, port, pathname, *interfaces):
-    url = "pb://%s:%d/%s" % (host, port, pathname)
-    if crypto_available:
-        s = Tub()
-    else:
-        s = UnauthenticatedTub()
-    d = s.getReference(url, interfaces)
-    return d

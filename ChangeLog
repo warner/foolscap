@@ -1,5 +1,11 @@
 2009-06-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (getRemoteURL_TCP): remove this function, I never
+	liked it, and it wasn't very good anyway.
+	* foolscap/api.py, foolscap/__init__/py, foolscap/deprecated.py:
+	same
+	* foolscap/test/test_pb.py: remove dead code
+
 	* foolscap/deprecated.py: define wrappers that emit
 	DeprecationWarning upon use, then wrap them around everything that
 	used to be in foolscap/__init__.py .

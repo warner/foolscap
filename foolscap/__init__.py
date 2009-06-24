@@ -9,7 +9,7 @@ from foolscap import schema as _for_side_effect # register adapters
 # major release.
 
 # here are the primary entry points
-from deprecated import Tub, UnauthenticatedTub, getRemoteURL_TCP
+from deprecated import Tub, UnauthenticatedTub
 from deprecated import RemoteInterface, Referenceable, SturdyRef
 
 # names we import so that others can reach them as foolscap.foo
@@ -24,7 +24,7 @@ from deprecated import serialize, unserialize
 _unused = [
     __version__,
     _for_side_effect,
-    Tub, UnauthenticatedTub, getRemoteURL_TCP,
+    Tub, UnauthenticatedTub,
     RemoteInterface,
     Referenceable, SturdyRef,
     Copyable, RemoteCopy, registerRemoteCopy,
