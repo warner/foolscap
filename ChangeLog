@@ -1,5 +1,11 @@
 2009-06-24  Brian Warner  <warner@lothar.com>
 
+	* foolscap/deprecated.py: define wrappers that emit
+	DeprecationWarning upon use, then wrap them around everything that
+	used to be in foolscap/__init__.py .
+	* foolscap/__init__.py: apply the wrappers. Please import from
+	foolscap.api instead. See #122 for details.
+
 	* foolscap/*: stop importing functions/classes directly from the
 	top-level 'foolscap' module, instead import them from the
 	'foolscap.api' module (i.e. 'from foolscap.api import Tub' instead

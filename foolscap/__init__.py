@@ -1,27 +1,29 @@
 """Foolscap"""
 
+from _version import verstr as __version__
+
+from foolscap import schema as _for_side_effect # register adapters
+
 # All names here are now deprecated. Please import them from foolscap.api
 # instead. This file will become empty (except for __version__) in the next
 # major release.
 
-from _version import verstr as __version__
-
 # here are the primary entry points
-from foolscap.pb import Tub, UnauthenticatedTub, getRemoteURL_TCP
+from deprecated import Tub, UnauthenticatedTub, getRemoteURL_TCP
+from deprecated import RemoteInterface, Referenceable, SturdyRef
 
 # names we import so that others can reach them as foolscap.foo
-from foolscap.remoteinterface import RemoteInterface
-from foolscap.referenceable import Referenceable, SturdyRef
-from foolscap.copyable import Copyable, RemoteCopy, registerRemoteCopy
-from foolscap.copyable import registerCopier, registerRemoteCopyFactory
-from foolscap.ipb import DeadReferenceError
-from foolscap.tokens import BananaError
-from foolscap import schema # necessary for the adapter_hooks side-effect
-from foolscap.storage import serialize, unserialize
+from deprecated import Copyable, RemoteCopy, registerRemoteCopy
+from deprecated import registerCopier, registerRemoteCopyFactory
+from deprecated import DeadReferenceError
+from deprecated import BananaError
+from deprecated import schema
+from deprecated import serialize, unserialize
 
 # hush pyflakes
 _unused = [
     __version__,
+    _for_side_effect,
     Tub, UnauthenticatedTub, getRemoteURL_TCP,
     RemoteInterface,
     Referenceable, SturdyRef,
@@ -33,3 +35,4 @@ _unused = [
     serialize, unserialize,
     ]
 del _unused
+del _for_side_effect
