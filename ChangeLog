@@ -1,5 +1,8 @@
 2009-06-24  Brian Warner  <warner@lothar.com>
 
+	* doc/listings/xfer-client.py, xfer-server.py, command-client.py,
+	command-server.py: remove, obsoleted by flappserver
+
 	* foolscap/pb.py (getRemoteURL_TCP): remove this function, I never
 	liked it, and it wasn't very good anyway.
 	* foolscap/api.py, foolscap/__init__/py, foolscap/deprecated.py:
