@@ -1,3 +1,8 @@
+2009-07-28  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/*: stop using old-style shouldFail (which would
+	mask errors)
+
 2009-06-24  Brian Warner  <warner@lothar.com>
 
 	* doc/listings/xfer-client.py, xfer-server.py, command-client.py,

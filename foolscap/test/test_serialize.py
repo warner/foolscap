@@ -11,7 +11,7 @@ from foolscap.api import Referenceable, Copyable, RemoteCopy, \
      flushEventualQueue, serialize, unserialize
 from foolscap.referenceable import RemoteReference
 from foolscap.tokens import Violation
-from foolscap.test.common import GoodEnoughTub
+from foolscap.test.common import GoodEnoughTub, ShouldFailMixin
 
 class Foo:
     # instances of non-Copyable classes are not serializable
@@ -22,7 +22,7 @@ class Bar(Copyable, RemoteCopy):
     copytype = "bar"
     pass
 
-class Serialize(unittest.TestCase):
+class Serialize(unittest.TestCase, ShouldFailMixin):
 
     def setUp(self):
         self.s = service.MultiService()
@@ -88,35 +88,16 @@ class Serialize(unittest.TestCase):
         d.addCallback(_check)
         return d
 
-    def shouldFail(self, _ignored, expected_failure, substring,
-                   call, *args, **kwargs):
-        d = defer.maybeDeferred(call, *args, **kwargs)
-        def _check(res):
-            if isinstance(res, failure.Failure):
-                if not res.check(expected_failure):
-                    self.fail("Got wrong exception type: %s but we expected %s"
-                              % (res, expected_failure))
-                if substring:
-                    self.failUnless(substring in str(res),
-                                    "substring '%s' not in '%s'"
-                                    % (substring, str(res)))
-            else:
-                self.fail("call was supposed to raise %s, not get '%s'" %
-                          (expected_failure, res))
-        d.addBoth(_check)
-        return d
-
     def test_unhandled_objects(self):
         obj1 = [1, Referenceable()]
-        d = defer.succeed(None)
-        d.addCallback(self.shouldFail, Violation,
-                      "This object can only be serialized by a broker",
-                      serialize, obj1)
+        d = self.shouldFail(Violation, "1",
+                            "This object can only be serialized by a broker",
+                            serialize, obj1)
         obj2 = [1, Foo()]
-        d.addCallback(self.shouldFail, Violation,
-                      "cannot serialize <foolscap.test.test_serialize.Foo "
-                      "instance",
-                      serialize, obj2)
+        d.addCallback(lambda ign:
+                      self.shouldFail(Violation, "2",
+                                      "cannot serialize <foolscap.test.test_serialize.Foo instance",
+                                      serialize, obj2))
         return d
 
 
@@ -160,8 +141,7 @@ class Serialize(unittest.TestCase):
         del r1; del obj
         gc.collect()
         d.addCallback(lambda data:
-                      self.shouldFail(None,
-                                      KeyError,
+                      self.shouldFail(KeyError, "test_referenceables_die",
                                       "unable to find reference for name",
                                       t2.unserialize, data))
         return d

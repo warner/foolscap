@@ -6,7 +6,7 @@ from twisted.application import internet
 from foolscap import pb, negotiate, tokens, eventual
 from foolscap.api import Referenceable, Tub, UnauthenticatedTub, BananaError
 from foolscap.eventual import flushEventualQueue
-from foolscap.test.common import crypto_available
+from foolscap.test.common import crypto_available, ShouldFailMixin
 
 tubid_low = "3hemthez7rvgvyhjx2n5kdj7mcyar3yt"
 certData_low = \
@@ -95,7 +95,7 @@ class OneTimeDeferred(defer.Deferred):
             return
         return defer.Deferred.callback(self, res)
 
-class BaseMixin:
+class BaseMixin(ShouldFailMixin):
 
     def requireCrypto(self):
         if not crypto_available:
@@ -962,22 +962,6 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(_connected)
         # the old rref should be broken (eventually)
         d.addCallback(lambda res: d2)
-        return d
-
-    def shouldFail(self, expected_failure, which, substring=None,
-                   func=None, *args, **kwargs):
-        assert func
-        d = defer.maybeDeferred(func, *args, **kwargs)
-        def _pass(res):
-            self.fail("expected to see failure (%s), not success (%s), at %s"
-                      % (expected_failure, res, which))
-        def _fail(f):
-            f.trap(expected_failure)
-            if substring:
-                self.failUnless(substring in str(f),
-                                "substring '%s' not in '%s' at %s" %
-                                (substring, str(f), which))
-        d.addCallbacks(_pass, _fail)
         return d
 
     def testAncientClient(self):

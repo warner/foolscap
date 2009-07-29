@@ -7,7 +7,7 @@ from twisted.python import failure
 from foolscap.api import RemoteInterface, Referenceable, flushEventualQueue, \
      BananaError
 from foolscap.referenceable import RemoteReference, encode_furl, decode_furl
-from foolscap.test.common import HelperTarget, RIHelper, \
+from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin, \
      crypto_available, GoodEnoughTub
 from foolscap.tokens import NegotiationError
 
@@ -24,7 +24,7 @@ class ConstrainedHelper(Referenceable):
     def remote_set(self, obj):
         self.obj = obj
 
-class Base:
+class Base(ShouldFailMixin):
 
     debug = False
 
@@ -122,24 +122,6 @@ class Base:
         dl.append(d)
 
         return defer.DeferredList(dl)
-
-    def shouldFail(self, res, expected_failure, which, substring=None):
-        # attach this with:
-        #  d = something()
-        #  d.addBoth(self.shouldFail, IndexError, "something")
-        # the 'which' string helps to identify which call to shouldFail was
-        # triggered, since certain versions of Twisted don't display this
-        # very well.
-
-        if isinstance(res, failure.Failure):
-            res.trap(expected_failure)
-            if substring:
-                self.failUnless(substring in str(res),
-                                "substring '%s' not in '%s'"
-                                % (substring, str(res)))
-        else:
-            self.fail("%s was supposed to raise %s, not get '%s'" %
-                      (which, expected_failure, res))
 
 class Gifts(Base, unittest.TestCase):
     # Here we test the three-party introduction process as depicted in the
@@ -429,9 +411,10 @@ class Bad(Base, unittest.TestCase):
             # NOTE: this will have to change when we modify the way gifts are
             # referenced, since tracker.url is scheduled to go away.
             adave.tracker.url = adave.tracker.url + ".MANGLED"
-            return self.acarol.callRemote("set", adave)
+            return self.shouldFail(KeyError, "Bad.test_swissnum",
+                                   "unable to find reference for name 'dave.MANGLED'",
+                                   self.acarol.callRemote, "set", adave)
         d.addCallback(_introduce)
-        d.addBoth(self.shouldFail, KeyError, "Bad.test_swissnum")
         # make sure we can still talk to Carol, though
         d.addCallback(lambda res: self.acarol.callRemote("set", 14))
         d.addCallback(lambda res: self.failUnlessEqual(self.carol.obj, 14))
@@ -453,10 +436,9 @@ class Bad(Base, unittest.TestCase):
             tubid = "".join(reversed(tubid))
             adave.tracker.url = encode_furl(encode_furl, tubid,
                                             location_hints, name)
-            return self.acarol.callRemote("set", adave)
+            return self.shouldFail(BananaError, "Bad.test_tubid", "unknown TubID",
+                                   self.acarol.callRemote, "set", adave)
         d.addCallback(_introduce)
-        d.addBoth(self.shouldFail, BananaError, "Bad.test_tubid",
-                  "unknown TubID")
         return d
 
     def test_location(self):
@@ -474,9 +456,10 @@ class Bad(Base, unittest.TestCase):
             location_hints = [ ("ipv4", "127.0.0.1", 2) ]
             adave.tracker.url = encode_furl(encode_furl, tubid,
                                             location_hints, name)
-            return self.acarol.callRemote("set", adave)
+            return self.shouldFail(ConnectionRefusedError, "Bad.test_location",
+                                   "Connection was refused by other side",
+                                   self.acarol.callRemote, "set", adave)
         d.addCallback(_introduce)
-        d.addBoth(self.shouldFail, ConnectionRefusedError, "Bad.test_location")
         return d
 
     def test_hang(self):
@@ -499,10 +482,10 @@ class Bad(Base, unittest.TestCase):
             adave.tracker.url = encode_furl(encode_furl, tubid,
                                             location_hints, name)
             self.tubD.options['connect_timeout'] = 2
-            return self.acarol.callRemote("set", adave)
+            return self.shouldFail(NegotiationError, "Bad.test_hang",
+                                   "no connection established within client timeout",
+                                   self.acarol.callRemote, "set", adave)
         d.addCallback(_introduce)
-        d.addBoth(self.shouldFail, NegotiationError, "Bad.test_hang",
-                  "no connection established within client timeout")
         def _stop_listening(res):
             d1 = p.stopListening()
             def _done_listening(x):
@@ -524,9 +507,10 @@ class Bad(Base, unittest.TestCase):
             # referenced, since tracker.url is scheduled to go away.
             self.bdave.tracker.url = self.bdave.tracker.url + ".MANGLED"
             self.bob.obj = self.bdave
-            return self.abob.callRemote("get")
+            return self.shouldFail(KeyError, "Bad.testReturn_swissnum",
+                                   "unable to find reference for name 'dave.MANGLED'",
+                                   self.abob.callRemote, "get")
         d.addCallback(_introduce)
-        d.addBoth(self.shouldFail, KeyError, "Bad.testReturn_swissnum")
         # make sure we can still talk to Bob, though
         d.addCallback(lambda res: self.abob.callRemote("set", 14))
         d.addCallback(lambda res: self.failUnlessEqual(self.bob.obj, 14))

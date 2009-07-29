@@ -3,7 +3,7 @@ from zope.interface import implements
 from twisted.trial import unittest
 from twisted.python import failure
 from foolscap.ipb import IRemoteReference
-from foolscap.test.common import HelperTarget, Target
+from foolscap.test.common import HelperTarget, Target, ShouldFailMixin
 from foolscap.eventual import flushEventualQueue
 from foolscap import broker, referenceable, api
 
@@ -12,7 +12,7 @@ class Remote:
     pass
 
 
-class LocalReference(unittest.TestCase):
+class LocalReference(unittest.TestCase, ShouldFailMixin):
     def tearDown(self):
         return flushEventualQueue()
 
@@ -46,30 +46,12 @@ class LocalReference(unittest.TestCase):
         rc = rref.callRemoteOnly("set", 12)
         self.failUnlessEqual(rc, None)
 
-    def shouldFail(self, res, expected_failure, which, substring=None):
-        # attach this with:
-        #  d = something()
-        #  d.addBoth(self.shouldFail, IndexError, "something")
-        # the 'which' string helps to identify which call to shouldFail was
-        # triggered, since certain versions of Twisted don't display this
-        # very well.
-
-        if isinstance(res, failure.Failure):
-            res.trap(expected_failure)
-            if substring:
-                self.failUnless(substring in str(res),
-                                "substring '%s' not in '%s'"
-                                % (substring, str(res)))
-        else:
-            self.fail("%s was supposed to raise %s, not get '%s'" %
-                      (which, expected_failure, res))
-
     def test_fail(self):
         t = Target()
-        d = IRemoteReference(t).callRemote("fail")
-        d.addBoth(self.shouldFail, ValueError, "test_fail",
-                  "you asked me to fail")
-        return d
+        rref = IRemoteReference(t)
+        return self.shouldFail(ValueError, "test_fail",
+                               "you asked me to fail",
+                               rref.callRemote, "fail")
 
 class TubID(unittest.TestCase):
     def test_tubid_must_match(self):
