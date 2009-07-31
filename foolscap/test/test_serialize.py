@@ -2,8 +2,6 @@
 
 from twisted.trial import unittest
 from twisted.application import service
-from twisted.internet import defer
-from twisted.python import failure
 from cStringIO import StringIO
 import gc
 

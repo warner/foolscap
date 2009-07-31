@@ -1,7 +1,6 @@
 
 from zope.interface import implements
 from twisted.trial import unittest
-from twisted.python import failure
 from foolscap.ipb import IRemoteReference
 from foolscap.test.common import HelperTarget, Target, ShouldFailMixin
 from foolscap.eventual import flushEventualQueue

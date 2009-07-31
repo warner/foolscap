@@ -3,7 +3,6 @@ from zope.interface import implements
 from twisted.trial import unittest
 from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionRefusedError
-from twisted.python import failure
 from foolscap.api import RemoteInterface, Referenceable, flushEventualQueue, \
      BananaError
 from foolscap.referenceable import RemoteReference, encode_furl, decode_furl
