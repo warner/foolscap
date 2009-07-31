@@ -1,5 +1,7 @@
 2009-07-30  Brian Warner  <warner@lothar.com>
 
+	* foolscap/pb.py (Tub.setLocationAutomatically): fix comment
+
 	* foolscap/test/test_serialize.py: oops, fix pyflakes warnings
 	* foolscap/test/test_reference.py: same
 	* foolscap/test/test_gifts.py: same

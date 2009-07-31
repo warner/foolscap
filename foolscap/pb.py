@@ -499,7 +499,7 @@ class Tub(service.MultiService):
         This method returns a Deferred that will fire once the location is
         actually established. Calls to registerReference() must be put off
         until the location has been set. And of course, you must call
-        listenOn() before calling autoSetLocation()."""
+        listenOn() before calling setLocationAutomatically()."""
 
         # first, make sure the reactor is actually running, by using the
         # eventual-send queue
