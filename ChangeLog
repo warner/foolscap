@@ -1,3 +1,12 @@
+2009-09-17  Brian Warner  <warner@lothar.com>
+
+	* setup.py: use entry_points= on windows, to create executable
+	.bat files for flogtool/flappserver/flappclient . Stick to
+	scripts= on non-windows (and remember to install with
+	--single-version-externally-managed) to get non-opaque flogtool
+	scripts that don't use magic pkg_resources functions to import
+	foolscap. This should close #109.
+
 2009-07-30  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py (Tub.setLocationAutomatically): fix comment

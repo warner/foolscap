@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import re, sys
+import re
 from distutils.core import setup
 
 VERSIONFILE = "foolscap/_version.py"
@@ -51,13 +51,26 @@ object reference system, and a capability-based security model.
         'scripts': ["bin/flogtool", "bin/flappserver", "bin/flappclient"],
 }
 
+have_setuptools = False
 try:
     # If setuptools is installed, then we'll add setuptools-specific
-    # arguments to the setup args.
+    # arguments to the setup args. If we're on windows, this includes
+    # entry_points= scripts to create the appropriate .bat files.
     import setuptools
+    _hush_pyflakes = [setuptools]
+    have_setuptools = True
 except ImportError:
     pass
-else:
+
+if have_setuptools:
+    import platform
+    if platform.system() == "Windows":
+        del setup_args["scripts"]
+        setup_args["entry_points"] = {"console_scripts": [
+            "flogtool = foolscap.logging.cli.run_flogtool",
+            "flappserver = foolscap.appserver.cli:run_flappserver",
+            "flappclient = foolscap.appserver.client:run_flappclient",
+            ] }
     setup_args['install_requires'] = ['twisted >= 2.4.0']
     setup_args['extras_require'] = { 'secure_connections' : ["pyOpenSSL"] }
     # note that pyOpenSSL-0.7 and recent Twisted causes unit test failures,
