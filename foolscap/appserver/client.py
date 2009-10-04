@@ -24,7 +24,7 @@ class UploadFileOptions(BaseOptions):
 
 class Uploader(Referenceable):
     def run(self, rref, sourcefile, name):
-        self.f = open(sourcefile, "rb")
+        self.f = open(os.path.expanduser(sourcefile), "rb")
         return rref.callRemote("putfile", name, self)
 
     def remote_read(self, size):
@@ -135,7 +135,8 @@ class ClientOptions(usage.Options):
         ]
 
     def read_furlfile(self):
-        for line in open(self["furlfile"]).readlines():
+        ff = os.path.expanduser(self["furlfile"])
+        for line in open(ff).readlines():
             line = line.strip()
             if line.startswith("pb://"):
                 return line
