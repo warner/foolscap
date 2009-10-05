@@ -1,6 +1,25 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
-import sets
+import warnings
+# python2.4 has a builtin 'set' type, which is mutable, and we require
+# python2.4 or newer. Code which was written to be compatible with python2.3,
+# however, may use the 'sets' module. We will serialize old sets.Set and
+# sets.ImmutableSet the same as we serialize new set and frozenset.
+# Unfortunately this means that these objects will be deserialized as modern
+# 'set' and 'frozenset' objects, which are not entirely compatible. Therefore
+# code that is compatible with python2.3 might not work with foolscap.
+
+try:
+    # from twisted-8.2.0's jelly.py: filter out deprecation warnings for
+    # Python >= 2.6 . If the application imports sets before we do, they'll
+    # get the correct warning.
+    warnings.filterwarnings("ignore", category=DeprecationWarning,
+                            message="the sets module is deprecated",
+                            append=True)
+    import sets
+finally:
+    warnings.filters.pop()
+
 from twisted.internet import defer
 from twisted.python import log
 from foolscap.slicers.list import ListSlicer
@@ -25,13 +44,6 @@ class FrozenSetSlicer(SetSlicer):
     trackReferences = False
     slices = frozenset
 
-# python2.4 has a builtin 'set' type, which is mutable, and we require
-# python2.4 or newer. Code which was written to be compatible with python2.3,
-# however, may use the 'sets' module. We will serialize old sets.Set and
-# sets.ImmutableSet the same as we serialize new set and frozenset.
-# Unfortunately this means that these objects will be deserialized as modern
-# 'set' and 'frozenset' objects, which are not entirely compatible. Therefore
-# code that is compatible with python2.3 might not work with foolscap.
 
 class OldSetSlicer(SetSlicer):
     slices = sets.Set

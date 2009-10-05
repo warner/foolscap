@@ -1,5 +1,10 @@
 2009-10-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/slicers/set.py: suppress the DeprecationWarning that
+	occurs when you import 'sets' on py2.6: seems like the best way to
+	preserve compatibility with py2.3-compatible application code
+	while still avoiding the noise when running with 2.6. Closes #124.
+
 	* foolscap/appserver/client.py (Uploader.run): expanduser() the
 	filename, so you can use 'flappclient upload-file ~/foo.txt' even
 	without the shell expanding the filename for you
