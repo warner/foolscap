@@ -3,8 +3,10 @@ import os, sys, shutil, errno, time, signal
 from StringIO import StringIO
 from twisted.python import usage
 from twisted.internet import defer
+from twisted.scripts import twistd
 
 # does "flappserver start" need us to refrain from importing the reactor here?
+# A: probably, to allow --reactor= to work
 import foolscap
 from foolscap.api import Tub, Referenceable, fireEventually
 from foolscap.pb import generateSwissnumber
@@ -263,19 +265,6 @@ class StartOptions(usage.Options):
         self.basedir = basedir
         self.twistd_args = twistd_args
 
-def try_to_run_command(command, args):
-    # if it works, this will not return
-    # if the command is not found (ENOENT), this returns False
-    # some other exception might be raised
-    argv = [command] + list(args)
-    try:
-        os.execvp(command, argv)
-        # doesn't return
-    except OSError, e:
-        if e.errno == errno.ENOENT:
-            return False
-        raise
-
 class Start:
     def run(self, options):
         basedir = options.basedir
@@ -288,34 +277,11 @@ class Start:
             print >>stderr, "%s does not look like a node directory (no .tac file)" % basedir
             return 1
 
-        # this requires that "twistd" or "twistd.exe" be somewhere on your
-        # $PATH. It will probably fail on windows if you must run "python
-        # twistd.py" or something like that. I'm not sure it's appropriate to
-        # try to accomodate argv[0]="python": too many decisions to make
-        # about how to run some tool which ought to have a proper shbang line
-        # of its own. It will certainly fail if you don't have Twisted and
-        # twistd installed somewhere: I don't think it's appropriate to try
-        # to run a twistd that was installed outside of $PATH.
-
-        args = ["--no_save", "--python", tac] + list(options.twistd_args)
-
-        print >>stderr, "Launching Server..."
         os.chdir(options.basedir)
-        try_to_run_command("twistd", args)
-        # if we get here, we couldn't find twistd
-
-        if sys.platform == "win32":
-            try_to_run_command("twistd.exe", args)
-            # if we get here, we couldn't find twistd.exe
-
-            print >>stderr, "twistd.exe: command not found"
-            print >>stderr, "Neither 'twistd' nor 'twistd.exe' were found on $PATH"
-        else:
-            print >>stderr, "twistd: command not found"
-            print >>stderr, "'twistd' was not found on $PATH"
-
-        print >>stderr, "You must install Twisted (and its bin/twistd) to use this command"
-        return 127
+        twistd_args = list(options.twistd_args)
+        sys.argv[1:] = ["--no_save", "--python", tac] + twistd_args
+        print >>stderr, "Launching Server..."
+        twistd.run()
 
 
 class StopOptions(usage.Options):

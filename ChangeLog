@@ -1,5 +1,11 @@
 2009-12-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/cli.py (Start.run): use the handy run()
+	function from twisted.scripts.twistd instead of os.execvp to give
+	control to twistd. This removes a lot of grossness and should
+	remove the need to modify $PATH when running "bin/flappserver
+	start" from an uninstalled source tree.
+
 	* foolscap/logging/dumper.py (LogDumper.run): don't eat IOErrors
 	when you point it at a missing file. Only eat the EPIPE that
 	occurs when you run "flogtool dump FILE |less" and quit the pager
