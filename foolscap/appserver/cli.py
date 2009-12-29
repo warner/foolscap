@@ -75,6 +75,7 @@ class Create:
 
         os.makedirs(basedir)
         os.makedirs(os.path.join(basedir, "services"))
+        os.chmod(basedir, 0700)
 
         # start the server and let it run briefly. This lets the Tub spin up,
         # create the key, decide upon a port, and auto-determine its location

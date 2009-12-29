@@ -28,6 +28,13 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
+            # check that the directory is group/world-inaccessible, even on
+            # windows where those concepts are pretty fuzzy. Do this by
+            # making sure the mode doesn't change when we chmod it again.
+            mode1 = os.stat(serverdir).st_mode
+            os.chmod(serverdir, 0700)
+            mode2 = os.stat(serverdir).st_mode
+            self.failUnlessEqual("%o" % mode1, "%o" % mode2)
         d.addCallback(_check)
         return d
 

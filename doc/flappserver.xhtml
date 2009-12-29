@@ -101,7 +101,9 @@ implement a named service.</p>
 <h3><code>flappserver create BASEDIR [options]</code></h3>
 
 <p>Create a new server, using BASEDIR as a working directory. BASEDIR should
-not already exist, and nothing else should touch its contents.</p>
+not already exist, and nothing else should touch its contents. BASEDIR will
+be created with mode 0700, to prevent other users from reading it and
+learning the private key.</p>
 
 <p>"create" options:</p>
 
