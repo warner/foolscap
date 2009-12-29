@@ -60,6 +60,3 @@ class AppServer(service.MultiService):
         s = build_service(service_basedir, self.tub, service_type, service_args)
         s.setServiceParent(self)
         return s
-
-        
-
