@@ -1,3 +1,16 @@
+2009-12-28  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/dumper.py: add --timestamps, which can be
+	"short-local", "long-local" (ISO-8601 with timezone), or
+	"utc" (ISO-8601 with "Z" suffix). Closes #100.
+	* foolscap/logging/web.py: add --timestamps, "local" or "utc".
+	This controls the default format. Added tooltips over the time
+	strings to show the event time in local, iso-8601, and
+	iso-8601-utc. Added links to the all-events page to reload it with
+	various timestamp formats and sort options.
+	* foolscap/test/test_logging.py (Dumper): update tests to match
+	(Web): same
+
 2009-10-04  Brian Warner  <warner@lothar.com>
 
 	* foolscap/slicers/set.py: suppress the DeprecationWarning that

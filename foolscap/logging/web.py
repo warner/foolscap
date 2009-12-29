@@ -16,14 +16,23 @@ class WebViewerOptions(usage.Options):
         ]
 
     optParameters = [
-        ["port", "p", "tcp:0",
-         "strports specification of where the web server should listen."],
+        ("port", "p", "tcp:0",
+         "strports specification of where the web server should listen."),
+        ("timestamps", "t", "local", "Default format for timestamps: local or utc"),
         ]
 
     def parseArgs(self, dumpfile):
         self.dumpfile = dumpfile
 
+    def opt_timestamps(self, arg):
+        if arg not in ("local", "utc"):
+            raise usage.UsageError("--timestamps= must be one of 'local' or 'utc'")
+        self["timestamps"] = arg
+
 FLOG_CSS = """
+span.MODELINE {
+ font-size: 60%;
+}
 span.NOISY {
  color: #000080;
 }
@@ -57,12 +66,42 @@ span.BAD {
 
 """
 
+def format_time(t, mode="local"):
+    lt = time.localtime(t)
+    gt = time.gmtime(t)
+    if mode == "local":
+        time_s = time.strftime("%H:%M:%S", lt)
+        time_s = time_s + ".%03d" % int(1000*(t - int(t)))
+    else:
+        time_s = time.strftime("%H:%M:%S", gt)
+        time_s = time_s + ".%03d" % int(1000*(t - int(t)))
+        time_s += "Z"
+    time_utc = time.strftime("%Y-%m-%d_%H:%M:%S", gt)
+    microsecs_s = ".%06d" % int(1000000*(t - int(t)))
+    time_utc = time_utc + microsecs_s
+    time_utc += "Z"
+    time_local = time.strftime("%Y-%m-%d_%H:%M:%S", lt)
+    time_local = time_local + microsecs_s
+    time_local += time.strftime("%z", lt)
+    time_ctime = time.ctime(t).replace(" ", "&nbsp;")
+    extended = "Local=%s  Local=%s  UTC=%s" % (time_ctime, time_local, time_utc)
+    return time_s, extended
+
 class Welcome(resource.Resource):
-    def __init__(self, viewer):
+    def __init__(self, viewer, timestamps):
         self.viewer = viewer
+        self.default_timestamps = timestamps
         resource.Resource.__init__(self)
 
+    def fromto_time(self, t, timestamps):
+        if t is None:
+            return "?"
+        ign, extended = format_time(float(t), timestamps)
+        tz = time.strftime("%z", time.localtime(t))
+        return '<span title="%s">%s (%s)</span>' % (extended, time.ctime(t), tz)
+
     def render(self, req):
+        timestamps = self.default_timestamps
         data = "<html>"
         data += "<head><title>Foolscap Log Viewer</title></head>\n"
         data += "<body>\n"
@@ -91,15 +130,13 @@ class Welcome(resource.Resource):
                     duration = int(last_time - first_time)
                 else:
                     duration = "?"
-                if first_time is not None:
-                    first_time = time.ctime(float(first_time))
-                if last_time is not None:
-                    last_time = time.ctime(float(last_time))
 
                 data += ("  <li>%s events covering %s seconds</li>\n" %
                          (num_events, duration))
-                data += ("  <li>from %s to %s</li>\n" %
-                         (first_time, last_time))
+
+                from_time_s = self.fromto_time(float(first_time), timestamps)
+                to_time_s = self.fromto_time(float(last_time), timestamps)
+                data += '  <li>from %s to %s</li>\n' % (from_time_s, to_time_s)
                 for level in sorted(levels.keys()):
                     data += ('  <li><a href="summary/%d-%d">%d events</a> '
                              'at level %s</li>\n' %
@@ -111,8 +148,8 @@ class Welcome(resource.Resource):
                     for t in self.viewer.triggers:
                         le = self.viewer.number_map[t]
                         data += "   <li>"
-                        href_base = "/all-events"
-                        data += le.to_html(href_base)
+                        href_base = "/all-events?timestamps=%s" % timestamps
+                        data += le.to_html(href_base, timestamps)
                         data += "   </li>\n"
                     data += "  </ul>\n"
                     data += " </li>\n"
@@ -121,7 +158,8 @@ class Welcome(resource.Resource):
         else:
             data += "none!"
 
-        data += '<h2><a href="all-events">View All Events</a></h2>\n'
+        data += '<h2><a href="all-events?timestamps=%s">' % timestamps
+        data += 'View All Events</a></h2>\n'
         data += '<form action="reload" method="post">\n'
         data += ' <input type="submit" value="Reload Logfile" />\n'
         data += '</form>\n'
@@ -175,6 +213,9 @@ class EventView(resource.Resource):
         resource.Resource.__init__(self)
 
     def render(self, req):
+        sortby = req.args.get("sort", ["nested"])[0]
+        timestamps = req.args.get("timestamps", ["local"])[0]
+
         data = "<html>"
         data += "<head><title>Foolscap Log Viewer</title>\n"
         data += '<link href="flog.css" rel="stylesheet" type="text/css" />'
@@ -182,27 +223,40 @@ class EventView(resource.Resource):
         data += "<body>\n"
         data += "<h1>Event Log</h1>\n"
 
-        data += "%d root events" % len(self.viewer.root_events)
+        data += "%d root events " % len(self.viewer.root_events)
 
-        sortby = req.args.get("sort", ["nested"])[0]
+        url = "/all-events?sort=%s" % sortby
+        other_timestamps = ['<a href="%s&timestamps=local">local</a>' % url,
+                            '<a href="%s&timestamps=utc">utc</a>' % url]
+        url = "/all-events?timestamps=%s" % timestamps
+        other_sortby = ['<a href="%s&sort=nested">nested</a>' % url,
+                        '<a href="%s&sort=number">number</a>' % url,
+                        '<a href="%s&sort=time">time</a>' % url]
+        modeline = ''.join(['<span class="MODELINE">',
+                            'timestamps=%s ' % timestamps,
+                            '(switch to %s) ' % ", ".join(other_timestamps),
+                            'sort=%s ' % sortby,
+                            '(switch to %s)' % ", ".join(other_sortby),
+                            '</span>\n'])
+        data += modeline
 
         data += "<ul>\n"
         if sortby == "nested":
             for e in self.viewer.root_events:
-                data += self._emit_events(0, e)
+                data += self._emit_events(0, e, timestamps)
         elif sortby == "number":
             numbers = sorted(self.viewer.number_map.keys())
             for n in numbers:
                 e = self.viewer.number_map[n]
                 data += '<li><span class="%s">' % e.level_class()
-                data += e.to_html()
+                data += e.to_html(timestamps=timestamps)
                 data += '</span></li>\n'
         elif sortby == "time":
             events = self.viewer.number_map.values()
             events.sort(lambda a,b: cmp(a.e['d']['time'], b.e['d']['time']))
             for e in events:
                 data += '<li><span class="%s">' % e.level_class()
-                data += e.to_html()
+                data += e.to_html(timestamps=timestamps)
                 data += '</span></li>\n'
         else:
             data += "<b>unknown sort argument '%s'</b>\n" % sortby
@@ -211,17 +265,17 @@ class EventView(resource.Resource):
         req.setHeader("content-type", "text/html")
         return data
 
-    def _emit_events(self, indent, event):
+    def _emit_events(self, indent, event, timestamps):
         indent_s = " " * indent
         data = (indent_s
                 + '<li><span class="%s">' % event.level_class()
-                + event.to_html()
+                + event.to_html(timestamps=timestamps)
                 + "</span></li>\n"
                 )
         if event.children:
             data += indent_s + "<ul>\n"
             for child in event.children:
-                data += self._emit_events(indent+1, child)
+                data += self._emit_events(indent+1, child, timestamps)
             data += indent_s + "</ul>\n"
         return data
 
@@ -232,11 +286,12 @@ class LogEvent:
         self.parent = None
         self.children = []
         self.index = None
+        self.anchor_index = "no-number"
+        self.incarnation = base32.encode(e['d']['incarnation'][0])
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
-            incarnation = base32.encode(e['d']['incarnation'][0])
             self.anchor_index = "%s_%s_%d" % (urllib.quote(e['from']),
-                                              incarnation,
+                                              self.incarnation,
                                               e['d']['num'])
         self.parent_index = None
         if 'parent' in e['d']:
@@ -258,10 +313,9 @@ class LogEvent:
         level = self.e['d'].get('level', log.OPERATIONAL)
         return self.LEVELMAP.get(level, "UNKNOWN")
 
-    def to_html(self, href_base=""):
+    def to_html(self, href_base="", timestamps="local"):
         d = self.e['d']
-        time_s = time.strftime("%H:%M:%S", time.localtime(d['time']))
-        time_s = time_s + ".%03d" % int(1000*(d['time'] - int(d['time'])))
+        time_short, time_extended = format_time(d['time'], timestamps)
         msg = html.escape(log.format_message(d))
         if 'failure' in d:
             lines = str(d['failure']).split("\n")
@@ -272,8 +326,13 @@ class LogEvent:
         level_s = ""
         if level >= log.UNUSUAL:
             level_s = self.LEVELMAP.get(level, "") + " "
+        details = "  ".join(["Event #%d" % d['num'],
+                             "TubID=%s" % self.e['from'],
+                             "Incarnation=%s" % self.incarnation,
+                             time_extended])
+        label = '<span title="%s">%s</span>' % (details, time_short)
         data = '%s [<span id="E%s"><a href="%s#E%s">%d</a></span>]: %s%s' \
-               % (time_s,
+               % (label,
                   self.anchor_index, href_base, self.anchor_index, d['num'],
                   level_s, msg)
         if self.is_trigger:
@@ -306,7 +365,7 @@ class WebViewer:
 
     def start(self, options):
         root = static.Data("placeholder", "text/plain")
-        welcome = Welcome(self)
+        welcome = Welcome(self, options["timestamps"])
         root.putChild("", welcome)
         root.putChild("welcome", welcome) # we used to only do this
         root.putChild("reload", Reload(self))

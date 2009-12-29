@@ -7,11 +7,20 @@ class DumpOptions(usage.Options):
     stdout = sys.stdout
     stderr = sys.stderr
     synopsis = "Usage: flogtool dump DUMPFILE.pickle"
+    optParameters = [
+        ("timestamps", "t", "short-local",
+         "Format for timestamps: short-local, utc, long-local"),
+        ]
     optFlags = [
         ("verbose", "v", "Show all event arguments"),
         ("just-numbers", "n", "Show only event numbers"),
         ("rx-time", "r", "Show event receipt time (in addition to emit time)"),
         ]
+
+    def opt_timestamps(self, arg):
+        if arg not in ("short-local", "utc", "long-local"):
+            raise usage.UsageError("--timestamps= must be one of 'short-local', 'utc', or 'long-local'")
+        self["timestamps"] = arg
 
     def parseArgs(self, dumpfile):
         self.dumpfile = dumpfile
@@ -52,8 +61,19 @@ class LogDumper:
                 self.print_event(e)
 
     def format_time(self, when):
-        time_s = time.strftime("%H:%M:%S", time.localtime(when))
-        time_s = time_s + ".%03d" % int(1000*(when - int(when)))
+        mode = self.options["timestamps"]
+        if mode == "short-local":
+            time_s = time.strftime("%H:%M:%S", time.localtime(when))
+            time_s = time_s + ".%03d" % int(1000*(when - int(when)))
+        elif mode == "long-local":
+            lt = time.localtime(when)
+            time_s = time.strftime("%Y-%m-%d_%H:%M:%S", lt)
+            time_s = time_s + ".%06d" % int(1000000*(when - int(when)))
+            time_s += time.strftime("%z", lt)
+        elif mode == "utc":
+            time_s = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime(when))
+            time_s = time_s + ".%06d" % int(1000000*(when - int(when)))
+            time_s += "Z"
         return time_s
 
     def print_event(self, e):

@@ -1754,7 +1754,11 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
         d = self.create_logfile()
         def _check(fn):
             events = self._read_logfile(fn)
+
             d = dumper.LogDumper()
+            # initialize the LogDumper() timestamp mode
+            d.options = dumper.DumpOptions()
+            d.options.parseOptions([fn])
 
             argv = ["flogtool", "dump", fn]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
@@ -2035,6 +2039,15 @@ class Web(unittest.TestCase):
         d.addCallback(_check_all_events)
         d.addCallback(lambda res:
                       client.getPage(self.baseurl + "all-events?sort=time"))
+        d.addCallback(_check_all_events)
+        d.addCallback(lambda res:
+                      client.getPage(self.baseurl + "all-events?sort=nested"))
+        d.addCallback(_check_all_events)
+        d.addCallback(lambda res:
+                      client.getPage(self.baseurl + "all-events?timestamps=local"))
+        d.addCallback(_check_all_events)
+        d.addCallback(lambda res:
+                      client.getPage(self.baseurl + "all-events?timestamps=utc"))
         d.addCallback(_check_all_events)
         return d
 
