@@ -14,6 +14,11 @@ services without obligating them to write Python code for each one.</p>
 
 <h2>Example</h2>
 
+<p>This example creates a file-uploading service on one machine, and uses the
+corresponding client on a different machine to transfer a file. There are
+many different kinds of services that can be managed this way: file-uploading
+is just one of them.</p>
+
 <pre class="shell">
 ## run this on the server machine
 S% flappserver create ~/fs
@@ -81,19 +86,19 @@ implement a named service.</p>
 <p>The basic services that ship with Foolscap are:</p>
 
 <ul>
-  <li>upload-file: allow files to be written into a single directory by the
-  corresponding "flappclient upload-file" command. Files are streamed to a
-  neighboring temporary file before being atomically moved into place. The
-  client gets to choose the target filename. Optionally allow the creation
-  and use of subdirectories.</li>
+  <li><b>upload-file</b>: allow files to be written into a single directory
+  by the corresponding "flappclient upload-file" command. Files are streamed
+  to a neighboring temporary file before being atomically moved into place.
+  The client gets to choose the target filename. Optionally allow the
+  creation and use of subdirectories.</li>
 
-  <li>run-command: allow a preconfigured shell command to be executed by the
-  corresponding "flappclient run-command" invocation. Client receives
+  <li><b>run-command</b>: allow a preconfigured shell command to be executed
+  by the corresponding "flappclient run-command" invocation. Client receives
   stdout/stderr/rc. Command runs in a preconfigured working directory.
-  Optionally allow the client to provide arguments to the command. Optionally
-  allow the client to provide stdin to the command. In a future version:
-  optionally provide locking around the command (allow only one instance to
-  run at a time), optionally merge multiple pending invocations.</li>
+  Optionally allow the client to provide stdin to the command. In a future
+  version: optionally provide locking around the command (allow only one
+  instance to run at a time), optionally merge multiple pending invocations,
+  optionally allow the client to provide arguments to the command.</li>
 </ul>
 
 <h2>Commands</h2>
@@ -133,8 +138,8 @@ learning the private key.</p>
 <h3><code>flappserver add BASEDIR [options] SERVICE-TYPE SERVICE-ARGS</code></h3>
 
 <p>Add a new service to the existing server that lives in BASEDIR. The new
-service will be of type SERVICE-TYPE (such as "upload-fil" or "run-command"),
-and will be configured with SERVICE-ARGS.</p>
+service will be of type SERVICE-TYPE (such as "upload-file" or
+"run-command"), and will be configured with SERVICE-ARGS.</p>
 
 <p>A new unguessable "swissnum" will be generated for the service, from which
 a FURL will be computed. Clients must use this FURL to contact the service.
@@ -186,10 +191,7 @@ jgdqovf3tfd5xog34bxmkqwd3dxgycak:
 %
 </pre>
 
-<p>Create a new server, using BASEDIR as a working directory. BASEDIR should
-not already exist, and nothing else should touch its contents.</p>
-
-<p>"list" options: none</p>
+<p>The "list" command takes no options.</p>
 
 
 <h3><code>flappserver start BASEDIR [twistd options]</code></h3>
@@ -209,7 +211,7 @@ Logs will be written to BASEDIR/twistd.log unless overridden.</p>
 <p>Terminate the server that is running in BASEDIR. This is equivalent to "cd
 BASEDIR &amp;&amp; kill `cat twistd.pid`".</p>
 
-<p>"stop" options: none</p>
+<p>The "stop" command takes no options.</p>
 
 
 <h3><code>flappserver restart BASEDIR [twistd options]</code></h3>
@@ -218,6 +220,7 @@ BASEDIR &amp;&amp; kill `cat twistd.pid`".</p>
 equivalent to "flappserver stop BASEDIR &amp;&amp; flappserver start BASEDIR
 [options]".</p>
 
+<p>The "restart" command takes the same twistd arguments as <b>start</b>.</p>
 
 <h2>Services</h2>
 
@@ -226,10 +229,17 @@ equivalent to "flappserver stop BASEDIR &amp;&amp; flappserver start BASEDIR
 <p>This service accepts files from <code>flappclient upload-file</code>,
 placing them in TARGETDIR (which must already exist and be writable by the
 flappserver). The filenames are chosen by the client. Existing files will be
-overwritten. This service will never write client files above TARGETDIR. It
-will only write to subdirectories of TARGETDIR if configured with
-<code>--allow-subdirectories</code>, in which case the client controls which
-subdirectory is used (and created if necessary).</p>
+overwritten. This service will never write client files above TARGETDIR, even
+if the client attempts to use ".." or other pathname metacharacters (assuming
+that a local user has not placed upwards-leading symlinks in TARGETDIR). It
+will only write to subdirectories of TARGETDIR if the service was configured
+with <code>--allow-subdirectories</code>, in which case the client controls
+which subdirectory is used (and created if necessary).</p>
+
+<p>The files will be created with the flappserver's configured
+<code>--umask</code>, typically captured when the server is first created. If
+the server winds up with a restrictive umask like 077, then the files created
+in TARGETDIR will not be readable by other users.</p>
 
 <p>TODO: <code>--allow-subdirectories</code> is not yet implemented.</p>
 
@@ -253,13 +263,14 @@ Server Running
 <h3><code>run-command [options] TARGETDIR COMMAND..</code></h3>
 
 <p>This service invokes a preconfigured command in response to requests from
-<code>flappclient run-command</code>. The command is always run from
-TARGETDIR.</p>
+<code>flappclient run-command</code>. The command is always run with
+TARGETDIR as its current working directory.</p>
 
-<p>Consider setting the <code>--umask=022</code> when you create the
-flappserver, otherwise COMMAND will usually be run with a more restrictive
-umask (077), and any files that are created by COMMAND will not be readable
-by other systems.</p>
+<p>COMMAND will be run with the flappserver's configured
+<code>--umask</code>, typically captured when the server is first created. If
+the server winds up with a restrictive umask like 077, then when COMMAND is
+run with that umask any files it creates will not be readable by other
+users.</p>
 
 <p>"run-command" options:</p>
 

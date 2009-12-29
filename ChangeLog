@@ -1,5 +1,7 @@
 2009-12-28  Brian Warner  <warner@lothar.com>
 
+	* doc/flappserver.xhtml: general improvements
+
 	* foolscap/appserver/cli.py (Create.run): chmod the basedir go-rwx
 	to keep the private key hidden from other users
 	* foolscap/test/test_appserver.py (CLI.test_create): test it
