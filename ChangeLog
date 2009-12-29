@@ -1,5 +1,10 @@
 2009-12-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/dumper.py (LogDumper.run): don't eat IOErrors
+	when you point it at a missing file. Only eat the EPIPE that
+	occurs when you run "flogtool dump FILE |less" and quit the pager
+	early.
+
 	* foolscap/logging/dumper.py: add --timestamps, which can be
 	"short-local", "long-local" (ISO-8601 with timezone), or
 	"utc" (ISO-8601 with "Z" suffix). Closes #100.

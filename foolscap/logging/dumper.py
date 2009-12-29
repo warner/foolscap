@@ -1,5 +1,5 @@
 
-import sys, pickle, time
+import sys, pickle, time, errno
 from twisted.python import usage
 from foolscap.logging.log import format_message
 
@@ -31,14 +31,20 @@ class LogDumper:
 
     def run(self, options):
         self.options = options
+        f = self.open_dumpfile()
         try:
-            self.start()
-        except IOError:
-            sys.exit(1)
+            self.start(f)
+        except EnvironmentError, e:
+            # "flogtool dump FLOGFILE |less" is very common, and if you quit
+            # it early with "q", the stdout pipe is broken and python dies
+            # with a messy stacktrace. Catch and ignore that.
+            if e.errno == errno.EPIPE:
+                sys.exit(1)
+            raise
 
-    def start(self):
+    def start(self, f):
         stdout = self.options.stdout
-        for e in self.get_events():
+        for e in self.get_events(f):
             if "header" in e:
                 h = e["header"]
                 if h["type"] == "incident":
@@ -109,13 +115,16 @@ class LogDumper:
             for line in lines:
                 print >>self.options.stdout, " %s" % (line,)
 
-    def get_events(self):
+    def open_dumpfile(self):
         fn = self.options.dumpfile
         if fn.endswith(".bz2"):
             import bz2
             f = bz2.BZ2File(fn, "r")
         else:
             f = open(fn, "rb")
+        return f
+
+    def get_events(self, f):
         while True:
             try:
                 e = pickle.load(f)
