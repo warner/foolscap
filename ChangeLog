@@ -1,3 +1,13 @@
+2010-01-11  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Tub.getReferenceForName): for unknown names,
+	only include the first two letters of the swissnum in the KeyError
+	we return, to avoid revealing the whole thing in the caller's
+	error logs. Closes #133.
+	* foolscap/test/test_pb.py (TestCallable.testWrongSwiss): test it
+	* foolscap/test/test_gifts.py (Bad.test_swissnum): same
+	(Bad.testReturn_swissnum): same
+
 2009-12-28  Brian Warner  <warner@lothar.com>
 
 	* doc/flappserver.xhtml: general improvements

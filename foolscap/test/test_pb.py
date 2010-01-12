@@ -408,6 +408,18 @@ class TestCallable(unittest.TestCase):
         d.addCallback(flushEventualQueue)
         return d
 
+    def testWrongSwiss(self):
+        target = Target()
+        url = self.tubB.registerReference(target)
+        badurl = url + "_wrong"
+        swiss = url[url.rindex("/")+1:]
+        d = self.tubA.getReference(badurl)
+        def _check(f):
+            self.failIf(swiss in str(f), "swissnum revealed")
+            self.failUnless(swiss[:2] in str(f), "swissnum hint not given")
+        d.addErrback(_check)
+        return d
+
     def testGetSturdyRef(self):
         target = Target()
         url = self.tubB.registerReference(target)

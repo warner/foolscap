@@ -738,7 +738,10 @@ class Tub(service.MultiService):
                 if ref not in self.referenceToName:
                     self.referenceToName[ref] = name
                 return ref
-        raise KeyError("unable to find reference for name '%s'" % (name,))
+        # don't reveal the full swissnum
+        hint = name[:2]
+        raise KeyError("unable to find reference for name starting with '%s'"
+                       % hint)
 
     def getReferenceForURL(self, url):
         # TODO: who should this be used by?

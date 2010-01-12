@@ -411,7 +411,7 @@ class Bad(Base, unittest.TestCase):
             # referenced, since tracker.url is scheduled to go away.
             adave.tracker.url = adave.tracker.url + ".MANGLED"
             return self.shouldFail(KeyError, "Bad.test_swissnum",
-                                   "unable to find reference for name 'dave.MANGLED'",
+                                   "unable to find reference for name starting with 'da'",
                                    self.acarol.callRemote, "set", adave)
         d.addCallback(_introduce)
         # make sure we can still talk to Carol, though
@@ -507,7 +507,7 @@ class Bad(Base, unittest.TestCase):
             self.bdave.tracker.url = self.bdave.tracker.url + ".MANGLED"
             self.bob.obj = self.bdave
             return self.shouldFail(KeyError, "Bad.testReturn_swissnum",
-                                   "unable to find reference for name 'dave.MANGLED'",
+                                   "unable to find reference for name starting with 'da'",
                                    self.abob.callRemote, "get")
         d.addCallback(_introduce)
         # make sure we can still talk to Bob, though
