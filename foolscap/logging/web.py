@@ -13,6 +13,7 @@ class WebViewerOptions(usage.Options):
 
     optFlags = [
         ("quiet", "q", "Don't print instructions to stdout"),
+        ("open", "o", "Open the page in your webbrowser automatically"),
         ]
 
     optParameters = [
@@ -387,6 +388,9 @@ class WebViewer:
         if not options["quiet"]:
             print "please point your browser at:"
             print url
+        if options["open"]:
+            import webbrowser
+            webbrowser.open(url)
 
         return url # for tests
 

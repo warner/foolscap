@@ -1,5 +1,9 @@
 2010-01-11  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/web.py (WebViewer.start): add --open, which
+	uses stdlib's webbrowser.open() function to automatically open a
+	browser window with the "flogtool web-viewer" contents.
+
 	* foolscap/pb.py (Tub.getReferenceForName): for unknown names,
 	only include the first two letters of the swissnum in the KeyError
 	we return, to avoid revealing the whole thing in the caller's
