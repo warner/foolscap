@@ -1,5 +1,98 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.5.0 (18 Jan 2010)
+
+** Compatibility
+
+The wire format remains the same as in earlier releases. The preferred API
+import path has changed, see below.
+
+** API changes: import statements, foolscap.api
+
+To reduce circular dependencies in Foolscap's internal code, a new
+"foolscap.api" module has been created. Applications should use:
+
+ from foolscap.api import Tub
+
+instead of e.g. "from foolscap import Tub". Deprecation warnings will be
+raised for code which imports symbols directly from the "foolscap" module.
+These warnings will turn into errors in the 0.6.0 release. (see ticket #122
+for details)
+
+The nearly-useless getRemoteURL_TCP() function was removed.
+
+** setup.py is more windows-friendly
+
+The main setup.py script has been modified to use setuptools "entry_points="
+on windows, which should help create runnable executables of "flogtool" and
+"flappserver", with proper extensions. Entry-point scripts are not used on
+non-windows platforms, but setuptools still creates fairly opaque executable
+scripts (which makes it hard to figure out that e.g. /usr/bin/flogtool wants
+to import the "foolscap" module). To get non-opaque scripts, install with
+"setup.py install --single-version-externally-managed". (#109)
+
+** tool changes
+
+*** flappserver
+
+"flappserver create" now records the umask value from its environment, and
+uses it later when the server is started (since normally twistd resets the
+umask to a very restrictive value). A new --umask argument was added to
+override this. The server's base directory is chmod go-rwx to protect the
+private key from other users.
+
+The "flappserver start" command uses twisted.scripts.twistd.run(), instead of
+spawning an intermediate "twistd" process with os.execvp(). This should make
+things work better in environments where Twisted is not fully installed
+(especially on windows) and correctly launching "twistd" is non-trivial, such
+as when some other package is installing it as a setuptools dependency.
+
+"flappclient upload-file ~/foo.txt" will use os.path.expanduser() on the
+filename, even if your shell does not. This should make it easier to use from
+e.g. buildbot upload commands. (#134)
+
+*** logging
+
+The "flogtool dump" and "flogtool web-viewer" commands now have a
+--timestamps argument, which controls how timestamps are expressed (UTC vs
+localtime, ISO-9601, etc). The web-viewer HTML pages now have more timestamp
+and sorting options, and hyperlinks to select each. (#100)
+
+"flogtool web-viewer --open" will tell your local web browser to open to the
+correct page, using the Python stdlib "webbrowser" module.
+
+"flogtool dump" now emits a better error when told to open a missing file.
+
+*** examples
+
+Examples of running the Git version-control-system over a flappserver-based
+secure connection have been added to doc/examples/ . This enables
+remote-update authority to be expressed as a FURL with no other shell
+privileges. To accomplish the same with ssh "authorized_keys" command
+restrictions is annoying and error-prone. See
+doc/examples/git-proxy-flappclient for setup instructions. This will probably
+be simplified to a single "git-furl" executable in a later release.
+
+The xfer-client/xfer-server/command-client examples have been removed,
+obsoleted by the flappserver/flappclient tools.
+
+** Other changes
+
+The DeprecationWarning for the obsolete "sets" module is now removed on
+python2.6 (#124)
+
+When a getReference() call fails because the remote Tub does not recognize
+the FURL, it now only emits the first two letters of the secret swissnum in
+the exception, instead of the whole thing. This reduces information leakage
+into e.g. stderr logs from a "flappclient --furlfile=X upload-file" command.
+
+DeadReferenceError now includes the remote tubid, interfacename, and remote
+method name of the message that was being sent when the lost connection was
+discovered, so log.err() calls which record a DeadReferenceError should
+include this information. This may make it easier to locate the code that
+provoked the error.
+
+
 * Release 0.4.2 (16 Jun 2009)
 
 ** Compatibility
