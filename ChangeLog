@@ -1,3 +1,8 @@
+2010-03-14  Brian Warner  <warner@lothar.com>
+
+	* foolscap/_version.py: bump version while between releases
+	* misc/*/debian/changelog: same
+
 2010-01-18  Brian Warner  <warner@lothar.com>
 
 	* foolscap/_version.py: release Foolscap-0.5.0
