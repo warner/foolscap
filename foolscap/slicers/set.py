@@ -26,8 +26,7 @@ from foolscap.slicers.list import ListSlicer
 from foolscap.slicers.tuple import TupleUnslicer
 from foolscap.slicer import BaseUnslicer
 from foolscap.tokens import Violation
-from foolscap.constraint import OpenerConstraint, UnboundedSchema, Any, \
-     IConstraint
+from foolscap.constraint import OpenerConstraint, Any, IConstraint
 from foolscap.util import AsyncAND
 
 class SetSlicer(ListSlicer):
@@ -202,24 +201,3 @@ class SetConstraint(OpenerConstraint):
         if self.constraint:
             for o in obj:
                 self.constraint.checkObject(o, inbound)
-
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        if self.maxLength == None:
-            raise UnboundedSchema
-        if not self.constraint:
-            raise UnboundedSchema
-        return (self.OPENBYTES("immutable-set") +
-                self.maxLength * self.constraint.maxSize(seen))
-
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        if not self.constraint:
-            raise UnboundedSchema
-        seen.append(self)
-        return 1 + self.constraint.maxDepth(seen)

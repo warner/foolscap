@@ -4,7 +4,7 @@ from twisted.python import log
 from twisted.internet.defer import Deferred
 from foolscap.tokens import Violation, BananaError
 from foolscap.slicer import BaseSlicer, BaseUnslicer
-from foolscap.constraint import OpenerConstraint, Any, UnboundedSchema, IConstraint
+from foolscap.constraint import OpenerConstraint, Any, IConstraint
 from foolscap.util import AsyncAND
 
 class DictSlicer(BaseSlicer):
@@ -145,23 +145,3 @@ class DictConstraint(OpenerConstraint):
         for key, value in obj.iteritems():
             self.keyConstraint.checkObject(key, inbound)
             self.valueConstraint.checkObject(value, inbound)
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        if self.maxKeys == None:
-            raise UnboundedSchema
-        keySize = self.keyConstraint.maxSize(seen[:])
-        valueSize = self.valueConstraint.maxSize(seen[:])
-        return self.OPENBYTES("dict") + self.maxKeys * (keySize + valueSize)
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        keyDepth = self.keyConstraint.maxDepth(seen[:])
-        valueDepth = self.valueConstraint.maxDepth(seen[:])
-        return 1 + max(keyDepth, valueDepth)
-
-

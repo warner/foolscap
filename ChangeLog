@@ -1,5 +1,14 @@
 2010-03-14  Brian Warner  <warner@lothar.com>
 
+	* foolscap/constraint.py: remove maxSize/maxDepth methods, and the
+	related UnboundedSchema exception. As described in ticket #127,
+	I'm giving up on resource-exhaustion defenses, which allows for a
+	lot of code simplification.
+	* foolscap/{copyable.py|removeinterface.py|schema.py}: same
+	* foolscap/slicers/*.py: same
+	* foolscap/test/test_schema.py: remove tests
+	* doc/jobs.txt: remove TODO items around maxSize
+
 	* foolscap/_version.py: bump version while between releases
 	* misc/*/debian/changelog: same
 

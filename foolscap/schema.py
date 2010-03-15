@@ -59,8 +59,7 @@ from foolscap.tokens import Violation, UnknownSchemaType, BananaError, \
 
 # make constraints available in a single location
 from foolscap.constraint import Constraint, Any, ByteStringConstraint, \
-     IntegerConstraint, NumberConstraint, \
-     UnboundedSchema, IConstraint, Optional, Shared
+     IntegerConstraint, NumberConstraint, IConstraint, Optional, Shared
 from foolscap.slicers.unicode import UnicodeConstraint
 from foolscap.slicers.bool import BooleanConstraint
 from foolscap.slicers.dict import DictConstraint
@@ -123,24 +122,6 @@ class PolyConstraint(Constraint):
         if not ok:
             raise Violation("object type %s does not satisfy any of %s"
                             % (type(obj), self.alternatives))
-
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            # TODO: if the PolyConstraint contains itself directly, the effect
-            # is a nop. If a descendent contains the ancestor PolyConstraint,
-            # then I think it's unbounded.. must draw this out
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        return reduce(max, [c.maxSize(seen[:])
-                            for c in self.alternatives])
-
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        return reduce(max, [c.maxDepth(seen[:]) for c in self.alternatives])
 
 ChoiceOf = PolyConstraint
 

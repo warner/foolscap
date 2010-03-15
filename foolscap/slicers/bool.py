@@ -70,11 +70,3 @@ class BooleanConstraint(OpenerConstraint):
         if self.value != None:
             if obj != self.value:
                 raise Violation("not %s" % self.value)
-
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        return self.OPENBYTES("boolean") + self._myint.maxSize(seen)
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        return 1+self._myint.maxDepth(seen)
-

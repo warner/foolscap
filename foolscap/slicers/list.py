@@ -4,7 +4,7 @@ from twisted.python import log
 from twisted.internet.defer import Deferred
 from foolscap.tokens import Violation
 from foolscap.slicer import BaseSlicer, BaseUnslicer
-from foolscap.constraint import OpenerConstraint, Any, UnboundedSchema, IConstraint
+from foolscap.constraint import OpenerConstraint, Any, IConstraint
 from foolscap.util import AsyncAND
 
 
@@ -115,9 +115,8 @@ class ListUnslicer(BaseUnslicer):
 
 class ListConstraint(OpenerConstraint):
     """The object must be a list of objects, with a given maximum length. To
-    accept lists of any length, use maxLength=None (but you will get a
-    UnboundedSchema warning). All member objects must obey the given
-    constraint."""
+    accept lists of any length, use maxLength=None. All member objects must
+    obey the given constraint."""
 
     opentypes = [("list",)]
     name = "ListConstraint"
@@ -136,19 +135,3 @@ class ListConstraint(OpenerConstraint):
             raise Violation("list too short")
         for o in obj:
             self.constraint.checkObject(o, inbound)
-
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        if self.maxLength == None:
-            raise UnboundedSchema
-        return (self.OPENBYTES("list") +
-                self.maxLength * self.constraint.maxSize(seen))
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        return 1 + self.constraint.maxDepth(seen)

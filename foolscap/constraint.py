@@ -29,9 +29,6 @@ openTaster = {
     }
 nothingTaster = {}
 
-class UnboundedSchema(Exception):
-    pass
-
 class IConstraint(Interface):
     pass
 class IRemoteMethodConstraint(IConstraint):
@@ -177,40 +174,6 @@ class Constraint(object):
         # this default form passes everything
         return
 
-    def maxSize(self, seen=None):
-        """
-        I help a caller determine how much memory could be consumed by the
-        input stream while my constraint is in effect.
-
-        My constraint will be enforced against the bytes that arrive over
-        the wire. Eventually I will either accept the incoming bytes and my
-        Unslicer will provide an object to its parent (including any
-        subobjects), or I will raise a Violation exception which will kick
-        my Unslicer into 'discard' mode.
-
-        I define maxSizeAccept as the maximum number of bytes that will be
-        received before the stream is accepted as valid. maxSizeReject is
-        the maximum that will be received before a Violation is raised. The
-        max of the two provides an upper bound on single objects. For
-        container objects, the upper bound is probably (n-1)*accept +
-        reject, because there can only be one outstanding
-        about-to-be-rejected object at any time.
-
-        I return (maxSizeAccept, maxSizeReject).
-
-        I raise an UnboundedSchema exception if there is no bound.
-        """
-        raise UnboundedSchema
-
-    def maxDepth(self):
-        """I return the greatest number Slicer objects that might exist on
-        the SlicerStack (or Unslicers on the UnslicerStack) while processing
-        an object which conforms to this constraint. This is effectively the
-        maximum depth of the object tree. I raise UnboundedSchema if there is
-        no bound.
-        """
-        raise UnboundedSchema
-
     COUNTERBYTES = 64 # max size of opencount
 
     def OPENBYTES(self, dummy):
@@ -265,13 +228,6 @@ class ByteStringConstraint(Constraint):
             if not self.regexp.search(obj):
                 raise Violation("regexp failed to match")
 
-    def maxSize(self, seen=None):
-        if self.maxLength == None:
-            raise UnboundedSchema
-        return 64+1+self.maxLength
-    def maxDepth(self, seen=None):
-        return 1
-
 class IntegerConstraint(Constraint):
     opentypes = [] # redundant
     # taster set in __init__
@@ -297,15 +253,6 @@ class IntegerConstraint(Constraint):
             if abs(obj) >= 2**(8*self.maxBytes):
                 raise Violation("number too large")
 
-    def maxSize(self, seen=None):
-        if self.maxBytes == None:
-            raise UnboundedSchema
-        if self.maxBytes == -1:
-            return 64+1
-        return 64+1+self.maxBytes
-    def maxDepth(self, seen=None):
-        return 1
-
 class NumberConstraint(IntegerConstraint):
     """I accept floats, ints, and longs."""
     name = "NumberConstraint"
@@ -320,14 +267,6 @@ class NumberConstraint(IntegerConstraint):
             return
         IntegerConstraint.checkObject(self, obj, inbound)
 
-    def maxSize(self, seen=None):
-        # floats are packed into 8 bytes, so the shortest FLOAT token is
-        # 64+1+8
-        intsize = IntegerConstraint.maxSize(self, seen)
-        return max(64+1+8, intsize)
-    def maxDepth(self, seen=None):
-        return 1
-
 
 
 #TODO
@@ -337,18 +276,6 @@ class Shared(Constraint):
     def __init__(self, constraint, refLimit=None):
         self.constraint = IConstraint(constraint)
         self.refLimit = refLimit
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        return self.constraint.maxSize(seen)
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        return self.constraint.maxDepth(seen)
 
 #TODO: might be better implemented with a .optional flag
 class Optional(Constraint):
@@ -357,15 +284,3 @@ class Optional(Constraint):
     def __init__(self, constraint, default):
         self.constraint = IConstraint(constraint)
         self.default = default
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        return self.constraint.maxSize(seen)
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        return self.constraint.maxDepth(seen)

@@ -32,10 +32,3 @@ class Nothing(OpenerConstraint):
     def checkObject(self, obj, inbound):
         if obj is not None:
             raise Violation("'%s' is not None" % (obj,))
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        return self.OPENBYTES("none")
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        return 1
-

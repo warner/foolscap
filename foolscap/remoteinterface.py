@@ -3,7 +3,7 @@ import types
 import inspect
 from zope.interface import interface, providedBy, implements
 from foolscap.constraint import Constraint, OpenerConstraint, nothingTaster, \
-     IConstraint, UnboundedSchema, IRemoteMethodConstraint, Optional, Any
+     IConstraint, IRemoteMethodConstraint, Optional, Any
 from foolscap.tokens import Violation, InvalidRemoteInterface
 from foolscap.schema import addToConstraintTypeMap
 from foolscap import ipb
@@ -295,20 +295,6 @@ class RemoteMethodSchema(object):
             # this might raise a Violation. The caller will annotate its
             # location appropriately: they have more information than we do.
             self.responseConstraint.checkObject(results, inbound)
-
-    def maxSize(self, seen=None):
-        if self.acceptUnknown:
-            raise UnboundedSchema # there is no limit on that thing
-        if self.ignoreUnknown:
-            # for now, we ignore unknown arguments by accepting the object
-            # and then throwing it away. This makes us vulnerable to the
-            # memory consumed by that object. TODO: in the CallUnslicer,
-            # arrange to discard the ignored object instead of receiving it.
-            # When this is done, ignoreUnknown will not cause the schema to
-            # be unbounded and this clause should be removed.
-            raise UnboundedSchema
-        # TODO: implement the rest of maxSize, just like a dictionary
-        raise NotImplementedError
 
 class UnconstrainedMethod(object):
     """I am a method constraint that accepts any arguments and any return

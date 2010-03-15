@@ -10,7 +10,7 @@ from twisted.internet import defer
 import slicer, tokens
 from tokens import BananaError, Violation
 from foolscap.constraint import OpenerConstraint, IConstraint, \
-     ByteStringConstraint, UnboundedSchema, Optional
+     ByteStringConstraint, Optional
 
 Interface = interface.Interface
 
@@ -372,27 +372,6 @@ class AttributeDictConstraint(OpenerConstraint):
                                  kwargs.get('attributes', {}).items()):
             assert name not in self.keys.keys()
             self.keys[name] = IConstraint(constraint)
-
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        total = self.OPENBYTES("attributedict")
-        for name, constraint in self.keys.iteritems():
-            total += ByteStringConstraint(len(name)).maxSize(seen)
-            total += constraint.maxSize(seen[:])
-        return total
-
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        # all the attribute names are 1-deep, so the min depth of the dict
-        # items is 1. The other "1" is for the AttributeDict container itself
-        return 1 + reduce(max, [c.maxDepth(seen[:])
-                                for c in self.itervalues()], 1)
 
     def getAttrConstraint(self, attrname):
         c = self.keys.get(attrname)

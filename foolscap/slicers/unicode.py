@@ -4,7 +4,7 @@ import re
 from twisted.internet.defer import Deferred
 from foolscap.tokens import BananaError, STRING, VOCAB, Violation
 from foolscap.slicer import BaseSlicer, LeafUnslicer
-from foolscap.constraint import OpenerConstraint, Any, UnboundedSchema
+from foolscap.constraint import OpenerConstraint, Any
 
 class UnicodeSlicer(BaseSlicer):
     opentype = ("unicode",)
@@ -83,11 +83,3 @@ class UnicodeConstraint(OpenerConstraint):
         if self.regexp:
             if not self.regexp.search(obj):
                 raise Violation("regexp failed to match")
-
-    def maxSize(self, seen=None):
-        if self.maxLength == None:
-            raise UnboundedSchema
-        return self.OPENBYTES("unicode") + self.maxLength * 6
-
-    def maxDepth(self, seen=None):
-        return 1+1

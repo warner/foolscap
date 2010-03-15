@@ -4,7 +4,7 @@ from twisted.internet.defer import Deferred
 from foolscap.tokens import Violation
 from foolscap.slicer import BaseUnslicer
 from foolscap.slicers.list import ListSlicer
-from foolscap.constraint import OpenerConstraint, Any, UnboundedSchema, IConstraint
+from foolscap.constraint import OpenerConstraint, Any, IConstraint
 from foolscap.util import AsyncAND
 
 
@@ -135,21 +135,3 @@ class TupleConstraint(OpenerConstraint):
             raise Violation("wrong size tuple")
         for i in range(len(self.constraints)):
             self.constraints[i].checkObject(obj[i], inbound)
-    def maxSize(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        total = self.OPENBYTES("tuple")
-        for c in self.constraints:
-            total += c.maxSize(seen[:])
-        return total
-
-    def maxDepth(self, seen=None):
-        if not seen: seen = []
-        if self in seen:
-            raise UnboundedSchema # recursion
-        seen.append(self)
-        return 1 + reduce(max, [c.maxDepth(seen[:])
-                                for c in self.constraints])
-

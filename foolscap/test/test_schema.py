@@ -33,26 +33,10 @@ class ConformTest(unittest.TestCase):
         c.checkObject(obj, False)
     def violates(self, c, obj):
         self.assertRaises(schema.Violation, c.checkObject, obj, False)
-    def assertSize(self, c, maxsize):
-        return
-        self.assertEquals(c.maxSize(), maxsize)
-    def assertDepth(self, c, maxdepth):
-        self.assertEquals(c.maxDepth(), maxdepth)
-    def assertUnboundedSize(self, c):
-        self.assertRaises(schema.UnboundedSchema, c.maxSize)
-    def assertUnboundedDepth(self, c):
-        self.assertRaises(schema.UnboundedSchema, c.maxDepth)
-
-    def testAny(self):
-        c = schema.Constraint()
-        self.assertUnboundedSize(c)
-        self.assertUnboundedDepth(c)
 
     def testInteger(self):
         # s_int32_t
         c = schema.IntegerConstraint()
-        self.assertSize(c, INTSIZE)
-        self.assertDepth(c, 1)
         self.conforms(c, 123)
         self.violates(c, 2**64)
         self.conforms(c, 0)
@@ -66,8 +50,6 @@ class ConformTest(unittest.TestCase):
 
     def testLargeInteger(self):
         c = schema.IntegerConstraint(64)
-        self.assertSize(c, INTSIZE+64)
-        self.assertDepth(c, 1)
         self.conforms(c, 123)
         self.violates(c, "123")
         self.violates(c, None)
@@ -78,9 +60,6 @@ class ConformTest(unittest.TestCase):
 
     def testByteString(self):
         c = schema.ByteStringConstraint(10)
-        self.assertSize(c, STR10)
-        self.assertSize(c, STR10) # twice to test seen=[] logic
-        self.assertDepth(c, 1)
         self.conforms(c, "I'm short")
         self.violates(c, "I am too long")
         self.conforms(c, "a" * 10)
@@ -117,9 +96,6 @@ class ConformTest(unittest.TestCase):
 
     def testUnicode(self):
         c = schema.UnicodeConstraint(10)
-        #self.assertSize(c, USTR10)
-        #self.assertSize(c, USTR10) # twice to test seen=[] logic
-        self.assertDepth(c, 2)
         self.violates(c, "I'm a bytestring")
         self.conforms(c, u"I'm short")
         self.violates(c, u"I am too long")
@@ -151,8 +127,6 @@ class ConformTest(unittest.TestCase):
 
     def testBool(self):
         c = schema.BooleanConstraint()
-        self.assertSize(c, 147)
-        self.assertDepth(c, 2)
         self.conforms(c, False)
         self.conforms(c, True)
         self.violates(c, 0)
@@ -164,8 +138,11 @@ class ConformTest(unittest.TestCase):
     def testPoly(self):
         c = schema.PolyConstraint(schema.ByteStringConstraint(100),
                                   schema.IntegerConstraint())
-        self.assertSize(c, 165)
-        self.assertDepth(c, 1)
+        self.conforms(c, "string")
+        self.conforms(c, 123)
+        self.violates(c, u"unicode")
+        self.violates(c, 123.4)
+        self.violates(c, ["not", "a", "list"])
 
     def testTuple(self):
         c = schema.TupleConstraint(schema.ByteStringConstraint(10),
@@ -176,18 +153,12 @@ class ConformTest(unittest.TestCase):
         self.violates(c, ("string", "string", "NaN"))
         self.violates(c, ("string that is too long", "string", 1))
         self.violates(c, ["Are tuples", "and lists the same?", 0])
-        self.assertSize(c, 72+75+165+73)
-        self.assertDepth(c, 2)
 
     def testNestedTuple(self):
         inner = schema.TupleConstraint(schema.ByteStringConstraint(10),
                                        schema.IntegerConstraint())
-        self.assertSize(inner, 72+75+73)
-        self.assertDepth(inner, 2)
         outer = schema.TupleConstraint(schema.ByteStringConstraint(100),
                                        inner)
-        self.assertSize(outer, 72+165 + 72+75+73)
-        self.assertDepth(outer, 3)
 
         self.conforms(inner, ("hi", 2))
         self.conforms(outer, ("long string here", ("short", 3)))
@@ -195,27 +166,8 @@ class ConformTest(unittest.TestCase):
         self.violates(outer, (("long string here", ("too long string", 3))))
 
         outer2 = schema.TupleConstraint(inner, inner)
-        self.assertSize(outer2, 72+ 2*(72+75+73))
-        self.assertDepth(outer2, 3)
         self.conforms(outer2, (("hi", 1), ("there", 2)) )
         self.violates(outer2, ("hi", 1, "flat", 2) )
-
-    def testUnbounded(self):
-        big = schema.ByteStringConstraint(None)
-        self.assertUnboundedSize(big)
-        self.assertDepth(big, 1)
-        self.conforms(big, "blah blah blah blah blah" * 1024)
-        self.violates(big, 123)
-
-        bag = schema.TupleConstraint(schema.IntegerConstraint(),
-                                     big)
-        self.assertUnboundedSize(bag)
-        self.assertDepth(bag, 2)
-
-        polybag = schema.PolyConstraint(schema.IntegerConstraint(),
-                                        bag)
-        self.assertUnboundedSize(polybag)
-        self.assertDepth(polybag, 2)
 
     def testRecursion(self):
         # we have to fiddle with PolyConstraint's innards
@@ -223,24 +175,15 @@ class ConformTest(unittest.TestCase):
                                 schema.IntegerConstraint(),
                                 # will add 'value' here
                                 )
-        self.assertSize(value, 1065)
-        self.assertDepth(value, 1)
         self.conforms(value, "key")
         self.conforms(value, 123)
         self.violates(value, [])
 
         mapping = schema.TupleConstraint(schema.ByteStringConstraint(10),
                                          value)
-        self.assertSize(mapping, 72+75+1065)
-        self.assertDepth(mapping, 2)
         self.conforms(mapping, ("name", "key"))
         self.conforms(mapping, ("name", 123))
         value.alternatives = value.alternatives + (mapping,)
-
-        self.assertUnboundedSize(value)
-        self.assertUnboundedDepth(value)
-        self.assertUnboundedSize(mapping)
-        self.assertUnboundedDepth(mapping)
 
         # but note that the constraint can still be applied
         self.conforms(mapping, ("name", 123))
@@ -254,8 +197,6 @@ class ConformTest(unittest.TestCase):
 
     def testList(self):
         l = schema.ListOf(schema.ByteStringConstraint(10))
-        self.assertSize(l, 71 + 30*75)
-        self.assertDepth(l, 2)
         self.conforms(l, ["one", "two", "three"])
         self.violates(l, ("can't", "fool", "me"))
         self.violates(l, ["but", "perspicacity", "is too long"])
@@ -263,14 +204,10 @@ class ConformTest(unittest.TestCase):
         self.conforms(l, ["short", "sweet"])
 
         l2 = schema.ListOf(schema.ByteStringConstraint(10), 3)
-        self.assertSize(l2, 71 + 3*75)
-        self.assertDepth(l2, 2)
         self.conforms(l2, ["the number", "shall be", "three"])
         self.violates(l2, ["five", "is", "...", "right", "out"])
 
         l3 = schema.ListOf(schema.ByteStringConstraint(10), None)
-        self.assertUnboundedSize(l3)
-        self.assertDepth(l3, 2)
         self.conforms(l3, ["long"] * 35)
         self.violates(l3, ["number", 1, "rule", "is", 0, "numbers"])
 
@@ -281,7 +218,6 @@ class ConformTest(unittest.TestCase):
 
     def testSet(self):
         l = schema.SetOf(schema.IntegerConstraint(), 3)
-        self.assertDepth(l, 2)
         self.conforms(l, sets.Set([]))
         self.conforms(l, sets.Set([1]))
         self.conforms(l, sets.Set([1,2,3]))
@@ -356,7 +292,6 @@ class ConformTest(unittest.TestCase):
                           schema.IntegerConstraint(),
                           maxKeys=4)
 
-        self.assertDepth(d, 2)
         self.conforms(d, {"a": 1, "b": 2})
         self.conforms(d, {"foo": 123, "bar": 345, "blah": 456, "yar": 789})
         self.violates(d, None)
