@@ -1,3 +1,12 @@
+2010-03-25  Brian Warner  <warner@lothar.com>
+
+	* foolscap/stringchain.py: Zooko's utility class to efficiently
+	handle large strings split into several pieces, such as the
+	inbound socket buffers that Banana.dataReceived() winds up with.
+	* foolscap/test/test_stringchain.py: unit tests for the same.
+	Zooko has given me permission to distribute both of these under
+	Foolscap's MIT license.
+
 2010-03-14  Brian Warner  <warner@lothar.com>
 
 	* foolscap/constraint.py: remove maxSize/maxDepth methods, and the
