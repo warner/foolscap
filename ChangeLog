@@ -1,5 +1,11 @@
 2010-03-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.5.1
+	* misc/{dapper|edgy|feisty|gutsy|hardy|sarge|etch|sid}/debian/changelog:
+	same
+
+2010-03-25  Brian Warner  <warner@lothar.com>
+
 	* foolscap/banana.py, broker.py, copyable.py, pb.py
 	* foolscap/appserver/cli.py, foolscap/logging/gatherer.py
 	* foolscap/test/test_call.py, test_logging.py, test_observer.py,

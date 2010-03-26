@@ -1,5 +1,20 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.5.1 (25 Mar 2010)
+
+** Bugfixes
+
+This release fixes a significant performance problem, causing receivers a
+very long time (over 10 seconds) to process large (>10MB) messages, for
+example when receiving a large string in method arguments. Receiver CPU time
+was quadratic in the size of the message. (#149)
+
+** Other Changes
+
+This release removes some unused code involved in the now-abandoned
+resource-exhaustion defenses. (#127)
+
+
 * Release 0.5.0 (18 Jan 2010)
 
 ** Compatibility
