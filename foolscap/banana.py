@@ -10,6 +10,7 @@ from twisted.python import log
 from foolscap.slicers.allslicers import RootSlicer, RootUnslicer
 from foolscap.slicers.allslicers import ReplaceVocabSlicer, AddVocabSlicer
 
+import stringchain
 import tokens
 from tokens import SIZE_LIMIT, STRING, LIST, INT, NEG, \
      LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR, \
@@ -585,7 +586,7 @@ class Banana(protocol.Protocol):
         # self.buffer with the inbound negotiation block.
         self.negotiated = False
         self.connectionAbandoned = False
-        self.buffer = ''
+        self.buffer = stringchain.StringChain()
 
         self.incomingVocabulary = {}
         self.skipBytes = 0 # used to discard a single long token
@@ -701,26 +702,22 @@ class Banana(protocol.Protocol):
         # buffer, assemble into tokens
         # call self.receiveToken(token) with each
         if self.skipBytes:
-            if len(chunk) < self.skipBytes:
+            if len(chunk) <= self.skipBytes:
                 # skip the whole chunk
                 self.skipBytes -= len(chunk)
                 return
             # skip part of the chunk, and stop skipping
             chunk = chunk[self.skipBytes:]
             self.skipBytes = 0
-        buffer = self.buffer + chunk
+        self.buffer.append(chunk)
 
         # Loop through the available input data, extracting one token per
         # pass.
 
-        while buffer:
-            assert self.buffer != buffer, \
-                   ("Banana.handleData: no progress made: %s %s" %
-                    (repr(buffer),))
-            self.buffer = buffer
+        while len(self.buffer):
+            first65 = self.buffer.popleft(65)
             pos = 0
-
-            for ch in buffer:
+            for ch in first65:
                 if ch >= HIGH_BIT_SET:
                     break
                 pos = pos + 1
@@ -728,20 +725,22 @@ class Banana(protocol.Protocol):
                     # drop the connection. We log more of the buffer, but not
                     # all of it, to make it harder for someone to spam our
                     # logs.
+                    s = first65 + self.buffer.popleft(200)
                     raise BananaError("token prefix is limited to 64 bytes: "
-                                      "but got %r" % (buffer[:200],))
+                                      "but got %r" % s)
             else:
                 # we've run out of buffer without seeing the high bit, which
                 # means we're still waiting for header to finish
+                self.buffer.appendleft(first65)
                 return
             assert pos <= 64
 
             # At this point, the header and type byte have been received.
             # The body may or may not be complete.
 
-            typebyte = buffer[pos]
+            typebyte = first65[pos]
             if pos:
-                header = b1282int(buffer[:pos])
+                header = b1282int(first65[:pos])
             else:
                 header = 0
 
@@ -811,7 +810,7 @@ class Banana(protocol.Protocol):
                 # them with extreme prejudice.
                 raise BananaError("oversized ERROR token")
 
-            rest = buffer[pos+1:]
+            self.buffer.appendleft(first65[pos+1:])
 
             # determine what kind of token it is. Each clause finishes in
             # one of four ways:
@@ -830,7 +829,6 @@ class Banana(protocol.Protocol):
             # being passed up to the current Unslicer
 
             if typebyte == OPEN:
-                buffer = rest
                 self.inboundOpenCount = header
                 if rejected:
                     if self.debugReceive:
@@ -853,7 +851,6 @@ class Banana(protocol.Protocol):
                 continue
 
             elif typebyte == CLOSE:
-                buffer = rest
                 count = header
                 if self.discardCount:
                     self.discardCount -= 1
@@ -865,7 +862,6 @@ class Banana(protocol.Protocol):
                 continue
 
             elif typebyte == ABORT:
-                buffer = rest
                 count = header
                 # TODO: this isn't really a Violation, but we need something
                 # to describe it. It does behave identically to what happens
@@ -892,28 +888,26 @@ class Banana(protocol.Protocol):
 
             elif typebyte == ERROR:
                 strlen = header
-                if len(rest) >= strlen:
+                if len(self.buffer) >= strlen:
                     # the whole string is available
-                    buffer = rest[strlen:]
-                    obj = rest[:strlen]
+                    obj = self.buffer.popleft(strlen)
                     # handleError must drop the connection
                     self.handleError(obj)
                     return
                 else:
+                    self.buffer.appendleft(first65[:pos+1])
                     return # there is more to come
 
             elif typebyte == LIST:
                 raise BananaError("oldbanana peer detected, " +
                                   "compatibility code not yet written")
                 #listStack.append((header, []))
-                #buffer = rest
 
             elif typebyte == STRING:
                 strlen = header
-                if len(rest) >= strlen:
+                if len(self.buffer) >= strlen:
                     # the whole string is available
-                    buffer = rest[strlen:]
-                    obj = rest[:strlen]
+                    obj = self.buffer.popleft(strlen)
                     # although it might be rejected
                 else:
                     # there is more to come
@@ -922,24 +916,23 @@ class Banana(protocol.Protocol):
                         # dropped
                         if self.debugReceive:
                             print "DROPPED some string bits"
-                        self.skipBytes = strlen - len(rest)
-                        self.buffer = ""
+                        self.skipBytes = strlen - len(self.buffer)
+                        self.buffer.clear()
+                    else:
+                        self.buffer.appendleft(first65[:pos+1])
                     return
 
             elif typebyte == INT:
-                buffer = rest
                 obj = int(header)
             elif typebyte == NEG:
-                buffer = rest
                 # -2**31 is too large for a positive int, so go through
                 # LongType first
                 obj = int(-long(header))
             elif typebyte == LONGINT or typebyte == LONGNEG:
                 strlen = header
-                if len(rest) >= strlen:
+                if len(self.buffer) >= strlen:
                     # the whole number is available
-                    buffer = rest[strlen:]
-                    obj = bytes_to_long(rest[:strlen])
+                    obj = bytes_to_long(self.buffer.popleft(strlen))
                     if typebyte == LONGNEG:
                         obj = -obj
                     # although it might be rejected
@@ -948,33 +941,32 @@ class Banana(protocol.Protocol):
                     if rejected:
                         # drop all we have and note how much more should be
                         # dropped
-                        self.skipBytes = strlen - len(rest)
-                        self.buffer = ""
+                        self.skipBytes = strlen - len(self.buffer)
+                        self.buffer.clear()
+                    else:
+                        self.buffer.appendleft(first65[:pos+1])
                     return
 
             elif typebyte == VOCAB:
-                buffer = rest
                 obj = self.incomingVocabulary[header]
                 # TODO: bail if expanded string is too big
                 # this actually means doing self.checkToken(VOCAB, len(obj))
                 # but we have to make sure we handle the rejection properly
 
             elif typebyte == FLOAT:
-                if len(rest) >= 8:
-                    buffer = rest[8:]
-                    obj = struct.unpack("!d", rest[:8])[0]
+                if len(self.buffer) >= 8:
+                    obj = struct.unpack("!d", self.buffer.popleft(8))[0]
                 else:
                     # this case is easier than STRING, because it is only 8
                     # bytes. We don't bother skipping anything.
+                    self.buffer.appendleft(first65[:pos+1])
                     return
 
             elif typebyte == PING:
-                buffer = rest
                 self.sendPONG(header)
                 continue # otherwise ignored
 
             elif typebyte == PONG:
-                buffer = rest
                 continue # otherwise ignored
 
             else:
@@ -997,7 +989,9 @@ class Banana(protocol.Protocol):
 
             # while loop ends here
 
-        self.buffer = ''
+        # note: this is redundant, as there are no 'break' statements in that
+        # loop, and the loop exit condition is 'while len(self.buffer)'
+        self.buffer.clear()
 
 
     def handleOpen(self, openCount, objectCount, indexToken):

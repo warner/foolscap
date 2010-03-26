@@ -1,5 +1,11 @@
 2010-03-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/banana.py (Banana.dataReceived): apply zooko's patch to
+	use stringchain on the inbound data path, to fix the O(n^2)
+	performance in large tokens (e.g. a 10MB string token). Thanks
+	Zooko! Closes #149.
+	* foolscap/test/bench_banana.py: also zooko's performance tests
+
 	* foolscap/stringchain.py: Zooko's utility class to efficiently
 	handle large strings split into several pieces, such as the
 	inbound socket buffers that Banana.dataReceived() winds up with.
