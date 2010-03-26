@@ -1,5 +1,12 @@
 2010-03-25  Brian Warner  <warner@lothar.com>
 
+	* foolscap/banana.py, broker.py, copyable.py, pb.py
+	* foolscap/appserver/cli.py, foolscap/logging/gatherer.py
+	* foolscap/test/test_call.py, test_logging.py, test_observer.py,
+	* test_promise.py, test_reference.py, test_registration.py,
+	* test_schema.py, test_tub.py: clean up lots of pyflakes warnings,
+	revealed by the new more-strict version of pyflakes
+
 	* foolscap/banana.py (Banana.dataReceived): apply zooko's patch to
 	use stringchain on the inbound data path, to fix the O(n^2)
 	performance in large tokens (e.g. a 10MB string token). Thanks

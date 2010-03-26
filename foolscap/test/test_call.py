@@ -201,7 +201,6 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # propagating the maxLength= attribute of the StringConstraint to the
         # children (using the default of 1000 bytes instead).
         rr, target = self.setupTarget(HelperTarget())
-        t = 4
         d = rr.callRemote("choice1", 4)
         d.addCallback(lambda res: self.failUnlessEqual(res, None))
         d.addCallback(lambda res: rr.callRemote("choice1", "a"*2000))

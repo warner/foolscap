@@ -13,6 +13,7 @@ class Registration(unittest.TestCase):
         tub = UnauthenticatedTub()
         tub.setLocation("bogus:1234567")
         u1 = tub.registerReference(t1)
+        del u1
         results = []
         w1 = weakref.ref(t1, results.append)
         del t1
@@ -32,6 +33,7 @@ class Registration(unittest.TestCase):
         tub.setLocation("bogus:1234567")
         name = tub._assignName(t1)
         url = tub.buildURL(name)
+        del url
         results = []
         w1 = weakref.ref(t1, results.append)
         del t1
@@ -50,6 +52,7 @@ class Registration(unittest.TestCase):
         tub = UnauthenticatedTub()
         tub.setLocation("bogus:1234567")
         url = tub.registerReference(target)
+        del url
 
     def test_duplicate(self):
         basedir = "test_registration"

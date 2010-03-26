@@ -438,14 +438,14 @@ class Interfaces(unittest.TestCase):
     def violates_inbound(self, obj, constraint):
         try:
             constraint.checkObject(obj, True)
-        except Violation, f:
+        except Violation:
             return
         self.fail("constraint wasn't violated")
 
     def violates_outbound(self, obj, constraint):
         try:
             constraint.checkObject(obj, False)
-        except Violation, f:
+        except Violation:
             return
         self.fail("constraint wasn't violated")
 

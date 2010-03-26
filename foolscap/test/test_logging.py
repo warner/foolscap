@@ -254,7 +254,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         if runtime.platformType == "posix":
             events = self._read_logfile(os.path.join(got_logdir, files[0]))
             self.failUnlessEqual(len(events), 1+3)
-            header = events[0]
+            #header = events[0]
             self.failUnless("header" in events[0])
             self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
                                  "3-trigger")
@@ -1284,7 +1284,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
         # that will start the gatherer
-        fn = gatherer._savefile_name
         gatherer_furl = gatherer.my_furl
         starting_timestamp = gatherer._starting_timestamp
 
@@ -1319,7 +1318,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
         # that will start the gatherer
-        fn = gatherer._savefile_name
         gatherer_furl = gatherer.my_furl
         starting_timestamp = gatherer._starting_timestamp
 
@@ -1350,7 +1348,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
         # that will start the gatherer
-        fn = gatherer._savefile_name
         gatherer_furlfile = os.path.join(basedir, gatherer.furlFile)
         starting_timestamp = gatherer._starting_timestamp
 
@@ -1381,7 +1378,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
         # that will start the gatherer
-        fn = gatherer._savefile_name
         gatherer_furlfile = os.path.join(basedir, gatherer.furlFile)
         starting_timestamp = gatherer._starting_timestamp
 
@@ -1416,7 +1412,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer1.d = defer.Deferred()
         gatherer1.setServiceParent(self.parent)
         # that will start the gatherer
-        fn1 = gatherer1._savefile_name
         gatherer1_furl = gatherer1.my_furl
         starting_timestamp1 = gatherer1._starting_timestamp
 
@@ -1427,7 +1422,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer2.d = defer.Deferred()
         gatherer2.setServiceParent(self.parent)
         # that will start the gatherer
-        fn2 = gatherer2._savefile_name
         gatherer2_furl = gatherer2.my_furl
         starting_timestamp2 = gatherer2._starting_timestamp
 
@@ -1438,7 +1432,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer3.d = defer.Deferred()
         gatherer3.setServiceParent(self.parent)
         # that will start the gatherer
-        fn3 = gatherer3._savefile_name
         gatherer3_furl = gatherer3.my_furl
         starting_timestamp3 = gatherer3._starting_timestamp
 
@@ -1480,15 +1473,13 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         # leave the furlfile empty: use no gatherer
 
         t = GoodEnoughTub()
-        expected_tubid = t.tubID
-        if t.tubID is None:
-            expected_tubid = "<unauth>"
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furlfile", gatherer_fn)
 
         lp_furl = t.getLogPortFURL()
+        del lp_furl
         t.log("this message shouldn't make anything explode")
     test_log_gatherer_empty_furlfile.timeout = 20
 
@@ -1501,15 +1492,13 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         # leave the furlfile missing: use no gatherer
 
         t = GoodEnoughTub()
-        expected_tubid = t.tubID
-        if t.tubID is None:
-            expected_tubid = "<unauth>"
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furlfile", gatherer_fn)
 
         lp_furl = t.getLogPortFURL()
+        del lp_furl
         t.log("this message shouldn't make anything explode")
     test_log_gatherer_missing_furlfile.timeout = 20
 
@@ -1592,6 +1581,7 @@ class Tail(unittest.TestCase):
                        "message": "howdy",
                        })
         outmsg = out.getvalue()
+        del outmsg
         lp.saver.disconnected() # cause the file to be closed
         f = open(saveto_filename, "rb")
         data = pickle.load(f) # header
@@ -1645,7 +1635,6 @@ def run_wrapper(argv):
     config.parseOptions(argv)
     command = config.subCommand
     if command == "flogtool":
-        so = config.subOptions
         return cli.run_flogtool(argv[1:])
 
 class CLI(unittest.TestCase):
@@ -1671,7 +1660,7 @@ class CLI(unittest.TestCase):
         self.failUnless("to launch the daemon" in out, out)
 
     def test_create_gatherer_badly(self):
-        basedir = "logging/CLI/create_gatherer"
+        #basedir = "logging/CLI/create_gatherer"
         argv = ["flogtool", "create-gatherer", "--bogus-arg"]
         self.failUnlessRaises(usage.UsageError,
                               cli.run_flogtool, argv[1:], run_by_human=False)

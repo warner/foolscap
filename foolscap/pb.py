@@ -397,6 +397,7 @@ class Tub(service.MultiService):
         # right (persistent) name even if the user never calls
         # tub.getLogPortFURL() directly.
         ignored = self.getLogPortFURL()
+        del ignored
         tubID = self.tubID
         if tubID is None:
             # RILogGatherer.logport requires a string for nodeid=
@@ -425,6 +426,7 @@ class Tub(service.MultiService):
             return
         # getLogPortFURL() creates the logport-furlfile as a side-effect
         ignored = self.getLogPortFURL()
+        del ignored
 
     def getLogPortFURL(self):
         if not self.locationHints:

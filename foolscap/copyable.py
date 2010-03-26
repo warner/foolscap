@@ -9,8 +9,7 @@ from twisted.internet import defer
 
 import slicer, tokens
 from tokens import BananaError, Violation
-from foolscap.constraint import OpenerConstraint, IConstraint, \
-     ByteStringConstraint, Optional
+from foolscap.constraint import OpenerConstraint, IConstraint, Optional
 
 Interface = interface.Interface
 

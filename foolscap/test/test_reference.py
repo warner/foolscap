@@ -62,6 +62,7 @@ class TubID(unittest.TestCase):
         good_broker = broker.Broker(referenceable.TubRef(good_tubid))
         good_tracker = referenceable.RemoteReferenceTracker(good_broker,
                                                             0, good_furl, ri)
+        del good_tracker
         self.failUnlessRaises(api.BananaError,
                               referenceable.RemoteReferenceTracker,
                               good_broker, 0, bad_furl, ri)

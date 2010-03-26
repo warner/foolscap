@@ -407,7 +407,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
         was registered with our Factory.
         """
 
-        obj = None
         assert isinstance(clid, (int, long))
         if clid == 0:
             return self

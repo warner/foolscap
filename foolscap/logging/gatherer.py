@@ -476,7 +476,6 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
         return d # mostly for testing
 
     def new_incident(self, abs_fn, rel_fn, tubid_s, incident):
-        stdout = self.stdout or sys.stdout
         self.move_incident(rel_fn, tubid_s, incident)
         self.incidents_received += 1
 

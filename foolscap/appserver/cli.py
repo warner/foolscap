@@ -181,7 +181,6 @@ class Add:
     def run(self, options):
         basedir = options.basedir
         stdout = options.stdout
-        stderr = options.stderr
         service_type = options.service_type
         service_args = options.service_args
 
@@ -192,6 +191,7 @@ class Add:
         try:
             # validate the service args by instantiating one
             s = build_service(service_basedir, None, service_type, service_args)
+            del s
         except:
             shutil.rmtree(service_basedir)
             raise
@@ -230,7 +230,6 @@ class List:
     def run(self, options):
         basedir = options.basedir
         stdout = options.stdout
-        stderr = options.stderr
 
         furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
 

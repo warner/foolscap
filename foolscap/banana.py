@@ -795,7 +795,7 @@ class Banana(protocol.Protocol):
                         top.openerCheckToken(typebyte, header, self.opentype)
                     else:
                         top.checkToken(typebyte, header)
-                except Violation, v:
+                except Violation:
                     rejected = True
                     f = BananaFailure()
                     if wasInOpen:
@@ -1009,7 +1009,7 @@ class Banana(protocol.Protocol):
                 return # they want more index tokens, leave .inOpen=True
             if self.debugReceive:
                 print " opened[%d] with %s" % (openCount, child)
-        except Violation, v:
+        except Violation:
             # must discard the rest of the child object. There is no new
             # unslicer pushed yet, so we don't use abandonUnslicer
             self.inOpen = False
@@ -1025,7 +1025,7 @@ class Banana(protocol.Protocol):
         self.receiveStack.append(child)
         try:
             child.start(objectCount)
-        except Violation, v:
+        except Violation:
             # the child is now on top, so use abandonUnslicer to discard the
             # rest of the child
             f = BananaFailure()
@@ -1039,7 +1039,7 @@ class Banana(protocol.Protocol):
             assert isinstance(ready_deferred, defer.Deferred)
         try:
             top.receiveChild(token, ready_deferred)
-        except Violation, v:
+        except Violation:
             # this is how the child says "I've been contaminated". We don't
             # pop them automatically: if they want that, they should return
             # back the failure in their reportViolation method.
@@ -1057,7 +1057,7 @@ class Banana(protocol.Protocol):
 
         try:
             obj, ready_deferred = child.receiveClose()
-        except Violation, v:
+        except Violation:
             # the child is contaminated. However, they're finished, so we
             # don't have to discard anything. Just give an Failure to the
             # parent instead of the object they would have returned.
@@ -1068,7 +1068,7 @@ class Banana(protocol.Protocol):
 
         try:
             child.finish()
-        except Violation, v:
+        except Violation:
             # .finish could raise a Violation if an object that references
             # the child is just now deciding that they don't like it
             # (perhaps their TupleConstraint couldn't be asserted until the

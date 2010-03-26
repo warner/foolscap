@@ -90,7 +90,7 @@ class SetLocation(unittest.TestCase):
 
     def test_set_location(self):
         t = GoodEnoughTub()
-        l = t.listenOn("tcp:0")
+        t.listenOn("tcp:0")
         t.setServiceParent(self.s)
         t.setLocation("127.0.0.1:12345")
         # setLocation may only be called once
@@ -402,7 +402,7 @@ class CancelPendingDeliveries(unittest.TestCase, StallMixin):
         self.tubA.startService()
         self.tubB.startService()
 
-        l = self.tubB.listenOn("tcp:0")
+        self.tubB.listenOn("tcp:0")
         d = self.tubB.setLocationAutomatically()
         r = Receiver(self.tubB)
         d.addCallback(lambda res: self.tubB.registerReference(r))

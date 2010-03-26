@@ -130,7 +130,6 @@ class Send(unittest.TestCase):
         r(t)
 
     def testResolveFailure(self):
-        t = Target()
         p,r = makePromise()
         p = send(p).one(2)
         def _check(res):
@@ -163,7 +162,6 @@ class Call(unittest.TestCase):
         r(t)
 
     def testResolveFailure(self):
-        t = Target()
         p1,r = makePromise()
         p2 = p1.one(2)
         def _check(res):

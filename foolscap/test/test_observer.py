@@ -18,6 +18,7 @@ class Observer(unittest.TestCase):
         d1.addCallback(_addmore)
         ol.fire("result")
         rep = repr(ol)
+        del rep
         d4 = ol.whenFired()
         dl = defer.DeferredList([d1,d2,d4])
         return dl
