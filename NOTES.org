@@ -1,0 +1,24 @@
+
+* ripping out stream-side constraint checking:
+ stop calling checkToken, openerCheckToken
+  need to add checking in receiveChild, e.g. NoneUnslicer must reject
+ in Unslicers:
+  stop raising Violation from doOpen, start, receiveChild, receiveClose, finish
+ remove maxSize/maxDepth
+
+tests take 93s, or 54s without test_logging
+
+* hrm, big project. How to break it into pieces?
+** DONE remove maxSize/maxDepth
+** stop testing banana constraints. Make sure that callRemote constraints are
+   still being tested
+** stop testing things that send ABORT
+   - test_banana.DecodeTest.test_aborted_list*
+** TODO stop calling checkToken, openerCheckToken. Add replacement checks
+   where necessary.
+** Remove both
+** remove "raise Violation" from unslicers
+** remove "except Violation" handlers from banana.py
+** remove discardCount, reject from banana.py
+
+* ok, defer that project. fix O(n^2) without it. Retain discard.

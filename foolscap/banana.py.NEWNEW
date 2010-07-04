@@ -88,8 +88,6 @@ def bytes_to_long(s):
     return acc
 
 HIGH_BIT_SET = chr(0x80)
-WANT_HEADER = "want_header"
-WANT_BODY = "want_body"
 
 
 
@@ -569,7 +567,7 @@ class Banana(protocol.Protocol):
     # calls self.receivedObject()
 
     unslicerClass = RootUnslicer
-    debugReceive = True #False
+    debugReceive = False
     logViolations = False
     logReceiveErrors = True
     useKeepalives = False
@@ -580,7 +578,6 @@ class Banana(protocol.Protocol):
 
     def initReceive(self):
         self.inOpen = False # set during the Index Phase of an OPEN sequence
-        self.inClose = False
         self.opentype = [] # accumulates Index Tokens
 
         # to pre-negotiate, set the negotiation parameters and set
@@ -589,9 +586,10 @@ class Banana(protocol.Protocol):
         self.negotiated = False
         self.connectionAbandoned = False
         self.bufferChunks = []
-        self.bufferSize = 0
-        self.bufferOffset = 0
-        self.receiveMode = WANT_HEADER
+        self.bufferSize = 0 # always sum([len(c) for c in self.bufferChunks])
+        self.bufferOffset = 0 # self.bufferChunks[0][:self.bufferOffset] has
+                              # already been processed
+        self.receiveMode = WANT_LENGTH # or WANT_BODY
 
         self.incomingVocabulary = {}
         self.skipBytes = 0 # used to discard a single long token
@@ -703,24 +701,36 @@ class Banana(protocol.Protocol):
             log.msg(f.getBriefTraceback())
 
 
+
     def handleData(self, chunk):
-        if not chunk:
-            return
+        # invariants:
+        #  if WANT_LENGTH, then we have either 0 or 1 chunks
+        #  if WANT_BODY, there are an arbitrary number of chunks
+        #  in either case, bufferOffset=0
+        assert self.bufferOffset == 0
         self.bufferChunks.append(chunk)
         self.bufferSize += len(chunk)
-        #if self.receiveMode is WANT_LENGTH:
-        #    self.bufferChunks = ["".join(self.bufferChunks)]
+        if self.receiveMode is WANT_LENGTH:
+            self.bufferChunks = ["".join(self.bufferChunks)]
+        # now:
+        #  if WANT_LENGTH, there is exactly 1 chunk
+        #  if WANT_BODY, there are an arbitrary number of chunks
+        #  in either case, bufferOffset=0
         done = False
         while not done:
-            if self.receiveMode is WANT_HEADER:
-                done = self.receiveHeader()
+            if self.receiveMode is WANT_LENGTH:
+                done = self.receiveLength()
             if self.receiveMode is WANT_BODY:
-                # TODO: if self.discardCount: self.discardBody()
                 done = self.receiveBody()
             # when we get here, any completely consumed chunk is removed
+        # we finish in one of three states:
+        #  WANT_LENGTH, 
+        if self.bufferOffset > 0:
+            first = self.bufferChunks[0][self.bufferOffset:]
+            i
 
 
-    def receiveHeader(self):
+    def receiveLength(self):
         def non_consuming_lookahead():
             for chunknum,chunk in enumerate(self.bufferChunks):
                 start = 0
@@ -731,152 +741,142 @@ class Banana(protocol.Protocol):
         headerbytes = []
         typebyte = None
         iterator = non_consuming_lookahead()
-        for (chunknum, offset, ch) in iterator:
-            if ch >= HIGH_BIT_SET:
-                header = b1282int(headerbytes)
-                typebyte = ch
-                break
+        for (chunknum, offset, ch) in iterator():
             headerbytes.append(ch)
             if len(headerbytes) > 64:
                 # drop the connection
                 got = "".join(headerbytes)
                 raise BananaError("token prefix is limited to 64 bytes:"
                                   " but got %r" % got)
+            if ch >= HIGH_BIT_SET:
+                header = b1282int(headerbytes)
+                typebyte = ch
+                break
             # still looking
         if typebyte is None:
-            return True # still hungry, must wait for next message
-
+            return True
         # found it. We need to trim the chunklist and update the offset. The
         # next character that our iterator returns (if any) is where the next
         # consumer should look.
-        self.bufferSize -= len(headerbytes)+1
         try:
             (chunknum, offset, ign) = iterator.next()
             self.bufferOffset = offset
             if chunknum > 0:
                 self.bufferChunks = self.bufferChunks[chunknum:]
         except StopIteration:
-            # we've consumed everything
+            # we've used everything
             self.bufferChunks = []
             self.bufferOffset = 0
+        return self.receiveTypeByte(header, typebyte)
 
-        return self.processTypeByte(header, typebyte)
-
-    def processTypeByte(self, header, typebyte):
-        # I decide how much data we want for the body. when we exit this,
-        # we'll be in WANT_BODY and have a length set.
-        self.receivedHeader = header
-        self.receivedTypeByte = typebyte
-        self.receiveMode = WANT_BODY
-        if typebyte in (OPEN, CLOSE, ABORT, INT, NEG, VOCAB, PING, PONG, LIST):
-            self.wantLength = 0
-        elif typebyte in (ERROR, STRING, LONGINT, LONGNEG):
-            self.wantLength = header
-            if typebyte == ERROR and header > SIZE_LIMIT:
-                # someone is trying to spam us with an ERROR token. Drop
-                # them with extreme prejudice.
-                raise BananaError("oversized ERROR token")
-        elif typebyte in (FLOAT,):
-            self.wantLength = 8
-
-    def _consume_and_return_first_n_bytes(self, wanted):
-        offset = self.bufferOffset
-        #print " _consume"
-        for (chunknum, chunk) in enumerate(self.bufferChunks):
-            available = len(chunk)-offset
-            #print " a:", chunknum, chunk, available, wanted
-            if available > wanted:
-                #print " want middle"
-                # we want the middle of this segment, but no more
-                s = chunk[offset:offset+wanted]
-                offset = offset+wanted
-                nextChunknum = chunknum
-            else:
-                #print " want tail"
-                # we want the whole tail (chunk[offset:])
-                if offset == 0:
-                    s = chunk # avoid a copy, not sure what python does
-                else:
-                    # drat, "".join() doesn't take buffers, only strings
-                    s = chunk[offset:]
-                offset = 0 # and we begin at the start of the next chunk
-                nextChunknum = chunknum+1
-            wanted -= len(s)
-            #print " yield", s
-            yield s
-            self.bufferSize -= len(s)
-            if not wanted:
-                # now trim
-                self.bufferOffset = offset
-                if nextChunknum > 0:
-                    self.bufferChunks = self.bufferChunks[nextChunknum:]
-                break
-        #print " _consume done"
-
+    def receiveTypeByte(self, header, typebyte):
+        # when we exit this, we'll be in WANT_BODY (or WANT_DISCARD) and have
+        # a length set.
+        ...
     def receiveBody(self):
         # compare the amount of data available in self.bufferChunks against
         # the amount of data that we want to receive (which might be zero).
         # If we have enough, stringify the body (if any) and deliver the
         # token.
-        #print "receiveBody", self.bufferSize, self.wantLength
-        if self.bufferSize < self.wantLength:
-            #print " still hungry"
-            return True # still hungry, need more data
-        #print " ready"
+        ...
 
-        # figure out which pieces we want. We've already checked the length,
-        # we know there's enough, so it's safe to consume these as we go.
-        pieces = self._consume_and_return_first_n_bytes(self.wantLength)
-        body = "".join(list(pieces))
-        assert len(body) == self.wantLength, (len(body), self.wantLength)
-        self.wantLength = 0
-        self.receiveMode = WANT_HEADER
-        self.processBody(self.receivedTypeByte, self.receivedHeader, body)
+    def receiveLength(self):
+        # requirement: complete headers live in a single chunk
+        b = self.bufferChunks[0]
+        bo = self.bufferOffset
+        pos = 0
+        while pos < 64 and bo+pos < len(b):
+            ch = b[bo+pos]
+            if ch >= HIGH_BIT_SET:
+                # found the type byte
+                header = b1282int(b[bo:bo+pos])
+                typebyte = ch
+                self.bufferOffset += pos+1
+                self.receiveTypeByte(header, typebyte) # puts us in WANT_BODY
+                return False
+        if pos >= 64:
+            # drop the connection
+            raise BananaError("token prefix is limited to 64 bytes: "
+                              "but got %r" % (str(relevant)))
+        # we need more data to continue. Trim out the part we've used
+        if self.bufferOffset == 0:
+            pass
+        elif self.bufferOffset >= len(self.bufferChunks[0]):
+            self.bufferChunks.pop(0)
+        else:
+            self.bufferChunks[0] = self.bufferChunks[0][self.bufferOffset:]
+        self.bufferSize -= self.bufferOffset
+        self.bufferOffset = 0
+        return True
 
-    def processBody(self, typebyte, header, body):
-        #print "processBody (%s)(%s)(%s)" % (tokens.tokenNames[typebyte], header, body)
+    def updateOffsets(self, chunknum, offset, consumed):
+        if chunknum > 0:
+            self.bufferChunks = self.bufferChunks[chunknum:]
+        self.bufferOffset = offset
+        # see if the first chunk is exhausted
+        if self.bufferChunks:
+            if self.bufferOffset >= len(self.bufferChunks[0]):
+                self.bufferChunks.pop(0)
+                self.bufferOffset = 0
+        self.bufferSize -= consumed
 
-        if typebyte == PING:
-            # repond with a PONG, but otherwise ignore it
-            self.sendPONG(header)
-            return
+    def receiveLength2(self):
+        header_bytes = []
+        for chunknum,chunk in enumerate(self.bufferChunks):
+            start = 0
+            if chunknum == 0:
+                start = self.bufferOffset
+            for i in range(start, len(chunk)):
+                ch = chunk[i]
+                if ch >= HIGH_BIT_SET:
+                    # found the type byte
+                    header = b1282int(header_bytes)
+                    typebyte = ch
+                    self.updateOffsets(chunknum, i+1, len(header_bytes)+1)
+                    # handle the typebyte
+                    self.receiveTypeByte(header, typebyte)
+                    return False
+                # still looking, but maybe we've looked too far
+                header_bytes.append(ch)
+                if len(header_bytes) > 64:
+                    # drop the connection
+                    got = "".join(header_bytes)
+                    raise BananaError("token prefix is limited to 64 bytes:"
+                                      " but got %r" % got)
+                # still looking
+        return True
 
-        if typebyte == PONG:
-            return # ignored completely
+    def receiveTypeByte(self, header, typebyte):
+        # exit here in WANT_BODY, and set wantLength= (maybe to 0)
+        self.receivedTypeByte = typebyte
+        self.receiveMode = WANT_BODY
+        if typebyte in (OPEN, CLOSE, ABORT, INT, NEG, VOCAB, PING, PONG, LIST):
+            self.wantLength = 0
+        elif typebyte in (ERROR, STRING, LONGINT, LONGNEG):
+            self.wantLength = self.receivedHeader
+        elif typebyte in (FLOAT,):
+            self.wantLength = 8
 
-        if typebyte == OPEN:
-            self.objectCounter += 1 # keep this in sync
-            print "self.objectCounter now", self.objectCounter
+    def receiveBody(self):
+        if self.bufferSize - self.bufferOffset < self.wantLength:
+            return True # need more data
+            
 
+    def other(self):
+        # rejected is set as soon as a violation is detected. It
+        # indicates that this single token will be rejected.
+
+        rejected = False
         if self.discardCount:
-            # we track OPEN and CLOSE even while we're in discard mode, so we
-            # know when to stop discarding
-            if typebyte == OPEN:
-                self.discardCount += 1
-            elif typebyte == CLOSE:
-                self.discardCount -= 1
-            # when discarding, we completely ignore the rest
-            return
+            rejected = True
 
-        try:
-            self.processBody2(typebyte, header, body)
-        except Violation:
-            f = BananaFailure()
-            self.handleViolation(f)
-
-    def processBody2(self, typebyte, header, body):
-        top = self.receiveStack[-1]
-        self._rx_methname = "unknown"
-
+        wasInOpen = self.inOpen
         if typebyte == OPEN:
-            # stash for later. We already incremented it, so -1
-            self.inboundObjectCount = self.objectCounter-1
+            self.inboundObjectCount = self.objectCounter
+            self.objectCounter += 1
             if self.inOpen:
                 raise BananaError("OPEN token followed by OPEN")
             self.inOpen = True
-            self._rx_methname = "checkToken"
-            top.checkToken(OPEN, header) # might raise Violation
-
             # the inOpen flag is set as soon as the OPEN token is
             # witnessed (even it it gets rejected later), because it
             # means that there is a new sequence starting that must be
@@ -891,83 +891,120 @@ class Banana(protocol.Protocol):
             # transition of self.inOpen must be accompanied by exactly
             # one increment of self.discardCount
 
-            self.inboundOpenCount = header # for debugging/error-checking
+        if typebyte == ERROR and header > SIZE_LIMIT:
+            # someone is trying to spam us with an ERROR token. Drop
+            # them with extreme prejudice.
+            raise BananaError("oversized ERROR token")
+
+        rest = buffer[pos+1:]
+
+        # determine what kind of token it is. Each clause finishes in
+        # one of four ways:
+        #
+        #  raise BananaError: the protocol was violated so badly there is
+        #                     nothing to do for it but hang up abruptly
+        #
+        #  return: if the token is not yet complete (need more data)
+        #
+        #  continue: if the token is complete but no object (for
+        #            handleToken) was produced, e.g. OPEN, CLOSE, ABORT
+        #
+        #  obj=foo: the token is complete and an object was produced
+        #
+
+        if typebyte == OPEN:
+            buffer = rest
+            self.inboundOpenCount = header
+            self.inOpen = True
             self.opentype = []
-            return
+            continue
 
-        # PING, PONG, ABORT, CLOSE, and ERROR are always legal (i.e. we do
-        # not submit them to checkToken/openerCheckToken).
+        elif typebyte == CLOSE:
+            buffer = rest
+            count = header
+            self.handleClose(count)
+            continue
 
-        if typebyte == ABORT:
-            # This isn't really a Violation, but we need something to
-            # describe it. It does behave identically to what happens when
-            # receiveChild raises a Violation. The .handleViolation will pop
-            # the now-useless Unslicer and start discarding tokens just as if
-            # the Unslicer itself had made the decision.
+        elif typebyte == ABORT:
+            raise BananaError("ABORT tokens no longer tolerated")
 
-            # slightly silly way to do it, but nice and uniform
-            self._rx_methname = "receive-abort"
-            raise Violation("ABORT received")
+        elif typebyte == ERROR:
+            strlen = header
+            if len(rest) >= strlen:
+                # the whole string is available
+                buffer = rest[strlen:]
+                obj = rest[:strlen]
+                # handleError must drop the connection
+                self.handleError(obj)
+                return
+            else:
+                return # there is more to come
 
-        if typebyte == ERROR:
-            # handleError must drop the connection
-            self.handleError(body)
-            return
+        elif typebyte == LIST:
+            raise BananaError("oldbanana peer detected, " +
+                              "compatibility code not yet written")
+            #listStack.append((header, []))
+            #buffer = rest
 
-        if typebyte == CLOSE:
-            self.handleClose(header)
-            return
+        elif typebyte == STRING:
+            strlen = header
+            if len(rest) >= strlen:
+                # the whole string is available
+                buffer = rest[strlen:]
+                obj = rest[:strlen]
+                # although it might be rejected
+            else:
+                # there is more to come
+                return
 
-        # the other tokens (LIST, STRING, INT/NEG, LONGINT/LONGNEG, FLOAT,
-        # VOCAB) *are* subject to openerCheckToken/checkToken validation.
-
-        # For example, a list of integers would reject STRING, VOCAB, and
-        # OPEN because none of those will produce integers. If the unslicer's
-        # .checkToken rejects the tokentype, its .receiveChild will
-        # immediately get an Failure
-
-        # The validation includes a body length. We've already buffered the
-        # whole token by now, but still do the validation, because many of
-        # the unslicers perform their only checks in checkToken() instead of
-        # receiveChild(). TODO: once unslicers have moved all code out of
-        # checkToken(), remove this check.
-
-        # the openerCheckToken/checkToken calls might raise Violation
-        if self.inOpen:
-            self._rx_methname = "openerCheckToken"
-            top.openerCheckToken(typebyte, header, self.opentype)
-        else:
-            self._rx_methname = "checkToken"
-            print "calling checkToken", repr(typebyte), header
-            top.checkToken(typebyte, header)
-            print " checkToken happy"
-
-        # ok, we're accepting the token. These will all cause objects to be
-        # submitted to handleOpen or handleToken
-
-        if typebyte == STRING:
-            obj = body
         elif typebyte == INT:
+            buffer = rest
             obj = int(header)
         elif typebyte == NEG:
+            buffer = rest
             # -2**31 is too large for a positive int, so go through
             # LongType first
             obj = int(-long(header))
-        elif typebyte in (LONGINT, LONGNEG):
-            obj = bytes_to_long(body)
-            if typebyte == LONGNEG:
-                obj = -obj
+        elif typebyte == LONGINT or typebyte == LONGNEG:
+            strlen = header
+            if len(rest) >= strlen:
+                # the whole number is available
+                buffer = rest[strlen:]
+                obj = bytes_to_long(rest[:strlen])
+                if typebyte == LONGNEG:
+                    obj = -obj
+            else:
+                # there is more to come
+                return
+
         elif typebyte == VOCAB:
+            buffer = rest
             obj = self.incomingVocabulary[header]
             # TODO: bail if expanded string is too big
             # this actually means doing self.checkToken(VOCAB, len(obj))
             # but we have to make sure we handle the rejection properly
+
         elif typebyte == FLOAT:
-            obj = struct.unpack("!d", body)[0]
+            if len(rest) >= 8:
+                buffer = rest[8:]
+                obj = struct.unpack("!d", rest[:8])[0]
+            else:
+                # this case is easier than STRING, because it is only 8
+                # bytes. We don't bother skipping anything.
+                return
+
+        elif typebyte == PING:
+            buffer = rest
+            self.sendPONG(header)
+            continue # otherwise ignored
+
+        elif typebyte == PONG:
+            buffer = rest
+            continue # otherwise ignored
+
         else:
             raise BananaError("Invalid Type Byte 0x%x" % ord(typebyte))
 
-        #print "about to handleToken(%s) (%s)" % (obj, body)
         if self.inOpen:
             self.handleOpen(self.inboundOpenCount,
                             self.inboundObjectCount,
@@ -977,53 +1014,90 @@ class Banana(protocol.Protocol):
             # to .indexOpen
         else:
             self.handleToken(obj)
+        
+
+    def old_handleData(self, chunk):
+        # buffer, assemble into tokens
+        # call self.receiveToken(token) with each
+        if self.skipBytes:
+            if len(chunk) < self.skipBytes:
+                # skip the whole chunk
+                self.skipBytes -= len(chunk)
+                return
+            # skip part of the chunk, and stop skipping
+            chunk = chunk[self.skipBytes:]
+            self.skipBytes = 0
+        buffer = self.buffer + chunk
+
+        # Loop through the available input data, extracting one token per
+        # pass.
+
+        while buffer:
+            assert self.buffer != buffer, \
+                   ("Banana.handleData: no progress made: %s %s" %
+                    (repr(buffer),))
+            self.buffer = buffer
+            pos = 0
+
+            for ch in buffer:
+                if ch >= HIGH_BIT_SET:
+                    break
+                pos = pos + 1
+                if pos > 64:
+                    # drop the connection. We log more of the buffer, but not
+                    # all of it, to make it harder for someone to spam our
+                    # logs.
+                    raise BananaError("token prefix is limited to 64 bytes: "
+                                      "but got %r" % (buffer[:200],))
+            else:
+                # we've run out of buffer without seeing the high bit, which
+                # means we're still waiting for header to finish
+                return
+            assert pos <= 64
+
+            # At this point, the header and type byte have been received.
+            # The body may or may not be complete.
+
+            typebyte = buffer[pos]
+            if pos:
+                header = b1282int(buffer[:pos])
+            else:
+                header = 0
+
+            # while loop ends here
+
+        self.buffer = ''
 
 
     def handleOpen(self, openCount, objectCount, indexToken):
-        # I am called for each index token of an OPEN sequence. For any given
-        # OPEN sequence (introducing a new node of the object graph), if the
-        # opentype contains N tokens, I will be called N times, with the same
-        # openCount/objectCount values but different (sequential) indexToken
-        # values.
-        #
-        # openCount is the (optional) value provided by the sender, telling
-        # us how many OPEN tokens they've sent us before this one.
-        # objectCount is a local counter, which tells us how many tokens (of
-        # any kind) we've received before the OPEN that started this
-        # sequence.
         self.opentype.append(indexToken)
         opentype = tuple(self.opentype)
         if self.debugReceive:
-            print "handleOpen(opencount=%d,objcount=%d,%s)" % \
-                  (openCount, objectCount, indexToken)
+            print "handleOpen(%d,%d,%s)" % (openCount, objectCount, indexToken)
         top = self.receiveStack[-1]
-
         # obtain a new Unslicer to handle the object
-        self._rx_methname = "doOpen"
-        child = top.doOpen(opentype) # might raise Violation
+        child = top.doOpen(opentype)
         if not child:
             if self.debugReceive:
                 print " doOpen wants more index tokens"
             return # they want more index tokens, leave .inOpen=True
-
         if self.debugReceive:
             print " opened[%d] with %s" % (openCount, child)
+
         assert tokens.IUnslicer.providedBy(child), "child is %s" % child
+        self.inOpen = False
         child.protocol = self
         child.openCount = openCount
         child.parent = top
-        self.inOpen = False
         self.receiveStack.append(child)
-        self._rx_methname = "start"
-        child.start(objectCount) # might raise Violation
+        child.start(objectCount)
 
     def handleToken(self, token, ready_deferred=None):
         top = self.receiveStack[-1]
         if self.debugReceive: print "handleToken(%s)" % (token,)
         if ready_deferred:
             assert isinstance(ready_deferred, defer.Deferred)
-        self._rx_methname = "receiveChild"
-        top.receiveChild(token, ready_deferred) # might raise Violation
+        top.receiveChild(token, ready_deferred)
 
     def handleClose(self, closeCount):
         if self.debugReceive:
@@ -1032,126 +1106,16 @@ class Banana(protocol.Protocol):
             raise BananaError("lost sync, got CLOSE(%d) but expecting %s" \
                               % (closeCount, self.receiveStack[-1].openCount))
 
-        # If a Violation is raised by receiveClose() or finish(), we'll have
-        # an extra Unslicer (we've received the CLOSE, the sequence is over,
-        # but we haven't yet popped the unslicer off the stack). self.inClose
-        # is a signal to handleViolation that we can discard one fewer
-        # levels.
-        self.inClose = True
-        if self.inOpen:
-            # huh, we were still waiting to see all the opentype tokens when
-            # the caller closed the sequence. We must disagree about the
-            # opentype sequences. This is a Violation. Treat it as if it
-            # occurred in handleOpen().
-            self._rx_methname = "close-during-open"
-            raise Violation("received CLOSE during open sequence")
-
         child = self.receiveStack[-1] # don't pop yet: describe() needs it
 
-        self._rx_methname = "receiveClose"
-        obj, ready_deferred = child.receiveClose() # might raise Violation
+        obj, ready_deferred = child.receiveClose()
         if self.debugReceive: print "receiveClose returned", obj
 
-        self._rx_methname = "finish"
-        child.finish() # might raise Violation
-
-        # .finish could raise a Violation if an object that references
-        # the child is just now deciding that they don't like it
-        # (perhaps their TupleConstraint couldn't be asserted until the
-        # tuple was complete and referenceable). In this case, the child
-        # has produced a valid object, but an earlier (incomplete)
-        # object is not valid. So we treat this as if this child itself
-        # raised the Violation. The .where attribute will point to this
-        # child, which is the node that caused somebody problems, but
-        # will be marked <FINISH>, which indicates that it wasn't the
-        # child itself which raised the Violation. TODO: not true
-        #
-        # TODO: it would be more useful if the UF could also point to
-        # the completing object (the one which raised Violation).
-
+        child.finish()
         self.receiveStack.pop()
-        self.inClose = False
 
         # now deliver the object to the parent
         self.handleToken(obj, ready_deferred)
-
-    def handleViolation(self, f):
-        """An Unslicer has decided to give up, or we have given up on it
-        (because we received an ABORT token).
-
-        inOpen= and inClose= are used to manage the gap between how many
-        OPEN/CLOSE tokens we've received and how many Unslicers are on the
-        stack. The inbound token sequence is OPEN ot1 ot2 ch1 ch2 CLOSE, but
-        we don't push a new Unslicer until the last opentype token (between
-        'ot2' and 'ch1'). inOpen=True when we receive the OPEN, and is set to
-        False when we push the Unslicer during processing of ot2.
-        inClose=True when we receive the CLOSE and is set to False a few
-        statements later after we pop the Unslicer.
-        """
-
-        methname = self._rx_methname
-        where = self.describeReceive()
-        f.value.setLocation(where)
-
-        if self.debugReceive:
-            print " handleViolation-%s (inOpen=%s, inClose=%s): %s" \
-                  % (methname, self.inOpen, self.inClose, f)
-
-        assert isinstance(f, BananaFailure)
-
-        if self.logViolations:
-            log.msg("Violation in %s at %s" % (methname, where))
-            log.err(f)
-
-        if self.inOpen:
-            self.inOpen = False
-            self.discardCount += 1
-            if self.debugReceive:
-                print "  ++discardCount (inOpen), now %d" % self.discardCount
-
-        inClose = self.inClose
-        self.inClose = False
-
-        while True:
-            # tell the parent that their child is dead. This is useful for
-            # things like PB, which may want to errback the current request.
-            if self.debugReceive:
-                print " reportViolation to %s" % self.receiveStack[-1]
-            f = self.receiveStack[-1].reportViolation(f)
-            if not f:
-                # they absorbed the failure
-                if self.debugReceive:
-                    print "  buck stopped, error absorbed"
-                break
-
-            # the old top wants to propagate it upwards
-            if self.debugReceive:
-                print "  popping %s" % self.receiveStack[-1]
-            if not inClose:
-                self.discardCount += 1
-                if self.debugReceive:
-                    print "  ++discardCount (pop, not inClose), now %d" \
-                          % self.discardCount
-            inClose = False
-
-            old = self.receiveStack.pop()
-
-            try:
-                # TODO: if handleClose encountered a Violation in .finish,
-                # we will end up calling it a second time
-                old.finish() # ??
-            except Violation:
-                pass # they've already failed once
-
-            if not self.receiveStack:
-                # now there's nobody left to create new Unslicers, so we
-                # must drop the connection
-                why = "Oh my god, you killed the RootUnslicer! " + \
-                      "You bastard!!"
-                raise BananaError(why)
-
-            # now we loop until someone absorbs the failure
-
 
     def handleError(self, msg):
         log.msg("got banana ERROR from remote side: %s" % msg)

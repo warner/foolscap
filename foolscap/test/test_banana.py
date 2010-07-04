@@ -7,7 +7,7 @@ from twisted.internet import defer
 
 from foolscap.tokens import ISlicer, Violation, BananaError
 from foolscap.tokens import BananaFailure, tokenNames, \
-     OPEN, CLOSE, ABORT, INT, LONGINT, NEG, LONGNEG, FLOAT, STRING
+     OPEN, CLOSE, ERROR, ABORT, INT, LONGINT, NEG, LONGNEG, FLOAT, STRING
 from foolscap import slicer, schema, storage, banana, vocab
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
@@ -15,8 +15,9 @@ from foolscap.constraint import IConstraint
 from foolscap.banana import int2b128, long_to_bytes
 
 import StringIO
-import sets, struct
+import sets, struct, itertools
 from decimal import Decimal
+from hashlib import md5
 
 #log.startLogging(sys.stderr)
 
@@ -1430,9 +1431,11 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                     schema.StringConstraint(10))
         self.conform2("\x0a\x82" + "a"*10 + "extra", "a"*10,
                     schema.StringConstraint(10))
+        print "doing violate2"
         self.violate2("\x0b\x82" + "a"*11 + "extra",
                       "<RootUnslicer>",
                       schema.StringConstraint(10))
+        print "did violate2"
 
     def NOTtestFoo(self):
         if 0:
@@ -1996,6 +1999,150 @@ class Sliceable(unittest.TestCase):
                        tCLOSE(0)])
         return d
 
+class TokenParsingBanana(banana.Banana):
+    def processBody(self, typebyte, header, body):
+        self.tokens.append( (typebyte, header, body) )
+
+class TokenParser(unittest.TestCase):
+    def setUp(self):
+        self.b = b = TokenParsingBanana()
+        b.initReceive()
+        self.tokens = b.tokens = []
+    def get_tokens(self):
+        t = list(self.tokens)
+        self.tokens[:] = []
+        return t
+    def put(self, *chunks):
+        for c in chunks:
+            self.b.handleData(c)
+    def expect(self, tokens):
+        self.failUnlessEqual(self.get_tokens(), tokens)
+        self.failUnlessEqual(self.b.bufferSize, 0)
+        self.failUnlessEqual(self.b.bufferChunks, [])
+
+    def test_tokenizer(self):
+        put = self.put
+        expect = self.expect
+
+        put("")
+        expect([])
+
+        put(bINT(4))
+        expect([(INT, 4, '')])
+
+        put(bSTR("abcd"))
+        expect([(STRING, 4, "abcd")])
+
+        put(bSTR("abcd")+bSTR("efg"))
+        expect([(STRING, 4, "abcd"), (STRING, 3, "efg")])
+
+        s = bSTR("a"*100) + bSTR("b"*100)
+        put(s[:50])
+        put(s[50:])
+        expect([(STRING, 100, "a"*100), (STRING, 100, "b"*100)])
+
+        s = bSTR("a"*5) + bSTR("b"*5) + bSTR("c"*100) + bSTR("d") + bSTR("e")
+        put(s[:50])
+        put(s[50:])
+        expect([(STRING, 5, "a"*5), (STRING, 5, "b"*5),
+                (STRING, 100, "c"*100), (STRING, 1, "d"),
+                (STRING, 1, "e"),
+                ])
+
+
+    def write_int(self, num):
+        token = []
+        typebyte = "\x81"
+        if num < 0:
+            num = -num
+            typebyte = "\x83"
+        banana.int2b128(num, token.append)
+        token.append(typebyte)
+        return typebyte, "".join(token)
+
+    def write_long(self, num):
+        token = []
+        typebyte = "\x85"
+        if num < 0:
+            num = -num
+            typebyte = "\x86"
+        s = banana.long_to_bytes(num)
+        banana.int2b128(len(s), token.append)
+        token.append(typebyte)
+        token.append(s)
+        return typebyte, len(s), s, "".join(token)
+
+    def int2b128(self, n):
+        header = []
+        banana.int2b128(n, header.append)
+        return "".join(header)
+
+    def test_random(self):
+        put = self.put
+        expect = self.expect
+        for bodyseed in range(20):
+            pieces = []
+            expected = []
+            for i in range(40):
+                seed = md5("%d-%d" % (bodyseed, i)).hexdigest()
+                if seed[0] in "01":
+                    num = int(seed[1], 16) # small
+                    if seed[0] == "0" and num > 0:
+                        pieces.append(bINT(-num))
+                        expected.append( (NEG, num, "") )
+                    else:
+                        pieces.append(bINT(num))
+                        expected.append( (INT, num, "") )
+                if seed[0] in "23":
+                    num = int(seed[1:], 16) # large, still fits in INT
+                    if seed[0] == "2":
+                        num = -num
+                    typebyte, token = self.write_int(num)
+                    pieces.append(token)
+                    expected.append( (typebyte, abs(num), "") )
+                if seed[0] in "45":
+                    num = int(seed[1:], 16) # large, put in LONGINT
+                    if seed[0] == "4":
+                        num = -num
+                    typebyte, header, body, token = self.write_long(num)
+                    pieces.append(token)
+                    expected.append( (typebyte, header, body) )
+                if seed[0] in "67":
+                    l = int(seed[1:3], 16)
+                    s = seed[4] * l
+                    pieces.append(self.int2b128(l) + STRING + s)
+                    expected.append( (STRING, l, s) )
+                if seed[0] in "78":
+                    float_s = seed[2:2+8]
+                    pieces.append(FLOAT+float_s)
+                    expected.append( (FLOAT, 0, float_s) )
+                if seed[0] == "9":
+                    count = int(seed[1:3], 16)
+                    pieces.append(self.int2b128(count) + OPEN)
+                    expected.append( (OPEN, count, "") )
+                if seed[0] == "a":
+                    count = int(seed[1:3], 16)
+                    pieces.append(self.int2b128(count) + CLOSE)
+                    expected.append( (CLOSE, count, "") )
+                if seed[0] == "b":
+                    l = int(seed[1:3], 16)
+                    s = seed[4] * l
+                    pieces.append(self.int2b128(l) + ERROR + s)
+                    expected.append( (ERROR, l, s) )
+
+            s = "".join(pieces)
+            for chunkseed in range(20):
+                #print "bodylen:", len(s)  # generally 1000-2000 bytes
+                remaining = s
+                chunkstep = itertools.count(0)
+                while remaining:
+                    i = chunkstep.next()
+                    seed = md5("%d-%d" % (chunkseed, i)).hexdigest()
+                    size = int(seed[:2], 16) # TODO: prefer exponential
+                    #print " ", size, len(remaining)
+                    chunk, remaining = remaining[:size], remaining[size:]
+                    self.put(chunk)
+                self.expect(expected)
 
 
 # TODO: vocab test:
