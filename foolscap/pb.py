@@ -37,7 +37,7 @@ def parse_strport(port):
     return (portnum, interface)
 
 Listeners = []
-class Listener(protocol.ServerFactory):
+class Listener(protocol.ServerFactory, service.MultiService):
     """I am responsible for a single listening port, which may connect to
     multiple Tubs. I have a strports-based Service, which I will attach as a
     child of one of my Tubs. If that Tub disconnects, I will reparent the
@@ -50,7 +50,7 @@ class Listener(protocol.ServerFactory):
 
     # this also serves as the ServerFactory
 
-    def __init__(self, port, options={},
+    def __init__(self, port=None, portFile=None, options={},
                  negotiationClass=negotiate.Negotiation):
         """
         @type port: string
@@ -63,14 +63,22 @@ class Listener(protocol.ServerFactory):
         #  tcp:80:interface=127.0.0.1
         # we reject UNIX sockets.. I don't know if they ever worked.
 
-        portnum, interface = parse_strport(port)
+        service.MultiService.__init__(self)
+        assert port or portFile
+        self.portFile = portFile
+        if not port:
+            # get it from the portfile (on second and later runs)
+            try:
+                port = open(self.portFile, "rb").read().strip()
+            except EnvironmentError:
+                # must be the first run. We'll use "0".
+                pass
         self.port = port
         self.options = options
         self.negotiationClass = negotiationClass
         self.parentTub = None
         self.tubs = {}
         self.redirects = {}
-        self.s = internet.TCPServer(portnum, self, interface=interface)
         Listeners.append(self)
 
     def getPortnum(self):
@@ -97,6 +105,21 @@ class Listener(protocol.ServerFactory):
         return "<Listener at 0x%x on %s with no tubs>" % (abs(id(self)),
                                                           self.port)
 
+    def startService(self):
+        port = self.port
+        need_to_write_portfile = False
+        if not port:
+            # the portFile was empty
+            need_to_write_portfile = True
+            port = "0"
+        portnum, interface = parse_strport(port)
+        self.s = internet.TCPServer(portnum, self, interface=interface)
+        self.s.setServiceParent(self)
+        service.MultiService.startService(self)
+        # now the new port should be listening, so we can grab its portnum
+        if self.portFile:
+            open(self.portFile, "wb").write("%d\n" % self.getPortnum())
+
     def addTub(self, tub):
         if tub.tubID in self.tubs:
             if tub.tubID is None:
@@ -108,7 +131,7 @@ class Listener(protocol.ServerFactory):
         self.tubs[tub.tubID] = tub
         if self.parentTub is None:
             self.parentTub = tub
-            self.s.setServiceParent(self.parentTub)
+            self.setServiceParent(self.parentTub)
 
     def removeTub(self, tub):
         # this might return a Deferred, since the removal might cause the
@@ -123,16 +146,13 @@ class Listener(protocol.ServerFactory):
                 # disownServiceParent, so the port remains listening. Can we
                 # do this? It looks like setServiceParent does
                 # disownServiceParent first, so it may glitch.
-                self.s.setServiceParent(self.parentTub)
+                self.setServiceParent(self.parentTub)
             else:
                 # no more tubs, this Listener will go away now
-                d = self.s.disownServiceParent()
+                d = self.disownServiceParent()
                 Listeners.remove(self)
                 return d
         return None
-
-    def getService(self):
-        return self.s
 
     def addRedirect(self, tubID, location):
         assert tubID is not None # unauthenticated Tubs don't get redirects
@@ -546,26 +566,36 @@ class Tub(service.MultiService):
         d.addCallback(_got_local_ip)
         return d
 
-    def listenOn(self, what, options={}):
+    def listenOn(self, what=None, portFile=None, options={}):
         """Start listening for connections.
 
-        @type  what: string or Listener instance
+        @type  what: string or Listener instance, or None to use portFile=
         @param what: a L{twisted.application.strports} -style description,
                      or a L{Listener} instance returned by a previous call to
                      listenOn.
+        @param portFile: a string, or None to use what=. If provided, the
+                         Listener will use this file to store the port on
+                         which it listens. If the file does not exist when
+                         the Listener is started, it will pick an arbitrary
+                         free port (on all interfaces) to use, and will store
+                         it in the file. If this file does exist, it will
+                         read the port number from this file.
         @param options: a dictionary of options that can influence connection
                         negotiation before the target Tub has been determined
+
+        You must provide either what= or portFile=, not both.
 
         @return: The Listener object that was created. This can be used to
         stop listening later on, to have another Tub listen on the same port,
         and to figure out which port was allocated when you used a strports
         specification of 'tcp:0'. """
 
-        if type(what) is str:
-            l = Listener(what, options, self.negotiationClass)
-        else:
+        assert what or portFile
+        if isinstance(what, Listener):
             assert not options
             l = what
+        else:
+            l = Listener(what, portFile, options, self.negotiationClass)
         assert l not in self.listeners
         l.addTub(self)
         self.listeners.append(l)

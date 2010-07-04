@@ -117,6 +117,38 @@ class SetLocation(unittest.TestCase):
         d.addCallback(_check)
         return d
 
+class PortFile(unittest.TestCase):
+
+    def setUp(self):
+        self.s = service.MultiService()
+        self.s.startService()
+
+    def tearDown(self):
+        d = self.s.stopService()
+        d.addCallback(flushEventualQueue)
+        return d
+
+    def test_portfile(self):
+        basedir = "tub/PortFile/portfile"
+        os.makedirs(basedir)
+        fn = os.path.join(basedir, "port")
+        t = GoodEnoughTub()
+        l = t.listenOn(portFile=fn)
+        self.failIf(os.path.exists(fn))
+        t.setServiceParent(self.s)
+        self.failUnless(os.path.exists(fn))
+        p = int(open(fn, "rb").read().strip())
+        self.failUnlessEqual(p, l.getPortnum())
+        d = t.disownServiceParent()
+
+        def _next(ign):
+            t2 = GoodEnoughTub()
+            l2 = t2.listenOn(portFile=fn)
+            t2.setServiceParent(self.s)
+            self.failUnlessEqual(p, l2.getPortnum())
+            t2.disownServiceParent()
+        d.addCallback(_next)
+        return d
 
 
 class FurlFile(unittest.TestCase):
