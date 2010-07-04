@@ -16,7 +16,7 @@ def _ignore(results):
     pass
 
 
-class Promise:
+class Promise(object):
     """I am a promise of a future result. I am a lot like a Deferred, except
     that my promised result is usually an instance. I make it possible to
     schedule method invocations on this future instance, returning Promises
@@ -230,7 +230,7 @@ def makePromise():
     return p, p._resolve
 
 
-class _MethodGetterWrapper:
+class _MethodGetterWrapper(object):
     def __init__(self, callback):
         self.cb = [callback]
 

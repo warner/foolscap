@@ -5,7 +5,7 @@
 from twisted.internet import defer
 from foolscap import eventual
 
-class OneShotObserverList:
+class OneShotObserverList(object):
     """A one-shot event distributor.
 
     Subscribers can get a Deferred that will fire with the results of the

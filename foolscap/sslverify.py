@@ -1,6 +1,7 @@
 # Copyright 2005 Divmod, Inc.  See LICENSE file for details
 
-import itertools, md5
+import itertools
+import hashlib
 from OpenSSL import SSL, crypto
 
 from twisted.python import reflect
@@ -162,7 +163,8 @@ class DistinguishedName(dict):
             setattr(self, k, v)
 
     def _copyFrom(self, x509name):
-        d = {}
+        # d was unused, removed
+        # -- Stephan
         for name in _x509names:
             value = getattr(x509name, name, None)
             if value is not None:
@@ -411,7 +413,7 @@ class PublicKey:
     def keyHash(self):
         """MD5 hex digest of signature on an empty certificate request with this key.
         """
-        return md5.md5(self._emptyReq).hexdigest()
+        return hashlib.md5(self._emptyReq).hexdigest()
 
     def inspect(self):
         return 'Public Key with Hash: %s' % (self.keyHash(),)
@@ -513,7 +515,11 @@ class KeyPair(PublicKey):
         Sign a CertificateRequest instance, returning a Certificate instance.
         """
         req = requestObject.original
-        dn = requestObject.getSubject()
+
+        #dn = requestObject.getSubject()
+        # dn is unused, commented out
+        # -- Stephan
+        
         cert = crypto.X509()
         issuerDistinguishedName._copyInto(cert.get_issuer())
         cert.set_subject(req.get_subject())
@@ -668,7 +674,7 @@ class OpenSSLCertificateOptions(object):
             ctx.set_options(self._OP_ALL)
 
         if self.enableSessions:
-            sessionName = md5.md5("%s-%d" % (reflect.qual(self.__class__), _sessionCounter())).hexdigest()
+            sessionName = hashlib.md5("%s-%d" % (reflect.qual(self.__class__), _sessionCounter())).hexdigest()
             ctx.set_session_id(sessionName)
 
         return ctx

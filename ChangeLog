@@ -1,3 +1,31 @@
+2009-02-26  Stephan Peijnik  <stephan@peijnik.at>
+
+	* foolscap/call.py, foolscap/constraint.py, foolscap/eventual.py,
+	  foolscap/observer.py, foolscap/promise.py, foolscap/reconnector.py,
+	  foolscap/remoteinterface.py, foolscap/slicer.py:
+	Convert all old-style classes to new-style classes.
+	
+	* foolscap/sslverify.py (DistingishedName._copyFrom):
+	Remove unused variable d.
+	
+	* foolscap/sslverify.py (KeyPair.signRequestObject):
+	Removed unused variable dn.
+	
+	* foolscap/vocab.py:
+	Replace use of deprecated sha module with hashlib.
+	
+	* foolscap/reconnector.py:
+	Import each module with a separate import statement.
+	
+	* foolscap/referencable.py:
+	Import each module with a separate import statement.
+	
+	* foolscap/remoteinterface.py:
+	Import each module with a separate import statement.
+	
+	* foolscap/sslverify.py:
+	Replace use of deprecated md5 module with hashlib.
+
 2008-10-15  Brian Warner  <warner@allmydata.com>
 
 	* misc/*/debian/rules (install/python-foolscap): include

@@ -3,7 +3,7 @@
 from twisted.internet import reactor, defer
 from twisted.python import log
 
-class _SimpleCallQueue:
+class _SimpleCallQueue(object):
     # XXX TODO: merge epsilon.cooperator in, and make this more complete.
     def __init__(self):
         self._events = []
