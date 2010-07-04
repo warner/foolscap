@@ -110,10 +110,13 @@ class LogDumper:
             t += " [INCIDENT-TRIGGER]"
         print >>self.options.stdout, t
         if 'failure' in d:
+            f = d["failure"]
             print >>self.options.stdout," FAILURE:"
-            lines = str(d['failure']).split("\n")
+            lines = str(f).split("\n")
             for line in lines:
                 print >>self.options.stdout, " %s" % (line,)
+            print type(f), f.__class__
+            print f.value
 
     def open_dumpfile(self):
         fn = self.options.dumpfile

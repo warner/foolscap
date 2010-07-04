@@ -27,6 +27,14 @@ from foolscap.tokens import Violation, RemoteException
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.logging import app_versions
 
+def trap_and_discard(f, *errorTypes):
+    f.trap(*errorTypes)
+    pass
+
+def trap_deadref(f):
+    f.trap(DeadReferenceError)
+    pass
+
 # hush pyflakes
 _unused = [
     __version__,

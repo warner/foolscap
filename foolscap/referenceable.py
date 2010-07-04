@@ -416,11 +416,16 @@ class RemoteReference(RemoteReferenceOnly):
 
     def callRemoteOnly(self, _name, *args, **kwargs):
         # the remote end will not send us a response. The only error cases
-        # are arguments that don't match the schema, or broken invariants. In
-        # particular, DeadReferenceError will be silently consumed.
+        # are arguments that don't match the schema, or broken invariants,
+        # and these will be dumped into the log rather than being returned to
+        # the caller. In particular, DeadReferenceError will be silently
+        # consumed.
         d = defer.maybeDeferred(self._callRemote, _name, _callOnly=True,
                                 *args, **kwargs)
+        d.addErrback(log.err, format="callRemoteOnly(%(name)s failed",
+                     name=_name)
         del d
+        # TODO: record more information about which method was called
         return None
 
     def _callRemote(self, _name, *args, **kwargs):

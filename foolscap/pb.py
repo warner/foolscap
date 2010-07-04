@@ -311,6 +311,7 @@ class Tub(service.MultiService):
         self.unauthenticatedBrokers = [] # inbound Brokers without TubRefs
         self.reconnectors = []
 
+        self._ready_observers = observer.OneShotObserverList()
         self._allBrokersAreDisconnected = observer.OneShotObserverList()
         self._activeConnectors = []
         self._allConnectorsAreFinished = observer.OneShotObserverList()
@@ -547,6 +548,7 @@ class Tub(service.MultiService):
         return d
 
     def listenOn(self, what, options={}):
+        # TODO: portFile=
         """Start listening for connections.
 
         @type  what: string or Listener instance
@@ -607,6 +609,9 @@ class Tub(service.MultiService):
             if not self.running and not self._activeConnectors:
                 self._allConnectorsAreFinished.fire(self)
 
+    def when_ready(self):
+        return self._ready_observers.whenFired()
+
     def startService(self):
         service.MultiService.startService(self)
         for d,sturdy in self._pending_getReferences:
@@ -616,6 +621,7 @@ class Tub(service.MultiService):
         del self._pending_getReferences
         for rc in self.reconnectors:
             eventual.eventually(rc.startConnecting, self)
+        eventual.eventually(self._ready_observers.fire, None)
 
     def _tubsAreNotRestartable(self, *args, **kwargs):
         raise RuntimeError("Sorry, but Tubs cannot be restarted.")
@@ -627,6 +633,7 @@ class Tub(service.MultiService):
         # least this code is not designed to make that possible.. it might be
         # doable in the future).
         assert self.running
+        # XXX consider waiting for self._ready_observers to fire
         self.startService = self._tubsAreNotRestartable
         self.getReference = self._tubHasBeenShutDown
         self.connectTo = self._tubHasBeenShutDown
