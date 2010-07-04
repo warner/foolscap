@@ -38,7 +38,10 @@ class BooleanUnslicer(LeafUnslicer):
     def receiveChild(self, obj, ready_deferred=None):
         assert not isinstance(obj, Deferred)
         assert ready_deferred is None
-        assert type(obj) == int
+        if self.value != None:
+            raise BananaError("BooleanUnslicer only accepts one token")
+        if type(obj) != int:
+            raise BananaError("BooleanUnslicer only accepts an INT token")
         if self.constraint:
             if self.constraint.value != None:
                 if bool(obj) != self.constraint.value:

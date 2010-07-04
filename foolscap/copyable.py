@@ -136,6 +136,8 @@ class RemoteCopyUnslicer(slicer.BaseUnslicer):
         assert not isinstance(obj, defer.Deferred)
         assert ready_deferred is None
         if self.attrname == None:
+            if type(obj) is not str:
+                raise BananaError("RemoteCopyUnslicer keys must be STRINGs")
             attrname = obj
             if self.d.has_key(attrname):
                 raise BananaError("duplicate attribute name '%s'" % attrname)

@@ -160,9 +160,13 @@ class InstanceUnslicer(slicer.BaseUnslicer):
     def receiveChild(self, obj, ready_deferred=None):
         assert ready_deferred is None
         if self.classname is None:
+            if type(obj) != str:
+                raise BananaError("InstanceUnslicer classname must be string")
             self.classname = obj
             self.attrname = None
         elif self.attrname is None:
+            if type(obj) != str:
+                raise BananaError("InstanceUnslicer keys must be STRINGs")
             self.attrname = obj
         else:
             if isinstance(obj, Deferred):

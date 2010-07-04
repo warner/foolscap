@@ -781,39 +781,6 @@ class Banana(protocol.Protocol):
                 # transition of self.inOpen must be accompanied by exactly
                 # one increment of self.discardCount
 
-            # determine if this token will be accepted, and if so, how large
-            # it is allowed to be (for STRING and LONGINT/LONGNEG)
-
-            if ((not rejected) and
-                (typebyte not in (PING, PONG, ABORT, CLOSE, ERROR))):
-                # PING, PONG, ABORT, CLOSE, and ERROR are always legal. All
-                # others (including OPEN) can be rejected by the schema: for
-                # example, a list of integers would reject STRING, VOCAB, and
-                # OPEN because none of those will produce integers. If the
-                # unslicer's .checkToken rejects the tokentype, its
-                # .receiveChild will immediately get an Failure
-                try:
-                    # the purpose here is to limit the memory consumed by
-                    # the body of a STRING, OPEN, LONGINT, or LONGNEG token
-                    # (i.e., the size of a primitive type). If the sender
-                    # wants to feed us more data than we want to accept, the
-                    # checkToken() method should raise a Violation. This
-                    # will never be called with ABORT or CLOSE types.
-                    top = self.receiveStack[-1]
-                    if wasInOpen:
-                        top.openerCheckToken(typebyte, header, self.opentype)
-                    else:
-                        top.checkToken(typebyte, header)
-                except Violation:
-                    rejected = True
-                    f = BananaFailure()
-                    if wasInOpen:
-                        methname = "openerCheckToken"
-                    else:
-                        methname = "checkToken"
-                    self.handleViolation(f, methname, inOpen=self.inOpen)
-                    self.inOpen = False
-
             if typebyte == ERROR and header > SIZE_LIMIT:
                 # someone is trying to spam us with an ERROR token. Drop
                 # them with extreme prejudice.

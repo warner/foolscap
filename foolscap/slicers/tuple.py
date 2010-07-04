@@ -74,6 +74,10 @@ class TupleUnslicer(BaseUnslicer):
             self.num_unreferenceable_children += 1
             self.list.append("placeholder")
         else:
+            if self.constraints:
+                if len(self.list) >= len(self.constraints):
+                    raise Violation("the tuple is full")
+                self.constraints[len(self.list)].checkToken(typebyte, size)
             self.list.append(obj)
 
     def checkComplete(self):
