@@ -1,5 +1,10 @@
 2010-08-08  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test__versions.py (Versions.test_required): oops,
+	tolerate Twisted versions like 10.1 (numeric compare instead of
+	alphabetical), rather than thinking that 10.1 was older than the
+	problematic 8.1.0 .
+
 	* foolscap/_version.py: bump version while between releases
 	* misc/*/debian/changelog: same
 

@@ -8,22 +8,31 @@ from twisted.python import log
 from foolscap.test.common import crypto_available
 from foolscap.api import __version__
 
+def split_version(version_string):
+    def maybe_int(s):
+        try:
+            return int(s)
+        except ValueError:
+            return s
+    return tuple([maybe_int(piece) for piece in version_string.split(".")])
+
 class Versions(unittest.TestCase):
     def test_required(self):
         if not crypto_available:
             return
         import OpenSSL
-        ssl_ver = OpenSSL.__version__.split(".")
-        tw_ver = twisted.__version__.split(".")
+        ssl_ver = split_version(OpenSSL.__version__)
+        tw_ver = split_version(twisted.__version__)
         # this is gross, but apps aren't supposed to care what sort of
         # reactor they're using. I use str() instead of isinstance(reactor,
         # twisted.internet.selectreactor.SelectReactor) because I want to
         # avoid importing the selectreactor when we aren't already using it.
         is_select = bool( "select" in str(reactor).lower() )
-        if ( (ssl_ver >= "0.7".split("."))
-             and (tw_ver <= "8.1.0".split("."))
+        if ( (ssl_ver >= split_version("0.7"))
+             and (tw_ver <= split_version("8.1.0"))
              and is_select ):
-            # twisted 8.1.0 bad, 8.0.1 bad, 8.0.0 bad, I think 2.5.0 is too
+            # twisted 8.1.0 bad, 8.0.1 bad, 8.0.0 bad, I think 2.5.0 is too.
+            # twisted 10.1.0 ok.
             print
             print "-------------"
             print "Warning: tests will fail (unclean reactor warnings)"
