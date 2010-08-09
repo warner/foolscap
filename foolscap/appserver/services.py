@@ -119,10 +119,10 @@ class FileUploader(service.MultiService, Referenceable):
             # older Twisteds do not have FilePath.chmod
             os.chmod(targetfile.path, self.options["mode"])
             return None
-        def _err(f):
+        def _err(fail):
             f.close()
             os.unlink(tmpfile.path)
-            return f
+            return fail
         d.addCallbacks(_done, _err)
         return d
 
