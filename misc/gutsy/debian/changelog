@@ -1,3 +1,9 @@
+foolscap (0.5.1+) unstable; urgency=low
+
+  * bump version between releases
+
+ -- Brian Warner <warner@lothar.com>  Sun, 08 Aug 2010 22:31:40 -0700
+
 foolscap (0.5.1) unstable; urgency=low
 
   * new release
