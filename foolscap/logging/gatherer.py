@@ -140,7 +140,7 @@ class GathererService(GatheringBase):
     verbose = True
     furlFile = "log_gatherer.furl"
     tacFile = "gatherer.tac"
-    TIME_FORMAT = "%Y-%m-%d-%H%M%S"
+    TIME_FORMAT = "%Y-%m-%d--%H:%M:%S"
 
     def __init__(self, rotate, use_bzip, basedir=None):
         GatheringBase.__init__(self, basedir)
@@ -171,10 +171,10 @@ class GathererService(GatheringBase):
         self._open_savefile(now)
 
     def format_time(self, when):
-        return time.strftime(self.TIME_FORMAT, time.localtime(when))
+        return time.strftime(self.TIME_FORMAT, time.gmtime(when)) + "Z"
 
     def _open_savefile(self, now):
-        new_filename = "from-%s--to-present.flog" % self.format_time(now)
+        new_filename = "from-%s---to-present.flog" % self.format_time(now)
         self._savefile_name = os.path.join(self.basedir, new_filename)
         self._savefile = open(self._savefile_name, "ab", 0)
         self._starting_timestamp = now
@@ -190,7 +190,7 @@ class GathererService(GatheringBase):
         now = time.time()
         from_time = self.format_time(self._starting_timestamp)
         to_time = self.format_time(now)
-        new_name = "from-%s--to-%s.flog" % (from_time, to_time)
+        new_name = "from-%s---to-%s.flog" % (from_time, to_time)
         new_name = os.path.join(self.basedir, new_name)
         os.rename(self._savefile_name, new_name)
         self._open_savefile(now)

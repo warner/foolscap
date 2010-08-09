@@ -56,7 +56,7 @@ class IncidentReporter:
 
     TRAILING_DELAY = 5.0 # gather 5 seconds of post-trigger events
     TRAILING_EVENT_LIMIT = 100 # or 100 events, whichever comes first
-    TIME_FORMAT = "%Y-%m-%d-%H%M%S"
+    TIME_FORMAT = "%Y-%m-%d--%H:%M:%S"
 
     def __init__(self, basedir, logger, tubid_s):
         self.basedir = basedir
@@ -68,7 +68,7 @@ class IncidentReporter:
         return self.active
 
     def format_time(self, when):
-        return time.strftime(self.TIME_FORMAT, time.localtime(when))
+        return time.strftime(self.TIME_FORMAT, time.gmtime(when)) + "Z"
 
     def incident_declared(self, triggering_event):
         self.trigger = triggering_event

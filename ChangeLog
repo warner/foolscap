@@ -1,3 +1,18 @@
+2010-08-09  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/incident.py (IncidentReporter.TIME_FORMAT):
+	change incident filenames to have timestamps in UTC (not
+	localtime) and in a format almost like ISO-8601. They are now
+	2008-08-22--16:20:28Z . The real ISO-8601 would use "_" instead of
+	"--", but I find the underscore to visually "bind" more tightly
+	than the hyphen, making it hard to tell whether the 16 is part of
+	the date side or the time side. This should close #111.
+	* foolscap/logging/gatherer.py (GathererService): same for
+	log-gatherer filenames. Also changed the from-vs-to separator to
+	three hyphens now that we're using two hyphens in the timestamps.
+	Filenames now look like this:
+	from-2010-08-09--16:13:19Z---to-2010-08-09--22:13:19Z.flog.bz2
+
 2010-08-08  Brian Warner  <warner@lothar.com>
 
 	* setup.py (setup_args packages=): use proper "foolscap.slicers"
