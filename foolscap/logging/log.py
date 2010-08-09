@@ -465,4 +465,11 @@ if "FLOGTWISTED" in os.environ:
     bridgeLogsFromTwisted()
 
 if "FLOGTOTWISTED" in os.environ:
-    bridgeLogsToTwisted()
+    _floglevel = int(os.environ.get("FLOGLEVEL", str(OPERATIONAL)))
+    def non_foolscap_FLOGLEVEL_or_better(e):
+        if e.get("facility","").startswith("foolscap"):
+            return False
+        if e['level'] < _floglevel:
+            return False
+        return True
+    bridgeLogsToTwisted(filter=non_foolscap_FLOGLEVEL_or_better)

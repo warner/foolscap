@@ -1,5 +1,8 @@
 2010-08-09  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (FLOGTOTWISTED): honor FLOGLEVEL= when
+	using FLOGTOTWISTED=1, just like FLOGFILE= does. Closes #154.
+
 	* foolscap/logging/incident.py (IncidentReporter.TIME_FORMAT):
 	change incident filenames to have timestamps in UTC (not
 	localtime) and in a format almost like ISO-8601. They are now
