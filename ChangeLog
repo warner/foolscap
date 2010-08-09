@@ -1,5 +1,9 @@
 2010-08-08  Brian Warner  <warner@lothar.com>
 
+	* setup.py (setup_args packages=): use proper "foolscap.slicers"
+	instead of incorrect "foolscap/slicers". This apparently caused
+	problems with some external setuptools stuff. Closes #156.
+
 	* foolscap/appserver/services.py (FileUploader.remote_putfile._err):
 	fix error-handling code which would fail to unlink the tempfile
 	upon clien read() error. Fixes #157.
