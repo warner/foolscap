@@ -1,11 +1,12 @@
 
 import pickle, time, urllib
 from twisted.internet import reactor
-from twisted.application import strports
+from twisted.application import internet
 from twisted.python import usage
 from foolscap import base32
 from foolscap.eventual import fireEventually
 from foolscap.logging import log
+from foolscap.pb import parse_strport
 from twisted.web import server, static, html, resource
 
 class WebViewerOptions(usage.Options):
@@ -374,7 +375,8 @@ class WebViewer:
         root.putChild("summary", Summary(self))
         root.putChild("flog.css", static.Data(FLOG_CSS, "text/css"))
         s = server.Site(root)
-        self.serv = strports.service(options['port'], s)
+        (portnum, interface) = parse_strport(options['port'])
+        self.serv = internet.TCPServer(portnum, s, interface=interface)
         self.serv.startService()
         portnum = self.serv._port.getHost().port
         # TODO: this makes all sort of assumptions: HTTP-vs-HTTPS, localhost.

@@ -1,9 +1,9 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import os.path, weakref, binascii
+import os.path, weakref, binascii, re
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
-from twisted.application import service, strports
+from twisted.application import service, internet
 from twisted.python.failure import Failure
 
 from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
@@ -25,6 +25,17 @@ except ImportError:
     pass
 
 
+def parse_strport(port):
+    if port.startswith("unix:"):
+        raise ValueError("UNIX sockets are not supported for Listeners")
+    mo = re.search(r'^(tcp:)?(?P<port>\d+)(:interface=(?P<interface>[\d\.]+))?$', port)
+    if not mo:
+        raise ValueError("Unable to parse port string '%s'" % (port,))
+    portnum = int(mo.group('port'))
+    interface = mo.group('interface') or ""
+    # TODO: IPv6
+    return (portnum, interface)
+
 Listeners = []
 class Listener(protocol.ServerFactory):
     """I am responsible for a single listening port, which may connect to
@@ -43,21 +54,27 @@ class Listener(protocol.ServerFactory):
                  negotiationClass=negotiate.Negotiation):
         """
         @type port: string
-        @param port: a L{twisted.application.strports} -style description.
+        @param port: a L{twisted.application.strports} -style description,
+        specifying a TCP server
         """
-        name, args, kw = strports.parse(port, None)
-        assert name in ("TCP", "UNIX") # TODO: IPv6
+        # parse the following 'port' strings:
+        #  80
+        #  tcp:80
+        #  tcp:80:interface=127.0.0.1
+        # we reject UNIX sockets.. I don't know if they ever worked.
+
+        portnum, interface = parse_strport(port)
         self.port = port
         self.options = options
         self.negotiationClass = negotiationClass
         self.parentTub = None
         self.tubs = {}
         self.redirects = {}
-        self.s = strports.service(port, self)
+        self.s = internet.TCPServer(portnum, self, interface=interface)
         Listeners.append(self)
 
     def getPortnum(self):
-        """When this Listener was created with a strport string of '0' or
+        """When this Listener was created with a port string of '0' or
         'tcp:0' (meaning 'please allocate me something'), and if the Listener
         is active (it is attached to a Tub which is in the 'running' state),
         this method will return the port number that was allocated. This is
@@ -69,8 +86,6 @@ class Listener(protocol.ServerFactory):
         """
 
         assert self.s.running
-        name, args, kw = strports.parse(self.port, None)
-        assert name in ("TCP",)
         return self.s._port.getHost().port
 
     def __repr__(self):
