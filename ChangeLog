@@ -1,5 +1,8 @@
 2010-12-05  Brian Warner  <warner@lothar.com>
 
+	* misc/*/debian/rules: include all *.xhtml files in the debian
+	packages. Closes #131.
+
 	* foolscap/referenceable.py (RemoteReferenceTracker._handleRefLost):
 	guard against self.ref==None, in case that's the problem in #147.
 	It doesn't seem likely, though.
