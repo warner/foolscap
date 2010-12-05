@@ -1,3 +1,9 @@
+2010-11-29  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Listener): fix Twisted-10.2 compatiblity: stop
+	using strports.service() . Fixes #167.
+	* foolscap/logging/web.py (WebViewer): same
+
 2010-08-09  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/log.py (FLOGTOTWISTED): honor FLOGLEVEL= when
