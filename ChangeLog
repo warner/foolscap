@@ -1,5 +1,9 @@
 2010-12-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReferenceTracker._handleRefLost):
+	guard against self.ref==None, in case that's the problem in #147.
+	It doesn't seem likely, though.
+
 	* foolscap/__init__.py: empty it, except for __version__. This
 	finishes the transition to foolscap.api, and closes #122 .
 	* foolscap/deprecated.py: deleted

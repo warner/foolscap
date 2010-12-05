@@ -328,7 +328,7 @@ class RemoteReferenceTracker(object):
         eventually(self._handleRefLost)
 
     def _handleRefLost(self):
-        if self.ref() is None:
+        if self.ref is None or self.ref() is None:
             count, self.received_count = self.received_count, 0
             if count == 0:
                 return
