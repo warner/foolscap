@@ -1,3 +1,9 @@
+2010-12-05  Brian Warner  <warner@lothar.com>
+
+	* foolscap/__init__.py: empty it, except for __version__. This
+	finishes the transition to foolscap.api, and closes #122 .
+	* foolscap/deprecated.py: deleted
+
 2010-11-29  Brian Warner  <warner@lothar.com>
 
 	* foolscap/pb.py (Listener): fix Twisted-10.2 compatiblity: stop
