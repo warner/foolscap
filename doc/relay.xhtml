@@ -1,0 +1,97 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Relay Servers</title>
+<style src="stylesheet-unprocessed.css"></style>
+</head>
+
+<body>
+<h1>Using a Foolscap Relay Server</h1>
+
+<p>Unfortunately, most computers these days are not actually connected to the
+Internet. Firewalls, the nearly-ubiquitous use of NAT boxes on consumer
+equipment, indeed the very notion of internet "consumers", have all
+contributed to a regrettable state of affairs in which many computers can
+establish outbound TCP connections to port 80, but may not be able to do much
+else. Being unable to receive inbound connections makes it difficult for
+these machines to run servers.</p>
+
+<p>The Foolscap "relay server" is designed to help mitigate some of this
+breakage. A Foolscap server that lives behind a NAT box can get help from a
+publically-visible server. The NAT-bound host (which we'll call Bob)
+establishes an outbound connection to "Sam" the relay server. Sam sends back
+his connection hints, with which other clients (like "Alice") can establish a
+TCP connection to Sam. Bob then creates a FURL using his own Tub key and
+Sam's connection hints. When Alice connects to Sam's TCP port and asks for
+Bob's Tub, Sam creates a relay session and sends Alice's data down the
+connection that Bob already established. Likewise, Bob's response data goes
+back to Sam, who then relays it out towards Alice.</p>
+
+<p>The result is easy, transparent forwarding of traffic between Bob and
+Alice, albeit causing Sam to spend the sum of Alice and Bob's total bandwidth
+usage. Note that Sam only ever sees ciphertext (the same as a regular
+eavesdropper would see): he cannot see the private conversation between Alice
+and Bob.</p>
+
+<p>Access to the relay server is protected by a FURL, like any other Foolscap
+service.</p>
+
+<h2>Creating a Relay Server</h2>
+
+<p>Each <code>Listener</code> contains a built-in relay service: you just
+need to expose it to your NAT-bound friends.</p>
+
+<p>To do this, start by constructing a normal Tub (with a persistent TubID,
+by using the <code>certFile=</code> argument to <code>Tub()</code>, and a
+normal <code>Listener</code> by calling <code>tub.listenOn</code>. Retain a
+reference to the Listener. Once the Tub's location is established, obtain the
+relay service with <code>listener.getRelayService()</code>, and register it
+with the usual <code>tub.registerReference</code> (using
+<code>furlFile=</code> to get a persistent FURL). Then distribute the
+resulting relay_furl to your NAT-bound friends:</p>
+
+<pre class="python">
+from foolscap.api import Tub, Listener
+
+tub = Tub(certFile="server.pem")
+l = tub.listenOn("tcp:12345")
+tub.setLocation("myhost.example.com:12345")
+tub.startService()
+relay_service = l.getRelayService()
+relay_furl = tub.registerReference(relay_service, furlFile="relay.furl")
+</pre>
+
+<h2>Using a Relay Server (for NAT-bound servers)</h2>
+
+<p>The NAT-bound server which wishes to take advantage of a relay should
+begin the process by constructing a <code>RelayListener</code>, which acts
+much like a normal <code>Listener</code>. They must then wait for the
+<code>RelayListener</code> to learn the relay's connection hints, after which
+they can set up the real connection hints for their Tub and start doing
+<code>registerReference<code> calls.</p>
+
+<pre class="python">
+from foolscap.api import Tub, RelayListener
+
+tub = Tub(certFile="server.pem")
+tub.startService()
+rl = RelayListener(tub, relay_furl)
+d = rl.getConnectionHints()
+def _got_hints(hints):
+    tub.setLocation(hints) # this is a string, like "host:port,host:port"
+    # now you can do your tub.registerReference() calls
+    furl = tub.registerReference(obj)
+d.addCallback(_got_hints)
+</pre>
+
+<h2>Using a Relay Server (for clients)</h2>
+
+<p>Clients of these relay-assisted servers do not need any configuration
+changes. They will be unaware of the presence of a relay server. The FURL
+that they receive will contain connection hints that include the relay host,
+but from their point of view, they establish a completely normal Foolscap
+TCP/SSL connection to that host. The only thing they might notice is elevated
+latency, as their request data must travel from the client, to the relay,
+down to the NAT-bound server, then the response data travels up to the relay,
+before finally being forwarded back to them.</p>
+
+</body></html>

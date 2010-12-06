@@ -518,7 +518,7 @@ class Negotiation(protocol.Protocol):
         # now that we know which Tub the client wants to connect to, either
         # send a Redirect, or start the ENCRYPTED phase
 
-        tub, redirect = self.listener.lookupTubID(targetTubID)
+        tub, redirect, relay = self.listener.lookupTubID(targetTubID)
         if tub:
             self.tub = tub # our tub
             self.options.update(self.tub.options)
@@ -527,8 +527,15 @@ class Negotiation(protocol.Protocol):
             self.sendPlaintextServerAndStartENCRYPTED(wantEncrypted)
         elif redirect:
             self.sendRedirect(redirect)
+        elif relay:
+            self.switchToRelay(relay)
         else:
             raise NegotiationError("unknown TubID %s" % targetTubID)
+
+    def switchToRelay(self, relay):
+        # relay is a RelayService instance. They will take over from here.
+        self.transport.protocol = relay XXX
+        relay.makeConnection
 
     def sendPlaintextServerAndStartENCRYPTED(self, encrypted):
         # this is invoked on the server side

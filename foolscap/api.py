@@ -22,6 +22,7 @@ from foolscap.ipb import DeadReferenceError
 from foolscap.tokens import BananaError
 from foolscap.schema import StringConstraint, IntegerConstraint, \
     ListOf, TupleOf, SetOf, DictOf, ChoiceOf, Any
+from foolscap.relay import RelayServer, RelayListener
 from foolscap.storage import serialize, unserialize
 from foolscap.tokens import Violation, RemoteException
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue

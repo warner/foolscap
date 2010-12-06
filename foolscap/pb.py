@@ -70,6 +70,8 @@ class Listener(protocol.ServerFactory):
         self.parentTub = None
         self.tubs = {}
         self.redirects = {}
+        self.relay_service = RelayService(self)
+        self.relays = {}
         self.s = internet.TCPServer(portnum, self, interface=interface)
         Listeners.append(self)
 
@@ -140,6 +142,9 @@ class Listener(protocol.ServerFactory):
     def removeRedirect(self, tubID):
         del self.redirects[tubID]
 
+    def getRelayService(self):
+        return self.relay_service
+
     def startFactory(self):
         log.msg("Starting factory %r" % self, facility="foolscap.listener")
         return protocol.ServerFactory.startFactory(self)
@@ -160,7 +165,10 @@ class Listener(protocol.ServerFactory):
         return proto
 
     def lookupTubID(self, tubID):
-        return self.tubs.get(tubID), self.redirects.get(tubID)
+        tub = self.tubs.get(tubID)
+        redirect = self.redirects.get(tubID)
+        relay = self.relays.get(tubID)
+        return tub, redirect, relay
 
 def generateSwissnumber(bits):
     bytes = os.urandom(bits/8)
