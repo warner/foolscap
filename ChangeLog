@@ -43,7 +43,7 @@
 
 	* foolscap/appserver/services.py (FileUploader.remote_putfile._err):
 	fix error-handling code which would fail to unlink the tempfile
-	upon clien read() error. Fixes #157.
+	upon client read() error. Fixes #157.
 
 	* foolscap/test/test__versions.py (Versions.test_required): oops,
 	tolerate Twisted versions like 10.1 (numeric compare instead of
