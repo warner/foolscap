@@ -1,3 +1,8 @@
+2010-12-06  Brian Warner  <warner@lothar.com>
+
+	* foolscap/test/test_banana.py (InboundByteStream.testLong): add
+	more tests. Thanks to Zarutian for the suggestions.
+
 2010-12-05  Brian Warner  <warner@lothar.com>
 
 	* misc/*/debian/rules: include all *.xhtml files in the debian

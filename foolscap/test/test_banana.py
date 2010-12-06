@@ -1342,6 +1342,10 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
     def testLong(self):
         self.check(258L, "\x02\x85\x01\x02") # TODO: 0x85 for LONGINT??
         self.check(-258L, "\x02\x86\x01\x02") # TODO: 0x85 for LONGINT??
+        self.check(0L, "\x85")
+        self.check(0L, "\x00\x85")
+        self.check(0L, "\x86")
+        self.check(0L, "\x00\x86")
 
     def testString(self):
         self.check("", "\x82")
