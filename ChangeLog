@@ -1,5 +1,7 @@
 2010-12-06  Brian Warner  <warner@lothar.com>
 
+	* NEWS: start collecting items for the next release
+
 	* foolscap/test/test_banana.py (InboundByteStream.testLong): add
 	more tests. Thanks to Zarutian for the suggestions.
 
