@@ -1,11 +1,39 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
-* Release 0.6.0 (?)
+* Release 0.6.0 (28-Dec-2010)
 
-Fix compatibility with Twisted-10.2 (released ?). #167
-Empty foolscap/__init__.py, require foolscap.api #122
-Change incident filnames to be mostly ISO-8601 (#111)
-Honor FLOGLEVEL= when using FLOGTOTWISTED=1 (#154)
+** API Changes
+
+*** "foolscap.api" now mandatory
+
+The old import names from foolscap/__init__.py have been removed, finishing
+the transition begun with 0.5.0 . Applications must now import Tub,
+Referenceable, and so on from "foolscap.api". (#122)
+
+** Compatibility Fixes
+
+Foolscap-0.6.0 is compatible with Twisted-10.2 (released 29-Nov-2010). The
+0.5.1 release was not: pb.Listener was depending upon the behavior of an
+internal Twisted function that changed, causing an AttributeError in
+"StreamServerEndpointService". This is fixed, but the code is still using an
+undocumented internal attribute to handle port=0 which will need to be
+replaced eventually. (#167)
+
+The first unit test ("test__versions") spuriously failed against Twisted-10.1
+and 10.2, mistakenly believing that 10.1 was older than 8.1.0 due to a
+lexicographic comparison that should have been numeric.
+
+** Other Changes
+
+Incident filenames are now like "2008-08-22--16:20:28Z.flog" which are in UTC
+and mostly ISO-8601 format (the real ISO-8601 would use "_" instead of "--").
+This is also used for log-gatherer filenames. (#111)
+
+The logging code now honors FLOGLEVEL= when using FLOGTOTWISTED=1; previously
+FLOGLEVEL= was ignored when deciding which log events should be bridged to
+the twisted logger. (#154)
+
+Some minor packaging bugs were fixed.
 
 
 * Release 0.5.1 (25 Mar 2010)

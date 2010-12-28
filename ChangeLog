@@ -1,5 +1,11 @@
 2010-12-28  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.6.0
+	* misc/*/debian/changelog: same
+	* NEWS: update for upcoming release
+
+2010-12-28  Brian Warner  <warner@lothar.com>
+
 	* foolscap/sslverify.py: hush pyflakes warnings
 	* foolscap/referenceable.py (RemoteReference.callRemoteOnly): same
 
