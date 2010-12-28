@@ -163,7 +163,6 @@ class DistinguishedName(dict):
             setattr(self, k, v)
 
     def _copyFrom(self, x509name):
-        d = {}
         for name in _x509names:
             value = getattr(x509name, name, None)
             if value is not None:
@@ -514,7 +513,7 @@ class KeyPair(PublicKey):
         Sign a CertificateRequest instance, returning a Certificate instance.
         """
         req = requestObject.original
-        dn = requestObject.getSubject()
+        #dn = requestObject.getSubject()
         cert = crypto.X509()
         issuerDistinguishedName._copyInto(cert.get_issuer())
         cert.set_subject(req.get_subject())

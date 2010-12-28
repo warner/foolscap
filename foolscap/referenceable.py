@@ -413,6 +413,7 @@ class RemoteReference(RemoteReferenceOnly):
         # particular, DeadReferenceError will be silently consumed.
         d = defer.maybeDeferred(self._callRemote, _name, _callOnly=True,
                                 *args, **kwargs)
+        del d
         return None
 
     def _callRemote(self, _name, *args, **kwargs):
