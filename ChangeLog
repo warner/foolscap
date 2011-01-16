@@ -1,5 +1,8 @@
 2011-01-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/eventual.py (_SimpleCallQueue._turn): remove
+	unreachable code. Thanks to 'ivank' for the catch. Closes #165.
+
 	* foolscap/referenceable.py (RemoteReferenceOnly.getDataLastReceivedAt):
 	new method to let application code know whether the connection
 	appears alive: tells you when we last heard anything from the

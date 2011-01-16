@@ -26,8 +26,6 @@ class _SimpleCallQueue(object):
                 cb(*args, **kwargs)
             except:
                 log.err()
-        if self._events and not self._timer:
-            self._timer = reactor.callLater(0, self._turn)
         if not self._events:
             observers, self._flushObservers = self._flushObservers, []
             for o in observers:
