@@ -1,3 +1,12 @@
+2011-01-16  Brian Warner  <warner@lothar.com>
+
+	* foolscap/banana.py (Banana.initSend): stop importing the
+	deprecated 'sets' module, to hush warnings when used with newer
+	pythons, since we don't really need it here. We still import it
+	from foolscap/slicers/set.py to manage compatibility with older
+	code, but that's wrapped with a warning-suppressor. This is mainly
+	to help fix Tahoe's #1329.
+
 2010-12-28  Brian Warner  <warner@lothar.com>
 
 	* foolscap/_version.py: release Foolscap-0.6.0

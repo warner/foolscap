@@ -1,5 +1,5 @@
 
-import struct, sets, time
+import struct, time
 
 from twisted.internet import protocol, defer, reactor
 from twisted.python.failure import Failure
@@ -167,7 +167,7 @@ class Banana(protocol.Protocol):
         self.openCount = 0
         self.outgoingVocabulary = {}
         self.nextAvailableOutgoingVocabularyIndex = 0
-        self.pendingVocabAdditions = sets.Set()
+        self.pendingVocabAdditions = set()
 
     def initSlicer(self):
         self.rootSlicer = self.slicerClass(self)
