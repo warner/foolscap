@@ -1,5 +1,7 @@
 2011-01-16  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update NEWS for next release
+
 	* foolscap/eventual.py (_SimpleCallQueue._turn): remove
 	unreachable code. Thanks to 'ivank' for the catch. Closes #165.
 

@@ -1,5 +1,23 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.6.1 (16-Jan-2011)
+
+** Minor Fixes
+
+The old "sets" module is no longer imported without wrapping the import in a
+DeprecationWarning suppressor. We still import it from slicers.set for
+compatibility with older code, but that import will not produce a warning.
+This should make Foolscap quieter when used with Python 2.6 or later.
+
+A new RemoteReference method named getDataLastReceivedAt() was added, which
+will tell you when data was most recently received on the connection
+supporting that reference. This can be compared against time.time() to see
+how "live" the connection is. For performance reasons, this is only enabled
+when keepalives are turned on, otherwise it returns None. (#169)
+
+Some unreachable code was removed. (#165)
+
+
 * Release 0.6.0 (28-Dec-2010)
 
 ** API Changes
