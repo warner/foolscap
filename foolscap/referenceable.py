@@ -368,6 +368,13 @@ class RemoteReferenceOnly(object):
     def getLocationHints(self):
         return SturdyRef(self.tracker.url).locationHints
 
+    def getDataLastReceivedAt(self):
+        """If keepalives are enabled, this returns seconds-since-epoch when
+        we last received any data from the remote side. This is
+        connection-wide, not specific to this particular object. If
+        keepalives are disabled (the default), it returns None."""
+        return self.tracker.broker.getDataLastReceivedAt()
+
     def notifyOnDisconnect(self, callback, *args, **kwargs):
         """Register a callback to run when we lose this connection.
 

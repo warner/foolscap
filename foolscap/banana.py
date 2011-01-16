@@ -680,6 +680,15 @@ class Banana(protocol.Protocol):
                                   self.disconnectTimerFired)
             self.disconnectTimer = t
 
+    def getDataLastReceivedAt(self):
+        """If keepalives are enabled, this returns the seconds-since-epoch
+        when the most recent data was received on this connection. If
+        keepalives are disabled (which is the detault), it returns None."""
+
+        if self.useKeepalives:
+            return self.dataLastReceivedAt
+        return None
+
     def connectionTimedOut(self):
         # this is to be implemented by higher-level code. It ought to log a
         # suitable message and then drop the connection.

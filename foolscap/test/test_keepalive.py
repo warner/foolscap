@@ -1,4 +1,5 @@
 
+import time
 from twisted.trial import unittest
 from twisted.internet import reactor, defer
 from twisted.python.failure import Failure
@@ -71,6 +72,10 @@ class Keepalives(unittest.TestCase):
             # or 20 ping+pongs.
             self.failUnless(b.pings + b.pongs > 4,
                             "b.pings=%d, b.pongs=%d" % (b.pings, b.pongs))
+            # getDataLastReceivedAt() should be active
+            last = rref.getDataLastReceivedAt()
+            now = time.time()
+            self.failUnless(-10 < now-last < 10, now-last)
             # and the connection should still be alive and usable
             return rref.callRemote("add", 1, 2)
         d.addCallback(_count_pings)

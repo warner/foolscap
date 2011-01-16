@@ -1,5 +1,16 @@
 2011-01-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (RemoteReferenceOnly.getDataLastReceivedAt):
+	new method to let application code know whether the connection
+	appears alive: tells you when we last heard anything from the
+	other end on this connection. Only enabled if keepalives are
+	turned on, since otherwise we don't want to spend the overhead of
+	calling time.time() upon every inbound packet. (if keepalives are
+	disabled, which is the default, you get None). Closes #169.
+	* foolscap/banana.py (Banana.getDataLastReceivedAt): same
+	* foolscap/test/test_keepalive.py (Keepalives): test enabled case
+	* foolscap/test/test_pb.py (TestReferenceable): test disabled case
+
 	* foolscap/banana.py (Banana.initSend): stop importing the
 	deprecated 'sets' module, to hush warnings when used with newer
 	pythons, since we don't really need it here. We still import it

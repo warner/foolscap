@@ -212,6 +212,8 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         self.failUnlessEqual(rref.isConnected(), True)
         self.failUnlessEqual(rref.getLocationHints(), []) # loopback
         self.failUnlessEqual(rref.getSturdyRef().getURL(), None)
+        # keepalives are disabled
+        self.failUnlessEqual(rref.getDataLastReceivedAt(), None)
         t = rref.tracker
         self.failUnlessEqual(t.broker, self.targetBroker)
         self.failUnless(type(t.clid) is int)
