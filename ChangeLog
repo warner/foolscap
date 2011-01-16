@@ -1,5 +1,7 @@
 2011-01-16  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.6.1
+	* misc/*/debian/changelog: same
 	* NEWS: update NEWS for next release
 
 	* foolscap/eventual.py (_SimpleCallQueue._turn): remove
