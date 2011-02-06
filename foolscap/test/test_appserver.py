@@ -128,6 +128,28 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         d.addCallback(_check_add)
         return d
 
+    def test_add_service(self):
+        basedir = "appserver/CLI/add_service"
+        os.makedirs(basedir)
+        serverdir = os.path.join(basedir, "fl")
+        incomingdir = os.path.join(basedir, "incoming")
+        os.mkdir(incomingdir)
+        d = self.run_cli("create", serverdir)
+        def _check((rc,out,err)):
+            self.failUnlessEqual(rc, 0)
+            self.failUnless(os.path.isdir(serverdir))
+        d.addCallback(_check)
+        def _check_add(ign):
+            furl,servicedir = cli.add_service(serverdir,
+                                              "upload-file", (incomingdir,),
+                                              None)
+            swiss = furl[furl.rfind("/")+1:]
+            servicedir2 = os.path.join(serverdir, "services", swiss)
+            self.failUnlessEqual(os.path.abspath(servicedir),
+                                 os.path.abspath(servicedir2))
+        d.addCallback(_check_add)
+        return d
+
     def test_add_comment(self):
         basedir = "appserver/CLI/add_comment"
         os.makedirs(basedir)
@@ -214,6 +236,15 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         def _check_add((rc,out,err)):
             self.failUnlessEqual(rc, 0)
         d.addCallback(_check_add)
+
+        def _check_list_services(ign):
+            services = cli.list_services(serverdir)
+            self.failUnlessEqual(len(services), 1)
+            s = services[0]
+            self.failUnlessEqual(s.service_type, "upload-file")
+            self.failUnlessEqual(s.service_args, (incomingdir,) )
+        d.addCallback(_check_list_services)
+
         d.addCallback(lambda ign: self.run_cli("list", serverdir))
         def _check_list((rc,out,err)):
             self.failUnlessEqual(rc, 0)

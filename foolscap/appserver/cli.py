@@ -194,38 +194,40 @@ class AddOptions(BaseOptions):
             t += "  %s\n" % name
         return t
 
+def add_service(basedir, service_type, service_args, comment):
+    swissnum = generateSwissnumber(Tub.NAMEBITS)
+    service_basedir = os.path.join(basedir, "services", swissnum)
+    os.makedirs(service_basedir)
+    try:
+        # validate the service args by instantiating one
+        s = build_service(service_basedir, None, service_type, service_args)
+        del s
+    except:
+        shutil.rmtree(service_basedir)
+        raise
+    f = open(os.path.join(service_basedir, "service_type"), "w")
+    f.write(service_type + "\n")
+    f.close()
+    f = open(os.path.join(service_basedir, "service_args"), "w")
+    f.write(repr(service_args) + "\n")
+    f.close()
+    if comment:
+        f = open(os.path.join(service_basedir, "comment"), "w")
+        f.write(comment + "\n")
+        f.close()
+    furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
+    furl = furl_prefix + swissnum
+    return furl, service_basedir
+
 class Add:
     def run(self, options):
         basedir = options.basedir
         stdout = options.stdout
         service_type = options.service_type
         service_args = options.service_args
-
-        swissnum = generateSwissnumber(Tub.NAMEBITS)
-        service_basedir = os.path.join(basedir, "services", swissnum)
-        os.makedirs(service_basedir)
-
-        try:
-            # validate the service args by instantiating one
-            s = build_service(service_basedir, None, service_type, service_args)
-            del s
-        except:
-            shutil.rmtree(service_basedir)
-            raise
-
-        f = open(os.path.join(service_basedir, "service_type"), "w")
-        f.write(service_type + "\n")
-        f.close()
-        f = open(os.path.join(service_basedir, "service_args"), "w")
-        f.write(repr(service_args) + "\n")
-        f.close()
-        if options["comment"]:
-            f = open(os.path.join(service_basedir, "comment"), "w")
-            f.write(options["comment"] + "\n")
-            f.close()
-
-        furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
-        furl = furl_prefix + swissnum
+        furl, service_basedir = add_service(basedir,
+                                            service_type, service_args,
+                                            options["comment"])
         if not options["quiet"]:
             print >>stdout, "Service added in %s" % service_basedir
             print >>stdout, "FURL is %s" % furl
@@ -243,31 +245,42 @@ class ListOptions(BaseOptions):
     def parseArgs(self, basedir):
         self.basedir = basedir
 
+class FlappService:
+    pass
+
+def list_services(basedir):
+    furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
+    services = []
+    services_basedir = os.path.join(basedir, "services")
+    for swissnum in sorted(os.listdir(services_basedir)):
+        s = FlappService()
+        s.swissnum = swissnum
+        s.service_basedir = os.path.join(services_basedir, swissnum)
+        service_type_f = os.path.join(s.service_basedir, "service_type")
+        s.service_type = open(service_type_f).read().strip()
+        service_args_f = os.path.join(s.service_basedir, "service_args")
+        s.service_args = eval(open(service_args_f).read().strip())
+        comment_f = os.path.join(s.service_basedir, "comment")
+        s.comment = None
+        if os.path.exists(comment_f):
+            s.comment = open(comment_f).read().strip()
+        s.furl = furl_prefix + swissnum
+        services.append(s)
+    return services
+
 class List:
     def run(self, options):
         basedir = options.basedir
         stdout = options.stdout
-
-        furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
-
-        services_basedir = os.path.join(basedir, "services")
-
-        for swissnum in sorted(os.listdir(services_basedir)):
-            service_basedir = os.path.join(services_basedir, swissnum)
+        for s in list_services(basedir):
             print >>stdout
-            print >>stdout, "%s:" % swissnum
-            service_type_f = os.path.join(service_basedir, "service_type")
-            service_type = open(service_type_f).read().strip()
-            service_args_f = os.path.join(service_basedir, "service_args")
-            service_args = eval(open(service_args_f).read().strip())
-            print >>stdout, " %s %s" % (service_type, " ".join(service_args))
-            comment_f = os.path.join(service_basedir, "comment")
-            if os.path.exists(comment_f):
-                comment = open(comment_f).read().strip()
-                print >>stdout, " # %s" % comment
-            furl = furl_prefix + swissnum
-            print >>stdout, " %s" % furl
+            print >>stdout, "%s:" % s.swissnum
+            print >>stdout, " %s %s" % (s.service_type, " ".join(s.service_args))
+            if s.comment:
+                print >>stdout, " # %s" % s.comment
+            print >>stdout, " %s" % s.furl
         print >>stdout
+
         return 0
 
 class StartOptions(BaseOptions):
