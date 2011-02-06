@@ -18,7 +18,15 @@ def get_umask():
     os.umask(oldmask)
     return oldmask
 
-class CreateOptions(usage.Options):
+class BaseOptions(usage.Options):
+    opt_h = usage.Options.opt_help
+
+    def getSynopsis(self):
+        # the default usage.Options.getSynopsis prepends 'flappserver'
+        # Options.synopsis, which looks weird
+        return self.synopsis
+
+class CreateOptions(BaseOptions):
     synopsis = "Usage: flappserver create [options] BASEDIR"
 
     optFlags = [
@@ -162,7 +170,7 @@ class Create:
         d.addCallback(lambda ign: res)
         return d
 
-class AddOptions(usage.Options):
+class AddOptions(BaseOptions):
     synopsis = "Usage: flappserver add [--comment C] BASEDIR SERVICE-TYPE SERVICE-ARGS.."
 
     optFlags = [
@@ -176,6 +184,15 @@ class AddOptions(usage.Options):
         self.basedir = basedir
         self.service_type = service_type
         self.service_args = service_args
+
+    def getUsage(self, width=None):
+        t = usage.Options.getUsage(self, width)
+        t += "\nUse 'flappserver add BASEDIR SERVICE-TYPE --help' for details."
+        t += "\n\nSERVICE-TYPE can be one of the following:\n"
+        from services import all_services
+        for name in sorted(all_services.keys()):
+            t += "  %s\n" % name
+        return t
 
 class Add:
     def run(self, options):
@@ -215,7 +232,7 @@ class Add:
 
         return 0
 
-class ListOptions(usage.Options):
+class ListOptions(BaseOptions):
     synopsis = "Usage: flappserver list BASEDIR"
 
     optFlags = [
@@ -253,7 +270,7 @@ class List:
         print >>stdout
         return 0
 
-class StartOptions(usage.Options):
+class StartOptions(BaseOptions):
     synopsis = "Usage: flappserver start BASEDIR [twistd options]"
 
     optFlags = [
@@ -284,7 +301,7 @@ class Start:
         twistd.run()
 
 
-class StopOptions(usage.Options):
+class StopOptions(BaseOptions):
     synopsis = "Usage: flappserver stop BASEDIR"
 
     optFlags = [
@@ -352,7 +369,7 @@ class Stop:
         try_to_remove_pidfile(pidfile)
         return 0
 
-class RestartOptions(usage.Options):
+class RestartOptions(BaseOptions):
     synopsis = "Usage: flappserver restart BASEDIR [twistd options]"
 
     def parseArgs(self, basedir, *twistd_args):
@@ -380,10 +397,6 @@ class Options(usage.Options):
     def postOptions(self):
         if not hasattr(self, 'subOptions'):
             raise usage.UsageError("must specify a command")
-
-    def opt_help(self):
-        print self.synopsis
-        sys.exit(0)
 
     def opt_version(self):
         from twisted import copyright

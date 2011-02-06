@@ -10,8 +10,19 @@ class BadServiceArguments(Exception):
 class UnknownServiceType(Exception):
     pass
 
-class FileUploaderOptions(usage.Options):
-    synopsis = "Usage: flappserver add BASEDIR file-uploader [options] TARGETDIR"
+class BaseOptions(usage.Options):
+    details = None
+    def getUsage(self, width=None):
+        t = usage.Options.getUsage(self, width)
+        if self.details:
+            t += self.details
+        return t
+
+class FileUploaderOptions(BaseOptions):
+    synopsis = "Usage: flappserver add BASEDIR upload-file [options] TARGETDIR"
+    details = """
+This service allows clients to upload files to a specific directory.
+"""
 
     optFlags = [
         ("allow-subdirectories", None, "allow client to write to subdirectories"),
@@ -126,8 +137,12 @@ class FileUploader(service.MultiService, Referenceable):
         d.addCallbacks(_done, _err)
         return d
 
-class CommandRunnerOptions(usage.Options):
-    synopsis = "Usage: flappserver add BASEDIR exec [options] TARGETDIR COMMAND.."
+class CommandRunnerOptions(BaseOptions):
+    synopsis = "Usage: flappserver add BASEDIR run-command [options] TARGETDIR COMMAND.."
+    details = """
+This service allows clients to execute a pre-configured command and receive
+the exit code, optionally providing stdin and receiving stdout/stderr.
+"""
 
     optFlags = [
         ("accept-stdin", None, "allow client to write to COMMAND stdin"),

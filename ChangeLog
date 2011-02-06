@@ -1,5 +1,11 @@
 2011-02-06  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/cli.py (BaseOptions): fix --help text for
+	subcommands: override getSynopsis() to prevent usage.Options from
+	simply concatenating root synopsis with subcommand synopsis. Add
+	-h as an alias for --help. Also improve some of the docs
+	* foolscap/appserver/services.py (FileUploaderOptions): same
+
 	* foolscap/_version.py: bump version while between releases
 	* misc/*/debian/changelog: same
 
