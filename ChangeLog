@@ -1,5 +1,8 @@
 2011-02-06  Brian Warner  <warner@lothar.com>
 
+	* .darcs-boringfile, .hgignore, .hgtags: remove old files now that
+	Foolscap lives in git
+
 	* foolscap/appserver/cli.py: split list_service/add_service out
 	into separate functions, for use by other code
 	* foolscap/test/test_appserver.py (CLI): test them
