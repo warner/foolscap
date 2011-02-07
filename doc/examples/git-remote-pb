@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+'''
+This is a "git-remote-helper". Put it somewhere on your $PATH and it will
+# be invoked any time git sees a remote URL that starts with "pb:" (i.e. a
+# FURL). Create these by using "git furl".
+'''
+
+import sys
+from foolscap.appserver.client import run_flappclient
+
+# we could also accomplish this by creating a URL of:
+#  ext::flappclient --furl $FURL run-command
+# since git ships with a git-remote-ext that spawns external commands.
+# But that would be hard to cut-and-paste.
+
+# maybe set up two furls, one which invokes git-upload-pack (for fetch from
+# server), second invokes git-receive-pack (for push to server). Switch
+# between them locally.
+
+repo, base_furl = sys.argv[1:3]
+
+debug = False
+
+while True:
+    command = sys.stdin.readline().strip()
+    if debug:
+        print >>sys.stderr, "COMMAND=", command
+    if command == "capabilities":
+        print "*connect"
+        print
+        sys.stdout.flush()
+        continue
+    if command.startswith("connect"):
+        service = command.split()[1] # for fetching, this is "git-upload-pack"
+        furl = "%s-%s" % (base_furl, service)
+        sys.argv = ["flappclient", "--furl", furl, "run-command"]
+        if debug:
+            print >>sys.stderr, "becoming flappclient"
+        print # this means "connection established"
+        sys.stdout.flush()
+        run_flappclient()
+        # that never returns
+        print >>sys.stderr, "hey, run_flappclient returned"
+        sys.exit(1) # make it obvious
+    print >>sys.stderr, "Unknown command '%s'" % command
+    sys.exit(1)
+

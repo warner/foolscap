@@ -1,5 +1,8 @@
 2011-02-07  Brian Warner  <warner@lothar.com>
 
+	* doc/examples/git-foolscap, git-remote-pb: new git-over-foolscap
+	tools, uses 'git-remote-helpers' for easy setup.
+
 	* foolscap/appserver/cli.py: split make_swissnum() out
 
 2011-02-06  Brian Warner  <warner@lothar.com>

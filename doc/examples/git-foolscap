@@ -1,0 +1,334 @@
+#!/usr/bin/env python
+
+import os.path, sys, re, shutil
+from subprocess import Popen, PIPE
+from twisted.python.usage import Options, UsageError
+from foolscap.appserver import cli
+from foolscap.api import fireEventually
+from twisted.internet import reactor, defer
+
+'''
+Use this tool to publish a git repository via Foolscap application server
+(aka "flappserver"). Once configured, this creates an access string known as
+a "FURL". You can then use this FURL as a git URL on any client which has the
+"git-remote-pb" helper installed.
+
+THese FURLs provide cryptographically-secure access to a specific resource.
+Unlike SSH keys, the holder of this FURL is limited to a single command (e.g.
+git receive-pack). This is safer and easier to configure than putting
+command/environment restrictions on an SSH key, and does not require running
+a daemon as root.
+
+To publish a git repo, run:
+
+ git foolscap create read-only|read-write
+
+That command will emit a FURL. Simply give this FURL to somebody via a secure
+channel and have them run "git remote add NAME FURL". Remind them to install
+Foolscap and the "git-remote-pb" program.
+
+
+This tool helps create a daemon that listens for inbound Foolscap
+connections. The daemon must be running and reachable by your clients. A
+working directory for the daemon is created in .git/foolscap . You must start
+the daemon before clients can use it:
+
+ git foolscap start
+
+You probably want to arrange for the daemon to be started at system reboot as
+well. On OS-X systems, use LaunchAgent. On unix systems (with Vixie cron),
+the simplest technique is to add a "@reboot" crontab entry that looks like
+this:
+
+ @reboot cd PATH/TO/REPO && git foolscap start
+
+The server this tool creates is known as a "flappserver", and Foolscap has a
+number of tools to work with them. You may have already created a
+flappserver, in which case you can tell git-foolscap to use that one instead
+of creating a brand new one. To do that, use --flappserver like so:
+
+ git foolscap --flappserver=~/.flappserver create read-only
+
+The published FURL will either be limited to read-only operations, or it will
+allow both read and write (i.e. clients can push into this repo). You must
+choose one or the other when you create the FURL. Note that you can easily
+create multiple FURLs for the same repo, some read-only, others read-write.
+
+ git foolscap create read-only
+ git foolscap create read-write
+
+You can revoke any FURL, to shut off access by whoever you gave that FURL to.
+It is useful to create a new FURL for each client, so you can revoke them
+separately.
+
+ git foolscap revoke FURL
+
+You can add a comment when publishing, to help you remember who you gave the
+FURL to, so you can revoke the right one later:
+
+ git foolscap create --comment="for Bob" read-write
+
+To list all the FURLs that are enabled, use "list":
+
+ git foolscap list
+
+'''
+
+def probably_git_repo(repodir):
+    return (os.path.exists(os.path.join(repodir, "objects"))
+            and os.path.exists(os.path.join(repodir, "refs")))
+
+def get_repodir():
+    #repodir = os.environ["GIT_DIR"]
+    d = Popen(["git", "rev-parse", "--git-dir"], stdout=PIPE).communicate()[0]
+    repodir = os.path.abspath(os.path.expanduser(d.strip()))
+    if not probably_git_repo(repodir):
+        raise UsageError("%s doesn't look like a .git directory" % repodir)
+    return repodir
+
+class BaseOptions(Options):
+    opt_h = Options.opt_help
+
+    def getSynopsis(self):
+        # the default usage.Options.getSynopsis prepends 'flappserver'
+        # Options.synopsis, which looks weird
+        return self.synopsis
+
+class CreateOptions(BaseOptions):
+    synopsis = "git-foolscap [--flappserver=] create read-only|read-write COMMENT [flappserver-create-args]"
+    optParameters = [
+        ("comment", None, None, "add a note to the flappserver comment field"),
+        ]
+    optFlags = [
+        # TODO: not flags, but I want the help data
+        ("read-only", None, "allow client to fetch changes from this repository"),
+        ("read-write", None, "allow client to push changes into this repository"),
+        ]
+
+    def parseArgs(self, mode=None, comment=None):
+        if mode not in ("read-only", "read-write"):
+            raise UsageError("mode must be 'read-only' or 'read-write'")
+        self["mode"] = mode
+        if not comment:
+            raise UsageError("comment is required")
+        self["comment"] = comment
+
+class RevokeOptions(BaseOptions):
+    synopsis = "git-foolscap [--flappserver=] revoke FURL"
+
+    def parseArgs(self, FURL=None):
+        if not FURL:
+            raise UsageError("FURL is required")
+        self["FURL"] = FURL
+
+class ListOptions(BaseOptions):
+    synopsis = "git-foolscap [--flappserver=] list"
+
+class StartOptions(BaseOptions):
+    synopsis = "git-foolscap [--flappserver=] start"
+
+class StopOptions(BaseOptions):
+    synopsis = "git-foolscap [--flappserver=] stop"
+
+class Options(Options):
+    synopsis = "git-foolscap [--flappserver=] (create [--comment=] (read-only|read-write))|revoke FURL|list|start|stop"
+    optParameters = [
+        ("flappserver", None, None, "where the flappserver lives"),
+        ]
+    longdesc = """XXXAdd a service (to a pre-existing flappserver) that will
+grant FURL-based access to a single Git repository in REPODIR. Use
+'flappserver create' and 'flappserver start' to launch the server, then run
+me to connect the server and a repository. I will emit a FURL, which can be
+passed to 'git-clone-furl' and 'git-remote-add-furl' (on some other machine)
+to create repos that can access my REPODIR."""
+
+    subCommands = [("create", None, CreateOptions, "Publish a new FURL"),
+                   ("revoke", None, RevokeOptions, "Revoke a previous FURL"),
+                   ("list", None, ListOptions, "List all active FURLs"),
+                   ("start", None, StartOptions, "Start the server"),
+                   ("stop", None, StopOptions, "Stop the server"),
+                   ]
+
+    def opt_h(self):
+        return self.opt_help()
+
+    def postOptions(self):
+        self.repodir = get_repodir()
+        if self["flappserver"]:
+            self.serverdir = os.path.expanduser(self["flappserver"])
+        else:
+            self.serverdir = os.path.join(self.repodir, "foolscap")
+
+def restart_server():
+    fo = Options()
+    fo.basedir = o.serverdir
+    fo.stderr = sys.stderr
+    fo.twistd_args = []
+    return cli.Restart().run(fo) # this never returns
+def stop_server():
+    fo = Options()
+    fo.basedir = o.serverdir
+    fo.stderr = sys.stderr
+    fo.twistd_args = []
+    return cli.Stop().run(fo)
+
+def maybe_create_server(server_exists, serverdir):
+    d = fireEventually()
+    def _create(ign):
+        d1 = cli.run_flappserver(["flappserver",
+                                  "create", "--quiet", serverdir],
+                                 run_by_human=False)
+        d1.addCallback(lambda (rc,out,err): None) # TODO: check rc
+        return d1
+    if not server_exists:
+        # we need to create it. This needs a reactor turn
+        d.addCallback(_create)
+    def _check_umask(ign):
+        if not os.path.exists(os.path.join(serverdir, "umask")):
+            print >>sys.stderr, "flappserver doesn't have --umask set: consider setting it to 022, otherwise permissions on working files may be messed up"
+    d.addCallback(_check_umask)
+    return d
+
+def run_reactor_and_exit(d):
+    stash_rc = []
+    def good(rc):
+        stash_rc.append(rc)
+        reactor.stop()
+    def oops(f):
+        print "Command failed:"
+        print f
+        stash_rc.append(-1)
+        reactor.stop()
+    d.addCallbacks(good, oops)
+    d.addErrback(oops)
+    reactor.run()
+    sys.exit(stash_rc[0])
+
+
+o = Options()
+o.parseOptions()
+
+# make sure the flappserver exists
+server_exists = os.path.exists(os.path.join(o.serverdir, "flappserver.tac"))
+
+command = o.subCommand
+if not command:
+    print str(o)
+    sys.exit(0)
+so = o.subOptions
+
+if command == "create":
+    d = maybe_create_server(server_exists, o.serverdir)
+    def _add(ign):
+        read_write = (so["mode"] == "read-write")
+
+        comment = "allow read "
+        if read_write:
+            comment += "(and write) "
+        comment += "access to the Git repository at %s" % o.repodir
+        if so["comment"]:
+            comment += " (%s)" % so["comment"]
+
+        # git-upload-pack handles "git fetch" and "git ls-remote"
+        git_services = ["git-upload-pack"]
+        # git-upload-archive handles "git archive --remote"
+        if read_write:
+            git_services.append("git-receive-pack")
+
+        #ok = os.path.join(o.repodir, "git-daemon-export-ok")
+        #if not os.path.exists(ok):
+        #    open(ok, "w").close()
+
+        base_swissnum = cli.make_swissnum()
+
+        # each git command gets a sub-FURL
+        for git_service in git_services:
+            swissnum = "%s-%s" % (base_swissnum, git_service)
+            args = ["--accept-stdin", "/"]
+            args.append(git_service)
+            if git_service == "git-upload-pack":
+                args.extend(["--strict", "--timeout=600"])
+            args.append(o.repodir)
+            furl,servicedir = cli.add_service(o.serverdir, "run-command", args,
+                                              comment, swissnum)
+
+        # use the last furl/swissnum pair to figure out the base FURL. Note
+        # that this isn't a real FURL: you must append one of the accepted
+        # git-command-name strings to hit a real object.
+        assert furl.endswith(swissnum)
+        chop = len(swissnum) - len(base_swissnum)
+        furl = furl[:-chop]
+
+        print "%s FURL added:" % so["mode"]
+        print furl
+    d.addCallback(_add)
+    run_reactor_and_exit(d)
+
+elif command == "revoke":
+    if not server_exists:
+        raise UsageError("serverdir doesn't exist")
+    furl = so["FURL"]
+    swissnum = furl.split("/")[-1]
+    for d in os.list(os.path.join(o.serverdir, "services")):
+        if d.startswith(swissnum):
+            found = True
+            shutil.rmtree(os.path.join(o.serverdir, "services", d))
+    if found:
+        print "removed %s" % swissnum
+        if os.path.exists(os.path.join(o.serverdir, "twistd.pid")):
+            print "restarting server.."
+            restart_server() # never returns
+    else:
+        print "No such FURL found!"
+        sys.exit(1)
+
+elif command == "list":
+    if not server_exists:
+        raise UsageError("serverdir doesn't exist")
+    services = cli.list_services(o.serverdir)
+    found = {}
+    for s in services:
+        if s.service_type != "run-command":
+            pass
+        if not re.search(r'allow read (\(and write\) )?access to the Git repository at',
+                         s.comment):
+            pass
+        chop = len(s.swissnum) - s.swissnum.index("-")
+        base_furl = s.furl[:-chop]
+        found[base_furl] = s.comment # possibly None
+    for furl in sorted(found.keys()):
+        print furl
+        comment = found[furl]
+        if comment:
+            print " "+comment
+        #readwrite = "(and write)" in comment
+        #print " "+readwrite
+        print
+    if not services:
+        print "no git-foolscap FURLs configured"
+
+elif command == "start": # also does restart
+    if not server_exists:
+        raise UsageError("serverdir doesn't exist")
+    restart_server() # this never returns
+
+elif command == "stop":
+    if not server_exists:
+        raise UsageError("serverdir doesn't exist")
+    stop_server() # this never returns
+
+else:
+    # I think this should never be reached
+    raise UsageError("unknown subcommand '%s'" % command)
+
+
+
+
+'''
+
+You can create as many FURLs as you want. Each one can be revoked separately.
+To revoke a FURL, use "flappserver list" to find the one you want, get its
+"swissnum", delete the corresponding directory under
+~/.flappserver/services/SWISSNUM , then use "flappserver restart
+~/.flappserver" to restart the server.
+'''
