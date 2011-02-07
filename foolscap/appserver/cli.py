@@ -194,8 +194,12 @@ class AddOptions(BaseOptions):
             t += "  %s\n" % name
         return t
 
-def add_service(basedir, service_type, service_args, comment):
-    swissnum = generateSwissnumber(Tub.NAMEBITS)
+def make_swissnum():
+    return generateSwissnumber(Tub.NAMEBITS)
+
+def add_service(basedir, service_type, service_args, comment, swissnum=None):
+    if not swissnum:
+        swissnum = make_swissnum()
     service_basedir = os.path.join(basedir, "services", swissnum)
     os.makedirs(service_basedir)
     try:

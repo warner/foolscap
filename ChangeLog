@@ -1,3 +1,7 @@
+2011-02-07  Brian Warner  <warner@lothar.com>
+
+	* foolscap/appserver/cli.py: split make_swissnum() out
+
 2011-02-06  Brian Warner  <warner@lothar.com>
 
 	* .darcs-boringfile, .hgignore, .hgtags: remove old files now that
