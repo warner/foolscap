@@ -1,5 +1,9 @@
 2011-02-07  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/client.py: work around an apparent twisted
+	StandardIO bug when git closes our stdout and then writes to our
+	stdin.
+
 	* doc/examples/git-foolscap, git-remote-pb: new git-over-foolscap
 	tools, uses 'git-remote-helpers' for easy setup.
 

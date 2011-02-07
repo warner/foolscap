@@ -60,10 +60,34 @@ class RunCommandOptions(BaseOptions):
     arguments."""
 
 
-from twisted.internet.stdio import StandardIO
+from twisted.internet.stdio import StandardIO as TwitchyStandardIO
+class StandardIO(TwitchyStandardIO):
+    def childConnectionLost(self, fd, reason):
+        # the usual StandardIO class doesn't seem to handle half-closed stdio
+        # well, specifically when out stdout is closed, then some data is
+        # written to our stdin. The class response to stdout's closure by
+        # shutting down everything. I think this is related to
+        # ProcessWriter.doRead returning CONNECTION_LOST instead of
+        # CONNECTION_DONE (which ProcessWriter.connectionLost sends along to
+        # StandardIO.childConnectionLost). There is code in
+        # StandardIO.childConnectionLost to treat CONNECTION_DONE as a
+        # half-close, but not CONNECTION_LOST.
+        #
+        # so this hack is to make it look more like a half-close
+        #print >>sys.stderr, "my StandardIO.childConnectionLost", fd, reason.value
+        from twisted.internet import error, main
+        from twisted.python import failure
+        if (reason.value.__class__ == error.ConnectionLost and fd == "write"):
+            #print >>sys.stderr, " fixing"
+            reason = failure.Failure(main.CONNECTION_DONE)
+        return TwitchyStandardIO.childConnectionLost(self, fd, reason)
+
 from twisted.internet.protocol import Protocol
+#from zope.interface import implements
+#from twisted.internet.interfaces import IHalfCloseableProtocol
 
 class RunCommand(Referenceable, Protocol):
+    #implements(IHalfCloseableProtocol)
     def run(self, rref, options):
         self.done = False
         self.d = defer.Deferred()
