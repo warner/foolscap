@@ -1,5 +1,28 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+** setuptools dependencies updated
+
+Foolscap (when built with setuptools) now declares that it needs pyOpenSSL 
+even if you don't specify that you want to use the "secure_connections"
+feature. This is because the Foolscap package sometimes doesn't declare the
+existence of the "secure_connections" feature even when it has it, so other
+packages can't rely that declaration. (It fails to declare this extra feature
+if it was built on a system without setuptools or if it was installed using the
+"pip" installer instead of "easy_install". pip is increasingly popular and is
+the officially recommended tool on the front page of
+http://pypi.python.org/pypi .)
+
+A consequence of this is that when you install Foolscap (with "python setup.py
+install" if you have setuptools installed, or with "easy_install Foolscap" or
+"pip Foolscap", or by installing a package that depends on Foolscap), then it
+will pull in pyOpenSSL if pyOpenSSL is not already installed in addition to 
+pulling in Twisted if Twisted is not already installed.
+
+If you want to install it without pulling in pyOpenSSL, then you can add the
+--no-deps option to the command-line for "setup.py install", "easy_install", or
+"pip", in which case you may need to manually install Twisted before you can
+use foolscap. (#174)
+
 * Release 0.6.1 (16-Jan-2011)
 
 ** Minor Fixes
