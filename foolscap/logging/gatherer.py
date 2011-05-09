@@ -11,7 +11,7 @@ from twisted.python import usage, procutils, filepath, log as tw_log
 from twisted.application import service, internet
 from foolscap.api import Tub, Referenceable
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
-from foolscap.logging.incident import IncidentClassifierBase
+from foolscap.logging.incident import IncidentClassifierBase, TIME_FORMAT
 from foolscap.util import get_local_ip_for
 
 class BadTubID(Exception):
@@ -140,7 +140,6 @@ class GathererService(GatheringBase):
     verbose = True
     furlFile = "log_gatherer.furl"
     tacFile = "gatherer.tac"
-    TIME_FORMAT = "%Y-%m-%d--%H:%M:%S"
 
     def __init__(self, rotate, use_bzip, basedir=None):
         GatheringBase.__init__(self, basedir)
@@ -171,7 +170,7 @@ class GathererService(GatheringBase):
         self._open_savefile(now)
 
     def format_time(self, when):
-        return time.strftime(self.TIME_FORMAT, time.gmtime(when)) + "Z"
+        return time.strftime(TIME_FORMAT, time.gmtime(when)) + "Z"
 
     def _open_savefile(self, now):
         new_filename = "from-%s---to-present.flog" % self.format_time(now)

@@ -2,12 +2,16 @@
 import sys, os.path, time, pickle, bz2
 from pprint import pprint
 from zope.interface import implements
-from twisted.python import usage
+from twisted.python import usage, runtime
 from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
 from foolscap.logging import levels, app_versions
 from foolscap.eventual import eventually
 from foolscap import base32
+
+TIME_FORMAT = "%Y-%m-%d--%H:%M:%S"
+if runtime.platform.isWindows():
+    TIME_FORMAT = TIME_FORMAT.replace(":", "")
 
 class IncidentQualifier:
     """I am responsible for deciding what qualifies as an Incident. I look at
@@ -56,7 +60,6 @@ class IncidentReporter:
 
     TRAILING_DELAY = 5.0 # gather 5 seconds of post-trigger events
     TRAILING_EVENT_LIMIT = 100 # or 100 events, whichever comes first
-    TIME_FORMAT = "%Y-%m-%d--%H:%M:%S"
 
     def __init__(self, basedir, logger, tubid_s):
         self.basedir = basedir
@@ -68,7 +71,7 @@ class IncidentReporter:
         return self.active
 
     def format_time(self, when):
-        return time.strftime(self.TIME_FORMAT, time.gmtime(when)) + "Z"
+        return time.strftime(TIME_FORMAT, time.gmtime(when)) + "Z"
 
     def incident_declared(self, triggering_event):
         self.trigger = triggering_event
