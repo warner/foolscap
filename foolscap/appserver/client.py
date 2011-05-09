@@ -250,8 +250,8 @@ def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
             if f.check(SystemExit):
                 stash_rc.append(f.value.args[0])
             else:
-                print "Command failed:"
-                print f
+                print >>stderr, "flappclient command failed:"
+                print >>stderr, f
                 stash_rc.append(-1)
             reactor.stop()
         d.addCallbacks(good, oops)
