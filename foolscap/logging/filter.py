@@ -100,6 +100,12 @@ class Filter:
             pickle.dump(e, newfile, 2)
         newfile.close()
         if options.newfile == options.oldfile:
+            if sys.platform == "win32":
+                # Win32 can't do an atomic rename to an existing file.
+                try:
+                    os.unlink(options.newfile)
+                except OSError:
+                    pass
             os.rename(newfilename, options.newfile)
         print >>stdout, "copied %d of %d events into new file" % (copied, total)
 

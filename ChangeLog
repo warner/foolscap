@@ -1,5 +1,9 @@
 2011-05-08  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/filter.py (Filter.run): when doing
+	modify-in-place on windows, don't attempt an atomic rename of the
+	output file. Closes #180.
+
 	* foolscap/logging/incident.py (TIME_FORMAT): remove colons from
 	incident filenames when running on windows, since it can't handle
 	them. Thanks to David-Sarah Hopwood for the catch. Closes #177.
