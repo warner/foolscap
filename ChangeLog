@@ -1,3 +1,8 @@
+2011-05-09  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/log.py (FoolscapLogger.msg): return event
+	number even if generation_threshold says to not record event
+
 2011-05-08  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/filter.py (Filter.run): when doing

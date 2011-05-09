@@ -162,7 +162,7 @@ class FoolscapLogger:
         level = kwargs["level"]
         threshold = self.get_generation_threshold(facility)
         if level < threshold:
-            return # not worth logging
+            return num # not worth logging
 
         event = kwargs
 
