@@ -64,8 +64,8 @@ from twisted.internet.stdio import StandardIO as TwitchyStandardIO
 class StandardIO(TwitchyStandardIO):
     def childConnectionLost(self, fd, reason):
         # the usual StandardIO class doesn't seem to handle half-closed stdio
-        # well, specifically when out stdout is closed, then some data is
-        # written to our stdin. The class response to stdout's closure by
+        # well, specifically when our stdout is closed, then some data is
+        # written to our stdin. The class responds to stdout's closure by
         # shutting down everything. I think this is related to
         # ProcessWriter.doRead returning CONNECTION_LOST instead of
         # CONNECTION_DONE (which ProcessWriter.connectionLost sends along to
@@ -77,7 +77,7 @@ class StandardIO(TwitchyStandardIO):
         #print >>sys.stderr, "my StandardIO.childConnectionLost", fd, reason.value
         from twisted.internet import error, main
         from twisted.python import failure
-        if (reason.value.__class__ == error.ConnectionLost and fd == "write"):
+        if reason.check(error.ConnectionLost) and fd == "write":
             #print >>sys.stderr, " fixing"
             reason = failure.Failure(main.CONNECTION_DONE)
         return TwitchyStandardIO.childConnectionLost(self, fd, reason)
