@@ -1,3 +1,7 @@
+2011-06-05  Brian Warner  <warner@lothar.com>
+
+	* .gitignore: ignore generated files
+
 2011-05-09  Brian Warner  <warner@lothar.com>
 
 	* foolscap/appserver/client.py (run_flappclient.oops): write error
