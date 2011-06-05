@@ -2,16 +2,14 @@
 import sys, os.path, time, pickle, bz2
 from pprint import pprint
 from zope.interface import implements
-from twisted.python import usage, runtime
+from twisted.python import usage
 from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
 from foolscap.logging import levels, app_versions
 from foolscap.eventual import eventually
 from foolscap import base32
 
-TIME_FORMAT = "%Y-%m-%d--%H:%M:%S"
-if runtime.platform.isWindows():
-    TIME_FORMAT = TIME_FORMAT.replace(":", "")
+TIME_FORMAT = "%Y-%m-%d--%H-%M-%S"
 
 class IncidentQualifier:
     """I am responsible for deciding what qualifies as an Incident. I look at

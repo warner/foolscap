@@ -1,5 +1,11 @@
 2011-06-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/incident.py (TIME_FORMAT): change to use
+	hyphens on all platforms, despite colons being easier to read and
+	valid on everything but windows. Filenames now look like
+	incident-2011-06-05--14-40-21Z-w2qn32q.flog . Closes #177 again.
+	* doc/logging.xhtml: update to match
+
 	* foolscap/_version.py: change "in-between releases" version from
 	"0.6.1+" to "0.6.1.post0", to satisfy PEP 386 (and make it
 	possible for Tahoe to use development versions of Foolscap). I am

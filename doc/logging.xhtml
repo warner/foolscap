@@ -501,7 +501,8 @@ log.setIncidentReporterFactory(MoreRecoveryIncidentReporter)
 </pre>
 
 <p>Recorded Incidents will be saved in the logdir with filenames like
-<code>incident-2008-05-02-011235.flog.bz2</code>, and can be read with tools
+<code>incident-2008-05-02--01-12-35Z-w2qn32q.flog.bz2</code>, containing both
+a (UTC) timestamp and a random/unique suffix. These can be read with tools
 like <code>flogtool dump</code> and <code>flogtool web-viewer</code>.</p>
 
 
@@ -834,9 +835,9 @@ Now run '(cd lg &amp;&amp; twistd -y gatherer.tac)' to launch the daemon
 gatherer.tac
 % twistd -y gatherer.tac
 % ls
-from-2008-07-28-133034--to-present.flog  log_gatherer.furl  twistd.pid
-gatherer.pem                             portnum
-gatherer.tac                             twistd.log
+from-2008-07-28--13-30-34Z--to-present.flog  log_gatherer.furl  twistd.pid
+gatherer.pem                                 portnum
+gatherer.tac                                 twistd.log
 % cat log_gatherer.furl
 pb://g7yntwfu24w2hhb54oniqowfgizpk73d@192.168.69.172:54611,127.0.0.1:54611/z4ntcdg4jpdg3pnabhmyu3qvi3a7mdp3
 % kill `cat twistd.pid`
