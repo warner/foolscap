@@ -1,5 +1,14 @@
 2011-06-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: change "in-between releases" version from
+	"0.6.1+" to "0.6.1.post0", to satisfy PEP 386 (and make it
+	possible for Tahoe to use development versions of Foolscap). I am
+	slightly annoyed by the need to use a less-readable versioning
+	scheme, but a number of people (in particular Tarek and the Pycon
+	community) seem to support PEP 386, so I'll play along. Closes
+	#175.
+	* misc/*/debian/changelog: same
+
 	* .gitignore: ignore generated files
 
 2011-05-09  Brian Warner  <warner@lothar.com>
