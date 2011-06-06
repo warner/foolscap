@@ -751,8 +751,8 @@ MAX_HANDLED_VERSION = negotiate.Negotiation.maxVersion
 UNHANDLED_VERSION = 4
 class NegotiationVbig(negotiate.Negotiation):
     maxVersion = UNHANDLED_VERSION
-    def __init__(self, logparent):
-        negotiate.Negotiation.__init__(self, logparent)
+    def __init__(self, protoparent, logparent):
+        negotiate.Negotiation.__init__(self, protoparent, logparent)
         self.negotiationOffer["extra"] = "new value"
     def evaluateNegotiationVersion4(self, offer):
         # just like v1, but different

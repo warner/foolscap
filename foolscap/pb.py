@@ -154,9 +154,9 @@ class Listener(protocol.ServerFactory):
         lp = log.msg("%s accepting connection from %s" % (self, addr),
                      addr=(addr.host, addr.port),
                      facility="foolscap.listener")
-        proto = self.negotiationClass(logparent=lp)
+        proto = negotiate.FoolscapProtocol(self.negotiationClass, lp)
         proto.initServer(self)
-        proto.factory = self
+        proto.setFactory(self)
         return proto
 
     def lookupTubID(self, tubID):

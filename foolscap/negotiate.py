@@ -50,6 +50,43 @@ PLAINTEXT, ENCRYPTED, DECIDING, BANANA, ABANDONED = range(5)
 #             reqID=0 was commandeered for use by callRemoteOnly()
 #  3 (0.1.3): added PING and PONG tokens
 
+class FoolscapProtocol(protocol.Protocol):
+    """All connections (both during negotiation and afterwards) use this
+    Protocol. At first, it delivers messages to the Negotiation protocol
+    instance. Then, once negotiation is finished, it switches over to
+    delivering messages to the Banana instance.
+
+    This exists to allow the (large) Negotiation instance to be released once
+    it is no longer needed.
+    """
+
+    def __init__(self, negotiationClass, logparent=None):
+        self._logparent = logparent
+
+        # negotiationClass is usually Negotiation, below, but tests can
+        # replace it with something else
+        p = negotiationClass(protoparent=self, logparent=self._logparent)
+        self.p = p
+        self.dataReceived = p.dataReceived
+        self.connectionLost = p.connectionLost
+
+    # these three methods are only used during the Negotiation phase
+    def setFactory(self, factory):
+        self.p.setFactory(factory)
+
+    def initClient(self, connector, targetHost):
+        self.p.initClient(connector, targetHost)
+
+    def initServer(self, listener):
+        self.p.initServer(listener)
+
+    def switchToBanana(self, b):
+        del self.p
+        self.dataReceived = b.dataReceived
+        self.connectionLost = b.connectionLost
+        # the Negotiation which called us will then do b.makeConnection and
+        # deliver any remaining data
+
 class Negotiation(protocol.Protocol):
     """This is the first protocol to speak over the wire. It is responsible
     for negotiating the connection parameters, then switching the connection
@@ -163,7 +200,8 @@ class Negotiation(protocol.Protocol):
     SERVER_TIMEOUT = 60 # you have 60 seconds to complete negotiation, or else
     negotiationTimer = None
 
-    def __init__(self, logparent=None):
+    def __init__(self, protoparent, logparent=None):
+        self._protoparent = protoparent
         self._logparent = log.msg("Negotiation started", parent=logparent,
                                   facility="foolscap.negotiation")
         for i in range(self.minVersion, self.maxVersion+1):
@@ -215,6 +253,9 @@ class Negotiation(protocol.Protocol):
         if 'level' not in kwargs:
             kwargs['level'] = log.NOISY
         return log.msg(*args, **kwargs)
+
+    def setFactory(self, factory):
+        self.factory = factory
 
     def initClient(self, connector, targetHost):
         # clients do connectTCP and speak first with a GET
@@ -1159,11 +1200,9 @@ class Negotiation(protocol.Protocol):
                              )
         b.factory = self.factory # not used for PB code
         b.setTub(self.tub)
-        # we leave ourselves as the protocol, but redirect incoming messages
-        # (from the transport) to the broker
-        #self.transport.protocol = b
-        self.dataReceived = b.dataReceived
-        self.connectionLost = b.connectionLost
+        # tell the parent FoolscapProtocol to forget about us and send
+        # incoming messages to the new broker instead
+        self._protoparent.switchToBanana(b)
 
         b.makeConnection(self.transport)
         buf, self.buffer = self.buffer, "" # empty our buffer, just in case
@@ -1249,9 +1288,9 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
 
     def buildProtocol(self, addr):
         nc = self.tc.tub.negotiationClass # this is usually Negotiation
-        proto = nc(self._logparent)
+        proto = FoolscapProtocol(nc, self._logparent)
         proto.initClient(self.tc, self.host)
-        proto.factory = self
+        proto.setFactory(self)
         return proto
 
     def clientConnectionFailed(self, connector, reason):
