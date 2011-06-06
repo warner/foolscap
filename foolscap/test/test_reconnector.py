@@ -49,8 +49,7 @@ class Reconnector(unittest.TestCase):
         rref.notifyOnDisconnect(self._disconnected, self.count)
         if self.count < 2:
             # forcibly disconnect it
-            eventually(rref.tracker.broker.transport.loseConnection,
-                       Failure(CONNECTION_LOST))
+            eventually(rref.tracker.broker.transport.loseConnection)
         else:
             self.done.callback("done")
 

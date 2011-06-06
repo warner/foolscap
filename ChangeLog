@@ -1,5 +1,17 @@
 2011-06-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation.switchToBanana): rather than
+	replacing self.transport.protocol with the Banana protocol, leave
+	the Negotiation protocol in place, but swap out its .dataReceived
+	and .connectionLost methods with pointers to the Banana's methods.
+	This avoids a bug with current Twisted trunk (>11.0.0) in which
+	the new TLS implementation (enabled if you have pyOpenSSL>0.10)
+	doesn't appreciate having its .protocol changed on it after
+	initialization. Closes #173.
+	* foolscap/banana.py (Banana.handleError): stop passing a 'reason'
+	argument into loseConnection(), not all implementations accept it.
+	* foolscap/test/test_reconnector.py (Reconnector._got_ref): same
+
 	* foolscap/logging/incident.py (TIME_FORMAT): change to use
 	hyphens on all platforms, despite colons being easier to read and
 	valid on everything but windows. Filenames now look like

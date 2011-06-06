@@ -1159,7 +1159,12 @@ class Negotiation(protocol.Protocol):
                              )
         b.factory = self.factory # not used for PB code
         b.setTub(self.tub)
-        self.transport.protocol = b
+        # we leave ourselves as the protocol, but redirect incoming messages
+        # (from the transport) to the broker
+        #self.transport.protocol = b
+        self.dataReceived = b.dataReceived
+        self.connectionLost = b.connectionLost
+
         b.makeConnection(self.transport)
         buf, self.buffer = self.buffer, "" # empty our buffer, just in case
         b.dataReceived(buf) # and hand it to the new protocol
