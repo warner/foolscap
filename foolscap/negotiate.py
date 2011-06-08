@@ -56,34 +56,37 @@ class FoolscapProtocol(protocol.Protocol):
     instance. Then, once negotiation is finished, it switches over to
     delivering messages to the Banana instance.
 
-    This exists to allow the (large) Negotiation instance to be released once
-    it is no longer needed.
+    Using an intermediate protocol object allows the (large) Negotiation
+    instance to be released once it is no longer needed. The FoolscapProtocol
+    instance lives as long as the connection does, but the Negotiation
+    instance is freed.
     """
 
     def __init__(self, negotiationClass, logparent=None):
         self._logparent = logparent
-
         # negotiationClass is usually Negotiation, below, but tests can
         # replace it with something else
         p = negotiationClass(protoparent=self, logparent=self._logparent)
         self.p = p
+        self.makeConnection = p.makeConnection
         self.dataReceived = p.dataReceived
         self.connectionLost = p.connectionLost
+        self.loopbackDecision = p.loopbackDecision
 
     # these three methods are only used during the Negotiation phase
     def setFactory(self, factory):
         self.p.setFactory(factory)
-
     def initClient(self, connector, targetHost):
         self.p.initClient(connector, targetHost)
-
     def initServer(self, listener):
         self.p.initServer(listener)
 
     def switchToBanana(self, b):
         del self.p
+        self.connectionMade = b.connectionMade
         self.dataReceived = b.dataReceived
         self.connectionLost = b.connectionLost
+        del self.loopbackDecision
         # the Negotiation which called us will then do b.makeConnection and
         # deliver any remaining data
 

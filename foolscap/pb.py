@@ -971,7 +971,7 @@ class Tub(service.MultiService):
     def _createLoopbackBroker(self, tubref):
         t1,t2 = broker.LoopbackTransport(), broker.LoopbackTransport()
         t1.setPeer(t2); t2.setPeer(t1)
-        n = negotiate.Negotiation()
+        n = negotiate.FoolscapProtocol(negotiate.Negotiation)
         params = n.loopbackDecision()
         b1,b2 = (self.brokerClass(tubref, params),
                  self.brokerClass(tubref, params))
