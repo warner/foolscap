@@ -1,5 +1,10 @@
 2011-06-09  Brian Warner  <warner@lothar.com>
 
+	* foolscap/test/test_appserver.py (RunCommand.test_run): use a
+	helper script, instead of /bin/cat and /bin/dd, so this test can
+	run on windows too. Closes #178.
+	* foolscap/test/apphelper.py: same
+
 	* foolscap/test/test_reconnector.py: hush pyflakes
 
 2011-06-05  Brian Warner  <warner@lothar.com>

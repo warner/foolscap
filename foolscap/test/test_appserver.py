@@ -1,5 +1,5 @@
 
-import os.path
+import sys, os.path
 from StringIO import StringIO
 from twisted.trial import unittest
 from twisted.internet import defer
@@ -589,12 +589,14 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
             f.close()
         d.addCallback(_populate_foo)
 
+        helper = os.path.join(os.path.dirname(__file__), "apphelper.py")
         d.addCallback(lambda ign:
                       self.add(serverdir,
                                "run-command",
                                "--no-log-stdin", "--log-stdout",
                                "--no-log-stderr",
-                               incomingdir, "cat", "foo.txt"))
+                               incomingdir,
+                               sys.executable, helper, "cat", "foo.txt"))
         d.addCallback(self.stash_furl, 0)
         stdout = StringIO()
         def _start_server(ign):
@@ -629,7 +631,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
                                "run-command", "--accept-stdin",
                                "--log-stdin", "--no-log-stdout", "--log-stderr",
                                incomingdir,
-                               "dd", "of=bar.txt"))
+                               sys.executable, helper, "dd", "of=bar.txt"))
         d.addCallback(self.stash_furl, 1)
 
         barfile = os.path.join(incomingdir, "bar.txt")
@@ -641,7 +643,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
             self.failUnlessEqual(rc, 0)
             bardata = open(barfile,"rb").read()
             self.failUnlessEqual(bardata, DATA2)
-            # these checks depend upon /bin/dd behaving consistently
+            # we use a script instead of the real dd; we know how it behaves
             self.failUnlessEqual(out, "")
             self.failUnlessIn("records in", err.strip())
         d.addCallback(_check_client3)
@@ -653,7 +655,7 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
                                "run-command",
                                "--no-stdin", "--send-stdout", "--no-stderr",
                                incomingdir,
-                               "cat", "foo.txt"))
+                               sys.executable, helper, "cat", "foo.txt"))
         d.addCallback(self.stash_furl, 2)
 
         d.addCallback(lambda ign:
@@ -661,11 +663,11 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
                                "run-command",
                                "--no-stdin", "--no-stdout", "--send-stderr",
                                incomingdir,
-                               "cat", "foo.txt"))
+                               sys.executable, helper, "cat", "foo.txt"))
         d.addCallback(self.stash_furl, 3)
 
         d.addCallback(_populate_foo)
-            
+
         d.addCallback(lambda _ign:
                       self.run_client("--furl", self.furls[2], "run-command"))
         def _check_client4((rc,out,err)):
