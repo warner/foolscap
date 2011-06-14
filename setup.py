@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import re
+import re, sys
 from distutils.core import setup
 
 VERSIONFILE = "foolscap/_version.py"
@@ -51,6 +51,12 @@ object reference system, and a capability-based security model.
         'scripts': ["bin/flogtool", "bin/flappserver", "bin/flappclient"],
 }
 
+if '--no-deps' in sys.argv:
+    sys.argv.remove('--no-deps')
+else:
+    setup_args['install_requires'] = ['twisted >= 2.4.0', 'pyOpenSSL']
+    setup_args['extras_require'] = { 'secure_connections' : ["pyOpenSSL"] }
+
 have_setuptools = False
 try:
     # If setuptools is installed, then we'll add setuptools-specific
@@ -71,11 +77,16 @@ if have_setuptools:
             "flappserver = foolscap.appserver.cli:run_flappserver",
             "flappclient = foolscap.appserver.client:run_flappclient",
             ] }
-    setup_args['install_requires'] = ['twisted >= 2.4.0']
-    setup_args['extras_require'] = { 'secure_connections' : ["pyOpenSSL"] }
-    # note that pyOpenSSL-0.7 and recent Twisted causes unit test failures,
-    # see bug #62
 
 if __name__ == '__main__':
-    setup(**setup_args)
-
+    # If we passed the 'install_requires' and 'extras_require'
+    # arguments and they are not recognized by the setup() function
+    # then that is okay -- suppress the warning.
+    import warnings
+    try:
+        warnings.filterwarnings("ignore", category=UserWarning,
+                                message="Unknown distribution option",
+                                append=True)
+        setup(**setup_args)
+    finally:
+        warnings.filters.pop()
