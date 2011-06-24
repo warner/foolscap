@@ -1,5 +1,12 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release ___ (future)
+
+** API Changes
+
+*** setOption now accepts an iterable of log gatherer furls or a single log 
+    gatherer furl for its 'log-gatherer-furl' option. (#176)
+
 * Release 0.6.1 (16-Jan-2011)
 
 ** Minor Fixes

@@ -155,10 +155,11 @@ class LogPublisher(Referenceable):
      logport_furlfile = 'logport.furl'
      tub.setOption('logport-furlfile', logport_furlfile)
 
-    If you're using a LogGatherer, pass its FURL into the Tub with
-    tub.setOption('log-gatherer-furl'), or pass the name of a file where it
-    is stored with tub.setOption('log-gatherer-furlfile'). This will cause
-    the Tub to connect to the gatherer and grant it access to the logport.
+    If you're using one or more LogGatherers, pass their FURLs into the Tub
+    with tub.setOption('log-gatherer-furl'), or pass the name of a file
+    where it is stored with tub.setOption('log-gatherer-furlfile'). This
+    will cause the Tub to connect to the gatherer and grant it access to the
+    logport.
     """
 
     implements(RILogPublisher)

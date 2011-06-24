@@ -1,3 +1,9 @@
+2011-06-24  Zooko O'Whielacronx  <zooko@zooko.com>
+
+	* foolscap/pb.py (Tub): accept an iterable of log gatherer furls
+	in addition to a single log gatherer furl. Closes #176
+	* test/test_logging.py (Gatherer): test for same
+
 2011-06-09  Brian Warner  <warner@lothar.com>
 
 	* foolscap/test/test_appserver.py (RunCommand.test_run): use a
