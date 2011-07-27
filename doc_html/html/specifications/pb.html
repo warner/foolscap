@@ -1,0 +1,975 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>NewPB &mdash; Foolscap v0.6.1 documentation</title>
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Foolscap v0.6.1 documentation" href="../index.html" />
+    <link rel="prev" title="Foolscap Logging Formats" href="logfiles.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="logfiles.html" title="Foolscap Logging Formats"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Foolscap v0.6.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="newpb">
+<h1>NewPB<a class="headerlink" href="#newpb" title="Permalink to this headline">¶</a></h1>
+<p>This document describes the new PB protocol. This is a layer on top of <a class="reference internal" href="banana.html"><em>Banana</em></a> which provides remote object access (method
+invocation and instance transfer).</p>
+<p>Fundamentally, PB is about one side keeping a``RemoteReference`` to the other side&#8217;s &#8220;Referenceable&#8221; . The
+Referenceable has some methods that can be invoked remotely: functionality
+it is offering to remote callers. Those callers hold RemoteReferences which
+point to it. The RemoteReference object offers a way to invoke those methods
+(generally through the <tt class="docutils literal"><span class="pre">callRemote</span></tt> method).</p>
+<p>There are plenty of other details, starting with how the RemoteReference
+is obtained, and how arguments and return values are communicated.</p>
+<p>For the purposes of this document, we will designate the side that holds
+the actual <tt class="docutils literal"><span class="pre">Referenceable</span></tt> object as &#8220;local&#8221; , and the side
+that holds the proxy <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> object as &#8220;remote&#8221; .
+This distinction is only meaningful with respect to a single
+RemoteReference/Referenceable pair. One program may hold Referenceable&#8221;A&#8221; and RemoteReference &#8220;B&#8221; , paired with another that holds
+RemoteReference &#8220;A&#8221; and Referenceable &#8220;B&#8221; . Once initialization is
+complete, PB is a symmetric protocol.</p>
+<p>It is helpful to think of PB as providing a wire or pipe that connects
+two programs. Objects are put into this pipe at one end, and something
+related to the object comes out the other end. These two objects are said to
+correspond to each other. Basic types (like lists and dictionaries) are
+handled by Banana, but more complex types (like instances) are treated
+specially, so that most of the time there is a &#8220;native&#8221; form (as
+present on the local side) that goes into the pipe, and a remote form that
+comes out.</p>
+<div class="section" id="initialization">
+<h2>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h2>
+<p>The PB session begins with some feature negotiation and (generally) the
+receipt of a VocabularyDict. Usually this takes place over an interactive
+transport, like a TCP connection, but newpb can also be used in a more
+batched message-oriented mode, as long as both the creator of the method
+call request and its eventual consumer are in agreement about their shared
+state (at least, this is the intention.. there are still pieces that need to
+be implemented to make this possible).</p>
+<p>The local side keeps a table which provides a bidirectional mapping
+between <tt class="docutils literal"><span class="pre">Referenceable</span></tt> objects and a connection-local&#8221;object-ID&#8221; number. This table begins with a single object called the&#8221;Root&#8221; , which is implicitly given ID number 0. Everything else is
+bootstrapped through this object. For the typical PB Broker, this root
+object performs cred authentication and returns other Referenceables as the
+cred Avatar.</p>
+<p>The remote side has a collection of <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> objects,
+each of which knows the object-ID of the corresponding Referenceable, as
+well as the Broker which provides the connection to the other Broker. The
+remote side must do reference-tracking of these RemoteReferences, because as
+long as it remains alive, the local-side Broker must maintain a reference to
+the original Referenceable.</p>
+</div>
+<div class="section" id="method-calls">
+<h2>Method Calls<a class="headerlink" href="#method-calls" title="Permalink to this headline">¶</a></h2>
+<p>The remote side invokes a remote method by calling``ref.callRemote()`` on its RemoteReference. This starts by
+validating the method name and arguments against a &#8220;Schema&#8221; (described
+below). It then creates a new Request object which will live until the method
+call has either completed successfully or failed due to an exception
+(including the connection being lost). <tt class="docutils literal"><span class="pre">callRemote</span></tt> returns a
+Deferred, which does not fire until the request is finished.</p>
+<p>It then sends a <tt class="docutils literal"><span class="pre">call</span></tt> banana sequence over the wire. This
+sequence indicates the request ID (used to match the request with the
+resulting <tt class="docutils literal"><span class="pre">answer</span></tt> or <tt class="docutils literal"><span class="pre">error</span></tt> response), the object ID
+of the Referenceable being targeted, a string to indicate the name of the
+method being invoked, and the arguments to be passed into the method.</p>
+<p>All arguments are passed by name (i.e. keyword arguments instead of
+positional parameters). Each argument is subject to the &#8220;argument transformation&#8221; described below.</p>
+<p>The local side receives the <tt class="docutils literal"><span class="pre">call</span></tt> sequence, uses the object-ID
+to look up the Referenceable, finds the desired method, then applies the
+method&#8217;s schema to the incoming arguments. If they are acceptable, it invokes
+the method. A normal return value it sent back immediately in an``answer`` sequence (subject to the same transformation as the
+inbound arguments). If the method returns a Deferred, the answer will be sent
+back when the Deferred fires. If the method raises an exception (or the
+Deferred does an errback), the resulting Failure is sent back in a``error`` sequence. Both the <tt class="docutils literal"><span class="pre">answer</span></tt> and the``error`` start with the request-ID so they can be used to complete
+the Request object waiting on the remote side.</p>
+<p>The original Deferred (the one produced by <tt class="docutils literal"><span class="pre">callRemote</span></tt> ) is
+finally callbacked with the results of the method (or errbacked with a
+Failure or RemoteFailure object).</p>
+<div class="section" id="example">
+<h3>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h3>
+<p>This code runs on the &#8220;local&#8221; side: the one with the``pb.Referenceable`` which will respond to a remote invocation.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Responder</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">Referenceable</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">remote_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">a</span><span class="o">+</span><span class="n">b</span>
+</pre></div>
+</div>
+<p>and the following code runs on the &#8220;remote&#8221; side (the one which holds
+a <tt class="docutils literal"><span class="pre">pb.RemoteReference</span></tt> ):</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">gotAnswer</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+    <span class="k">print</span> <span class="n">results</span>
+
+<span class="n">d</span> <span class="o">=</span> <span class="n">rr</span><span class="o">.</span><span class="n">callRemote</span><span class="p">(</span><span class="s">&quot;add&quot;</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">d</span><span class="o">.</span><span class="n">addCallback</span><span class="p">(</span><span class="n">gotAnswer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that the arguments are passed as named parameters: oldpb used both
+positional parameters and named (keyword) arguments, but newpb prefers just
+the keyword arguments. TODO: newpb will probably convert positional
+parameters to keyword arguments (based upon the schema) before sending them
+to the remote side.</p>
+</div>
+<div class="section" id="using-remoteinterfaces">
+<h3>Using RemoteInterfaces<a class="headerlink" href="#using-remoteinterfaces" title="Permalink to this headline">¶</a></h3>
+<p>To nail down the types being sent across the wire, you can use a``RemoteInterface`` to define the methods that are implemented by
+any particular <tt class="docutils literal"><span class="pre">pb.Referenceable</span></tt> :</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">RIAdding</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">RemoteInterface</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="nb">int</span><span class="p">):</span> <span class="k">return</span> <span class="nb">int</span>
+
+<span class="k">class</span> <span class="nc">Responder</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">Referenceable</span><span class="p">):</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">RIAdding</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">remote_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">a</span><span class="o">+</span><span class="n">b</span>
+
+<span class="c"># and on the remote side:</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">rr</span><span class="o">.</span><span class="n">callRemote</span><span class="p">(</span><span class="n">RIAdding</span><span class="p">[</span><span class="s">&#39;add&#39;</span><span class="p">],</span> <span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">d</span><span class="o">.</span><span class="n">addCallback</span><span class="p">(</span><span class="n">gotAnswer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this example, the &#8220;RIAdding&#8221; remote interface defines a single
+method &#8220;add&#8221; , which accepts two integer parameters and returns an
+integer. This method (technically a classmethod) is used instead of the
+string form of the method name. What does this get us?</p>
+<ul class="simple">
+<li>The calling side will pre-check its arguments against the constraints
+that it believes to be imposed by the remote side. It will raise a
+Violation rather than send parameters that it thinks will be rejected.</li>
+<li>The receiving side will enforce the constraints, causing the method
+call to errback (with a Violation) if they are not met. This means the code
+in <tt class="docutils literal"><span class="pre">remote_add</span></tt> does not need to worry about what strange types
+it might be given, such as two strings, or two lists.</li>
+<li>The receiving side will pre-check its return argument before sending it
+back. If the method returns a string, it will cause a Violation exception
+to be raised. The caller will get this Violation as an errback instead of
+whatever (illegal) value the remote method computed.</li>
+<li>The sending side will enforce the return-value constraint (raising a
+Violation if it is not met). This means the calling side (in this case the
+<tt class="docutils literal"><span class="pre">gotAnswer</span></tt> callback function) does not need to worry about what
+strange type the remote method returns.</li>
+</ul>
+<p>You can use either technique: with RemoteInterfaces or without. To get the
+type-checking benefits, you must use them. If you do not, PB cannot protect
+you against memory consumption attacks.</p>
+</div>
+<div class="section" id="remoteinterfaces">
+<h3>RemoteInterfaces<a class="headerlink" href="#remoteinterfaces" title="Permalink to this headline">¶</a></h3>
+<p>RemoteInterfaces are passed by name. Each side of a PB connection has a
+table which maps names to RemoteInterfaces (subclasses of``pb.RemoteInterface`` ). Metaclass magic is used to add an entry to
+this table each time you define a RemoteInterface subclass, using the``__remote_name__`` attribute (or reflect.qual() if that is not
+set).</p>
+<p>Each <tt class="docutils literal"><span class="pre">Referenceable</span></tt> that goes over the wire is accompanied by
+the list of RemoteInterfaces which it claims to implement. On the receiving
+side, these RemoteInterface names are looked up in the table and mapped to
+actual (local) RemoteInterface classes.</p>
+<p>TODO: it might be interesting to serialize the RemoteInterface class and
+ship it over the wire, rather than assuming both sides have a copy (and that
+they agree). However, if one side does not have a copy, it is unlikely that
+it will be able to do anything very meaningful with the remote end.</p>
+<p>The syntax of RemoteInterface is still in flux. The basic idea is that
+each method of the RemoteInterface defines a remotely invokable method,
+something that will exist with a &#8220;<a href="#id7"><span class="problematic" id="id8">remote_</span></a>&#8221; prefix on any``pb.Referenceable`` s which claim to implement it.</p>
+<p>Those methods are defined with a number of named parameters. The default
+value of each parameter is something which can be turned into a``Constraint`` according to the rules of schema.makeConstraint .
+This means you can use things like <tt class="docutils literal"><span class="pre">(int,</span> <span class="pre">str,</span> <span class="pre">str)</span></tt> to mean a
+tuple of exactly those three types.</p>
+<p>Note that the methods of the RemoteInterface do <em>not</em> list&#8221;self&#8221; as a parameter. As the zope.interface documentation points out,&#8221;self&#8221; is an implemenation detail, and does not belong in the interface
+specification. Another way to think about it is that, when you write the code
+which calls a method in this interface, you don&#8217;t include &#8220;self&#8221; in the
+arguments you provide, therefore it should not appear in the public
+documentation of those methods.</p>
+<p>The method is required to return a value which can be handled by
+schema.makeConstraint: this constraint is then applied to the return value of
+the remote method.</p>
+<p>Other attributes of the method (perhaps added by decorators of some sort)
+will, some day, be able to specify specialized behavior of the method. The
+brainstorming sessions have come up with the following ideas:</p>
+<ul class="simple">
+<li>.wait=False: don&#8217;t wait for an answer</li>
+<li>.reliable=False: feel free to send this over UDP</li>
+<li>.ordered=True: but enforce order between successive remote calls</li>
+<li>.priority=3: use priority queue / stream #3</li>
+<li>.failure=Full: allow/expect full Failure contents (stack frames)</li>
+<li>.failure=ErrorMessage: only allow/expect truncated CopiedFailures</li>
+</ul>
+<p>We are also considering how to merge the RemoteInterface with other useful
+interface specifications, in particular zope.interface and
+formless.TypedInterface .</p>
+</div>
+</div>
+<div class="section" id="argument-transformation">
+<h2>Argument Transformation<a class="headerlink" href="#argument-transformation" title="Permalink to this headline">¶</a></h2>
+<p>To understand this section, it may be useful to review the <a class="reference internal" href="banana.html"><em>Banana</em></a> documentation on serializing object graphs.
+Also note that method arguments and method return values are handled
+identically.</p>
+<p>Basic types (lists, tuples, dictionaries) are serialized and unserialized
+as you would expect: the resulting object would (if it existed in the
+sender&#8217;s address space) compare as equal (but of course not&#8221;identical&#8221; , because the objects will exist at different memory
+locations).</p>
+<div class="section" id="shared-references-serialization-scope">
+<h3>Shared References, Serialization Scope<a class="headerlink" href="#shared-references-serialization-scope" title="Permalink to this headline">¶</a></h3>
+<p>Shared references to the same object are handled correctly. Banana is
+responsible for noticing that a sharable object has been serialized before
+(or at least has begun serialization) and inserts reference markers so that
+the object graph can be reconstructed. This introduces the concept of
+serialization scope: the boundaries beyond which shared references are not
+maintained.</p>
+<p>For PB, serialization is scoped to the method call. If an object is
+referenced by two arguments to the same method call, that method will see
+two references to the same object. If those arguments are containers of some
+form, which (eventually) hold a reference to the same object, the object
+graph will be preserved. For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Caller</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">callRemote</span><span class="p">(</span><span class="s">&quot;both&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">callRemote</span><span class="p">(</span><span class="s">&quot;deeper&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s">&quot;a&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">],</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">obj</span><span class="p">))</span>
+
+<span class="k">class</span> <span class="nc">Called</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">Referenceable</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">remote_both</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">arg1</span> <span class="ow">is</span> <span class="n">arg2</span>
+        <span class="k">assert</span> <span class="n">arg1</span> <span class="o">==</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">remote_deeper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">listarg</span><span class="p">,</span> <span class="n">tuplearg</span><span class="p">):</span>
+        <span class="n">ref1</span> <span class="o">=</span> <span class="n">listarg</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">ref2</span> <span class="o">=</span> <span class="n">tuplearg</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">ref1</span> <span class="ow">is</span> <span class="n">ref2</span>
+        <span class="k">assert</span> <span class="n">ref1</span> <span class="o">==</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>But if the remote-side object is referenced in two distinct remote method
+invocations, the local-side methods will see two separate objects. For
+example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Caller</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obj</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">callRemote</span><span class="p">(</span><span class="s">&quot;one&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="p">)</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">addCallback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">next</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">res</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">callRemote</span><span class="p">(</span><span class="s">&quot;two&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Called</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">Referenceable</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">remote_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref1</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">ref1</span> <span class="o">==</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref1</span> <span class="o">=</span> <span class="n">ref1</span>
+
+    <span class="k">def</span> <span class="nf">remote_two</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref2</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">ref2</span> <span class="o">==</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">ref1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">ref2</span> <span class="c"># not the same object</span>
+</pre></div>
+</div>
+<p>You can think of the method call itself being a node in the object graph,
+with the method arguments as its children. The method call node is picked up
+and the resulting sub-tree is serialized with no knowledge of anything
+outside the sub-tree <a class="footnote-reference" href="#id4" id="id1">[1]</a> .</p>
+<p>The value returned by a method call is serialized by itself, without
+reference to the arguments that were given to the method. If a remote method
+is called with a list, and the method returns its argument unchanged, the
+caller will get back a deep copy of the list it passed in.</p>
+</div>
+<div class="section" id="referenceables-remotereferences">
+<h3>Referenceables, RemoteReferences<a class="headerlink" href="#referenceables-remotereferences" title="Permalink to this headline">¶</a></h3>
+<p>Referenceables are transformed into RemoteReferences when they are sent
+over the wire. As one side traverses the object graph of the method arguments
+(or the return value), each <tt class="docutils literal"><span class="pre">Referenceable</span></tt> object it encounters
+it serialized with a <tt class="docutils literal"><span class="pre">my-reference</span></tt> sequence, that includes the
+object-ID number. When the other side is unserializing the token stream, it
+creates a <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> object, or uses one that already
+exists.</p>
+<p>Likewise, if an argument (or return value) contains a``RemoteReference`` , and it is being sent back to the Broker that
+holds the original <tt class="docutils literal"><span class="pre">Referenceable</span></tt> then it will be turned back
+into that Referenceable when it arrives. In this case, the caller of a
+remote method which returns its argument unchanged <em>will</em> see a a
+result that is identical to what it passed in:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Target</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">Referenceable</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">Caller</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obj</span> <span class="o">=</span> <span class="n">Target</span><span class="p">()</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">remote</span><span class="o">.</span><span class="n">callRemote</span><span class="p">(</span><span class="s">&quot;echo&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="p">)</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">addCallback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">next</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">res</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span>
+
+<span class="k">class</span> <span class="nc">Called</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">Referenceable</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">remote_echo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="c"># arg is a RemoteReference to a Target() instance</span>
+        <span class="k">return</span> <span class="n">arg</span>
+</pre></div>
+</div>
+<p>These references have a serialization scope which extends across the
+entire connection. As long as two method calls share the same``Broker`` instance (which generally means they share the same TCP
+socket), they will both serialize <tt class="docutils literal"><span class="pre">Referenceable</span></tt> s into identical``RemoteReference`` s. This also means that both sides do
+reference-counting to insure that the Referenceable doesn&#8217;t get
+garbage-collected while a remote system holds a RemoteReference that points
+to it.</p>
+<p>In the future, there may be other classes which behave this way. In
+particular, &#8220;Referenceable&#8221; and &#8220;Callable&#8221; may be distinct
+qualities.</p>
+</div>
+<div class="section" id="copyable-remotecopy">
+<h3>Copyable, RemoteCopy<a class="headerlink" href="#copyable-remotecopy" title="Permalink to this headline">¶</a></h3>
+<p>Some objects can be marked to indicate that they should be copied bodily
+each time they traverse the wire (pass-by-value instead of
+pass-by-reference). Classes which inherit from <tt class="docutils literal"><span class="pre">pb.Copyable</span></tt> are
+passed by value. Their <tt class="docutils literal"><span class="pre">getTypeToCopy</span></tt> and``getStateToCopy`` methods are used to assemble the data that will
+be serialized. These methods default to plain old <tt class="docutils literal"><span class="pre">reflect.qual</span></tt>
+(which provides the fully-qualified name of the class) and the instance&#8217;s
+attribute <tt class="docutils literal"><span class="pre">__dict__</span></tt> . You can override these to provide a
+different (or smaller) set of state attributes to the remote end.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Source</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">Copyable</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">getStateToCopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">del</span> <span class="n">state</span><span class="p">[</span><span class="s">&#39;private&#39;</span><span class="p">]</span>
+        <span class="n">state</span><span class="p">[</span><span class="s">&#39;children&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="n">state</span>
+</pre></div>
+</div>
+<p>Rather than subclass <tt class="docutils literal"><span class="pre">pb.Copyable</span></tt> , you can also implement the``flavors.ICopyable`` interface:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">twisted.python</span> <span class="kn">import</span> <span class="n">reflect</span>
+
+<span class="k">class</span> <span class="nc">Source2</span><span class="p">:</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">flavors</span><span class="o">.</span><span class="n">ICopyable</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">getTypeToCopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">reflect</span><span class="o">.</span><span class="n">qual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">getStateToCopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span>
+</pre></div>
+</div>
+<p>define serialization behavior for third-party classes that are out of your
+control (ones which you cannot rewrite to inherit from``pb.Copyable`` ).</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Source3</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">Source3Copier</span><span class="p">:</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">flavors</span><span class="o">.</span><span class="n">ICopyable</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getTypeToCopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;foo.Source3&#39;</span>
+    <span class="k">def</span> <span class="nf">getStateToCopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">orig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">original</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&#39;foo&#39;</span><span class="p">:</span> <span class="n">orig</span><span class="o">.</span><span class="n">foo</span><span class="p">,</span> <span class="s">&#39;bar&#39;</span><span class="p">:</span> <span class="n">orig</span><span class="o">.</span><span class="n">bar</span> <span class="p">}</span>
+        <span class="k">return</span> <span class="n">d</span>
+
+<span class="n">registerAdapter</span><span class="p">(</span><span class="n">Source3Copier</span><span class="p">,</span> <span class="n">Source3</span><span class="p">,</span> <span class="n">flavors</span><span class="o">.</span><span class="n">ICopyable</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>On the other end of the wire, the receiving side must register a``RemoteCopy`` subclass under the same name as returned by the
+sender&#8217;s <tt class="docutils literal"><span class="pre">getTypeToCopy</span></tt> value. This subclass is used as a factory
+to create instances that correspond to the original <tt class="docutils literal"><span class="pre">Copyable</span></tt> .
+The registration can either take place explicitly (with``pb.registerRemoteCopy`` ), or automatically (by setting the``copytype`` attribute in the class definition).</p>
+<p>The default <tt class="docutils literal"><span class="pre">RemoteCopy</span></tt> behavior simply sets the instance&#8217;s``__dict__`` to the incoming state, which may be plenty if you are
+willing to let outsiders arbitrarily manipulate your object state. If so, and
+you believe both peers are importing the same source file, it is enough to
+create and register the <tt class="docutils literal"><span class="pre">RemoteCopy</span></tt> at the same time you create
+the <tt class="docutils literal"><span class="pre">Copyable</span></tt> :</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Source</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">Copyable</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">getStateToCopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">del</span> <span class="n">state</span><span class="p">[</span><span class="s">&#39;private&#39;</span><span class="p">]</span>
+        <span class="n">state</span><span class="p">[</span><span class="s">&#39;children&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="n">state</span>
+<span class="k">class</span> <span class="nc">Remote</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">RemoteCopy</span><span class="p">):</span>
+    <span class="n">copytype</span> <span class="o">=</span> <span class="n">reflect</span><span class="o">.</span><span class="n">qual</span><span class="p">(</span><span class="n">Source</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can do something special with the incoming object state by overriding
+the <tt class="docutils literal"><span class="pre">setCopyableState</span></tt> method. This may allow you to do some
+sanity-checking on the state before trusting it.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Remote</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">RemoteCopy</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">setCopyableState</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="n">state</span><span class="p">[</span><span class="s">&#39;count&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">one</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">two</span>
+
+<span class="c"># show explicit registration, instead of using &#39;copytype&#39; class attribute</span>
+<span class="n">pb</span><span class="o">.</span><span class="n">registerRemoteCopy</span><span class="p">(</span><span class="n">reflect</span><span class="o">.</span><span class="n">qual</span><span class="p">(</span><span class="n">Source</span><span class="p">),</span> <span class="n">Remote</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can also set a <tt class="xref doc docutils literal"><span class="pre">constraint</span></tt> on the inbound
+object state, which provides a way to enforce some type checking on the state
+components as they arrive. This protects against resource-consumption attacks
+where someone sends you a zillion-byte string as part of the object&#8217;s
+state.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Remote</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">RemoteCopy</span><span class="p">):</span>
+    <span class="n">stateSchema</span> <span class="o">=</span> <span class="n">schema</span><span class="o">.</span><span class="n">AttributeDictConstraint</span><span class="p">((</span><span class="s">&#39;foo&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
+                                                 <span class="p">(</span><span class="s">&#39;bar&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>In this example, the object will only accept two attributes: &#8220;foo&#8221;
+(which must be a number), and &#8220;bar&#8221; (which must be a string shorter than
+the default limit of 1000 characters). Various classes from the``schema`` module can be used to construct more complicated
+constraints.</p>
+</div>
+<div class="section" id="slicers-islicer">
+<h3>Slicers, ISlicer<a class="headerlink" href="#slicers-islicer" title="Permalink to this headline">¶</a></h3>
+<p>Each object gets &#8220;Sliced&#8221; into a stream of tokens as they go over the
+wire: Referenceable and Copyable are merely special cases. These classes have
+Slicers which implement specific behaviors when the serialization process is
+asked to send their instances to the remote side. You can implement your own
+Slicers to take complete control over the serialization process. The most
+useful reason to take advantage of this feature is to implement &#8220;streaming slicers&#8221; , which can minimize in-memory buffering by only producing Banana
+tokens on demand as space opens up in the transport.</p>
+<p>Banana Slicers are documented in detail in the <a class="reference internal" href="banana.html"><em>Banana</em></a> documentation. Once you create a Slicer class,
+you will want to &#8220;register&#8221; it, letting Banana know that this Slicer is
+useful for conveying certain types of objects across the wire. The registry
+maps a type to a Slicer class (which is really a slicer factory), and is
+implemented by registering the slicer as a regular &#8220;adapter&#8221; for the``ISlicer`` interface. For example, lists are serialized by the``ListSlicer`` class, so <tt class="docutils literal"><span class="pre">ListSlicer</span></tt> is registered as
+the slicer for the <tt class="docutils literal"><span class="pre">list</span></tt> type:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">ListSlicer</span><span class="p">(</span><span class="n">BaseSlicer</span><span class="p">):</span>
+    <span class="n">opentype</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;list&quot;</span><span class="p">,)</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="nb">list</span>
+</pre></div>
+</div>
+<p>Slicer registration can be either explicit or implicit. In this example,
+an implicit registration is used: by setting the &#8220;slices&#8221; attribute to
+the <tt class="docutils literal"><span class="pre">list</span></tt> type, the BaseSlicer&#8217;s metaclass automatically
+registers the mapping from <tt class="docutils literal"><span class="pre">list</span></tt> to ListSlicer.</p>
+<p>To explicitly register a slicer, just leave <tt class="docutils literal"><span class="pre">opentype</span></tt> set to
+None (to disable auto-registration), and then register the slicer
+manually.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">TupleSlicer</span><span class="p">(</span><span class="n">BaseSlicer</span><span class="p">):</span>
+    <span class="n">opentype</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;tuple&quot;</span><span class="p">,)</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="o">...</span>
+<span class="n">registerAdapter</span><span class="p">(</span><span class="n">TupleSlicer</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">pb</span><span class="o">.</span><span class="n">ISlicer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As with ICopyable, registering an ISlicer adapter allows you to define
+exactly how you wish to serialize third-party classes which you do not get to
+modify.</p>
+</div>
+<div class="section" id="unslicers">
+<h3>Unslicers<a class="headerlink" href="#unslicers" title="Permalink to this headline">¶</a></h3>
+<p>On the other side of the wire, the incoming token stream is handed to an``Unslicer`` , which is responsible for turning the set of tokens
+into a single finished object. They are also responsible for enforcing limits
+on the types and sizes of the tokens that make up the stream. Unslicers are
+also described in greater detail in the <a class="reference internal" href="banana.html"><em>Banana</em></a>
+docs.</p>
+<p>As with Slicers, Unslicers need to be registered to be useful. This
+registry maps &#8220;opentypes&#8221; to Unslicer classes (i.e. factories which can
+produce an unslicer instance each time the given opentype appears in the
+token stream). Therefore it maps tuples to subclasses of``BaseUnslicer`` .</p>
+<p>Again, this registry can be either implicit or explicit. If the Unslicer
+has a non-None class attribute named <tt class="docutils literal"><span class="pre">opentype</span></tt> , then it is
+automatically registered. If it does not have this attribute (or if it is set
+to None), then no registration is performed, and the Unslicer must be
+manually registered:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">MyUnslicer</span><span class="p">(</span><span class="n">BaseUnslicer</span><span class="p">):</span>
+    <span class="o">...</span>
+
+<span class="n">pb</span><span class="o">.</span><span class="n">registerUnslicer</span><span class="p">((</span><span class="s">&#39;myopentype&#39;</span><span class="p">,),</span> <span class="n">MyUnslicer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Also remember that this registry is global, and that you cannot register
+two Unslicers for the same opentype (you&#8217;ll get an exception at
+class-definition time, which will probably result in an ImportError).</p>
+</div>
+<div class="section" id="slicer-unslicer-example">
+<h3>Slicer/Unslicer Example<a class="headerlink" href="#slicer-unslicer-example" title="Permalink to this headline">¶</a></h3>
+<p>The simplest kind of slicer has a <tt class="docutils literal"><span class="pre">sliceBody</span></tt> method (a
+generator) which yields a series of tokens. To demonstrate how to build a
+useful Slicer, we&#8217;ll write one that can send large strings across the wire in
+pieces. Banana can send arbitrarily long strings in a single token, but each
+token must be handed to the transport layer in an indivisble chunk, and
+anything that doesn&#8217;t fit in the transmit buffers will be stored in RAM until
+some space frees up in the socket. Practically speaking, this means that
+anything larger than maybe 50kb will spend a lot of time in memory,
+increasing the RAM footprint for no good reason.</p>
+<p>Because of this, it is useful to be able to send large amounts of data in
+smaller pieces, and let the remote end reassemble them. The following Slicer
+is registered to handle all open files (perhaps not the best idea), and
+simply emits the contents in 10kb chunks.</p>
+<p>(readers familiar with oldpb will notice that this Slicer/Unslicer pair
+provide similar functionality to the old FilePager class. The biggest
+improvement is that newpb can accomplish this without the extra round-trip
+per chunk. The downside is that, unless you enable streaming in your Broker,
+no other methods can be invoked while the file is being transmitted. The
+upside of the downside is that this lets you retain in-order execution of
+remote methods, and that you don&#8217;t have to worry changes to the contents of
+the file causing corrupt data to be sent over the wire. The oter upside of
+the downside is that, if you enable streaming, you can do whatever other
+processing you wish between data chunks.)</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">BigFileSlicer</span><span class="p">(</span><span class="n">BaseSlicer</span><span class="p">):</span>
+    <span class="n">opentype</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;bigfile&quot;</span><span class="p">,)</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">FileType</span>
+    <span class="n">CHUNKSIZE</span> <span class="o">=</span> <span class="mi">10000</span>
+
+    <span class="k">def</span> <span class="nf">sliceBody</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">streamable</span><span class="p">,</span> <span class="n">banana</span><span class="p">):</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">CHUNKSIZE</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="k">yield</span> <span class="n">chunk</span>
+</pre></div>
+</div>
+<p>To receive this, you would use the following minimal Unslicer at the other
+end. Note that this Unslicer does not do as much as it could in the way of
+constraint enforcement: an attacker could easily make you consume as much
+memory as they wished by simply sending you a never-ending series of
+chunks.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">BigFileUnslicer</span><span class="p">(</span><span class="n">LeafUnslicer</span><span class="p">):</span>
+    <span class="n">opentype</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;bigfile&quot;</span><span class="p">,)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chunks</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">checkToken</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typebyte</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">typebyte</span> <span class="o">!=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">STRING</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">BananaError</span><span class="p">(</span><span class="s">&quot;BigFileUnslicer only accepts strings&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">receiveChild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">receiveClose</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">opentype</span></tt> attribute causes this Unslicer to be implicitly
+registered to handle any incoming sequences with an &#8220;index tuple&#8221; of``(&#8220;bigfile&#8221;,)`` , so each time BigFileSlicer is used, a
+BigFileUnslicer will be created to handle the results.</p>
+<p>A more complete example would want to write the file chunks to disk at
+they arrived, or process them incrementally. It might also want to have some
+way to limit the overall size of the file, perhaps by having the first chunk
+be an integer with the promised file size. In this case, the example might
+look like this somewhat contrived (and somewhat insecure) Unslicer:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">SomewhatLargeFileUnslicer</span><span class="p">(</span><span class="n">LeafUnslicer</span><span class="p">):</span>
+    <span class="n">opentype</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;bigfile&quot;</span><span class="p">,)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fileSize</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&quot;/tmp/bigfile.txt&quot;</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">checkToken</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typebyte</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fileSize</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">typebyte</span> <span class="o">!=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">INT</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">BananaError</span><span class="p">(</span><span class="s">&quot;fileSize must be an INT&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">typebyte</span> <span class="o">!=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">STRING</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">BananaError</span><span class="p">(</span><span class="s">&quot;BigFileUnslicer only accepts strings&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">+</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">fileSize</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">BananaError</span><span class="p">(</span><span class="s">&quot;size limit exceeded&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">receiveChild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fileSize</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fileSize</span> <span class="o">=</span> <span class="n">obj</span>
+            <span class="c"># decide if self.fileSize is too big, raise error to refuse it</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">receiveClose</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="s">&quot;/tmp/bigfile.txt&quot;</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This constrained BigFileUnslicer uses the fact that each STRING token
+comes with a size, which can be used to enforce the promised filesize that
+was provided in the first token. The data is streamed to a disk file as it
+arrives, so no more than CHUNKSIZE of memory is required at any given
+time.</p>
+</div>
+<div class="section" id="streaming-slicers">
+<h3>Streaming Slicers<a class="headerlink" href="#streaming-slicers" title="Permalink to this headline">¶</a></h3>
+<p>TODO: add example</p>
+<p>The following slicer will, when the broker allows streaming, will yield
+the CPU to other reactor events that want processing time. (This technique
+becomes somewhat inefficient if there is nothing else contending for CPU
+time, and if this matters you might want to use something which sends N
+chunks before yielding, or yields only when some other known service
+announces that it wants CPU time, etc).</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">BigFileSlicer</span><span class="p">(</span><span class="n">BaseSlicer</span><span class="p">):</span>
+    <span class="n">opentype</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;bigfile&quot;</span><span class="p">,)</span>
+    <span class="n">slices</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">FileType</span>
+    <span class="n">CHUNKSIZE</span> <span class="o">=</span> <span class="mi">10000</span>
+
+    <span class="k">def</span> <span class="nf">sliceBody</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">streamable</span><span class="p">,</span> <span class="n">banana</span><span class="p">):</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">CHUNKSIZE</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="k">yield</span> <span class="n">chunk</span>
+            <span class="k">if</span> <span class="n">streamable</span><span class="p">:</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="n">defer</span><span class="o">.</span><span class="n">Deferred</span><span class="p">()</span>
+                <span class="n">reactor</span><span class="o">.</span><span class="n">callLater</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">d</span><span class="o">.</span><span class="n">callback</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+                <span class="k">yield</span> <span class="n">d</span>
+</pre></div>
+</div>
+<p>The next example will deliver data as it becomes available from a
+hypothetical slow process.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">OutputSlicer</span><span class="p">(</span><span class="n">BaseSlicer</span><span class="p">):</span>
+    <span class="n">opentype</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;output&quot;</span><span class="p">,)</span>
+
+    <span class="k">def</span> <span class="nf">sliceBody</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">streamable</span><span class="p">,</span> <span class="n">banana</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">streamable</span> <span class="c"># requires it</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">finished</span><span class="p">():</span>
+                <span class="k">return</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">CHUNKSIZE</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">waitUntilDataIsReady</span><span class="p">()</span>
+                <span class="k">yield</span> <span class="n">d</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">chunk</span>
+</pre></div>
+</div>
+<p>Streamability is required in this example because otherwise the Slicer is
+required to provide chunks non-stop until the object has been completely
+serialized. If the process cannot deliver data, it&#8217;s not like the Slicer can
+block waiting until it becomes ready. Prohibiting streamability is done to
+ensure coherency of serialized state, and the only way to guarantee this is
+to not let any non-Banana methods get CPU time until the object has been
+fully processed.</p>
+</div>
+<div class="section" id="streaming-unslicers">
+<h3>Streaming Unslicers<a class="headerlink" href="#streaming-unslicers" title="Permalink to this headline">¶</a></h3>
+<p>On the receiving side, the Unslicer can be made streamable too. This is
+considerably easier than on the sending side, because there are fewer
+concerns about state coherency.</p>
+<p>A streaming Unslicer is merely one that delivers some data directly from
+the <tt class="docutils literal"><span class="pre">receiveChild</span></tt> method, rather than accumulating it until the``receiveClose`` method. The SomewhatLargeFileUnslicer example from
+above is actually a streaming Unslicer. Nothing special needs to be
+done.</p>
+<p>On the other hand, it can be tricky to know where exactly to deliver the
+data being streamed. The streamed object is probably part of a larger
+structure (like a method call), where the higher-level attribute can be used
+to determine which object or method should be called with the incoming data
+as it arrives. The current Banana model is that each completed object (as
+returned by the child&#8217;s <tt class="docutils literal"><span class="pre">receiveClose</span></tt> method) is handed to the
+parent&#8217;s <tt class="docutils literal"><span class="pre">receiveChild</span></tt> method. The parent can do whatever it
+wants with the results. To make streaming Unslicers more useful, the parent
+should be able to set up a target for the data at the time the child
+Unslicer is created.</p>
+<p>More work is needed in this area to figure out how this functionality
+should be exposed.</p>
+</div>
+<div class="section" id="arbitrary-instances-are-not-serialized">
+<h3>Arbitrary Instances are NOT serialized<a class="headerlink" href="#arbitrary-instances-are-not-serialized" title="Permalink to this headline">¶</a></h3>
+<p>Arbitrary instances (that is, anything which does not have an``ISlicer`` adapter) are <em>not</em> serialized. If an argument to
+a remote method contains one, you will get a Violation exception when you
+attempt to serialize it (i.e., the Deferred that you get from``callRemote`` will errback with a Failure that contains a
+Violation exception). If the return value contains one, the Violation will
+be logged on the local side, and the remote caller will see an error just as
+if your method had raised a Violation itself.</p>
+<p>There are two reasons for this. The first is a security precaution: you
+must explicitly mark the classes that are willing to reveal their contents
+to the world. This reduces the chance of leaking sensitive information.</p>
+<p>The second is because it is not actually meaningful to send the contents
+of an arbitrary object. The recipient only gets the class name and a
+dictionary with the object&#8217;s state. Which class should it use to create the
+corresponding object? It could attempt to import one based upon the
+classname (the approach pickle uses), but that would give a remote attacker
+unrestricted access to classes which could do absolutely anything: very
+dangerous.</p>
+<p>Both ends must be willing to transport the object. The sending side
+expresses this by marking the class (subclassing Copyable, or registering an
+ISlicer adapter). The receiving side must register the class as well, by
+doing registerUnslicer or using the <tt class="docutils literal"><span class="pre">opentype</span></tt> attribute in a
+suitable Unslicer subclass definition.</p>
+</div>
+</div>
+<div class="section" id="pb-sequences">
+<h2>PB Sequences<a class="headerlink" href="#pb-sequences" title="Permalink to this headline">¶</a></h2>
+<p>There are several Banana sequences which are used to support the RPC
+mechanisms of Perspective Broker. These are in addition to the usual ones
+listed in the Banana <a class="reference internal" href="banana.html"><em>docs</em></a> .</p>
+<div class="section" id="top-level-sequences">
+<h3>Top-Level Sequences<a class="headerlink" href="#top-level-sequences" title="Permalink to this headline">¶</a></h3>
+<p>These sequences only appear at the top-level (never inside another
+object).</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="36%" />
+<col width="64%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">method call (<tt class="docutils literal"><span class="pre">callRemote</span></tt> )</th>
+<th class="head">OPEN(call) INT(request-id) INT/STR(your-reference-id)
+STRING(interfacename) STRING(methodname)
+(STRING(argname),argvalue)..
+CLOSE</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>method response (success)</td>
+<td>OPEN(answer) INT(request-id) value CLOSE</td>
+</tr>
+<tr><td>method response (exception)</td>
+<td>OPEN(error) INT(request-id) value CLOSE</td>
+</tr>
+<tr><td>RemoteReference.__del__</td>
+<td>OPEN(decref) INT(your-reference-id) CLOSE</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="internal-sequences">
+<h3>Internal Sequences<a class="headerlink" href="#internal-sequences" title="Permalink to this headline">¶</a></h3>
+<p>The following sequences are used to serialize PB-specific objects. They
+never appear at the top-level, but only as the argument value or return
+value (or somewhere inside them).</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="31%" />
+<col width="69%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">pb.Referenceable</th>
+<th class="head">OPEN(my-reference) INT(clid)
+[OPEN(list) InterfaceList.. CLOSE]
+CLOSE</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td>pb.RemoteReference</td>
+<td>OPEN(your-reference) INT/STR(clid)
+CLOSE</td>
+</tr>
+<tr><td>pb.Copyable</td>
+<td>OPEN(copyable) STRING(reflect.qual(class))
+(attr,value).. CLOSE</td>
+</tr>
+</tbody>
+</table>
+<p>The first time a <tt class="docutils literal"><span class="pre">pb.Referenceable</span></tt> is sent, the second object
+is an InterfaceList, which is a list of interfacename strings, and therefore
+constrainable by a schema of ListOf(str) with some appropriate
+maximum-length restrictions. This InterfaceList describes all the Interfaces
+that the corresponding <tt class="docutils literal"><span class="pre">pb.Referenceable</span></tt> implements. The
+receiver uses this list to look up local Interfaces (and therefore Schemas)
+to attach to the <tt class="docutils literal"><span class="pre">pb.RemoteReference</span></tt> . This is how method schemas
+are checked on the sender side.</p>
+<p>This implies that Interfaces must be registered, just as classes are for``pb.Copyable`` . TODO: what happens if an unknown Interface is
+received?</p>
+<p>Classes which wish to be passed by value should either inherit from``pb.Copyable`` or have an <tt class="docutils literal"><span class="pre">ICopyable</span></tt> adapter
+registered for them. On the receiving side, the``registerRemoteCopy`` function must be used to register a factory,
+which can be a <tt class="docutils literal"><span class="pre">pb.RemoteCopy</span></tt> subclass or something else which
+implements <tt class="docutils literal"><span class="pre">IRemoteCopy</span></tt> .</p>
+<p><tt class="docutils literal"><span class="pre">Failure</span></tt> objects are sent as a <tt class="docutils literal"><span class="pre">pb.Copyable</span></tt> with
+a class name of &#8220;twisted.python.failure.Failure&#8221; .</p>
+</div>
+</div>
+<div class="section" id="implementation-notes">
+<h2>Implementation notes<a class="headerlink" href="#implementation-notes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="outgoing-referenceables">
+<h3>Outgoing Referenceables<a class="headerlink" href="#outgoing-referenceables" title="Permalink to this headline">¶</a></h3>
+<p>The side which holds the <tt class="docutils literal"><span class="pre">Referenceable</span></tt> uses a
+ReferenceableSlicer to serialize it. Each <tt class="docutils literal"><span class="pre">Referenceable</span></tt> is
+tracked with a &#8220;process-Unique ID&#8221; (abbreviated &#8220;puid&#8221; ). As the
+name implies, this number refers to a specific object within a given
+process: it is scoped to the process (and is never sent to another process),
+but it spans multiple PB connections (any given object will have the same``puid`` regardless of which connection is referring to it). The``puid`` is an integer, normally obtained with``id(obj)`` , but you can override the object&#8217;s``processUniqueID`` method to use something else (this might be
+useful for objects that are really proxies for something else). Any two
+objects with the same <tt class="docutils literal"><span class="pre">puid</span></tt> are serialized identically.</p>
+<p>All Referenceables sent over the wire (as arguments or return values for
+remote methods) are given a &#8220;connection-local ID&#8221; (<tt class="docutils literal"><span class="pre">clid</span></tt> )
+which is scoped to one end of the connection. The Referenceable is serialized
+with this number, using a banana sequence of <tt class="docutils literal"><span class="pre">(OPEN</span> <span class="pre">&quot;my-reference&quot;</span> <span class="pre">clid)</span></tt> . The remote peer (the side that holds the``RemoteReference`` ) knows the <tt class="docutils literal"><span class="pre">Referenceable</span></tt> by the``clid`` sent to represent it. These are small integers. From a
+security point of view, any object sent across the wire (and thus given a``clid`` ) is forever accessible to the remote end (or at least until
+the connection is dropped).</p>
+<p>The sending side uses the <tt class="docutils literal"><span class="pre">Broker.clids</span></tt> dict to map``puid`` to <tt class="docutils literal"><span class="pre">clid</span></tt> . It uses the``Broker.localObjects`` dict to map <tt class="docutils literal"><span class="pre">clid</span></tt> to``Referenceable`` . The reference from <tt class="docutils literal"><span class="pre">.localObjects</span></tt>
+also has the side-effect of making sure the Referenceable doesn&#8217;t go out of
+scope while the remote end holds a reference.</p>
+<p><tt class="docutils literal"><span class="pre">Broker.currentLocalID</span></tt> is used as a counter to create``clid`` values.</p>
+</div>
+<div class="section" id="remotereference">
+<h3>RemoteReference<a class="headerlink" href="#remotereference" title="Permalink to this headline">¶</a></h3>
+<p>In response to the incoming <tt class="docutils literal"><span class="pre">my-reference</span></tt> sequence, the
+receiving side creates a <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> that remembers its
+Broker and the <tt class="docutils literal"><span class="pre">clid</span></tt> value. The RemoteReference is stashed in the``Broker.remoteReferences`` weakref dictionary (which maps from``clid`` to <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> ), to make sure that a
+single <tt class="docutils literal"><span class="pre">Referenceable</span></tt> is always turned into the same``RemoteReference`` . Note that this is not infallible: if the
+recipient forgets about the <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> , PB will too. But if
+they really do forget about it, then they won&#8217;t be able to tell that the
+replacement is not the same as the original <a class="footnote-reference" href="#id5" id="id2">[2]</a> . It will
+have a different <tt class="docutils literal"><span class="pre">clid</span></tt> . <a class="footnote-reference" href="#id6" id="id3">[3]</a></p>
+<p>This <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> is where the <tt class="docutils literal"><span class="pre">.callRemote</span></tt>
+method lives. When used to invoke remote methods, the <tt class="docutils literal"><span class="pre">clid</span></tt> is
+used as the second token of a <tt class="docutils literal"><span class="pre">call</span></tt> sequence. In this context,
+the <tt class="docutils literal"><span class="pre">clid</span></tt> is a &#8220;your-reference&#8221; : it refers to the
+recipient&#8217;s <tt class="docutils literal"><span class="pre">.localObjects</span></tt> table. The``Referenceable`` -holder&#8217;s <tt class="docutils literal"><span class="pre">my-reference-id</span></tt> is sent
+back to them as the <tt class="docutils literal"><span class="pre">your-reference-id</span></tt> argument of the``call`` sequence.</p>
+<p>The <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> isn&#8217;t always used to invoke remote
+methods: it could appear in an argument or a return value instead: the goal
+is to have the <tt class="docutils literal"><span class="pre">Referenceable</span></tt> -holder see their same``Referenceable`` come back to them. In this case, the``clid`` is used in a <tt class="docutils literal"><span class="pre">(OPEN</span> <span class="pre">&quot;your-reference&quot;</span> <span class="pre">clib)</span></tt>
+sequence. The <tt class="docutils literal"><span class="pre">Referenceable</span></tt> -holder looks up the``clid`` in their <tt class="docutils literal"><span class="pre">.localObjects</span></tt> table and puts the
+result in the method argument or return value.</p>
+</div>
+<div class="section" id="url-references">
+<h3>URL References<a class="headerlink" href="#url-references" title="Permalink to this headline">¶</a></h3>
+<p>In addition to the implicitly-created numerically-indexed``Referenceable`` instances (kept in the Broker&#8217;s``.localObjects`` dict), there are explicitly-registered
+string-indexed <tt class="docutils literal"><span class="pre">Referenceable</span></tt> s kept in the PBServerFactory&#8217;s``localObjects`` dictionary. This table is used to publish objects
+to the outside world. These objects are the targets of the``pb.getRemoteURL`` and <tt class="docutils literal"><span class="pre">pb.callRemoteURL</span></tt>
+functions.</p>
+<p>To access these, a <tt class="docutils literal"><span class="pre">URLRemoteReference</span></tt> must be created that
+refers to a string <tt class="docutils literal"><span class="pre">clid</span></tt> instead of a numeric one. This is a
+simple subclass of <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> : it behaves exactly the same.
+The <tt class="docutils literal"><span class="pre">URLRemoteReference</span></tt> is created manually by``pb.getRemoteURL`` , rather than being generated automatically upon
+the receipt of a <tt class="docutils literal"><span class="pre">my-reference</span></tt> sequence. It also assumes a list
+of RemoteInterface names (which are usually provided by the holder of the``Referenceable`` ).</p>
+<p>To invoke methods on a URL-indexed object, a string token is used as the``clid`` in the &#8220;your-reference-id&#8221; argument of a``call`` sequence.</p>
+<p>In addition, the <tt class="docutils literal"><span class="pre">clid</span></tt> of a <tt class="docutils literal"><span class="pre">your-reference</span></tt>
+sequence can be a string to use URL-indexed objects as arguments or return
+values of method invocations. This allows one side to send a``URLRemoteReference`` to the other and have it turn into the
+matching <tt class="docutils literal"><span class="pre">Referenceable</span></tt> when it arrives. Of course, if it is
+invalid, the method call that tried to send it will fail.</p>
+<p>Note that these <tt class="docutils literal"><span class="pre">URLRemoteReference</span></tt> objects wil not survive a
+roundtrip like regular <tt class="docutils literal"><span class="pre">RemoteReference</span></tt> s do. The``URLRemoteReference`` turns into a <tt class="docutils literal"><span class="pre">Referenceable</span></tt> , but
+the <tt class="docutils literal"><span class="pre">Referenceable</span></tt> will turn into a regular numeric (implicit)``RemoteReference`` when it comes back. This may change in the
+future as the URL-based referencing scheme is developed. It might also
+become possible for string <tt class="docutils literal"><span class="pre">clid</span></tt> s to appear in``my-reference`` sequences, giving``Referenceable`` -holders the ability to publish URL references
+explicitly.</p>
+<p>It might also become possible to have these URLs point to other servers.
+In this case, a <tt class="docutils literal"><span class="pre">remote</span></tt> sequence will probably be used, rather
+than the <tt class="docutils literal"><span class="pre">my-reference</span></tt> sequence used for implicit
+references.</p>
+<p>Note that these URL-endpoints are per-Factory, so they are shared between
+multiple connections (the implicitly-created references are only available
+on the connection that created them). The PBServerFactory is created with a&#8221;root object&#8221; , which is a URL-endpoint with a <tt class="docutils literal"><span class="pre">clid</span></tt> of an
+empty string.</p>
+<p class="rubric">Footnotes</p>
+<table class="docutils footnote" frame="void" id="id4" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>This isn&#8217;t quite true: for some
+objects, serialization is scoped to the connection as a whole.
+Referenceables and RemoteReferences are like this.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id5" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>unless they
+do something crazy like remembering the <tt class="docutils literal"><span class="pre">id(obj)</span></tt>  of the old
+object and check to see if it is the same as that of the new one. But
+<tt class="docutils literal"><span class="pre">id(obj)</span></tt>  is only unique among live objects anyway</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id6" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td>and note that I
+think there is a race condition here, in which the reference is sent over the
+wire at the same time the other end forgets about it</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">NewPB</a><ul>
+<li><a class="reference internal" href="#initialization">Initialization</a></li>
+<li><a class="reference internal" href="#method-calls">Method Calls</a><ul>
+<li><a class="reference internal" href="#example">Example</a></li>
+<li><a class="reference internal" href="#using-remoteinterfaces">Using RemoteInterfaces</a></li>
+<li><a class="reference internal" href="#remoteinterfaces">RemoteInterfaces</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#argument-transformation">Argument Transformation</a><ul>
+<li><a class="reference internal" href="#shared-references-serialization-scope">Shared References, Serialization Scope</a></li>
+<li><a class="reference internal" href="#referenceables-remotereferences">Referenceables, RemoteReferences</a></li>
+<li><a class="reference internal" href="#copyable-remotecopy">Copyable, RemoteCopy</a></li>
+<li><a class="reference internal" href="#slicers-islicer">Slicers, ISlicer</a></li>
+<li><a class="reference internal" href="#unslicers">Unslicers</a></li>
+<li><a class="reference internal" href="#slicer-unslicer-example">Slicer/Unslicer Example</a></li>
+<li><a class="reference internal" href="#streaming-slicers">Streaming Slicers</a></li>
+<li><a class="reference internal" href="#streaming-unslicers">Streaming Unslicers</a></li>
+<li><a class="reference internal" href="#arbitrary-instances-are-not-serialized">Arbitrary Instances are NOT serialized</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#pb-sequences">PB Sequences</a><ul>
+<li><a class="reference internal" href="#top-level-sequences">Top-Level Sequences</a></li>
+<li><a class="reference internal" href="#internal-sequences">Internal Sequences</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#implementation-notes">Implementation notes</a><ul>
+<li><a class="reference internal" href="#outgoing-referenceables">Outgoing Referenceables</a></li>
+<li><a class="reference internal" href="#remotereference">RemoteReference</a></li>
+<li><a class="reference internal" href="#url-references">URL References</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="logfiles.html"
+                        title="previous chapter">Foolscap Logging Formats</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/specifications/pb.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="logfiles.html" title="Foolscap Logging Formats"
+             >previous</a> |</li>
+        <li><a href="../index.html">Foolscap v0.6.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Brian Warner.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
