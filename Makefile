@@ -98,8 +98,8 @@ find-trailing-spaces:
 
 	
 # lore2sphinx
-lore2sphinx:
-	lore2rest -c doc_rst/lore2sphinx.conf
+lore2rest:
+	lore2sphinx -c doc_rst/lore2sphinx.conf
 	
 	
 ############################################################3
