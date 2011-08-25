@@ -1,7 +1,7 @@
 
 import struct, time
 
-from twisted.internet import protocol, defer, reactor
+from twisted.internet import protocol, defer
 from twisted.python.failure import Failure
 from twisted.python import log
 
@@ -130,6 +130,8 @@ class Banana(protocol.Protocol):
             print "Banana.connectionMade"
         self.initSlicer()
         self.initUnslicer()
+        from twisted.internet import reactor
+        
         if self.keepaliveTimeout is not None:
             self.dataLastReceivedAt = time.time()
             t = reactor.callLater(self.keepaliveTimeout + EPSILON,

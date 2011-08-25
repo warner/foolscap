@@ -2,7 +2,7 @@
 
 import time
 from twisted.python.failure import Failure
-from twisted.internet import protocol, reactor
+from twisted.internet import protocol
 
 from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
@@ -265,6 +265,9 @@ class Negotiation(protocol.Protocol):
         if (self.options.has_key("debug_slow_%s" % name) and
             not self.debugTimers.has_key(name)):
             self.log("debug_doTimer(%s)" % name)
+            
+            from twisted.internet import reactor
+            
             t = reactor.callLater(timeout, self.debug_fireTimer, name)
             self.debugTimers[name] = (t, [(call, args)])
             cb = self.options["debug_slow_%s" % name]
@@ -355,6 +358,7 @@ class Negotiation(protocol.Protocol):
             return
         timeout = self.options.get('server_timeout', self.SERVER_TIMEOUT)
         if timeout:
+            from twisted.internet import reactor
             # oldpb clients will hit this case.
             self.negotiationTimer = reactor.callLater(timeout,
                                                       self.negotiationTimedOut)
@@ -1324,6 +1328,8 @@ class TubConnector(object):
         This will either result in the successful Negotiation object invoking
         the parent Tub's brokerAttached() method, our us calling the Tub's
         connectionFailed() method."""
+        from twisted.internet import reactor
+        
         self.tub.connectorStarted(self)
         if not self.remainingLocations:
             # well, that's going to make it difficult. connectToAll() will
@@ -1353,6 +1359,7 @@ class TubConnector(object):
         # invoke self.tub.connectorFinished()
 
     def connectToAll(self):
+        from twisted.internet import reactor
         while self.remainingLocations:
             location = self.remainingLocations.pop()
             if location in self.attemptedLocations:

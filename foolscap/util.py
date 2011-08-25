@@ -1,6 +1,6 @@
 
 import socket
-from twisted.internet import defer, reactor, protocol
+from twisted.internet import defer, protocol
 
 
 class AsyncAND(defer.Deferred):
@@ -70,6 +70,9 @@ def get_local_ip_for(target='A.ROOT-SERVERS.NET'):
     except socket.gaierror:
         # DNS isn't running
         return None
+    
+    from twisted.internet import reactor
+    
     udpprot = protocol.DatagramProtocol()
     port = reactor.listenUDP(0, udpprot)
     try:

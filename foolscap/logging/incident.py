@@ -3,7 +3,6 @@ import sys, os.path, time, pickle, bz2
 from pprint import pprint
 from zope.interface import implements
 from twisted.python import usage
-from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
 from foolscap.logging import levels, app_versions
 from foolscap.eventual import eventually
@@ -118,6 +117,7 @@ class IncidentReporter:
             self.active = False
             eventually(self.finished_recording)
         else:
+            from twisted.internet import reactor
             # now we wait for the trailing events to arrive
             self.timer = reactor.callLater(self.TRAILING_DELAY,
                                            self.stop_recording)

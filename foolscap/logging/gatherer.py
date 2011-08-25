@@ -6,7 +6,7 @@ try:
 except ImportError:
     pass
 from zope.interface import implements
-from twisted.internet import reactor, utils, defer
+from twisted.internet import utils, defer
 from twisted.python import usage, procutils, filepath, log as tw_log
 from twisted.application import service, internet
 from foolscap.api import Tub, Referenceable
@@ -157,6 +157,7 @@ class GathererService(GatheringBase):
         self._savefile = None
 
     def _handle_SIGHUP(self, *args):
+        from twisted.internet import reactor
         reactor.callFromThread(self.do_rotate)
 
     def startService(self):
