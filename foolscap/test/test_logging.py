@@ -1307,6 +1307,55 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         return d
     test_log_gatherer.timeout = 20
 
+    def test_log_gatherer_multiple(self):
+        # setLocation, then set log-gatherer-furl.
+        basedir = "logging/Gatherer/log_gatherer_multiple"
+        os.makedirs(basedir)
+
+        # create a gatherer, which will create its own Tub
+        gatherer1_basedir = os.path.join(basedir, "gatherer1")
+        os.makedirs(gatherer1_basedir)
+        gatherer1 = MyGatherer(None, False, gatherer1_basedir)
+        gatherer1.tub_class = GoodEnoughTub
+        gatherer1.d = defer.Deferred()
+        gatherer1.setServiceParent(self.parent)
+        # that will start the gatherer
+        gatherer1_furl = gatherer1.my_furl
+        starting_timestamp1 = gatherer1._starting_timestamp
+
+        # create a second one
+        gatherer2_basedir = os.path.join(basedir, "gatherer2")
+        os.makedirs(gatherer2_basedir)
+        gatherer2 = MyGatherer(None, False, gatherer2_basedir)
+        gatherer2.tub_class = GoodEnoughTub
+        gatherer2.d = defer.Deferred()
+        gatherer2.setServiceParent(self.parent)
+        # that will start the gatherer
+        gatherer2_furl = gatherer2.my_furl
+        starting_timestamp2 = gatherer2._starting_timestamp
+
+        t = GoodEnoughTub()
+        expected_tubid = t.tubID
+        if t.tubID is None:
+            expected_tubid = "<unauth>"
+        t.setServiceParent(self.parent)
+        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setOption("log-gatherer-furl", (gatherer1_furl, gatherer2_furl))
+
+        # about now, the node will be contacting the Gatherers and
+        # offering its logport.
+
+        # gatherer.d and gatherer2.d will be fired when subscribe_to_all() has finished
+        dl = defer.DeferredList([gatherer1.d, gatherer2.d])
+        dl.addCallback(self._emit_messages_and_flush, t)
+        dl.addCallback(lambda res: gatherer1.do_rotate())  # ???jj
+        dl.addCallback(self._check_gatherer, starting_timestamp1, expected_tubid)
+        dl.addCallback(lambda res: gatherer2.do_rotate())  # ???jj
+        dl.addCallback(self._check_gatherer, starting_timestamp2, expected_tubid)
+        return dl
+    test_log_gatherer_multiple.timeout = 40
+
     def test_log_gatherer2(self):
         # set log-gatherer-furl, then setLocation. Also, use a timed rotator.
         basedir = "logging/Gatherer/log_gatherer2"

@@ -572,13 +572,20 @@ either tell the Tub a specific gatherer to use, or give it a filename where
 the FURL of a log gatherer is stored.</p>
 
 <p>The <code>tub.setOption("log-gatherer-furl", gatherer_FURL)</code> call
-can be used to have the Tub automatically connect to the log gatherer and
-offer its logport. The Tub uses a Reconnector to make sure the gatherer
-connection is reestablished each time it gets dropped.</p>
+can be used to have the Tub automatically connect to one or more log
+gatherers and offer its logport. The Tub uses a Reconnector to make sure the
+gatherer connection is reestablished each time it gets dropped.</p>
 
 <pre class="python">
 t = Tub()
 t.setOption("log-gatherer-furl", gatherer_FURL)
+</pre>
+
+or
+
+<pre class="python">
+t = Tub()
+t.setOption("log-gatherer-furl", gatherer_FURLs)
 </pre>
 
 

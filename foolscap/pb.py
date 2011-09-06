@@ -321,7 +321,7 @@ class Tub(service.MultiService):
         self._logport_furl = None
         self._logport_furlfile = None
 
-        self._log_gatherer_furl = None
+        self._log_gatherer_furls = []
         self._log_gatherer_furlfile = None
         self._log_gatherer_connectors = {} # maps furl to reconnector
 
@@ -377,8 +377,11 @@ class Tub(service.MultiService):
             raise KeyError("unknown option name '%s'" % name)
 
     def setLogGathererFURL(self, gatherer_furl):
-        assert not self._log_gatherer_furl
-        self._log_gatherer_furl = gatherer_furl
+        assert not self._log_gatherer_furls
+        if isinstance(gatherer_furl, basestring):
+            self._log_gatherer_furls.append(gatherer_furl)
+        else:
+            self._log_gatherer_furls.extend(gatherer_furl)
         self._maybeConnectToGatherer()
 
     def setLogGathererFURLFile(self, gatherer_furlfile):
@@ -390,8 +393,8 @@ class Tub(service.MultiService):
         if not self.locationHints:
             return
         furls = []
-        if self._log_gatherer_furl:
-            furls.append(self._log_gatherer_furl)
+        if self._log_gatherer_furls:
+            furls.extend(self._log_gatherer_furls)
         if self._log_gatherer_furlfile:
             try:
                 # allow multiple lines
