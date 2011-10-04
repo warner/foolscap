@@ -1,3 +1,7 @@
+2011-10-04  Brian Warner  <warner@lothar.com>
+
+	* NEWS: update for upcoming release
+
 2011-06-09  Brian Warner  <warner@lothar.com>
 
 	* foolscap/test/test_appserver.py (RunCommand.test_run): use a

@@ -1,5 +1,34 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.6.2 (?)
+
+** Compatibility Fixes
+
+Foolscap-0.6.2 will be compatible with future versions of Twisted (>11.0.0).
+The 0.6.1 release will not: a TLS change went into Twisted trunk recently
+(after the 11.0.0 release) which broke Foolscap 0.6.1 and earlier.
+
+** Git-Over-Foolscap Tools
+
+The doc/examples/ directory contains two executables (git-foolscap and
+git-remote-pb) which, when placed in your $PATH, make it easy to use Foolscap
+to access a Git repository. These use the flappserver/flappclient tools and
+let you build a FURL that provides read-only or read-write access to a single
+repository. This is somewhat like providing SSH access to a repo, but with a
+much smaller scope: the client will only be able to manipulate the one
+repository, and gets no other authority on the target system. See the tool's
+inline comments for usage instructions.
+
+** Minor Fixes
+
+'flappserver' argument handling was improved slightly. A workaround was added
+to handle a Twisted stdio-closing bug which affected flappserver's
+run-command function and broke the git-foolscap tool. Several fixes were made
+for the benefit of Windows: log filenames all use hyphens (not colons), log
+filtering tools tolerate the lack of atomic-rename filesystem operations, and
+some unixisms in the test suite were removed.
+
+
 * Release 0.6.1 (16-Jan-2011)
 
 ** Minor Fixes
