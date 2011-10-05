@@ -35,11 +35,12 @@ class UploadFile(Referenceable):
         d = defer.succeed(None)
         for sf in options.sourcefiles:
             name = os.path.basename(sf)
-            d.addCallback(lambda _ign: Uploader().run(rref, sf, name))
+            d.addCallback(self._upload, rref, sf, name)
             d.addCallback(self._done, options, name)
         d.addCallback(lambda _ign: 0)
         return d
-
+    def _upload(self, _ignored, rref, sf, name):
+        return Uploader().run(rref, sf, name)
     def _done(self, _ignored, options, name):
         print >>options.stdout, "%s: uploaded" % name
 

@@ -463,22 +463,37 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
         f.write(DATA4)
         f.close()
 
+        sourcefile5 = os.path.join(basedir, "file5.txt")
+        f = open(sourcefile5, "wb")
+        DATA5 = "file number 5\n"
+        f.write(DATA5)
+        f.close()
+
         d.addCallback(lambda _ign:
                       self.run_client("--furl", self.furl, "upload-file",
-                                      sourcefile3, sourcefile4))
+                                      sourcefile3, sourcefile4, sourcefile5))
         def _check_client4((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnlessIn("file3.txt: uploaded", out)
             self.failUnlessIn("file4.txt: uploaded", out)
+            self.failUnlessIn("file5.txt: uploaded", out)
             self.failUnlessEqual(err.strip(), "")
+
             fn = os.path.join(incomingdir, "file3.txt")
             self.failUnless(os.path.exists(fn))
             contents = open(fn,"rb").read()
             self.failUnlessEqual(contents, DATA3)
+
             fn = os.path.join(incomingdir, "file4.txt")
             self.failUnless(os.path.exists(fn))
             contents = open(fn,"rb").read()
             self.failUnlessEqual(contents, DATA4)
+
+            fn = os.path.join(incomingdir, "file5.txt")
+            self.failUnless(os.path.exists(fn))
+            contents = open(fn,"rb").read()
+            self.failUnlessEqual(contents, DATA5)
+
         d.addCallback(_check_client4)
 
         return d

@@ -21,6 +21,10 @@ inline comments for usage instructions.
 
 ** Minor Fixes
 
+Using 'flappserver upload-file FILE1 FILE2 FILE3..' (with three or more
+files) now correctly uploads all files: previously it only managed to upload
+the first and last.
+
 'flappserver' argument handling was improved slightly. A workaround was added
 to handle a Twisted stdio-closing bug which affected flappserver's
 run-command function and broke the git-foolscap tool. Several fixes were made
