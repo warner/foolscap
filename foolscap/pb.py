@@ -376,12 +376,12 @@ class Tub(service.MultiService):
         else:
             raise KeyError("unknown option name '%s'" % name)
 
-    def setLogGathererFURL(self, gatherer_furl):
+    def setLogGathererFURL(self, gatherer_furl_or_furls):
         assert not self._log_gatherer_furls
-        if isinstance(gatherer_furl, basestring):
-            self._log_gatherer_furls.append(gatherer_furl)
+        if isinstance(gatherer_furl_or_furls, basestring):
+            self._log_gatherer_furls.append(gatherer_furl_or_furls)
         else:
-            self._log_gatherer_furls.extend(gatherer_furl)
+            self._log_gatherer_furls.extend(gatherer_furl_or_furls)
         self._maybeConnectToGatherer()
 
     def setLogGathererFURLFile(self, gatherer_furlfile):

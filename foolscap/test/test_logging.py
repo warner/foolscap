@@ -1302,6 +1302,8 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         # gatherer.d will be fired when subscribe_to_all() has finished
         d = gatherer.d
         d.addCallback(self._emit_messages_and_flush, t)
+        # We use do_rotate() to force logfile rotation before checking
+        # contents of the file, so we know it's been written out to disk
         d.addCallback(lambda res: gatherer.do_rotate())
         d.addCallback(self._check_gatherer, starting_timestamp, expected_tubid)
         return d
@@ -1346,12 +1348,13 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         # about now, the node will be contacting the Gatherers and
         # offering its logport.
 
-        # gatherer.d and gatherer2.d will be fired when subscribe_to_all() has finished
+        # gatherer.d and gatherer2.d will be fired when subscribe_to_all()
+        # has finished
         dl = defer.DeferredList([gatherer1.d, gatherer2.d])
         dl.addCallback(self._emit_messages_and_flush, t)
-        dl.addCallback(lambda res: gatherer1.do_rotate())  # ???jj
+        dl.addCallback(lambda res: gatherer1.do_rotate())
         dl.addCallback(self._check_gatherer, starting_timestamp1, expected_tubid)
-        dl.addCallback(lambda res: gatherer2.do_rotate())  # ???jj
+        dl.addCallback(lambda res: gatherer2.do_rotate())
         dl.addCallback(self._check_gatherer, starting_timestamp2, expected_tubid)
         return dl
     test_log_gatherer_multiple.timeout = 40
