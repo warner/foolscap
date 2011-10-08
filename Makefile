@@ -10,21 +10,8 @@ TEST=foolscap
 test:
 	$(TRIAL) $(TEST)
 
-test-figleaf:
-	rm -f .figleaf
-	PYTHONPATH=misc/testutils $(TRIAL) --reporter=bwverbose-figleaf $(TEST)
-
 test-poll:
 	$(MAKE) test TRIAL="trial -r poll"
-test-figleaf-poll:
-	$(MAKE) test-figleaf TRIAL="trial -r poll"
-
-figleaf-output:
-	rm -rf coverage-html
-	PYTHONPATH=misc/testutils python misc/testutils/figleaf2html -d coverage-html -r . -x misc/testutils/figleaf.excludes
-	@echo "now point your browser at coverage-html/index.html"
-.figleaf.el: .figleaf
-	PYTHONPATH=misc/testutils python misc/testutils/figleaf2el.py .figleaf .
 
 debian-sid:
 	rm -f debian

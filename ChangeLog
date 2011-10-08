@@ -1,3 +1,10 @@
+2011-10-08  Brian Warner  <warner@lothar.com>
+
+	* Makefile: remove figleaf code. It was out-of-date anyways,
+	coverage.py is a better modern choice. Tahoe has some sample code,
+	including emacs integration.
+	* misc/testutils: same, removed the whole thing
+
 2011-10-07  Zooko O'Whielacronx  <zooko@zooko.com>
 
 	* foolscap/pb.py (Tub.setLogGathererFURL): accept an iterable of
