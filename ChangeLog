@@ -1,3 +1,11 @@
+2011-10-07  Zooko O'Whielacronx  <zooko@zooko.com>
+
+	* foolscap/pb.py (Tub.setLogGathererFURL): accept an iterable of
+	log gatherer furls in addition to a single log gatherer furl.
+	Closes #176
+	* test/test_logging.py (Gatherer): test for same
+	* doc/logging.xhtml: update docs
+
 2011-10-05  Brian Warner  <warner@lothar.com>
 
 	* foolscap/appserver/client.py (UploadFile.run): fix
