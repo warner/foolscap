@@ -51,7 +51,7 @@ class TestCertFile(unittest.TestCase):
         t = Tub()
         certdata = t.getCertData()
         self.failUnless("BEGIN CERTIFICATE" in certdata)
-        self.failUnless("BEGIN RSA PRIVATE KEY" in certdata)
+        self.failUnless("PRIVATE KEY" in certdata)
 
     def test_certdata(self):
         t1 = Tub()
