@@ -1,13 +1,17 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
 
-* Release 0.6.2 (?)
+* Release 0.6.2 (15-Oct-2011)
 
 ** Compatibility Fixes
 
 Foolscap-0.6.2 will be compatible with future versions of Twisted (>11.0.0).
 The 0.6.1 release will not: a TLS change went into Twisted trunk recently
 (after the 11.0.0 release) which broke Foolscap 0.6.1 and earlier.
+
+This release also fixes a minor incompatibility with newer versions of
+OpenSSL (0.9.8o was ok, 1.0.0d was not), which caused errors in the test
+suite (but normal runtime operation) on e.g. Ubuntu 11.10 "Oneiric".
 
 ** Git-Over-Foolscap Tools
 
@@ -28,10 +32,13 @@ the first and last.
 
 'flappserver' argument handling was improved slightly. A workaround was added
 to handle a Twisted stdio-closing bug which affected flappserver's
-run-command function and broke the git-foolscap tool. Several fixes were made
-for the benefit of Windows: log filenames all use hyphens (not colons), log
-filtering tools tolerate the lack of atomic-rename filesystem operations, and
-some unixisms in the test suite were removed.
+run-command function and broke the git-foolscap tool. Several changes were
+made for the benefit of Windows: log filenames all use hyphens (not colons),
+log filtering tools tolerate the lack of atomic-rename filesystem operations,
+and some unixisms in the test suite were removed.
+
+The Tub.setLogGathererFURL() method can now accept a list (iterable) of log
+gatherer FURLs, not just a single one.
 
 
 * Release 0.6.1 (16-Jan-2011)
