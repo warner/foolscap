@@ -1,6 +1,5 @@
 
-.PHONY: build test debian-sid debian-dapper debian-feisty debian-sarge
-.PHONY: debian-edgy debian-etch
+.PHONY: build test
 
 build:
 	python setup.py build
@@ -12,54 +11,6 @@ test:
 
 test-poll:
 	$(MAKE) test TRIAL="trial -r poll"
-
-debian-sid:
-	rm -f debian
-	ln -s misc/sid/debian debian
-	chmod a+x debian/rules
-	debuild -uc -us
-
-debian-etch:
-	rm -f debian
-	ln -s misc/etch/debian debian
-	chmod a+x debian/rules
-	debuild -uc -us
-
-debian-dapper:
-	rm -f debian
-	ln -s misc/dapper/debian debian
-	chmod a+x debian/rules
-	debuild -uc -us
-
-debian-edgy:
-	rm -f debian
-	ln -s misc/edgy/debian debian
-	chmod a+x debian/rules
-	debuild -uc -us
-
-debian-feisty:
-	rm -f debian
-	ln -s misc/feisty/debian debian
-	chmod a+x debian/rules
-	debuild -uc -us
-
-debian-gutsy:
-	rm -f debian
-	ln -s misc/gutsy/debian debian
-	chmod a+x debian/rules
-	debuild -uc -us
-
-debian-hardy:
-	rm -f debian
-	ln -s misc/hardy/debian debian
-	chmod a+x debian/rules
-	debuild -uc -us
-
-debian-sarge:
-	rm -f debian
-	ln -s misc/sarge/debian debian
-	chmod a+x debian/rules
-	debuild -uc -us
 
 LORE=lore
 DOC_TEMPLATE=doc/template.tpl
