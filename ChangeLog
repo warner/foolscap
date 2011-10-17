@@ -1,3 +1,7 @@
+2011-10-16  Brian Warner  <warner@lothar.com>
+
+	* foolscap/_version.py: bump version number while between releases
+
 2011-10-15  Brian Warner  <warner@lothar.com>
 
 	* foolscap/_version.py: release Foolscap-0.6.2
