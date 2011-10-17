@@ -1,5 +1,9 @@
 2011-10-16  Brian Warner  <warner@lothar.com>
 
+	* MANIFEST.in: remove entries for figleaf code and misc/testutils
+	to hush some build-time warnings. I should have done before
+	releasing 0.6.2, but the warnings are benign.
+
 	* foolscap/_version.py: bump version number while between releases
 
 2011-10-15  Brian Warner  <warner@lothar.com>

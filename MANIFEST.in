@@ -12,6 +12,4 @@ include misc/hardy/debian/*
 include misc/sarge/debian/*
 include misc/etch/debian/*
 include misc/sid/debian/*
-include misc/testutils/*
-include misc/testutils/twisted/plugins/*
 include misc/classify_foolscap.py
