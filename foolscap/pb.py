@@ -302,8 +302,9 @@ class Tub(service.MultiService):
         self.strongReferences = []
         self.nameLookupHandlers = []
 
-        # we might need to use this later
         self.discovery_publisher = None
+        for hint in options.get("discovery", []):
+            self.enableDiscovery(hint)
 
         # remote stuff. Most of these use a TubRef (or NoAuthTubRef) as a
         # dictionary key
@@ -449,10 +450,13 @@ class Tub(service.MultiService):
         del ignored
 
     def _maybeEnableDiscovery(self):
-        if set(discovery.supported_hints) & set(self.locationHints):
-            self.discovery_publisher = discovery.PublishTub(self)
-            for l in self.listeners:
-                self.discovery_publisher.listenOn(l)
+        for hint in set(discovery.supported_hints) & set(self.locationHints):
+            self.enableDiscovery(hint)
+
+    def enableDiscovery(self, how):
+        self.discovery_publisher = discovery.start_publishing_using(how, self)
+        for l in self.listeners:
+            self.discovery_publisher.listenOn(l)
 
     def getLogPortFURL(self):
         if not self.locationHints:
@@ -571,7 +575,6 @@ class Tub(service.MultiService):
         stop listening later on, to have another Tub listen on the same port,
         and to figure out which port was allocated when you used a strports
         specification of 'tcp:0'. """
-        print "LISTEN", what
         if type(what) is str:
             l = Listener(what, options, self.negotiationClass)
         else:
@@ -681,6 +684,9 @@ class Tub(service.MultiService):
             # TODO: IPv6 dotted-quad addresses have colons, but need to have
             # host:port
             hints = ",".join(self.locationHints)
+            
+            if self.discovery_publisher:
+                hints = ",".join((hints, ",".join(self.discovery_publisher.supported_hints)))
             return "pb://" + self.tubID + "@" + hints + "/" + name
         return "pbu://" + self.locationHints[0] + "/" + name
 

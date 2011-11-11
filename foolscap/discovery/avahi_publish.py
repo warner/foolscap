@@ -9,7 +9,7 @@ DBusGMainLoop(set_as_default=True)
 
 class AvahiPublishTub:
     SERVICE_TYPE = "_foolscap-rpc._tcp"
-
+    supported_hints = ("zeroconf",)
     def __init__(self, tub):
         self.dbus = None
         self.groups = {} 
