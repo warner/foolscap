@@ -1,4 +1,6 @@
 
+from twisted.internet import glib2reactor
+glib2reactor.install()
 import os, sys
 from StringIO import StringIO
 from twisted.python import usage
@@ -243,6 +245,7 @@ def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
     if run_by_human:
         # we need to spin up our own reactor
         from twisted.internet import reactor
+
         stash_rc = []
         def good(rc):
             stash_rc.append(rc)

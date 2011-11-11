@@ -1,4 +1,8 @@
 
+from twisted.internet import glib2reactor
+glib2reactor.install()
+
+
 import os, sys, shutil, errno, time, signal
 from StringIO import StringIO
 from twisted.python import usage

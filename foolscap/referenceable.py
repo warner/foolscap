@@ -783,8 +783,11 @@ def decode_location_hints(hints_s):
             hint = ( "ipv4", mo.group(1), int(mo.group(2)) )
             hints.append(hint)
         else:
-            # some extension from the future that we will ignore
-            pass
+            if hint_s in ("zeroconf",):
+                hints.append(hint_s)
+            else:
+                # some extension from the future that we will ignore
+                pass
     return hints
 
 class BadFURLError(Exception):
