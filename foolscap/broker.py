@@ -426,7 +426,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
         # invoked when the other side sends us a decref message
         assert isinstance(clid, (int, long))
         assert clid != 0
-        tracker = self.myReferenceByCLID[clid]
+        tracker = self.myReferenceByCLID.get(clid, None)
+        if not tracker:
+            return # already gone, probably because we're shutting down
         done = tracker.decref(count)
         if done:
             del self.myReferenceByPUID[tracker.puid]

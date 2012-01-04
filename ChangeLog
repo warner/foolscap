@@ -1,5 +1,11 @@
 2012-01-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py (Broker.remote_decref): tolerate "late"
+	decrefs that happen after their target has gone away, which causes
+	a mostly-harmless error to be logged, typically at the end of unit
+	test cases when Tub.stopService is called on multiple Tubs in the
+	same process that are talking to each other. refs #106.
+
 	* foolscap/broker.py: oops, un-break no-SSL support
 
 	* foolscap: Twisted-11.1 has new TLS code which reports
