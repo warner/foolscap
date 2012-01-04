@@ -897,7 +897,7 @@ class Negotiation(protocol.Protocol):
             # We reject the offer to avoid connection flap, and the
             # situtation won't be worse than it was in 0.1.7 .
             lp2 = log("pre-0.2.0 peer detected (no my-incarnation"
-                      " or last-connection", level=CURIOUS)
+                      " or last-connection)", level=CURIOUS)
             if self.tub._handle_old_duplicate_connections is not False:
                 # but if we've been configured to do better (with the
                 # 60-second age heuristic), do that.
