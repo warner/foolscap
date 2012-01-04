@@ -1,5 +1,7 @@
 2012-01-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/broker.py: oops, un-break no-SSL support
+
 	* foolscap: Twisted-11.1 has new TLS code which reports
 	connectionLost() significantly after we call loseConnection(),
 	such as when we drop a stale connection in favor of a replacement.

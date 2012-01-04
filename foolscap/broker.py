@@ -20,11 +20,12 @@ from foolscap.slicers.root import RootSlicer, RootUnslicer, ScopedRootSlicer
 from foolscap.eventual import eventually
 from foolscap.logging import log
 
-from OpenSSL import SSL
-LOST_CONNECTION_ERRORS = (error.ConnectionLost,
-                          error.ConnectionDone,
-                          SSL.Error,
-                          )
+LOST_CONNECTION_ERRORS = [error.ConnectionLost, error.ConnectionDone]
+try:
+    from OpenSSL import SSL
+    LOST_CONNECTION_ERRORS.append(SSL.Error)
+except ImportError:
+    pass
 
 PBTopRegistry = {
     ("call",): call.CallUnslicer,
