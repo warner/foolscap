@@ -127,6 +127,12 @@ class BaseMixin(ShouldFailMixin):
         reactor.callLater(timeout, d.callback, res)
         return d
 
+    def insert_turns(self, res, count):
+        d = eventual.fireEventually(res)
+        for i in range(count-1):
+            d.addCallback(eventual.fireEventually)
+        return d
+
     def makeServer(self, authenticated, options={}, listenerOptions={}):
         if authenticated:
             self.tub = tub = Tub(options=options)
@@ -583,6 +589,7 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
 
     def _test1_1(self, res):
         d,d1 = self.connect()
+        d.addCallback(self.insert_turns, 4)
         d.addCallbacks(lambda res: self.fail("hey! this is supposed to fail"),
                        self._test1_2, errbackArgs=(d1,))
         return d
@@ -596,6 +603,7 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
     def test2(self):
         self.makeServers(lo1={'debug_slow_connectionMade': True})
         d,d1 = self.connect()
+        d.addCallback(self.insert_turns, 4)
         d.addCallback(self.checkConnectedViaReverse, [negotiate.PLAINTEXT])
         d.addCallback(lambda res: d1) # other getReference should work too
         return d
@@ -604,6 +612,7 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
     def test3(self):
         self.makeServers(lo1={'debug_slow_sendPlaintextServer': True})
         d,d1 = self.connect()
+        d.addCallback(self.insert_turns, 4)
         d.addCallback(self.checkConnectedViaReverse, [negotiate.PLAINTEXT])
         d.addCallback(lambda res: d1) # other getReference should work too
         return d
@@ -612,6 +621,7 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
     def test4(self):
         self.makeServers(lo1={'debug_slow_sendHello': True})
         d,d1 = self.connect()
+        d.addCallback(self.insert_turns, 4)
         d.addCallback(self.checkConnectedViaReverse, [negotiate.ENCRYPTED])
         d.addCallback(lambda res: d1) # other getReference should work too
         return d
@@ -637,6 +647,7 @@ class Crossfire(CrossfireReverse):
 
         self.makeServers(lo1={'debug_slow_sendDecision': True})
         d,d1 = self.connect()
+        d.addCallback(self.insert_turns, 4)
         d.addCallback(self.checkConnectedViaReverse, [negotiate.DECIDING])
         d.addCallback(lambda res: d1) # other getReference should work too
         return d
@@ -981,9 +992,7 @@ class Replacement(BaseMixin, unittest.TestCase):
                                    "Duplicate connection",
                                    self.tub1a.getReference, self.furl2)
         d.addCallback(_connected)
-        def _stall(res):
-            return eventual.fireEventually(res)
-        d.addCallback(_stall)
+        d.addCallback(self.insert_turns, 1)
         def _check(res):
             self.failIf(disconnects)
         d.addCallback(_check)
@@ -1011,9 +1020,7 @@ class Replacement(BaseMixin, unittest.TestCase):
                                    "Duplicate connection",
                                    self.tub1a.getReference, self.furl2)
         d.addCallback(_connected)
-        def _stall(res):
-            return eventual.fireEventually(res)
-        d.addCallback(_stall)
+        d.addCallback(self.insert_turns, 1)
         def _check(res):
             self.failIf(disconnects)
         d.addCallback(_check)
@@ -1090,9 +1097,7 @@ class Replacement(BaseMixin, unittest.TestCase):
                                    "Duplicate connection",
                                    self.tub1a.getReference, self.furl2)
         d.addCallback(_connect2)
-        def _stall(res):
-            return eventual.fireEventually(res)
-        d.addCallback(_stall)
+        d.addCallback(self.insert_turns, 1)
         def _check(res):
             self.failIf(disconnects)
         d.addCallback(_check)
@@ -1119,9 +1124,7 @@ class Replacement(BaseMixin, unittest.TestCase):
                                    "Duplicate connection",
                                    self.tub1a.getReference, self.furl2)
         d.addCallback(_connected)
-        def _stall(res):
-            return eventual.fireEventually(res)
-        d.addCallback(_stall)
+        d.addCallback(self.insert_turns, 1)
         def _check(res):
             self.failIf(disconnects)
         d.addCallback(_check)
@@ -1168,9 +1171,7 @@ class Replacement(BaseMixin, unittest.TestCase):
                                    "Duplicate connection",
                                    self.tub1a.getReference, self.furl2)
         d.addCallback(_connected)
-        def _stall(res):
-            return eventual.fireEventually(res)
-        d.addCallback(_stall)
+        d.addCallback(self.insert_turns, 1)
         def _check(res):
             self.failIf(disconnects)
         d.addCallback(_check)

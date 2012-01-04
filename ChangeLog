@@ -26,6 +26,9 @@
 	connections with SSL.Error, so when we're ignoring ConnectionLost
 	and ConnectionDone, ignore SSL.Error too.
 
+	* foolscap/test/test_negotiate.py: wait more turns for each step,
+	now that connection-loss events are not synchronous
+
 2011-10-16  Brian Warner  <warner@lothar.com>
 
 	* misc/*/debian: remove debian packaging tools. They were pretty
