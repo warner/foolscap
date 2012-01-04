@@ -1,3 +1,17 @@
+2012-01-04  Brian Warner  <warner@lothar.com>
+
+	* foolscap: Twisted-11.1 has new TLS code which reports
+	connectionLost() significantly after we call loseConnection(),
+	such as when we drop a stale connection in favor of a replacement.
+	This breaks a number of assumptions, generally by allowing
+	Tub.stopService() to finish too early, so tests for users of
+	foolscap (like tahoe) fail with DirtyReactorError, or
+	port-already-in-use errors. These changes fix the problem, and
+	update the Foolscap unit tests to handle the changes.
+	* foolscap/test/test_negotiate.py: tolerate RemoteNegotiationError
+	error too, since now it can appear earlier and beat the local
+	NegotiationError.
+
 2011-10-16  Brian Warner  <warner@lothar.com>
 
 	* misc/*/debian: remove debian packaging tools. They were pretty

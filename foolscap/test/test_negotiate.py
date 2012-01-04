@@ -853,7 +853,7 @@ class Future(BaseMixin, unittest.TestCase):
         def _oops_succeeded(rref):
             self.fail("hey! this is supposed to fail")
         def _check_failure(f):
-            f.trap(tokens.NegotiationError)
+            f.trap(tokens.NegotiationError, tokens.RemoteNegotiationError)
         d.addCallbacks(_oops_succeeded, _check_failure)
         return d
     testTooFarInFuture1.timeout = 10
@@ -871,7 +871,7 @@ class Future(BaseMixin, unittest.TestCase):
         def _oops_succeeded(rref):
             self.fail("hey! this is supposed to fail")
         def _check_failure(f):
-            f.trap(tokens.NegotiationError)
+            f.trap(tokens.NegotiationError, tokens.RemoteNegotiationError)
         d.addCallbacks(_oops_succeeded, _check_failure)
         return d
     testTooFarInFuture1.timeout = 10
@@ -889,7 +889,7 @@ class Future(BaseMixin, unittest.TestCase):
         def _oops_succeeded(rref):
             self.fail("hey! this is supposed to fail")
         def _check_failure(f):
-            f.trap(tokens.NegotiationError)
+            f.trap(tokens.NegotiationError, tokens.RemoteNegotiationError)
         d.addCallbacks(_oops_succeeded, _check_failure)
         return d
     testTooFarInFuture3.timeout = 10
@@ -907,7 +907,7 @@ class Future(BaseMixin, unittest.TestCase):
         def _oops_succeeded(rref):
             self.fail("hey! this is supposed to fail")
         def _check_failure(f):
-            f.trap(tokens.NegotiationError)
+            f.trap(tokens.NegotiationError, tokens.RemoteNegotiationError)
         d.addCallbacks(_oops_succeeded, _check_failure)
         return d
     testTooFarInFuture4.timeout = 10
