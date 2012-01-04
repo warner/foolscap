@@ -29,6 +29,9 @@
 	* foolscap/test/test_negotiate.py: wait more turns for each step,
 	now that connection-loss events are not synchronous
 
+	* foolscap/test/common.py (ShouldFailMixin.shouldFail): improve
+	error message
+
 2011-10-16  Brian Warner  <warner@lothar.com>
 
 	* misc/*/debian: remove debian packaging tools. They were pretty
