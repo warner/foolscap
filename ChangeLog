@@ -12,6 +12,16 @@
 	error too, since now it can appear earlier and beat the local
 	NegotiationError.
 
+	* foolscap/pb.py (Tub): track connections separately from Brokers.
+	Broker.shutdown() fires brokerDetached (which severs all rrefs and
+	stops using that connection). The subsequent connectionLost()
+	fires connectionDropped(), which allows Tub.stopService()'s
+	Deferred to fire. This should fix the tests-end-too-early problem.
+	* foolscap/negotiate.py (Negotiation.switchToBanana): call
+	tub.connectionAttached() to track connections
+	* foolscap/broker.py (Broker.connectionLost): and
+	tub.connectionDropped()
+
 2011-10-16  Brian Warner  <warner@lothar.com>
 
 	* misc/*/debian: remove debian packaging tools. They were pretty

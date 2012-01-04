@@ -233,6 +233,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         if not fireDisconnectWatchers:
             self.disconnectWatchers = []
         self.finish(why)
+        # loseConnection eventually provokes connectionLost()
         self.transport.loseConnection()
 
     def connectionLost(self, why):
@@ -240,7 +241,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
         if self.remote_tubref:
             tubid = self.remote_tubref.getShortTubID()
         log.msg("connection to %s lost" % tubid, facility="foolscap.connection")
+        banana.Banana.connectionLost(self, why)
         self.finish(why)
+        if self.tub:
+            self.tub.connectionDropped(self)
 
     def finish(self, why):
         if self.disconnected:
@@ -261,7 +265,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
         for (cb,args,kwargs) in self.disconnectWatchers:
             eventually(cb, *args, **kwargs)
         self.disconnectWatchers = []
-        banana.Banana.connectionLost(self, why)
         if self.tub:
             # TODO: remove the conditional. It is only here to accomodate
             # some tests: test_pb.TestCall.testDisconnect[123]
