@@ -506,6 +506,21 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         self.failUnless(why.check(Violation))
         self.failUnlessSubstring("cannot serialize", why.value.args[0])
 
+    def test_bad_clid(self):
+        rr, target = self.setupTarget(HelperTarget())
+        clid = rr.tracker.clid
+        del self.targetBroker.myReferenceByCLID[clid]
+        d = rr.callRemote("set", obj=1)
+        d.addCallbacks(lambda res: self.fail("should have failed"),
+                       lambda why: [why])
+        def _check(res):
+            f = res[0]
+            if not f.check(Violation):
+                self.fail("expected Violation, got %s" % f)
+            self.failUnless("unknown CLID %d" % clid in str(f))
+        d.addCallback(_check)
+        return d
+
 
 class TestCallOnly(TargetMixin, unittest.TestCase):
     def setUp(self):

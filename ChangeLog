@@ -1,5 +1,10 @@
 2012-01-04  Brian Warner  <warner@lothar.com>
 
+	* foolscap/call.py (CallUnslicer.receiveChild): raise a Violation
+	when the CLID is stale, so the caller gets an errback. Previously,
+	the otherwise-unhandled exception got put in the receiver's log,
+	but the caller didn't get a clear notification. Closes #106.
+
 	* foolscap/broker.py (Broker.remote_decref): tolerate "late"
 	decrefs that happen after their target has gone away, which causes
 	a mostly-harmless error to be logged, typically at the end of unit
