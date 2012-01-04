@@ -20,6 +20,11 @@ from foolscap.slicers.root import RootSlicer, RootUnslicer, ScopedRootSlicer
 from foolscap.eventual import eventually
 from foolscap.logging import log
 
+from OpenSSL import SSL
+LOST_CONNECTION_ERRORS = (error.ConnectionLost,
+                          error.ConnectionDone,
+                          SSL.Error,
+                          )
 
 PBTopRegistry = {
     ("call",): call.CallUnslicer,
@@ -378,9 +383,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             # if the connection was lost before we can get an ack, we're
             # tearing this down anyway
             def _ignore_loss(f):
-                f.trap(DeadReferenceError,
-                       error.ConnectionLost,
-                       error.ConnectionDone)
+                f.trap(DeadReferenceError, *LOST_CONNECTION_ERRORS)
                 return None
             d.addErrback(_ignore_loss)
             # once the ack comes back, or if we know we'll never get one,
@@ -487,7 +490,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def abandonAllRequests(self, why):
         for req in self.waitingForAnswers.values():
-            if why.check(error.ConnectionLost, error.ConnectionDone):
+            if why.check(*LOST_CONNECTION_ERRORS):
                 # map all connection-lost errors to DeadReferenceError, so
                 # application code only needs to check for one exception type
                 tubid = None

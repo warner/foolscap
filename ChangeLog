@@ -22,6 +22,10 @@
 	* foolscap/broker.py (Broker.connectionLost): and
 	tub.connectionDropped()
 
+	* foolscap/broker.py: the new TLS code sometimes reports abandoned
+	connections with SSL.Error, so when we're ignoring ConnectionLost
+	and ConnectionDone, ignore SSL.Error too.
+
 2011-10-16  Brian Warner  <warner@lothar.com>
 
 	* misc/*/debian: remove debian packaging tools. They were pretty
