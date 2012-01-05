@@ -1,5 +1,25 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.6.3 (?)
+
+** Compatibility Fixes
+
+This release really is compatible with Twisted-11.1.0 . The previous Foolscap
+release (0.6.2), despite the changes described below, suffered mild
+incompatibilites with the new TLS code in the final Twisted-11.1.0 release.
+The most common symptom is a DirtyReactorError in unit tests that use
+Tub.stopService() in their tearDown() method (to coordinate shutdown and
+cleanup). Another symptom is tests overlapping with one another, causing
+port-already-in-use errors.
+
+This incompatibility did not generally affect normal operation, but only
+impacted unit tests.
+
+** Other Changes
+
+The Debian packaging tools in misc/ were removed, as they were pretty stale,
+and Debian packages Foolscap directly these days.
+
 
 * Release 0.6.2 (15-Oct-2011)
 

@@ -1,3 +1,7 @@
+2012-01-05  Brian Warner  <warner@lothar.com>
+
+	* NEWS: update
+
 2012-01-04  Brian Warner  <warner@lothar.com>
 
 	* foolscap/call.py (CallUnslicer.receiveChild): raise a Violation
