@@ -1,5 +1,10 @@
 2012-01-05  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.6.3
+	* NEWS: update for 0.6.3 release
+
+2012-01-05  Brian Warner  <warner@lothar.com>
+
 	* README (DEPENDENCIES): give up on twisted-2.4.0 compatibility,
 	the tests fail now
 	* NEWS: update

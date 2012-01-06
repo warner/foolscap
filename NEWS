@@ -1,6 +1,6 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
-* Release 0.6.3 (?)
+* Release 0.6.3 (05-Jan-2012)
 
 ** Compatibility Fixes
 
@@ -17,8 +17,8 @@ impacted unit tests.
 
 ** Other Changes
 
-The Debian packaging tools in misc/ were removed, as they were pretty stale,
-and Debian packages Foolscap directly these days.
+The Debian packaging tools in misc/ were removed, as they were pretty stale.
+These days, both Debian and Ubuntu make their own Foolscap packages.
 
 
 * Release 0.6.2 (15-Oct-2011)
