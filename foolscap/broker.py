@@ -20,6 +20,12 @@ from foolscap.slicers.root import RootSlicer, RootUnslicer, ScopedRootSlicer
 from foolscap.eventual import eventually
 from foolscap.logging import log
 
+LOST_CONNECTION_ERRORS = [error.ConnectionLost, error.ConnectionDone]
+try:
+    from OpenSSL import SSL
+    LOST_CONNECTION_ERRORS.append(SSL.Error)
+except ImportError:
+    pass
 
 PBTopRegistry = {
     ("call",): call.CallUnslicer,
@@ -233,6 +239,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         if not fireDisconnectWatchers:
             self.disconnectWatchers = []
         self.finish(why)
+        # loseConnection eventually provokes connectionLost()
         self.transport.loseConnection()
 
     def connectionLost(self, why):
@@ -240,7 +247,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
         if self.remote_tubref:
             tubid = self.remote_tubref.getShortTubID()
         log.msg("connection to %s lost" % tubid, facility="foolscap.connection")
+        banana.Banana.connectionLost(self, why)
         self.finish(why)
+        if self.tub:
+            self.tub.connectionDropped(self)
 
     def finish(self, why):
         if self.disconnected:
@@ -261,7 +271,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
         for (cb,args,kwargs) in self.disconnectWatchers:
             eventually(cb, *args, **kwargs)
         self.disconnectWatchers = []
-        banana.Banana.connectionLost(self, why)
         if self.tub:
             # TODO: remove the conditional. It is only here to accomodate
             # some tests: test_pb.TestCall.testDisconnect[123]
@@ -375,9 +384,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             # if the connection was lost before we can get an ack, we're
             # tearing this down anyway
             def _ignore_loss(f):
-                f.trap(DeadReferenceError,
-                       error.ConnectionLost,
-                       error.ConnectionDone)
+                f.trap(DeadReferenceError, *LOST_CONNECTION_ERRORS)
                 return None
             d.addErrback(_ignore_loss)
             # once the ack comes back, or if we know we'll never get one,
@@ -419,7 +426,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
         # invoked when the other side sends us a decref message
         assert isinstance(clid, (int, long))
         assert clid != 0
-        tracker = self.myReferenceByCLID[clid]
+        tracker = self.myReferenceByCLID.get(clid, None)
+        if not tracker:
+            return # already gone, probably because we're shutting down
         done = tracker.decref(count)
         if done:
             del self.myReferenceByPUID[tracker.puid]
@@ -484,7 +493,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def abandonAllRequests(self, why):
         for req in self.waitingForAnswers.values():
-            if why.check(error.ConnectionLost, error.ConnectionDone):
+            if why.check(*LOST_CONNECTION_ERRORS):
                 # map all connection-lost errors to DeadReferenceError, so
                 # application code only needs to check for one exception type
                 tubid = None

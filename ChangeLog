@@ -1,3 +1,65 @@
+2012-01-05  Brian Warner  <warner@lothar.com>
+
+	* foolscap/_version.py: bump version number while between releases
+
+2012-01-05  Brian Warner  <warner@lothar.com>
+
+	* foolscap/_version.py: release Foolscap-0.6.3
+	* NEWS: update for 0.6.3 release
+
+2012-01-05  Brian Warner  <warner@lothar.com>
+
+	* README (DEPENDENCIES): give up on twisted-2.4.0 compatibility,
+	the tests fail now
+	* NEWS: update
+
+2012-01-04  Brian Warner  <warner@lothar.com>
+
+	* foolscap/call.py (CallUnslicer.receiveChild): raise a Violation
+	when the CLID is stale, so the caller gets an errback. Previously,
+	the otherwise-unhandled exception got put in the receiver's log,
+	but the caller didn't get a clear notification. Closes #106.
+
+	* foolscap/broker.py (Broker.remote_decref): tolerate "late"
+	decrefs that happen after their target has gone away, which causes
+	a mostly-harmless error to be logged, typically at the end of unit
+	test cases when Tub.stopService is called on multiple Tubs in the
+	same process that are talking to each other. refs #106.
+
+	* foolscap/broker.py: oops, un-break no-SSL support
+
+	* foolscap: Twisted-11.1 has new TLS code which reports
+	connectionLost() significantly after we call loseConnection(),
+	such as when we drop a stale connection in favor of a replacement.
+	This breaks a number of assumptions, generally by allowing
+	Tub.stopService() to finish too early, so tests for users of
+	foolscap (like tahoe) fail with DirtyReactorError, or
+	port-already-in-use errors. These changes fix the problem, and
+	update the Foolscap unit tests to handle the changes.
+	* foolscap/test/test_negotiate.py: tolerate RemoteNegotiationError
+	error too, since now it can appear earlier and beat the local
+	NegotiationError.
+
+	* foolscap/pb.py (Tub): track connections separately from Brokers.
+	Broker.shutdown() fires brokerDetached (which severs all rrefs and
+	stops using that connection). The subsequent connectionLost()
+	fires connectionDropped(), which allows Tub.stopService()'s
+	Deferred to fire. This should fix the tests-end-too-early problem.
+	* foolscap/negotiate.py (Negotiation.switchToBanana): call
+	tub.connectionAttached() to track connections
+	* foolscap/broker.py (Broker.connectionLost): and
+	tub.connectionDropped()
+
+	* foolscap/broker.py: the new TLS code sometimes reports abandoned
+	connections with SSL.Error, so when we're ignoring ConnectionLost
+	and ConnectionDone, ignore SSL.Error too.
+
+	* foolscap/test/test_negotiate.py: wait more turns for each step,
+	now that connection-loss events are not synchronous
+
+	* foolscap/test/common.py (ShouldFailMixin.shouldFail): improve
+	error message
+
 2011-10-16  Brian Warner  <warner@lothar.com>
 
 	* misc/*/debian: remove debian packaging tools. They were pretty

@@ -382,7 +382,9 @@ class ShouldFailMixin:
         d = defer.maybeDeferred(callable, *args, **kwargs)
         def done(res):
             if isinstance(res, failure.Failure):
-                res.trap(expected_failure)
+                if not res.check(expected_failure):
+                    self.fail("got failure %s, was expecting %s"
+                              % (res, expected_failure))
                 if substring:
                     self.failUnless(substring in str(res),
                                     "%s: substring '%s' not in '%s'"

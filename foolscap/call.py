@@ -471,7 +471,10 @@ class CallUnslicer(slicer.ScopedUnslicer):
             # this might raise an exception if objID is invalid
             assert ready_deferred is None
             self.objID = token
-            self.obj = self.broker.getMyReferenceByCLID(token)
+            try:
+                self.obj = self.broker.getMyReferenceByCLID(token)
+            except KeyError:
+                raise Violation("unknown CLID %d" % (token,))
             #iface = self.broker.getRemoteInterfaceByName(token)
             if self.objID < 0:
                 self.interface = None

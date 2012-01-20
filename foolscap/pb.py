@@ -314,7 +314,11 @@ class Tub(service.MultiService):
         self.unauthenticatedBrokers = [] # inbound Brokers without TubRefs
         self.reconnectors = []
 
-        self._allBrokersAreDisconnected = observer.OneShotObserverList()
+        # all connections, used or not, go in here, so we can stall
+        # stopService() until they're all gone.
+        self._allConnections = set()
+        self._allConnectionsAreDisconnected = observer.OneShotObserverList()
+
         self._activeConnectors = []
         self._allConnectorsAreFinished = observer.OneShotObserverList()
 
@@ -666,8 +670,8 @@ class Tub(service.MultiService):
         for c in self._activeConnectors:
             c.shutdown()
 
-        if self.brokers or self.unauthenticatedBrokers:
-            dl.append(self._allBrokersAreDisconnected.whenFired())
+        if self._allConnections:
+            dl.append(self._allConnectionsAreDisconnected.whenFired())
         why = Failure(error.ConnectionDone("Tub.stopService was called"))
         for b in self.brokers.values():
             b.shutdown(why, fireDisconnectWatchers=False)
@@ -1003,6 +1007,8 @@ class Tub(service.MultiService):
         b2.setTub(self)
         t1.protocol = b1; t2.protocol = b2
         b1.makeConnection(t1); b2.makeConnection(t2)
+        self.connectionAttached(b1)
+        self.connectionAttached(b2)
         self.brokerAttached(tubref, b1, False)
         return b1
 
@@ -1025,6 +1031,9 @@ class Tub(service.MultiService):
             del self.waitingForBrokers[tubref]
             for d in waiting:
                 d.errback(why)
+
+    def connectionAttached(self, broker):
+        self._allConnections.add(broker)
 
     def brokerAttached(self, tubref, broker, isClient):
         assert self.running
@@ -1063,24 +1072,20 @@ class Tub(service.MultiService):
         # a loopback connection will produce two Brokers that both use the
         # same tubref. Both will shut down about the same time. Make sure
         # this doesn't confuse us.
-        had_connections = (bool(self.brokers) or
-                           bool(self.unauthenticatedBrokers))
+
         # the Broker will have already severed all active references
         for tubref in self.brokers.keys():
             if self.brokers[tubref] is broker:
                 del self.brokers[tubref]
         if broker in self.unauthenticatedBrokers:
             self.unauthenticatedBrokers.remove(broker)
+
+    def connectionDropped(self, broker):
+        self._allConnections.discard(broker)
         # if the Tub has already shut down, we may need to notify observers
         # who are waiting for all of our connections to finish shutting down.
-        # Only do this if we actually transitioned from having some
-        # connections to not having any connections.
-
-        if (not self.running
-            and had_connections
-            and not self.brokers
-            and not self.unauthenticatedBrokers):
-            self._allBrokersAreDisconnected.fire(self)
+        if (not self.running and not self._allConnections):
+            self._allConnectionsAreDisconnected.fire(self)
 
     def debug_listBrokers(self):
         # return a list of (tubref, inbound, outbound) tuples. The tubref

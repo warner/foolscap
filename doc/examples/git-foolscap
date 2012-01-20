@@ -13,7 +13,7 @@ Use this tool to publish a git repository via Foolscap application server
 a "FURL". You can then use this FURL as a git URL on any client which has the
 "git-remote-pb" helper installed.
 
-THese FURLs provide cryptographically-secure access to a specific resource.
+These FURLs provide cryptographically-secure access to a specific resource.
 Unlike SSH keys, the holder of this FURL is limited to a single command (e.g.
 git receive-pack). This is safer and easier to configure than putting
 command/environment restrictions on an SSH key, and does not require running
