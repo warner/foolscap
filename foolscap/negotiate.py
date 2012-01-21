@@ -2,8 +2,8 @@
 
 import time
 from twisted.python.failure import Failure
-from twisted.internet import protocol, reactor
-
+from twisted.internet import protocol, reactor, defer
+import foolscap.discovery as discovery
 from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
 from foolscap.tokens import SIZE_LIMIT, ERROR, NoLocationHintsError, \
@@ -1290,6 +1290,8 @@ class TubConnector(object):
                                   facility="foolscap.connection")
         self.tub = parent
         self.target = tubref
+
+        self.discovery_enabled = False
         hints = []
         # filter out the hints that we can actually use.. there may be
         # extensions from the future sitting in this list
@@ -1297,6 +1299,14 @@ class TubConnector(object):
             if h[0] == "ipv4":
                 (host, port) = h[1:]
                 hints.append( (host, port) )
+            elif h in discovery.supported_hints:
+                browser = discovery.start_discovery_using(h,
+                        addcb=self.__discovered_new_location,
+                        remcb=self.__location_went_away
+                        )
+                browser.setServiceParent(self.tub)
+                self.discovery_enabled = True
+          
         self.remainingLocations = hints
         # attemptedLocations keeps track of where we've already tried to
         # connect, so we don't try them twice.
@@ -1308,6 +1318,28 @@ class TubConnector(object):
         # stop connecting (either because one of the connections succeeded,
         # or because someone told us to give up).
         self.pendingConnections = {}
+
+    def __discovered_new_location(self, args):
+        # new locations discovered during startup can placed into
+        # remaining locations for future attempts
+        if self.target.getTubID() in args.name:
+            self.remainingLocations.append((str(args.addr), int(args.port)))
+        # got new locations, should probably try and connect to them
+        reactor.callLater(0, self.connectToAll)
+
+    def __location_went_away(self, args):
+        # this is only useful info to save us from trying to connect
+        # to this location in future so we just remove it from the
+        # remainingLocations list
+        if self.target.getTubID() in args.name:
+            try:
+                self.remainingLocations.remove((args.host, args.port))
+            except:
+                pass
+            try:
+                self.remainingLocations.remove((args.address, args.port))
+            except:
+                pass
 
     def __repr__(self):
         s = object.__repr__(self)
@@ -1326,7 +1358,7 @@ class TubConnector(object):
         the parent Tub's brokerAttached() method, our us calling the Tub's
         connectionFailed() method."""
         self.tub.connectorStarted(self)
-        if not self.remainingLocations:
+        if not self.remainingLocations and not self.discovery_enabled:
             # well, that's going to make it difficult. connectToAll() will
             # pass through to checkForFailure(), which will notice our lack
             # of options and deliver this failureReason to the caller.
@@ -1356,8 +1388,10 @@ class TubConnector(object):
     def connectToAll(self):
         while self.remainingLocations:
             location = self.remainingLocations.pop()
+
             if location in self.attemptedLocations:
                 continue
+            
             self.attemptedLocations.append(location)
             host, port = location
             lp = self.log("connectTCP to %s" % (location,))
@@ -1432,12 +1466,17 @@ class TubConnector(object):
             f.disconnect()
         self.checkForIdle()
 
+        # disable discovery for now to prevent calling connectToAll every 0.1s
+        self.discovery_enabled = False
+
     def checkForFailure(self):
         if not self.active:
             return
         if self.remainingLocations:
             return
         if self.pendingConnections:
+            return
+        if self.discovery_enabled:
             return
         # we have no more options, so the connection attempt will fail. The
         # getBrokerForTubRef may have succeeded, however, if the other side

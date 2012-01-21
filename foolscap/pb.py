@@ -1,8 +1,8 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
-
 import os.path, weakref, binascii, re
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
+import foolscap.discovery as discovery
 from twisted.application import service, internet
 from twisted.python.failure import Failure
 
@@ -62,7 +62,6 @@ class Listener(protocol.ServerFactory):
         #  tcp:80
         #  tcp:80:interface=127.0.0.1
         # we reject UNIX sockets.. I don't know if they ever worked.
-
         portnum, interface = parse_strport(port)
         self.port = port
         self.options = options
@@ -87,6 +86,10 @@ class Listener(protocol.ServerFactory):
 
         assert self.s.running
         return self.s._port.getHost().port
+
+    def getInterface(self):
+        assert self.s.running
+        return self.s._port.getHost().host
 
     def __repr__(self):
         if self.tubs:
@@ -303,6 +306,10 @@ class Tub(service.MultiService):
         self.strongReferences = []
         self.nameLookupHandlers = []
 
+        self.discovery_publisher = None
+        for hint in options.get("discovery", []):
+            self.enableDiscovery(hint)
+
         # remote stuff. Most of these use a TubRef (or NoAuthTubRef) as a
         # dictionary key
         self.tubConnectors = {} # maps TubRef to a TubConnector
@@ -450,6 +457,15 @@ class Tub(service.MultiService):
         ignored = self.getLogPortFURL()
         del ignored
 
+    def _maybeEnableDiscovery(self):
+        for hint in set(discovery.supported_hints) & set(self.locationHints):
+            self.enableDiscovery(hint)
+
+    def enableDiscovery(self, how):
+        self.discovery_publisher = discovery.start_publishing_using(how, self)
+        for l in self.listeners:
+            self.discovery_publisher.listenOn(l)
+
     def getLogPortFURL(self):
         if not self.locationHints:
             raise NoLocationError
@@ -500,7 +516,6 @@ class Tub(service.MultiService):
 
         Encrypted Tubs can have multiple location hints, just provide
         multiple arguments. Unauthenticated Tubs can only have one location."""
-
         if not self.encrypted and len(hints) > 1:
             raise PBError("Unauthenticated tubs may only have one "
                           "location hint")
@@ -509,6 +524,7 @@ class Tub(service.MultiService):
         self.locationHints = hints
         self._maybeCreateLogPortFURLFile()
         self._maybeConnectToGatherer()
+        self._maybeEnableDiscovery()
 
     def setLocationAutomatically(self, *extra_addresses):
         """Determine one of this host's publically-visible IP addresses and
@@ -567,7 +583,6 @@ class Tub(service.MultiService):
         stop listening later on, to have another Tub listen on the same port,
         and to figure out which port was allocated when you used a strports
         specification of 'tcp:0'. """
-
         if type(what) is str:
             l = Listener(what, options, self.negotiationClass)
         else:
@@ -576,10 +591,14 @@ class Tub(service.MultiService):
         assert l not in self.listeners
         l.addTub(self)
         self.listeners.append(l)
+        if self.discovery_publisher:
+            self.discovery_publisher.listenOn(l)
         return l
 
     def stopListeningOn(self, l):
         # this returns a Deferred when the port is shut down
+        if self.discovery_publisher:
+            self.discovery_publisher.stopListeningOn(l)
         self.listeners.remove(l)
         d = defer.maybeDeferred(l.removeTub, self)
         return d
@@ -672,8 +691,8 @@ class Tub(service.MultiService):
         if self.encrypted:
             # TODO: IPv6 dotted-quad addresses have colons, but need to have
             # host:port
-            hints = ",".join(self.locationHints)
-            return "pb://" + self.tubID + "@" + hints + "/" + name
+            hint_str = ",".join(self.locationHints)
+            return "pb://" + self.tubID + "@" + hint_str + "/" + name
         return "pbu://" + self.locationHints[0] + "/" + name
 
     def registerReference(self, ref, name=None, furlFile=None):
