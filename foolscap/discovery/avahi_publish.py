@@ -1,15 +1,12 @@
 import dbus
 import avahi
 
-#from twisted.internet import glib2reactor
-#glib2reactor.install()
-
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
 class AvahiPublishTub:
     SERVICE_TYPE = "_foolscap-rpc._tcp"
-    supported_hints = ("zeroconf",)
+    supported_hints = ("mdns-sd",)
     def __init__(self, tub):
         self.dbus = None
         self.groups = {} 
@@ -77,7 +74,8 @@ def add_service(group, name, stype, domain, host, port, txt):
             avahi.PROTO_UNSPEC,
             dbus.UInt32(avahi.PUBLISH_UPDATE), # flags
             name, stype,
-            domain, host,
+            domain,
+            host,
             dbus.UInt16(port),
             avahi.string_array_to_txt_array(txt))
     group.Commit()

@@ -23,6 +23,8 @@ from foolscap.remoteinterface import getRemoteInterface, \
 from foolscap.schema import constraintMap
 from foolscap.copyable import Copyable, RemoteCopy
 from foolscap.eventual import eventually, fireEventually
+import foolscap.discovery
+
 
 class OnlyReferenceable(object):
     implements(ipb.IReferenceable)
@@ -775,6 +777,7 @@ def encode_location_hint(hint):
     assert hint[0] == "ipv4"
     host, port = hint[1:]
     return "%s:%d" % (host, port)
+
 def decode_location_hints(hints_s):
     hints = []
     for hint_s in hints_s.split(","):
@@ -783,7 +786,7 @@ def decode_location_hints(hints_s):
             hint = ( "ipv4", mo.group(1), int(mo.group(2)) )
             hints.append(hint)
         else:
-            if hint_s in ("zeroconf",):
+            if hint_s in foolscap.discovery.supported_hints:
                 hints.append(hint_s)
             else:
                 # some extension from the future that we will ignore

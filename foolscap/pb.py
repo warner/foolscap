@@ -87,6 +87,10 @@ class Listener(protocol.ServerFactory):
         assert self.s.running
         return self.s._port.getHost().port
 
+    def getInterface(self):
+        assert self.s.running
+        return self.s._port.getHost().host
+
     def __repr__(self):
         if self.tubs:
             return "<Listener at 0x%x on %s with tubs %s>" % (
@@ -687,11 +691,8 @@ class Tub(service.MultiService):
         if self.encrypted:
             # TODO: IPv6 dotted-quad addresses have colons, but need to have
             # host:port
-            hints = ",".join(self.locationHints)
-            
-            if self.discovery_publisher:
-                hints = ",".join((hints, ",".join(self.discovery_publisher.supported_hints)))
-            return "pb://" + self.tubID + "@" + hints + "/" + name
+            hint_str = ",".join(self.locationHints)
+            return "pb://" + self.tubID + "@" + hint_str + "/" + name
         return "pbu://" + self.locationHints[0] + "/" + name
 
     def registerReference(self, ref, name=None, furlFile=None):

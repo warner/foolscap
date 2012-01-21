@@ -7,7 +7,7 @@ try:
 except:
     raise
 
-supported_hints = {"zeroconf": (zeroconf_DiscoverTubs, zeroconf_PublishTub)}
+supported_hints = {"mdns-sd": (zeroconf_DiscoverTubs, zeroconf_PublishTub)}
 
 def start_publishing_using(hint, tub):
     return supported_hints[hint][1](tub)

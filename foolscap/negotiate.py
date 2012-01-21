@@ -2,7 +2,7 @@
 
 import time
 from twisted.python.failure import Failure
-from twisted.internet import protocol, reactor
+from twisted.internet import protocol, reactor, defer
 import foolscap.discovery as discovery
 from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
@@ -1292,7 +1292,6 @@ class TubConnector(object):
         self.target = tubref
 
         self.discovery_enabled = False
-        
         hints = []
         # filter out the hints that we can actually use.. there may be
         # extensions from the future sitting in this list
@@ -1325,6 +1324,8 @@ class TubConnector(object):
         # remaining locations for future attempts
         if self.target.getTubID() in args.name:
             self.remainingLocations.append((str(args.addr), int(args.port)))
+        # got new locations, should probably try and connect to them
+        reactor.callLater(0, self.connectToAll)
 
     def __location_went_away(self, args):
         # this is only useful info to save us from trying to connect
@@ -1390,6 +1391,7 @@ class TubConnector(object):
 
             if location in self.attemptedLocations:
                 continue
+            
             self.attemptedLocations.append(location)
             host, port = location
             lp = self.log("connectTCP to %s" % (location,))
@@ -1406,10 +1408,6 @@ class TubConnector(object):
                 # known state.
                 reactor.callLater(0.1, self.connectToAll)
                 return
-        
-        if self.discovery_enabled:
-            reactor.callLater(0.1, self.connectToAll)            
-
         self.checkForFailure()
 
     def connectionTimedOut(self):

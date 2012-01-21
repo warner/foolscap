@@ -59,8 +59,6 @@ class AvahiDiscoverTubs(service.Service):
         del self.known_services[name]
 
 if __name__ == "__main__":
-    from twisted.internet import glib2reactor
-    glib2reactor.install()
     from twisted.internet import reactor
     disco = AvahiDiscoverTahoeNodes()
     reactor.run()
