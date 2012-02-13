@@ -72,7 +72,6 @@ if have_setuptools:
             "flappclient = foolscap.appserver.client:run_flappclient",
             ] }
     setup_args['install_requires'] = ['twisted >= 2.4.0']
-    setup_args['extras_require'] = { 'secure_connections' : ["pyOpenSSL"] }
     # note that pyOpenSSL-0.7 and recent Twisted causes unit test failures,
     # see bug #62
 
