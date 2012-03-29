@@ -1,5 +1,10 @@
 2012-03-29  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/dumper.py (LogDumper.run): when 'dump' is
+	pointed at a FURL file instead of an event log file, give a
+	helpful error message instead of the confusing pickle error
+	* foolscap/test/test_logging.py (Dumper.test_oops_furl): tests
+
 	* foolscap/logging/cli.py: let commands control the sys.exit()
 	return code, to prepare for tests of improved error handling
 	* foolscap/test/test_logging.py (run_wrapper): update to match

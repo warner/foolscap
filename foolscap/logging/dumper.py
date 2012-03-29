@@ -39,7 +39,20 @@ class LogDumper:
             # it early with "q", the stdout pipe is broken and python dies
             # with a messy stacktrace. Catch and ignore that.
             if e.errno == errno.EPIPE:
-                sys.exit(1)
+                return 1
+            raise
+        except IndexError:
+            # this happens when you point "flogtool dump" at a furl by
+            # mistake (which cannot be parsed as a pickle). Emit a useful
+            # error message.
+            f.seek(0)
+            if f.read(3) == "pb:":
+                print >>self.options.stderr, (
+                    "Error: %s appears to be a FURL file.\n"
+                    "Perhaps you meant to run"
+                    " 'flogtool tail' instead of 'flogtool dump'?"
+                    % (self.options.dumpfile,))
+                return 1
             raise
 
     def start(self, f):

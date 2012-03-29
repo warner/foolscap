@@ -1884,6 +1884,23 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
         d.addCallback(_check)
         return d
 
+    def test_oops_furl(self):
+        self.basedir = "logging/Dumper/oops_furl"
+        if not os.path.exists(self.basedir):
+            os.makedirs(self.basedir)
+        fn = os.path.join(self.basedir, "logport.furl")
+        f = open(fn, "w")
+        f.write("pb://TUBID@HINTS/SWISSNUM\n")
+        f.close()
+
+        d = dumper.LogDumper()
+        # initialize the LogDumper() timestamp mode
+        d.options = dumper.DumpOptions()
+        d.options.parseOptions([fn])
+        argv = ["flogtool", "dump", fn]
+        (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnlessEqual(err, "Error: logging/Dumper/oops_furl/logport.furl appears to be a FURL file.\nPerhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?\n")
+
 class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
     def compare_events(self, a, b):
