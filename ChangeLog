@@ -6,6 +6,11 @@
 	portnum to catch errors like setLocation("HOST") earlier (it
 	should be setLocation("HOST:PORT")). Allow "pb://TUBID@" as
 	legal but unrouteable (still valid for inbound connections).
+	(NONAUTH_STURDYREF_RE): fix no-crypto tests by allowing
+	"pbu:///SWISS" as legal but unrouteable. It's completely useless,
+	though, because unauthenticated FURLs can't accept inbound
+	connections.
+
 	* foolscap/test/test_sturdyref.py (URL.testBrokenHints): enhance
 	* foolscap/test/test_tub.py (BadLocationFURL): update
 

@@ -771,7 +771,7 @@ class BadFURLError(Exception):
     pass
 
 AUTH_STURDYREF_RE = re.compile(r"pb://([^@]+)@([^/]*)/(.+)$")
-NONAUTH_STURDYREF_RE = re.compile(r"pbu://([^/]+)/(.+)$")
+NONAUTH_STURDYREF_RE = re.compile(r"pbu://([^/]*)/(.+)$")
 
 IPV4_HINT_RE = re.compile(r"^([^:]+):(\d+)$")
 def encode_location_hint(hint):
