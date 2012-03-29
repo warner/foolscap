@@ -1687,7 +1687,7 @@ def run_wrapper(argv):
     config.parseOptions(argv)
     command = config.subCommand
     if command == "flogtool":
-        return cli.run_flogtool(argv[1:])
+        return cli.run_flogtool(argv[1:], run_by_human=False)
 
 class CLI(unittest.TestCase):
     def test_create_gatherer(self):

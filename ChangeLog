@@ -1,3 +1,9 @@
+2012-03-29  Brian Warner  <warner@lothar.com>
+
+	* foolscap/logging/cli.py: let commands control the sys.exit()
+	return code, to prepare for tests of improved error handling
+	* foolscap/test/test_logging.py (run_wrapper): update to match
+
 2012-01-05  Brian Warner  <warner@lothar.com>
 
 	* foolscap/_version.py: bump version number while between releases

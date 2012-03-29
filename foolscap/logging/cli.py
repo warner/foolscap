@@ -50,29 +50,29 @@ class Options(usage.Options):
 def dispatch(command, options):
     if command == "tail":
         lt = LogTail(options)
-        lt.run(options.target_furl)
+        return lt.run(options.target_furl)
 
     elif command == "create-gatherer":
-        create_log_gatherer(options)
+        return create_log_gatherer(options)
 
     elif command == "create-incident-gatherer":
-        create_incident_gatherer(options)
+        return create_incident_gatherer(options)
 
     elif command == "dump":
         ld = LogDumper()
-        ld.run(options)
+        return ld.run(options)
 
     elif command == "filter":
         f = Filter()
-        f.run(options)
+        return f.run(options)
 
     elif command == "web-viewer":
         wv = WebViewer()
-        wv.run(options)
+        return wv.run(options)
 
     elif command == "classify-incident":
         ic = IncidentClassifier()
-        ic.run(options)
+        return ic.run(options)
 
     else:
         print "unknown command '%s'" % command
@@ -100,6 +100,10 @@ def run_flogtool(argv=None, run_by_human=True):
     if not run_by_human:
         so.stdout = StringIO()
         so.stderr = StringIO()
-    dispatch(command, so)
-    if not run_by_human:
+    rc = dispatch(command, so)
+    if rc is None:
+        rc = 0
+    if run_by_human:
+        sys.exit(rc)
+    else:
         return (so.stdout.getvalue(), so.stderr.getvalue())
