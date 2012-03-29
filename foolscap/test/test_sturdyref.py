@@ -57,3 +57,29 @@ class URL(unittest.TestCase):
                              [ ("ipv4", "127.0.0.1", 9900),
                                ("ipv4", "remote", 8899) ])
         self.failUnlessEqual(sr.name, "name")
+
+    def testBrokenHints(self):
+        # This should throw an exception
+        furl = "pb://%s@127.0.0.1/name" % TUB1 # missing portnum
+        f = self.failUnlessRaises(BadFURLError, SturdyRef, furl)
+        def _check(f, hostname):
+            self.failUnless(("bad connection hint '%s' "
+                             "(hostname, but no port)" % hostname) in str(f),
+                            f)
+        _check(f, "127.0.0.1")
+
+        furl = "pb://%s@example.com/name" % TUB1 # missing portnum
+        f = self.failUnlessRaises(BadFURLError, SturdyRef, furl)
+        _check(f, "example.com")
+
+        furl = "pb://%s@,/name" % TUB1 # empty hints are not allowed
+        f = self.failUnlessRaises(BadFURLError, SturdyRef, furl)
+        _check(f, "")
+
+        furl = "pb://%s@/name" % TUB1 # this is ok, and means "unrouteable"
+        sr = SturdyRef(furl)
+        self.failUnlessEqual(sr.locationHints, [])
+
+        furl = "pb://%s/name" % TUB1 # this is not ok
+        f = self.failUnlessRaises(ValueError, SturdyRef, furl)
+        self.failUnless("unknown FURL prefix in " in str(f), f)

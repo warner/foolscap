@@ -1,5 +1,14 @@
 2012-03-29  Brian Warner  <warner@lothar.com>
 
+	* foolscap/referenceable.py (decode_location_hints): update
+	connection-hint extension rules to require extensions start with
+	"TYPE:" and not be followed by all-digits. Reject "HOST" without a
+	portnum to catch errors like setLocation("HOST") earlier (it
+	should be setLocation("HOST:PORT")). Allow "pb://TUBID@" as
+	legal but unrouteable (still valid for inbound connections).
+	* foolscap/test/test_sturdyref.py (URL.testBrokenHints): enhance
+	* foolscap/test/test_tub.py (BadLocationFURL): update
+
 	* foolscap/logging/dumper.py (LogDumper.run): when 'dump' is
 	pointed at a FURL file instead of an event log file, give a
 	helpful error message instead of the confusing pickle error

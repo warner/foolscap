@@ -767,7 +767,10 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
             return "<gift-?>"
         return "<gift-%s>" % self.giftID
 
-AUTH_STURDYREF_RE = re.compile(r"pb://([^@]+)@([^/]+)/(.+)$")
+class BadFURLError(Exception):
+    pass
+
+AUTH_STURDYREF_RE = re.compile(r"pb://([^@]+)@([^/]*)/(.+)$")
 NONAUTH_STURDYREF_RE = re.compile(r"pbu://([^/]+)/(.+)$")
 
 IPV4_HINT_RE = re.compile(r"^([^:]+):(\d+)$")
@@ -777,18 +780,28 @@ def encode_location_hint(hint):
     return "%s:%d" % (host, port)
 def decode_location_hints(hints_s):
     hints = []
-    for hint_s in hints_s.split(","):
-        mo = IPV4_HINT_RE.search(hint_s)
-        if mo:
-            hint = ( "ipv4", mo.group(1), int(mo.group(2)) )
-            hints.append(hint)
-        else:
-            # some extension from the future that we will ignore
-            pass
+    if hints_s:
+        for hint_s in hints_s.split(","):
+            if ":" not in hint_s:
+                raise BadFURLError("bad connection hint '%s' "
+                                   "(hostname, but no port)" % hint_s)
+            mo = IPV4_HINT_RE.search(hint_s)
+            if mo:
+                hint = ( "ipv4", mo.group(1), int(mo.group(2)) )
+                hints.append(hint)
+            else:
+                # This is some extension from the future that we will ignore.
+                # All extensions are required to start with "TYPE:" (where
+                # TYPE is alphanumeric), and then can contain any characters
+                # except "," and "/". Most are expected to use ":"-separated
+                # arguments. To avoid being interpreted as an implicit ipv4
+                # hint, the part after "TYPE:" may not be all-digits. So
+                # "foo:" and "bar:stuff" and "baz:12stuff" and
+                # "foo:1234:stuff" and "foo:123:456" and "foo:123:" are all
+                # valid extensions, but "foo:123" is not (it looks like
+                # host="foo" and port="123").
+                pass
     return hints
-
-class BadFURLError(Exception):
-    pass
 
 def decode_furl(furl):
     """Returns (encrypted, tubID, location_hints, name)"""

@@ -436,7 +436,7 @@ class BadLocationFURL(unittest.TestCase):
         tubB = GoodEnoughTub()
         tubB.setServiceParent(self.s)
 
-        tubB.setLocation("")
+        tubB.setLocation("") # this is how you say "unrouteable"
         r = Receiver(tubB)
         furl = tubB.registerReference(r)
         # the buggy behavior is that the following call raises an exception
@@ -445,31 +445,11 @@ class BadLocationFURL(unittest.TestCase):
         self.failUnless(isinstance(d, defer.Deferred))
         def _check(f):
             self.failUnless(isinstance(f, failure.Failure), f)
-            self.failUnless(f.check(ValueError), f) # unparseable FURL
+            self.failUnless(f.check(NoLocationHintsError), f)
         d.addBoth(_check)
         return d
 
-    def test_empty_location2(self):
-        tubA = GoodEnoughTub()
-        tubA.setServiceParent(self.s)
-        tubB = GoodEnoughTub()
-        tubB.setServiceParent(self.s)
-
-        # "," is two empty locations. This passes the regexp, unlike "".
-        tubB.setLocation(",")
-        r = Receiver(tubB)
-        furl = tubB.registerReference(r)
-        # the buggy behavior is that the following call raises an exception
-        d = tubA.getReference(furl)
-        # whereas it ought to return a Deferred
-        self.failUnless(isinstance(d, defer.Deferred))
-        def _check(f):
-            self.failUnless(isinstance(f, failure.Failure), f)
-            self.failUnless(f.check(NoLocationHintsError), f) # unparseable FURL
-        d.addBoth(_check)
-        return d
-
-    def test_unrouteable(self):
+    def test_future(self):
         # bug #129: a FURL with no location hints causes a synchronous
         # exception in Tub.getReference(), instead of an errback'ed Deferred.
 
@@ -478,10 +458,10 @@ class BadLocationFURL(unittest.TestCase):
         tubB = GoodEnoughTub()
         tubB.setServiceParent(self.s)
 
-        # "-unrouteable-" is interpreted as a "location hint format from the
+        # "future:stuff" is interpreted as a "location hint format from the
         # future", which we're supposed to ignore, and are thus left with no
         # hints
-        tubB.setLocation("-unrouteable-")
+        tubB.setLocation("future:stuff")
         r = Receiver(tubB)
         furl = tubB.registerReference(r)
         # the buggy behavior is that the following call raises an exception
@@ -490,7 +470,7 @@ class BadLocationFURL(unittest.TestCase):
         self.failUnless(isinstance(d, defer.Deferred))
         def _check(f):
             self.failUnless(isinstance(f, failure.Failure), f)
-            self.failUnless(f.check(NoLocationHintsError), f) # unparseable FURL
+            self.failUnless(f.check(NoLocationHintsError), f)
         d.addBoth(_check)
         return d
     
