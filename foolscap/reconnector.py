@@ -2,7 +2,6 @@
 
 import random
 import time
-from twisted.internet import reactor
 from twisted.python import log
 from foolscap.tokens import NegotiationError, RemoteNegotiationError
 
@@ -133,6 +132,8 @@ class Reconnector(object):
         if self.verbose:
             log.msg("Reconnector scheduling retry in %ds for %s" %
                     (self._delay, self._url))
+            
+        from twisted.internet import reactor
         self._timer = reactor.callLater(self._delay, self._timer_expired)
 
     def _timer_expired(self):

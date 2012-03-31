@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_eventual -*-
 
-from twisted.internet import reactor, defer
+from twisted.internet import defer
 from twisted.python import log
 
 class _SimpleCallQueue(object):
@@ -13,6 +13,7 @@ class _SimpleCallQueue(object):
     def append(self, cb, args, kwargs):
         self._events.append((cb, args, kwargs))
         if not self._timer:
+            from twisted.internet import reactor
             self._timer = reactor.callLater(0, self._turn)
 
     def _turn(self):

@@ -1,7 +1,7 @@
 
 import struct, time
 
-from twisted.internet import protocol, defer, reactor
+from twisted.internet import protocol, defer
 from twisted.python.failure import Failure
 from twisted.python import log
 
@@ -130,6 +130,8 @@ class Banana(protocol.Protocol):
             print "Banana.connectionMade"
         self.initSlicer()
         self.initUnslicer()
+        from twisted.internet import reactor
+        
         if self.keepaliveTimeout is not None:
             self.dataLastReceivedAt = time.time()
             t = reactor.callLater(self.keepaliveTimeout + EPSILON,
@@ -658,6 +660,8 @@ class Banana(protocol.Protocol):
         if age > self.keepaliveTimeout:
             # the connection looks idle, so let's provoke a response
             self.sendPING()
+            
+        from twisted.internet import reactor
         # we restart the timer in either case
         t = reactor.callLater(self.keepaliveTimeout + EPSILON,
                               self.keepaliveTimerFired)
@@ -675,6 +679,7 @@ class Banana(protocol.Protocol):
             # be the right thing to do, perhaps we should restart it
             # unconditionally.
         else:
+            from twisted.internet import reactor
             # we're still ok, so restart the timer
             t = reactor.callLater(self.disconnectTimeout + EPSILON,
                                   self.disconnectTimerFired)
