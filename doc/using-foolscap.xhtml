@@ -60,7 +60,7 @@ subclass <code class="API"
 base="foolscap.referenceable">Referenceable</code>. Let's create a simple
 server which does basic arithmetic. You might use such a service to perform
 difficult mathematical operations, like addition, on a remote machine which
-is faster and more capable than your own<span class="footnote">although
+is faster and more capable than your own<span class="footnote"> although
 really, if your client machine is too slow to perform this kind of math, it
 is probably too slow to run python or use a network, so you should seriously
 consider a hardware upgrade</span>.</p>
@@ -141,10 +141,10 @@ kind of problem.</p>
 <p>To make any of your <code>Referenceable</code>s available, you must make
 your Tub available. There are three parts: give it an identity, have it
 listen on a port, and tell it the protocol/hostname/portnumber at which that
-port is accessibly to the outside world.</p>
+port is accessible to the outside world.</p>
 
 <p>In general, the Tub will generate its own identity, the <em>TubID</em>, by
-creating an SSL public key certificate and hashing it into a suitably-long
+creating a self-signed SSL public key certificate and hashing it into a suitably-long
 random-looking string. This is the primary identifier of the Tub: everything
 else is just a <em>location hint</em> that suggests how the Tub might be
 reached. The fact that the TubID is tied to the public key allows FURLs to
