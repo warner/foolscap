@@ -424,7 +424,7 @@ class LogFileObserver:
                              }}
         pickle.dump(header, self._logFile)
 
-    def stop_on_shutdown(self):
+    def flush_on_shutdown(self):
         from twisted.internet import reactor
         reactor.addSystemEventTrigger("after", "shutdown", self._flush)
 
