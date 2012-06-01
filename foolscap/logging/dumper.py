@@ -6,7 +6,7 @@ from foolscap.logging.log import format_message
 class DumpOptions(usage.Options):
     stdout = sys.stdout
     stderr = sys.stderr
-    synopsis = "Usage: flogtool dump DUMPFILE.pickle"
+    synopsis = "Usage: flogtool dump DUMPFILE.flog[.bz2]"
     optParameters = [
         ("timestamps", "t", "short-local",
          "Format for timestamps: short-local, utc, long-local"),
