@@ -10,7 +10,7 @@ from foolscap.pb import parse_strport
 from twisted.web import server, static, html, resource
 
 class WebViewerOptions(usage.Options):
-    synopsis = "Usage: flogtool web-viewer DUMPFILE.pickle"
+    synopsis = "Usage: flogtool web-viewer DUMPFILE.flog[.bz2]"
 
     optFlags = [
         ("quiet", "q", "Don't print instructions to stdout"),
