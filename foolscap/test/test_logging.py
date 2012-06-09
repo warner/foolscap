@@ -1560,7 +1560,8 @@ class Tail(unittest.TestCase):
     def test_logprinter(self):
         target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
         options1 = {"save-to": None,
-                   "verbose": None}
+                   "verbose": None,
+                   "timestamps": "short-local"}
         out = StringIO()
         lp = tail.LogPrinter(options1, target_tubid_s[:8], out)
         lp.got_versions({})
@@ -1605,7 +1606,8 @@ class Tail(unittest.TestCase):
     def test_logprinter_verbose(self):
         target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
         options1 = {"save-to": None,
-                   "verbose": True}
+                   "verbose": True,
+                   "timestamps": "short-local"}
         out = StringIO()
         lp = tail.LogPrinter(options1, target_tubid_s[:8], out)
         lp.got_versions({})
@@ -1624,7 +1626,8 @@ class Tail(unittest.TestCase):
         target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
         saveto_filename = "test_logprinter_saveto.flog"
         options = {"save-to": saveto_filename,
-                   "verbose": False}
+                   "verbose": False,
+                   "timestamps": "short-local"}
         out = StringIO()
         lp = tail.LogPrinter(options, target_tubid_s[:8], out)
         lp.got_versions({})

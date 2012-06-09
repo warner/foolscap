@@ -7,6 +7,7 @@ from foolscap import base32
 from foolscap.api import Tub, Referenceable, fireEventually
 from foolscap.logging import log
 from foolscap.referenceable import SturdyRef
+from foolscap.util import format_time
 from interfaces import RILogObserver
 
 def short_tubid_b2a(tubid):
@@ -48,7 +49,14 @@ class TailOptions(usage.Options):
     optParameters = [
         ("save-to", "s", None,
          "Save events to the given file. The file will be overwritten."),
+        ("timestamps", "t", "short-local",
+         "Format for timestamps: short-local, utc, long-local"),
         ]
+
+    def opt_timestamps(self, arg):
+        if arg not in ("short-local", "utc", "long-local"):
+            raise usage.UsageError("--timestamps= must be one of 'short-local', 'utc', or 'long-local'")
+        self["timestamps"] = arg
 
     def parseArgs(self, target):
         if target.startswith("pb:"):
@@ -91,8 +99,7 @@ class LogPrinter(Referenceable):
         print >>self.output, d
 
     def formatted_print(self, d):
-        time_s = time.strftime("%H:%M:%S", time.localtime(d['time']))
-        time_s = time_s + ".%03d" % int(1000*(d['time'] - int(d['time'])))
+        time_s = format_time(d['time'], self.options["timestamps"])
 
         msg = log.format_message(d)
         level = d.get('level', log.OPERATIONAL)
