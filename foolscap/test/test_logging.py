@@ -11,6 +11,7 @@ import foolscap
 from foolscap.logging import gatherer, log, tail, incident, cli, web, \
      publish, dumper
 from foolscap.logging.interfaces import RILogObserver
+from foolscap.util import format_time
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.tokens import NoLocationError
 from foolscap.test.common import PollMixin, StallMixin, GoodEnoughTub
@@ -1800,6 +1801,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             # initialize the LogDumper() timestamp mode
             d.options = dumper.DumpOptions()
             d.options.parseOptions([fn])
+            tmode = d.options["timestamps"]
 
             argv = ["flogtool", "dump", fn]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
@@ -1811,7 +1813,8 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             self.failUnlessEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
             lines = lines[5:]
             line0 = "local#%d %s: one" % (events[1]["d"]["num"],
-                                          d.format_time(events[1]["d"]["time"]))
+                                          format_time(events[1]["d"]["time"],
+                                                      tmode))
             self.failUnlessEqual(lines[0].strip(), line0)
             self.failUnless("FAILURE:" in lines[3])
             self.failUnless("test_logging.SampleError: whoops1" in lines[-3])
@@ -1821,7 +1824,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
             self.failUnlessEqual(err, "")
             lines = list(StringIO(out).readlines())
-            line0 = "%s %d" % (d.format_time(events[1]["d"]["time"]),
+            line0 = "%s %d" % (format_time(events[1]["d"]["time"], tmode),
                                events[1]["d"]["num"])
             self.failUnlessEqual(lines[0].strip(), line0)
             self.failUnless(lines[1].strip().endswith(" 1"))
@@ -1840,8 +1843,8 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             lines = lines[5:]
             line0 = "local#%d rx(%s) emit(%s): one" % \
                     (events[1]["d"]["num"],
-                     d.format_time(events[1]["rx_time"]),
-                     d.format_time(events[1]["d"]["time"]))
+                     format_time(events[1]["rx_time"], tmode),
+                     format_time(events[1]["d"]["time"], tmode))
             self.failUnlessEqual(lines[0].strip(), line0)
             self.failUnless(lines[-1].strip().endswith(" four"))
 

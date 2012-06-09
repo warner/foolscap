@@ -1,7 +1,8 @@
 
-import sys, pickle, time, errno
+import sys, pickle, errno
 from twisted.python import usage
 from foolscap.logging.log import format_message
+from foolscap.util import format_time
 
 class DumpOptions(usage.Options):
     stdout = sys.stdout
@@ -79,26 +80,10 @@ class LogDumper:
             if "d" in e:
                 self.print_event(e)
 
-    def format_time(self, when):
-        mode = self.options["timestamps"]
-        if mode == "short-local":
-            time_s = time.strftime("%H:%M:%S", time.localtime(when))
-            time_s = time_s + ".%03d" % int(1000*(when - int(when)))
-        elif mode == "long-local":
-            lt = time.localtime(when)
-            time_s = time.strftime("%Y-%m-%d_%H:%M:%S", lt)
-            time_s = time_s + ".%06d" % int(1000000*(when - int(when)))
-            time_s += time.strftime("%z", lt)
-        elif mode == "utc":
-            time_s = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime(when))
-            time_s = time_s + ".%06d" % int(1000000*(when - int(when)))
-            time_s += "Z"
-        return time_s
-
     def print_event(self, e):
         short = e['from'][:8]
         d = e['d']
-        when = self.format_time(d['time'])
+        when = format_time(d['time'], self.options["timestamps"])
         if self.options['just-numbers']:
             print >>self.options.stdout, when, d.get('num')
             return
@@ -111,7 +96,7 @@ class LogDumper:
 
         t = "%s#%d " % (short, d['num'])
         if self.options['rx-time']:
-            rx_when = self.format_time(e['rx_time'])
+            rx_when = format_time(e['rx_time'], self.options["timestamps"])
             t += "rx(%s) " % rx_when
             t += "emit(%s)" % when
         else:

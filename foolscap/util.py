@@ -1,5 +1,6 @@
 
 import socket
+import time
 from twisted.internet import defer, reactor, protocol
 
 
@@ -80,3 +81,18 @@ def get_local_ip_for(target='A.ROOT-SERVERS.NET'):
         localip = None
     port.stopListening() # note, this returns a Deferred
     return localip
+
+def format_time(when, mode):
+    if mode == "short-local":
+        time_s = time.strftime("%H:%M:%S", time.localtime(when))
+        time_s = time_s + ".%03d" % int(1000*(when - int(when)))
+    elif mode == "long-local":
+        lt = time.localtime(when)
+        time_s = time.strftime("%Y-%m-%d_%H:%M:%S", lt)
+        time_s = time_s + ".%06d" % int(1000000*(when - int(when)))
+        time_s += time.strftime("%z", lt)
+    elif mode == "utc":
+        time_s = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime(when))
+        time_s = time_s + ".%06d" % int(1000000*(when - int(when)))
+        time_s += "Z"
+    return time_s

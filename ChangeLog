@@ -1,3 +1,10 @@
+2012-06-09  Brian Warner  <warner@lothar.com>
+
+	* foolscap/util.py (format_time): factor out timestamp formatting
+	from logging/dumper.py
+	* foolscap/logging/dumper.py (LogDumper): same
+	* foolscap/test/test_logging.py (Dumper.test_dump): update
+
 2012-05-31  Zancas  <zancas@leastauthority.com>
 
 	* foolscap/logging/dumper.py: improve docs, closes #191
