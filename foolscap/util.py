@@ -82,6 +82,7 @@ def get_local_ip_for(target='A.ROOT-SERVERS.NET'):
     port.stopListening() # note, this returns a Deferred
     return localip
 
+FORMAT_TIME_MODES = ["short-local", "long-local", "utc"]
 def format_time(when, mode):
     if mode == "short-local":
         time_s = time.strftime("%H:%M:%S", time.localtime(when))
