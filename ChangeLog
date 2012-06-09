@@ -1,3 +1,12 @@
+2012-05-31  Zancas  <zancas@leastauthority.com>
+
+	* foolscap/logging/dumper.py: improve docs, closes #191
+	* foolscap/logging/web.py: same
+
+2012-03-31  Zancas  <zancas@leastauthority.com>
+
+	* doc/using-foolscap.xhtml: minor edits
+
 2012-03-29  Brian Warner  <warner@lothar.com>
 
 	* foolscap/referenceable.py (decode_location_hints): update
