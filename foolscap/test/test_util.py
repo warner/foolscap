@@ -99,3 +99,13 @@ class Base32(unittest.TestCase):
         self.failIf(base32.is_base32(".123"))
         self.failIf(base32.is_base32("_"))
         self.failIf(base32.is_base32("a b c"))
+
+class Time(unittest.TestCase):
+    def test_format(self):
+        when = 1339286175.7071271
+        self.failUnlessEqual(util.format_time(when, "utc"),
+                             "2012-06-09_23:56:15.707127Z")
+        self.failUnlessEqual(util.format_time(when, "epoch"),
+                             "1339286175.707")
+        self.failUnless(":" in util.format_time(when, "short-local"))
+        self.failUnless(":" in util.format_time(when, "long-local"))

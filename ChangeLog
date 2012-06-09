@@ -1,5 +1,7 @@
 2012-06-09  Brian Warner  <warner@lothar.com>
 
+	* foolscap/util.py (format_time): add --epoch, closes #192
+
 	* foolscap/util.py (format_time): factor out timestamp formatting
 	from logging/dumper.py
 	* foolscap/logging/dumper.py (LogDumper): same
