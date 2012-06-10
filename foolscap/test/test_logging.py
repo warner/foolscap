@@ -2108,7 +2108,7 @@ class Web(unittest.TestCase):
                       client.getPage(self.baseurl + "all-events?sort=nested"))
         d.addCallback(_check_all_events)
         d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?timestamps=local"))
+                      client.getPage(self.baseurl + "all-events?timestamps=short-local"))
         d.addCallback(_check_all_events)
         d.addCallback(lambda res:
                       client.getPage(self.baseurl + "all-events?timestamps=utc"))

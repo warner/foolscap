@@ -6,6 +6,7 @@ from twisted.python import usage
 from foolscap import base32
 from foolscap.eventual import fireEventually
 from foolscap.logging import log
+from foolscap.util import format_time, FORMAT_TIME_MODES
 from foolscap.pb import parse_strport
 from twisted.web import server, static, html, resource
 
@@ -20,15 +21,17 @@ class WebViewerOptions(usage.Options):
     optParameters = [
         ("port", "p", "tcp:0",
          "strports specification of where the web server should listen."),
-        ("timestamps", "t", "local", "Default format for timestamps: local or utc"),
+        ("timestamps", "t", "short-local",
+         "Format for timestamps: " + " ".join(FORMAT_TIME_MODES)),
         ]
 
     def parseArgs(self, dumpfile):
         self.dumpfile = dumpfile
 
     def opt_timestamps(self, arg):
-        if arg not in ("local", "utc"):
-            raise usage.UsageError("--timestamps= must be one of 'local' or 'utc'")
+        if arg not in FORMAT_TIME_MODES:
+            raise usage.UsageError("--timestamps= must be one of (%s)" %
+                                   ", ".join(FORMAT_TIME_MODES))
         self["timestamps"] = arg
 
 FLOG_CSS = """
@@ -68,23 +71,10 @@ span.BAD {
 
 """
 
-def format_time(t, mode="local"):
-    lt = time.localtime(t)
-    gt = time.gmtime(t)
-    if mode == "local":
-        time_s = time.strftime("%H:%M:%S", lt)
-        time_s = time_s + ".%03d" % int(1000*(t - int(t)))
-    else:
-        time_s = time.strftime("%H:%M:%S", gt)
-        time_s = time_s + ".%03d" % int(1000*(t - int(t)))
-        time_s += "Z"
-    time_utc = time.strftime("%Y-%m-%d_%H:%M:%S", gt)
-    microsecs_s = ".%06d" % int(1000000*(t - int(t)))
-    time_utc = time_utc + microsecs_s
-    time_utc += "Z"
-    time_local = time.strftime("%Y-%m-%d_%H:%M:%S", lt)
-    time_local = time_local + microsecs_s
-    time_local += time.strftime("%z", lt)
+def web_format_time(t, mode="short-local"):
+    time_s = format_time(t, mode)
+    time_utc = format_time(t, "utc")
+    time_local = format_time(t, "long-local")
     time_ctime = time.ctime(t).replace(" ", "&nbsp;")
     extended = "Local=%s  Local=%s  UTC=%s" % (time_ctime, time_local, time_utc)
     return time_s, extended
@@ -98,7 +88,7 @@ class Welcome(resource.Resource):
     def fromto_time(self, t, timestamps):
         if t is None:
             return "?"
-        ign, extended = format_time(float(t), timestamps)
+        ign, extended = web_format_time(float(t), timestamps)
         tz = time.strftime("%z", time.localtime(t))
         return '<span title="%s">%s (%s)</span>' % (extended, time.ctime(t), tz)
 
@@ -216,7 +206,7 @@ class EventView(resource.Resource):
 
     def render(self, req):
         sortby = req.args.get("sort", ["nested"])[0]
-        timestamps = req.args.get("timestamps", ["local"])[0]
+        timestamps = req.args.get("timestamps", ["short-local"])[0]
 
         data = "<html>"
         data += "<head><title>Foolscap Log Viewer</title>\n"
@@ -228,7 +218,7 @@ class EventView(resource.Resource):
         data += "%d root events " % len(self.viewer.root_events)
 
         url = "/all-events?sort=%s" % sortby
-        other_timestamps = ['<a href="%s&timestamps=local">local</a>' % url,
+        other_timestamps = ['<a href="%s&timestamps=short-local">local</a>' % url,
                             '<a href="%s&timestamps=utc">utc</a>' % url]
         url = "/all-events?timestamps=%s" % timestamps
         other_sortby = ['<a href="%s&sort=nested">nested</a>' % url,
@@ -315,9 +305,9 @@ class LogEvent:
         level = self.e['d'].get('level', log.OPERATIONAL)
         return self.LEVELMAP.get(level, "UNKNOWN")
 
-    def to_html(self, href_base="", timestamps="local"):
+    def to_html(self, href_base="", timestamps="short-local"):
         d = self.e['d']
-        time_short, time_extended = format_time(d['time'], timestamps)
+        time_short, time_extended = web_format_time(d['time'], timestamps)
         msg = html.escape(log.format_message(d))
         if 'failure' in d:
             lines = str(d['failure']).split("\n")

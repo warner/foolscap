@@ -1,5 +1,9 @@
 2012-06-09  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/web.py: make 'flogtool web-viewer --timestamps'
+	use format_time() too (adds --epoch)
+	* foolscap/test/test_logging.py (Web.test_basic): update to match
+
 	* foolscap/util.py (format_time): add --epoch, closes #192
 
 	* foolscap/util.py (format_time): factor out timestamp formatting
