@@ -351,12 +351,16 @@ class IncidentObserver(Referenceable):
         (name, trigger) = self.incidents_wanted.pop(0)
         print >>self.stdout, "fetching incident", name
         d = self.publisher.callRemote("get_incident", name)
+        def _clear_outstanding(res):
+            self.incident_fetch_outstanding = False
+            return res
+        d.addBoth(_clear_outstanding)
         d.addCallback(self._got_incident, name, trigger)
         d.addErrback(tw_log.err,
                      "IncidentObserver.get_incident or _got_incident")
+        d.addBoth(lambda ign: self.maybe_fetch_incident())
 
     def _got_incident(self, incident, name, trigger):
-        self.incident_fetch_outstanding = False
         # We always save the incident to a .bz2 file.
         abs_fn = self.basedir.child(name).path # this prevents evil
         abs_fn += ".flog.bz2"
@@ -366,7 +370,6 @@ class IncidentObserver(Referenceable):
         self.save_incident(abs_fn, incident)
         self.update_latest(name)
         self.gatherer.new_incident(abs_fn, rel_fn, self.tubid_s, incident)
-        self.maybe_fetch_incident()
 
     def save_incident(self, filename, incident):
         now = time.time()

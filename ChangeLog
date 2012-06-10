@@ -1,5 +1,10 @@
 2012-06-09  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/gatherer.py (IncidentObserver): keep fetching
+	incidents even when some fail, to skip ones that can't be
+	serialized due to buggy code calling log.msg() with non-data.
+	Patch by David-Sarah Hopwood. Closes #190.
+
 	* foolscap/logging/web.py: make 'flogtool web-viewer --timestamps'
 	use format_time() too (adds --epoch)
 	* foolscap/test/test_logging.py (Web.test_basic): update to match
