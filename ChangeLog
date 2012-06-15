@@ -1,3 +1,10 @@
+2012-06-15  Brian Warner  <warner@lothar.com>
+
+	* foolscap/pb.py (Tub.stopService): make copies of any lists that
+	we might mutate before iterating over them, in particular
+	self.reconnectors. Otherwise we can fail to shut everything down
+	properly. Closes #196.
+
 2012-06-09  Brian Warner  <warner@lothar.com>
 
 	* foolscap/logging/gatherer.py (IncidentObserver): keep fetching

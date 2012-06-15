@@ -638,10 +638,10 @@ class Tub(service.MultiService):
         self.getReference = self._tubHasBeenShutDown
         self.connectTo = self._tubHasBeenShutDown
         dl = []
-        for rc in self.reconnectors:
+        for rc in list(self.reconnectors):
             rc.stopConnecting()
         del self.reconnectors
-        for l in self.listeners:
+        for l in list(self.listeners):
             # TODO: rethink this, what I want is for stopService to cause all
             # Listeners to shut down, but I'm not sure this is the right way
             # to do it.
@@ -652,7 +652,7 @@ class Tub(service.MultiService):
 
         if self._activeConnectors:
             dl.append(self._allConnectorsAreFinished.whenFired())
-        for c in self._activeConnectors:
+        for c in list(self._activeConnectors):
             c.shutdown()
 
         if self._allConnections:
@@ -660,7 +660,7 @@ class Tub(service.MultiService):
         why = Failure(error.ConnectionDone("Tub.stopService was called"))
         for b in self.brokers.values():
             b.shutdown(why, fireDisconnectWatchers=False)
-        for b in self.unauthenticatedBrokers:
+        for b in list(self.unauthenticatedBrokers):
             b.shutdown(why, fireDisconnectWatchers=False)
 
         return defer.DeferredList(dl)
