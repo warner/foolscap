@@ -1,5 +1,24 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.6.4 (?)
+
+** Minor Changes
+
+'flogtool' log-dumping commands (dump, tail, web-viewer) now accept a
+consistent --timestamps= argument to control how event times are displayed
+(UTC, local, seconds-since-epoch, etc).
+
+Certain invalid "location" strings (accepted by Tub.setLocation and put into
+FURLs) are rejected earlier, and with better error messages. The error
+message produced when 'flogtool dump' is given a FURL-file (instead of an
+event log file) has been improved.
+
+The Incident Gatherer will tolerate incident-file errors better, fetching
+remaining incidents instead of halting.
+
+Other minor bugs were fixed.
+
+
 * Release 0.6.3 (05-Jan-2012)
 
 ** Compatibility Fixes
