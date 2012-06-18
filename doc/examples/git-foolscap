@@ -269,10 +269,6 @@ def run():
             if read_write:
                 git_services.append("git-receive-pack")
 
-            #ok = os.path.join(o.repodir, "git-daemon-export-ok")
-            #if not os.path.exists(ok):
-            #    open(ok, "w").close()
-
             base_swissnum = cli.make_swissnum()
 
             # each git command gets a sub-FURL
@@ -283,12 +279,12 @@ def run():
                 if git_service == "git-upload-pack":
                     args.extend(["--strict", "--timeout=600"])
                 args.append(o.repodir)
-                furl,servicedir = cli.add_service(o.serverdir, "run-command", args,
-                                                  comment, swissnum)
+                furl,servicedir = cli.add_service(o.serverdir, "run-command",
+                                                  args, comment, swissnum)
 
-            # use the last furl/swissnum pair to figure out the base FURL. Note
-            # that this isn't a real FURL: you must append one of the accepted
-            # git-command-name strings to hit a real object.
+            # use the last furl/swissnum pair to figure out the base FURL.
+            # Note that this isn't a real FURL: you must append one of the
+            # accepted git-command-name strings to hit a real object.
             assert furl.endswith(swissnum)
             chop = len(swissnum) - len(base_swissnum)
             furl = furl[:-chop]
@@ -335,8 +331,6 @@ def run():
             comment = found[furl]
             if comment:
                 print " "+comment
-            #readwrite = "(and write)" in comment
-            #print " "+readwrite
             print
         if not services:
             print "no git-foolscap FURLs configured"
