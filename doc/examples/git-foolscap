@@ -204,131 +204,131 @@ def run_reactor_and_exit(d):
     reactor.run()
     sys.exit(stash_rc[0])
 
+def run():
+    o = Options()
+    o.parseOptions()
 
-o = Options()
-o.parseOptions()
+    # make sure the flappserver exists
+    server_exists = os.path.exists(os.path.join(o.serverdir, "flappserver.tac"))
 
-# make sure the flappserver exists
-server_exists = os.path.exists(os.path.join(o.serverdir, "flappserver.tac"))
+    command = o.subCommand
+    if not command:
+        print str(o)
+        sys.exit(0)
+    so = o.subOptions
 
-command = o.subCommand
-if not command:
-    print str(o)
-    sys.exit(0)
-so = o.subOptions
+    if command == "create":
+        d = maybe_create_server(server_exists, o.serverdir)
+        def _add(ign):
+            read_write = (so["mode"] == "read-write")
 
-if command == "create":
-    d = maybe_create_server(server_exists, o.serverdir)
-    def _add(ign):
-        read_write = (so["mode"] == "read-write")
+            comment = "allow read "
+            if read_write:
+                comment += "(and write) "
+            comment += "access to the Git repository at %s" % o.repodir
+            if so["comment"]:
+                comment += " (%s)" % so["comment"]
 
-        comment = "allow read "
-        if read_write:
-            comment += "(and write) "
-        comment += "access to the Git repository at %s" % o.repodir
-        if so["comment"]:
-            comment += " (%s)" % so["comment"]
+            # git-upload-pack handles "git fetch" and "git ls-remote"
+            git_services = ["git-upload-pack"]
+            # git-upload-archive handles "git archive --remote"
+            if read_write:
+                git_services.append("git-receive-pack")
 
-        # git-upload-pack handles "git fetch" and "git ls-remote"
-        git_services = ["git-upload-pack"]
-        # git-upload-archive handles "git archive --remote"
-        if read_write:
-            git_services.append("git-receive-pack")
+            #ok = os.path.join(o.repodir, "git-daemon-export-ok")
+            #if not os.path.exists(ok):
+            #    open(ok, "w").close()
 
-        #ok = os.path.join(o.repodir, "git-daemon-export-ok")
-        #if not os.path.exists(ok):
-        #    open(ok, "w").close()
+            base_swissnum = cli.make_swissnum()
 
-        base_swissnum = cli.make_swissnum()
+            # each git command gets a sub-FURL
+            for git_service in git_services:
+                swissnum = "%s-%s" % (base_swissnum, git_service)
+                args = ["--accept-stdin", "/"]
+                args.append(git_service)
+                if git_service == "git-upload-pack":
+                    args.extend(["--strict", "--timeout=600"])
+                args.append(o.repodir)
+                furl,servicedir = cli.add_service(o.serverdir, "run-command", args,
+                                                  comment, swissnum)
 
-        # each git command gets a sub-FURL
-        for git_service in git_services:
-            swissnum = "%s-%s" % (base_swissnum, git_service)
-            args = ["--accept-stdin", "/"]
-            args.append(git_service)
-            if git_service == "git-upload-pack":
-                args.extend(["--strict", "--timeout=600"])
-            args.append(o.repodir)
-            furl,servicedir = cli.add_service(o.serverdir, "run-command", args,
-                                              comment, swissnum)
+            # use the last furl/swissnum pair to figure out the base FURL. Note
+            # that this isn't a real FURL: you must append one of the accepted
+            # git-command-name strings to hit a real object.
+            assert furl.endswith(swissnum)
+            chop = len(swissnum) - len(base_swissnum)
+            furl = furl[:-chop]
 
-        # use the last furl/swissnum pair to figure out the base FURL. Note
-        # that this isn't a real FURL: you must append one of the accepted
-        # git-command-name strings to hit a real object.
-        assert furl.endswith(swissnum)
-        chop = len(swissnum) - len(base_swissnum)
-        furl = furl[:-chop]
+            print "%s FURL added:" % so["mode"]
+            print furl
+        d.addCallback(_add)
+        run_reactor_and_exit(d)
 
-        print "%s FURL added:" % so["mode"]
-        print furl
-    d.addCallback(_add)
-    run_reactor_and_exit(d)
+    elif command == "revoke":
+        if not server_exists:
+            raise UsageError("serverdir doesn't exist")
+        furl = so["FURL"]
+        swissnum = furl.split("/")[-1]
+        for d in os.list(os.path.join(o.serverdir, "services")):
+            if d.startswith(swissnum):
+                found = True
+                shutil.rmtree(os.path.join(o.serverdir, "services", d))
+        if found:
+            print "removed %s" % swissnum
+            if os.path.exists(os.path.join(o.serverdir, "twistd.pid")):
+                print "restarting server.."
+                restart_server() # never returns
+        else:
+            print "No such FURL found!"
+            sys.exit(1)
 
-elif command == "revoke":
-    if not server_exists:
-        raise UsageError("serverdir doesn't exist")
-    furl = so["FURL"]
-    swissnum = furl.split("/")[-1]
-    for d in os.list(os.path.join(o.serverdir, "services")):
-        if d.startswith(swissnum):
-            found = True
-            shutil.rmtree(os.path.join(o.serverdir, "services", d))
-    if found:
-        print "removed %s" % swissnum
-        if os.path.exists(os.path.join(o.serverdir, "twistd.pid")):
-            print "restarting server.."
-            restart_server() # never returns
+    elif command == "list":
+        if not server_exists:
+            raise UsageError("serverdir doesn't exist")
+        services = cli.list_services(o.serverdir)
+        found = {}
+        for s in services:
+            if s.service_type != "run-command":
+                pass
+            if not re.search(r'allow read (\(and write\) )?access to the Git repository at',
+                             s.comment):
+                pass
+            chop = len(s.swissnum) - s.swissnum.index("-")
+            base_furl = s.furl[:-chop]
+            found[base_furl] = s.comment # possibly None
+        for furl in sorted(found.keys()):
+            print furl
+            comment = found[furl]
+            if comment:
+                print " "+comment
+            #readwrite = "(and write)" in comment
+            #print " "+readwrite
+            print
+        if not services:
+            print "no git-foolscap FURLs configured"
+
+    elif command == "start": # also does restart
+        if not server_exists:
+            raise UsageError("serverdir doesn't exist")
+        restart_server() # this never returns
+
+    elif command == "stop":
+        if not server_exists:
+            raise UsageError("serverdir doesn't exist")
+        stop_server() # this never returns
+
     else:
-        print "No such FURL found!"
-        sys.exit(1)
-
-elif command == "list":
-    if not server_exists:
-        raise UsageError("serverdir doesn't exist")
-    services = cli.list_services(o.serverdir)
-    found = {}
-    for s in services:
-        if s.service_type != "run-command":
-            pass
-        if not re.search(r'allow read (\(and write\) )?access to the Git repository at',
-                         s.comment):
-            pass
-        chop = len(s.swissnum) - s.swissnum.index("-")
-        base_furl = s.furl[:-chop]
-        found[base_furl] = s.comment # possibly None
-    for furl in sorted(found.keys()):
-        print furl
-        comment = found[furl]
-        if comment:
-            print " "+comment
-        #readwrite = "(and write)" in comment
-        #print " "+readwrite
-        print
-    if not services:
-        print "no git-foolscap FURLs configured"
-
-elif command == "start": # also does restart
-    if not server_exists:
-        raise UsageError("serverdir doesn't exist")
-    restart_server() # this never returns
-
-elif command == "stop":
-    if not server_exists:
-        raise UsageError("serverdir doesn't exist")
-    stop_server() # this never returns
-
-else:
-    # I think this should never be reached
-    raise UsageError("unknown subcommand '%s'" % command)
-
-
+        # I think this should never be reached
+        raise UsageError("unknown subcommand '%s'" % command)
 
 
 '''
-
 You can create as many FURLs as you want. Each one can be revoked separately.
 To revoke a FURL, use "flappserver list" to find the one you want, get its
 "swissnum", delete the corresponding directory under
 ~/.flappserver/services/SWISSNUM , then use "flappserver restart
 ~/.flappserver" to restart the server.
 '''
+
+if __name__ == '__main__':
+    run()
