@@ -103,6 +103,17 @@ def get_repodir():
         raise usage.UsageError("%s doesn't look like a .git directory" % repodir)
     return repodir
 
+def get_reponame(repodir):
+    # This should handle both .git/ directories (using the parent directory
+    # name), and bare "foo.git" directories (using the part before ".git").
+    base = os.path.basename(repodir)
+    if base == ".git":
+        name = os.path.basename(os.path.split(repodir)[0])
+    else:
+        assert base.endswith(".git")
+        name = base[:-len(".git")]
+    return name
+
 class BaseOptions(usage.Options):
     def opt_h(self):
         return self.opt_help()
@@ -246,6 +257,7 @@ def run_reactor_and_exit(d):
 
 def do_create(so, server_exists):
     repodir = so.parent.repodir
+    reponame = get_reponame(repodir)
     serverdir = so.parent.serverdir
     d = maybe_create_server(server_exists, serverdir)
     def _add(ign):
@@ -264,7 +276,7 @@ def do_create(so, server_exists):
         if read_write:
             git_services.append("git-receive-pack")
 
-        base_swissnum = cli.make_swissnum()
+        base_swissnum = cli.make_swissnum() + "/" + reponame
 
         # each git command gets a sub-FURL
         for git_service in git_services:

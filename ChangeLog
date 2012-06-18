@@ -1,5 +1,11 @@
 2012-06-18  Brian Warner  <warner@lothar.com>
 
+	* doc/examples/git-foolscap (create): add the git reponame to the
+	generated FURL (e.g. pb://TUBID@HINT/SWISS/REPONAME) so that 'git
+	clone' will give the checkout a meaningful name. Technically, the
+	'swissnum' is thus SWISS/REPONAME, but foolscap doesn't care about
+	slashes inside swissnums.
+
 	* foolscap/appserver/cli.py (Stop): add --quiet to hush the "this
 	does not look like a running node" message
 	(Restart.run): use --quiet
