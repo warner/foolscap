@@ -1,3 +1,8 @@
+2012-06-18  Brian Warner  <warner@lothar.com>
+
+	* doc/examples/git-foolscap: make it importable, add run(). Fix
+	help text.
+
 2012-06-15  Brian Warner  <warner@lothar.com>
 
 	* NEWS: update with all recent changes

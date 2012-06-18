@@ -2,13 +2,34 @@
 
 import os.path, sys, re, shutil
 from subprocess import Popen, PIPE
-from twisted.python.usage import Options, UsageError
+from twisted.python import usage
 from foolscap.appserver import cli
 from foolscap.api import fireEventually
-from twisted.internet import reactor, defer
+from twisted.internet import reactor
 
+SYNOPSIS = '''\
+usage:
+ git-foolscap [--flappserver=] create [--comment=] read-only|read-write
+ git-foolscap [--flappserver=] start
+ git-foolscap [--flappserver=] stop
+ git-foolscap [--flappserver=] list
+ git-foolscap [--flappserver=] revoke FURL
+
+    --flappserver   Use a pre-configured flappserver directory instead of
+                    .git/foolscap
 '''
-Use this tool to publish a git repository via Foolscap application server
+SHORTHELP = '''\
+Use this tool to publish a git repository via a Foolscap application server
+(aka "flappserver"). Once configured, this creates an access string known as
+a "FURL". You can then use this FURL as a git URL on any client which has the
+"git-remote-pb" helper installed.
+
+Run "git-foolscap --help" for more deatils (not "git foolscap --help", as
+there is no man page).
+'''
+
+LONGHELP = '''\
+Use this tool to publish a git repository via a Foolscap application server
 (aka "flappserver"). Once configured, this creates an access string known as
 a "FURL". You can then use this FURL as a git URL on any client which has the
 "git-remote-pb" helper installed.
@@ -71,7 +92,6 @@ FURL to, so you can revoke the right one later:
 To list all the FURLs that are enabled, use "list":
 
  git foolscap list
-
 '''
 
 def probably_git_repo(repodir):
@@ -83,64 +103,74 @@ def get_repodir():
     d = Popen(["git", "rev-parse", "--git-dir"], stdout=PIPE).communicate()[0]
     repodir = os.path.abspath(os.path.expanduser(d.strip()))
     if not probably_git_repo(repodir):
-        raise UsageError("%s doesn't look like a .git directory" % repodir)
+        raise usage.UsageError("%s doesn't look like a .git directory" % repodir)
     return repodir
 
-class BaseOptions(Options):
-    opt_h = Options.opt_help
+class BaseOptions(usage.Options):
+    def opt_h(self):
+        return self.opt_help()
 
     def getSynopsis(self):
-        # the default usage.Options.getSynopsis prepends 'flappserver'
-        # Options.synopsis, which looks weird
+        # the default usage.Options.getSynopsis prepends the parent's
+        # synopsis, which looks weird
         return self.synopsis
 
 class CreateOptions(BaseOptions):
-    synopsis = "git-foolscap [--flappserver=] create read-only|read-write COMMENT [flappserver-create-args]"
+    synopsis = "git-foolscap [--flappserver=] create [--comment=] read-write|read-only"
     optParameters = [
         ("comment", None, None, "add a note to the flappserver comment field"),
         ]
-    optFlags = [
-        # TODO: not flags, but I want the help data
-        ("read-only", None, "allow client to fetch changes from this repository"),
-        ("read-write", None, "allow client to push changes into this repository"),
-        ]
 
     def parseArgs(self, mode=None, comment=None):
-        if mode not in ("read-only", "read-write"):
-            raise UsageError("mode must be 'read-only' or 'read-write'")
+        if mode not in ("read-write", "read-only"):
+            raise usage.UsageError("mode must be 'read-write' or 'read-only'")
         self["mode"] = mode
         if not comment:
-            raise UsageError("comment is required")
+            raise usage.UsageError("comment is required")
         self["comment"] = comment
+    longdesc='''Create a new repository-accessing FURL, using the server
+    given by the --flappserver= option (which defaults to .git/foolscap),
+    creating the server if necessary. If the mode is "read-write", the furl
+    will have full pull and push authority. If the mode is "read-only", the
+    furl will only be able to pull from this repo.
+
+    The --comment= is recorded along with the furl and displayed in
+    "git-foolcap list", which may help you remember who has which furl so you
+    can later do "git-foolscap revoke" on the right one.
+    '''
 
 class RevokeOptions(BaseOptions):
     synopsis = "git-foolscap [--flappserver=] revoke FURL"
 
     def parseArgs(self, FURL=None):
         if not FURL:
-            raise UsageError("FURL is required")
+            raise usage.UsageError("FURL is required")
         self["FURL"] = FURL
+
+    longdesc='''Revoke a FURL previously created with "git-foolscap create".
+    Use "git-foolscap list" to get a list of revocable FURLs.'''
 
 class ListOptions(BaseOptions):
     synopsis = "git-foolscap [--flappserver=] list"
+    longdesc='''List all FURLs previously created, with their comments.'''
 
 class StartOptions(BaseOptions):
     synopsis = "git-foolscap [--flappserver=] start"
+    longdesc='''Start the flappserver. Must be done before clients can
+    connect.
+
+    You should probably arrange for this to be done at system reboot, perhaps
+    with a crontab entry like "@reboot git-foolscap start GITREPO"'''
 
 class StopOptions(BaseOptions):
     synopsis = "git-foolscap [--flappserver=] stop"
+    longdesc='''Stop the flappserver.'''
 
-class Options(Options):
+class Options(usage.Options):
     synopsis = "git-foolscap [--flappserver=] (create [--comment=] (read-only|read-write))|revoke FURL|list|start|stop"
     optParameters = [
         ("flappserver", None, None, "where the flappserver lives"),
         ]
-    longdesc = """XXXAdd a service (to a pre-existing flappserver) that will
-grant FURL-based access to a single Git repository in REPODIR. Use
-'flappserver create' and 'flappserver start' to launch the server, then run
-me to connect the server and a repository. I will emit a FURL, which can be
-passed to 'git-clone-furl' and 'git-remote-add-furl' (on some other machine)
-to create repos that can access my REPODIR."""
 
     subCommands = [("create", None, CreateOptions, "Publish a new FURL"),
                    ("revoke", None, RevokeOptions, "Revoke a previous FURL"),
@@ -150,7 +180,11 @@ to create repos that can access my REPODIR."""
                    ]
 
     def opt_h(self):
-        return self.opt_help()
+        print SYNOPSIS+"\n"+SHORTHELP
+        sys.exit(0)
+    def opt_help(self):
+        print SYNOPSIS+"\n"+LONGHELP
+        sys.exit(0)
 
     def postOptions(self):
         self.repodir = get_repodir()
@@ -159,15 +193,15 @@ to create repos that can access my REPODIR."""
         else:
             self.serverdir = os.path.join(self.repodir, "foolscap")
 
-def restart_server():
-    fo = Options()
-    fo.basedir = o.serverdir
+def restart_server(serverdir):
+    fo = usage.Options()
+    fo.basedir = serverdir
     fo.stderr = sys.stderr
     fo.twistd_args = []
     return cli.Restart().run(fo) # this never returns
-def stop_server():
-    fo = Options()
-    fo.basedir = o.serverdir
+def stop_server(serverdir):
+    fo = usage.Options()
+    fo.basedir = serverdir
     fo.stderr = sys.stderr
     fo.twistd_args = []
     return cli.Stop().run(fo)
@@ -266,7 +300,7 @@ def run():
 
     elif command == "revoke":
         if not server_exists:
-            raise UsageError("serverdir doesn't exist")
+            raise usage.UsageError("serverdir doesn't exist")
         furl = so["FURL"]
         swissnum = furl.split("/")[-1]
         for d in os.list(os.path.join(o.serverdir, "services")):
@@ -277,14 +311,14 @@ def run():
             print "removed %s" % swissnum
             if os.path.exists(os.path.join(o.serverdir, "twistd.pid")):
                 print "restarting server.."
-                restart_server() # never returns
+                restart_server(o.serverdir) # never returns
         else:
             print "No such FURL found!"
             sys.exit(1)
 
     elif command == "list":
         if not server_exists:
-            raise UsageError("serverdir doesn't exist")
+            raise usage.UsageError("serverdir doesn't exist")
         services = cli.list_services(o.serverdir)
         found = {}
         for s in services:
@@ -309,17 +343,17 @@ def run():
 
     elif command == "start": # also does restart
         if not server_exists:
-            raise UsageError("serverdir doesn't exist")
-        restart_server() # this never returns
+            raise usage.UsageError("serverdir doesn't exist")
+        restart_server(o.serverdir) # this never returns
 
     elif command == "stop":
         if not server_exists:
-            raise UsageError("serverdir doesn't exist")
-        stop_server() # this never returns
+            raise usage.UsageError("serverdir doesn't exist")
+        stop_server(o.serverdir) # this never returns
 
     else:
         # I think this should never be reached
-        raise UsageError("unknown subcommand '%s'" % command)
+        raise usage.UsageError("unknown subcommand '%s'" % command)
 
 
 '''
