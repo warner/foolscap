@@ -108,6 +108,8 @@ class BananaError(Exception):
 
 class NegotiationError(Exception):
     pass
+class DuplicateConnection(NegotiationError):
+    pass
 
 class RemoteNegotiationError(Exception):
     """The other end hung up on us because they had a NegotiationError on

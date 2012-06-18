@@ -1,5 +1,9 @@
 2012-06-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/negotiate.py (Negotiation.negotiationFailed): don't log
+	tracebacks for normal negotiation failures, since they aren't
+	helpful. Closes #195.
+
 	* doc/examples/git-foolscap (create): add the git reponame to the
 	generated FURL (e.g. pb://TUBID@HINT/SWISS/REPONAME) so that 'git
 	clone' will give the checkout a meaningful name. Technically, the

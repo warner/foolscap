@@ -3,11 +3,13 @@
 import time
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor
+from twisted.internet.error import ConnectionDone
 
 from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
 from foolscap.tokens import SIZE_LIMIT, ERROR, NoLocationHintsError, \
-     BananaError, NegotiationError, RemoteNegotiationError
+     BananaError, NegotiationError, RemoteNegotiationError, \
+     DuplicateConnection
 from foolscap.ipb import DeadReferenceError
 from foolscap.banana import int2b128
 from foolscap.logging import log
@@ -414,7 +416,6 @@ class Negotiation(protocol.Protocol):
 
         except Exception, e:
             why = Failure()
-            self.log("negotiation had exception", failure=why)
             if isinstance(e, RemoteNegotiationError):
                 pass # they've already hung up
             else:
@@ -792,7 +793,7 @@ class Negotiation(protocol.Protocol):
                     # reject the new one
                     self.log("rejecting the offer: we already have one",
                              parent=lp)
-                    raise NegotiationError("Duplicate connection")
+                    raise DuplicateConnection("Duplicate connection")
 
             if theirTubRef:
                 # generate a new seqnum, one higher than the last one we've
@@ -1182,12 +1183,6 @@ class Negotiation(protocol.Protocol):
 
     def negotiationFailed(self):
         reason = self.failureReason
-        # TODO: consider logging this unconditionally.. it shouldn't happen
-        # very often, but if it does, it may take a long time to track down.
-        # ACTUALLY, parallel connection-hints cause the slower connection to
-        # hit here with a duplicate connection reason all the time.
-        self.log("Negotiation.negotiationFailed", failure=reason,
-                 level=OPERATIONAL)
         self.stopNegotiationTimer()
         if self.receive_phase != ABANDONED and self.isClient:
             eventually(self.connector.negotiationFailed, self.factory, reason)
@@ -1197,6 +1192,31 @@ class Negotiation(protocol.Protocol):
             # note that this gets called with a NegotiationError, not a
             # Failure. ACTUALLY: not true, gets a Failure
             eventually(cb, reason)
+
+        # Negotiations fail all the time, for benign reasons, so limit how
+        # much we log (the full Failure and traceback is frequently useless
+        # and noisy). Parallel connection-hints cause the slower connection
+        # to be rejected as a duplicate, as do full-mesh applications (like
+        # Tahoe) that construct cross-linked connections.
+        if reason.check(DuplicateConnection):
+            # this happens when we reject a connection during negotiation
+            self.log("negotiationFailed: DuplicateConnection",
+                     level=NOISY, umid="XRFlRA")
+        elif reason.check(ConnectionDone):
+            # this happens to our other losing parallel connection attempts
+            self.log("negotiationFailed: ConnectionDone",
+                     level=NOISY, umid="9khFxA")
+        elif reason.check(RemoteNegotiationError):
+            # and this is how the remote side tells us they rejected or
+            # abandoned a connection. Sometimes it's due to a duplicate
+            # connection, sometimes due to code problems. In either case, the
+            # traceback would only show local code, and is unhelpful.
+            self.log("negotiationFailed: remote: %s" % reason.value.args[0],
+                     level=NOISY, umid="yAsbmA")
+        else:
+            # This shouldn't happen very often.
+            self.log("negotiationFailed", failure=reason,
+                     level=OPERATIONAL, umid="pm2kjg")
 
 # TODO: make sure code that examines self.receive_phase handles ABANDONED
 
@@ -1403,7 +1423,6 @@ class TubConnector(object):
         # this is called if protocol negotiation cannot be established, or if
         # the connection is closed for any reason prior to switching to the
         # Banana protocol
-        self.log("negotiationFailed for factory %s" % factory, failure=reason)
         assert isinstance(reason, Failure), \
                "Hey, %s isn't a Failure" % (reason,)
         if (not self.failureReason or
