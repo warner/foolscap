@@ -1,5 +1,9 @@
 2012-06-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/appserver/cli.py (Stop): add --quiet to hush the "this
+	does not look like a running node" message
+	(Restart.run): use --quiet
+
 	* doc/examples/git-foolscap: make it importable, add run(). Fix
 	help text.
 

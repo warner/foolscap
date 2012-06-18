@@ -322,6 +322,7 @@ class StopOptions(BaseOptions):
     synopsis = "Usage: flappserver stop BASEDIR"
 
     optFlags = [
+        ("quiet", "q", "Be silent when the server is not already running"),
         ]
     optParameters = [
         ]
@@ -355,7 +356,8 @@ class Stop:
         stderr = options.stderr
         pidfile = os.path.join(basedir, "twistd.pid")
         if not os.path.exists(pidfile):
-            print >>stderr, "%s does not look like a running node directory (no twistd.pid)" % basedir
+            if not options["quiet"]:
+                print >>stderr, "%s does not look like a running node directory (no twistd.pid)" % basedir
             # we define rc=2 to mean "nothing is running, but it wasn't me
             # who stopped it"
             return 2
@@ -395,6 +397,7 @@ class RestartOptions(BaseOptions):
 
 class Restart:
     def run(self, options):
+        options["quiet"] = True
         rc = Stop().run(options) # ignore rc
         rc = Start().run(options)
         return rc
