@@ -59,7 +59,7 @@ class Filter:
         if options.newfile.endswith(".bz2"):
             newfile = bz2.BZ2File(newfilename, "w")
         else:
-            newfile = open(newfilename, "w")
+            newfile = open(newfilename, "wb")
         after = options['after']
         if after is not None:
             print >>stdout, " --after: removing events before %s" % time.ctime(after)

@@ -1,5 +1,9 @@
 2012-06-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/filter.py: fix a missing mode=b when opening
+	the output of "flogtool filter", which could result in corrupted
+	flogfiles on windows. Should close #179.
+
 	* setup.py (extras_require): remove "secure_connections" dep on
 	pyOpenSSL, closes #174. Patch by Zooko, thanks!
 	* README.packagers: explain what OS packages and python-package
