@@ -4,9 +4,13 @@ User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
 ** Minor Changes
 
+The unreliable 'extras_require' property in setup.py, which allowed other
+python programs to declare a dependency on foolscap's "secure_connections"
+feature, was removed. See README.packagers for alternate instructions. (#174)
+
 'flogtool' log-dumping commands (dump, tail, web-viewer) now accept a
 consistent --timestamps= argument to control how event times are displayed
-(UTC, local, seconds-since-epoch, etc).
+(UTC, local, seconds-since-epoch, etc). (#192, #193)
 
 Certain invalid "location" strings (accepted by Tub.setLocation and put into
 FURLs) are rejected earlier, and with better error messages. The error
@@ -14,9 +18,12 @@ message produced when 'flogtool dump' is given a FURL-file (instead of an
 event log file) has been improved.
 
 The Incident Gatherer will tolerate incident-file errors better, fetching
-remaining incidents instead of halting.
+remaining incidents instead of halting. (#190)
 
-Other minor bugs were fixed.
+The git-over-foolscap tools were cleaned up, and the documentation was
+brought into line with the implementation. (#197)
+
+Other minor bugs were fixed: #179, #191, #194, #195, #196
 
 
 * Release 0.6.3 (05-Jan-2012)

@@ -1,5 +1,7 @@
 2012-06-18  Brian Warner  <warner@lothar.com>
 
+	* NEWS: update with recent changes
+
 	* foolscap/logging/filter.py: fix a missing mode=b when opening
 	the output of "flogtool filter", which could result in corrupted
 	flogfiles on windows. Should close #179.
