@@ -1,4 +1,4 @@
-include ChangeLog MANIFEST.in NEWS LICENSE
+include ChangeLog MANIFEST.in NEWS LICENSE README.packagers
 include doc/*.txt doc/*.xhtml doc/*.css doc/template.tpl
 include doc/listings/*.py
 include doc/specifications/*.xhtml
