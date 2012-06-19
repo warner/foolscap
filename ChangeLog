@@ -1,5 +1,10 @@
 2012-06-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/logging/log.py (bridgeLogsFromTwisted): ignore multiple
+	calls with identical twisted_logger/foolscap_logger pairs, to
+	avoid recording duplicate twisted log messages in flogfiles.
+	Closes #194.
+
 	* foolscap/negotiate.py (Negotiation.negotiationFailed): don't log
 	tracebacks for normal negotiation failures, since they aren't
 	helpful. Closes #195.

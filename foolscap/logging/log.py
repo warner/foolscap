@@ -371,6 +371,8 @@ class TwistedLogBridge:
         event['from-twisted'] = True
         self.logger.msg(**event)
 
+_bridges = {} # maps (twisted_logger,foolscap_logger) to TwistedLogBridge
+
 def bridgeLogsFromTwisted(tubID=None,
                           twisted_logger=twisted_log.theLogPublisher,
                           foolscap_logger=theLogger):
@@ -380,10 +382,25 @@ def bridgeLogsFromTwisted(tubID=None,
     I can also be called with a specific twisted and/or foolscap logger,
     mostly for unit tests that don't want to modify the default instances.
     For their benefit, I return the bridge.
+
+    I only add one bridge per (twisted_logger,foolscap_logger) pair, even if
+    called multiple times with different TubIDs, so multiple Tubs in a single
+    process that all call tub.setOption(bridge-twisted-logs) will only see
+    one foolscap copy of each twisted event, with the first Tub's tubID.
     """
-    tlb = TwistedLogBridge(tubID, foolscap_logger)
-    twisted_logger.addObserver(tlb.observer)
-    return tlb
+    key = (twisted_logger, foolscap_logger)
+    if key not in _bridges:
+        tlb = TwistedLogBridge(tubID, foolscap_logger)
+        _bridges[key] = tlb
+        twisted_logger.addObserver(tlb.observer)
+    return _bridges[key]
+
+def unbridgeLogsFromTwisted(twisted_logger, tlb):
+    # for tests
+    foolscap_logger = tlb.logger
+    key = (twisted_logger, foolscap_logger)
+    del _bridges[key]
+    twisted_logger.removeObserver(tlb.observer)
 
 def bridgeLogsToTwisted(filter=None,
                         foolscap_logger=theLogger,

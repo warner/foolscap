@@ -519,7 +519,7 @@ class Publish(PollMixin, unittest.TestCase):
                 tw_log.msg("message 2 here")
 
                 # switch to generic (no tubid) bridge
-                tw_log.removeObserver(tlb.observer)
+                log.unbridgeLogsFromTwisted(tw_log, tlb)
                 log.bridgeLogsFromTwisted(None, tw_log)
 
                 tw_log.msg("message 3 here")
