@@ -1,0 +1,24 @@
+Notes to Packagers:
+
+Foolscap "mostly" depends on PyOpenSSL. When absent, Foolscap will degrade
+gracefully: creating a Tub will throw an exception, but it will still be
+possible to create an UnauthenticatedTub.
+
+Since the main benefit of Foolscap is the secure connections it provides,
+which require SSL, all packaged versions should include a dependency on
+whatever package your distribution uses to provide PyOpenSSL
+("python-openssl" on Debian). That way, other programs can depend upon
+"python-foolscap" and get full support for secure connections.
+
+Python programs (using distutils/setuptools/distribute metadata) that want to
+declare their dependency on Foolscap can do so with
+install_requires=["foolscap"], but because the foolscap->PyOpenSSL dep is
+"soft", this is insufficient to ensure that PyOpenSSL also gets installed. We
+flirted briefly with using "extras_require" and creating a special
+"secure_connections" flag, but various problems made it undesirable (see bug
+#174 for details: http://foolscap.lothar.com/trac/ticket/174). So Python
+programs that want Foolscap *and* secure connections should declare an
+install_requires= on both "foolscap" and "pyOpenSSL".
+
+A subsequent version of Foolscap may make PyOpenSSL a hard dependency, and
+remove UnauthenticatedTub altogether.

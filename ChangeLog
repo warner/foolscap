@@ -1,5 +1,10 @@
 2012-06-18  Brian Warner  <warner@lothar.com>
 
+	* setup.py (extras_require): remove "secure_connections" dep on
+	pyOpenSSL, closes #174. Patch by Zooko, thanks!
+	* README.packagers: explain what OS packages and python-package
+	authors need to depend upon to get secure connections
+
 	* foolscap/logging/log.py (bridgeLogsFromTwisted): ignore multiple
 	calls with identical twisted_logger/foolscap_logger pairs, to
 	avoid recording duplicate twisted log messages in flogfiles.
