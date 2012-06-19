@@ -1,5 +1,10 @@
 2012-06-18  Brian Warner  <warner@lothar.com>
 
+	* foolscap/_version.py: release Foolscap-0.6.4
+	* NEWS: update for 0.6.4 release
+
+2012-06-18  Brian Warner  <warner@lothar.com>
+
 	* NEWS: update with recent changes
 
 	* foolscap/logging/filter.py: fix a missing mode=b when opening
