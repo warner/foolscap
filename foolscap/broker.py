@@ -603,7 +603,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
                                   (delivery.obj, methodSchema.name))
                 raise
 
-        answer = call.AnswerSlicer(reqID, res)
+        answer = call.AnswerSlicer(reqID, res, methodSchema.name)
         # once the answer has started transmitting, any exceptions must be
         # logged and dropped, and not turned into an Error to be sent.
         try:
