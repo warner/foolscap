@@ -104,21 +104,22 @@ class PendingRequest(object):
 class ArgumentSlicer(slicer.ScopedSlicer):
     opentype = ('arguments',)
 
-    def __init__(self, args, kwargs):
+    def __init__(self, args, kwargs, methodname="?"):
         slicer.ScopedSlicer.__init__(self, None)
         self.args = args
         self.kwargs = kwargs
         self.which = ""
+        self.methodname = methodname
 
     def sliceBody(self, streamable, banana):
         yield len(self.args)
         for i,arg in enumerate(self.args):
-            self.which = "arg[%d]" % i
+            self.which = "arg[%d]-of-%s" % (i, self.methodname)
             yield arg
         keys = self.kwargs.keys()
         keys.sort()
         for argname in keys:
-            self.which = "arg[%s]" % argname
+            self.which = "arg[%s]-of-%s" % (argname, self.methodname)
             yield argname
             yield self.kwargs[argname]
 
@@ -141,7 +142,7 @@ class CallSlicer(slicer.ScopedSlicer):
         yield self.reqID
         yield self.clid
         yield self.methodname
-        yield ArgumentSlicer(self.args, self.kwargs)
+        yield ArgumentSlicer(self.args, self.kwargs, self.methodname)
 
     def describe(self):
         return "<call-%s-%s-%s>" % (self.reqID, self.clid, self.methodname)
@@ -573,18 +574,19 @@ class CallUnslicer(slicer.ScopedUnslicer):
 class AnswerSlicer(slicer.ScopedSlicer):
     opentype = ('answer',)
 
-    def __init__(self, reqID, results):
+    def __init__(self, reqID, results, methodname="?"):
         assert reqID != 0
         slicer.ScopedSlicer.__init__(self, None)
         self.reqID = reqID
         self.results = results
+        self.methodname = methodname
 
     def sliceBody(self, streamable, banana):
         yield self.reqID
         yield self.results
 
     def describe(self):
-        return "<answer-%s>" % self.reqID
+        return "<answer-%s-to-%s>" % (self.reqID, self.methodname)
 
 class AnswerUnslicer(slicer.ScopedUnslicer):
     request = None
