@@ -1,3 +1,7 @@
+*~
+*.pyc
+
 /build/
 /dist/
 /foolscap.egg-info/
+/_trial_temp*/
