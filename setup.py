@@ -63,6 +63,24 @@ except ImportError:
     pass
 
 if have_setuptools:
+    from setuptools import Command
+
+    class Trial(Command):
+        description = "run trial"
+        user_options = []
+
+        def initialize_options(self):
+            pass
+        def finalize_options(self):
+            pass
+        def run(self):
+            import sys
+            from twisted.scripts import trial
+            sys.argv = ['trial', '--rterrors', 'foolscap.test']
+            trial.run()  # does not return
+
+    setup_args['cmdclass'] = {"trial": Trial, "test": Trial}
+
     import platform
     if platform.system() == "Windows":
         del setup_args["scripts"]
@@ -71,7 +89,7 @@ if have_setuptools:
             "flappserver = foolscap.appserver.cli:run_flappserver",
             "flappclient = foolscap.appserver.client:run_flappclient",
             ] }
-    setup_args['install_requires'] = ['twisted >= 2.4.0']
+    setup_args['install_requires'] = setup_args['tests_require'] = ['twisted >= 2.4.0']
     # note that pyOpenSSL-0.7 and recent Twisted causes unit test failures,
     # see bug #62
 
