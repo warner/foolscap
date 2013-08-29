@@ -595,7 +595,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
             return
         methodSchema = delivery.methodSchema
         assert self.activeLocalCalls[reqID]
+        methodName = None
         if methodSchema:
+            methodName = methodSchema.name
             try:
                 methodSchema.checkResults(res, False) # may raise Violation
             except Violation, v:
@@ -603,7 +605,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
                                   (delivery.obj, methodSchema.name))
                 raise
 
-        answer = call.AnswerSlicer(reqID, res, methodSchema.name)
+        answer = call.AnswerSlicer(reqID, res, methodName)
         # once the answer has started transmitting, any exceptions must be
         # logged and dropped, and not turned into an Error to be sent.
         try:
