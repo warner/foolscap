@@ -3,6 +3,7 @@ from twisted.trial import unittest
 
 from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
+from twisted.web.client import getPage
 from foolscap import pb, negotiate, tokens, eventual
 from foolscap.api import Referenceable, Tub, UnauthenticatedTub, BananaError
 from foolscap.eventual import flushEventualQueue
@@ -74,20 +75,6 @@ class Target(Referenceable):
     def remote_call(self):
         self.calls += 1
 
-
-def getPage(url):
-    """This is a variant of the standard twisted.web.client.getPage, which is
-    smart enough to shut off its connection when its done (even if it fails).
-    """
-    from twisted.web import client
-    scheme, host, port, path = client._parse(url)
-    factory = client.HTTPClientFactory(url)
-    c = reactor.connectTCP(host, port, factory)
-    def shutdown(res, c):
-        c.disconnect()
-        return res
-    factory.deferred.addBoth(shutdown, c)
-    return factory.deferred
 
 class OneTimeDeferred(defer.Deferred):
     def callback(self, res):
