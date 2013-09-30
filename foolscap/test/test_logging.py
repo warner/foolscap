@@ -1891,7 +1891,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
         return d
 
     def test_oops_furl(self):
-        self.basedir = "logging/Dumper/oops_furl"
+        self.basedir = os.path.join("logging", "Dumper", "oops_furl")
         if not os.path.exists(self.basedir):
             os.makedirs(self.basedir)
         fn = os.path.join(self.basedir, "logport.furl")
@@ -1905,7 +1905,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
         d.options.parseOptions([fn])
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnlessEqual(err, "Error: logging/Dumper/oops_furl/logport.furl appears to be a FURL file.\nPerhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?\n")
+        self.failUnlessEqual(err, "Error: %s appears to be a FURL file.\nPerhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?\n" % fn)
 
 class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
