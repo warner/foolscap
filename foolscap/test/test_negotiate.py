@@ -1181,23 +1181,3 @@ class Replacement(BaseMixin, unittest.TestCase):
         # the old rref should be broken (eventually)
         d.addCallback(lambda res: d2)
         return d
-
-
-
-
-# disable all tests unless NEWPB_TEST_NEGOTIATION is set in the environment.
-# The negotiation tests are sensitive to system load, and the intermittent
-# failures are really annoying. The 'right' solution to this involves
-# completely rearchitecting connection establishment, to provide debug/test
-# hooks to get control in between the various phases. It also requires
-# creating a loopback connection type (as a peer of TCP) which has
-# deterministic timing behavior.
-
-#import os
-if False: #not os.environ.get("NEWPB_TEST_NEGOTIATION"):
-    del Basic
-    del Versus
-    del Parallel
-    del CrossfireReverse
-    del Crossfire
-    del Existing
