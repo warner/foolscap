@@ -235,6 +235,9 @@ class Command(Referenceable):
         self.log_stdin = log_stdin
         self.closed = False
     def remote_feed_stdin(self, data):
+        if not isinstance(data, str):
+            raise TypeError("stdin can accept only strings of bytes, not '%s'"
+                            % (type(data),))
         if self.log_stdin:
             log.msg("stdin: %r" % data)
         self.process.write(data)

@@ -103,6 +103,9 @@ class RunCommand(Referenceable, Protocol):
         return self.d
 
     def dataReceived(self, data):
+        if not isinstance(data, str):
+            raise TypeError("stdin can accept only strings of bytes, not '%s'"
+                            % (type(data),))
         # this is from stdin. It shouldn't be called until after _started
         # sets up stdio and self.stdin_writer
         self.stdin_writer.callRemoteOnly("feed_stdin", data)
