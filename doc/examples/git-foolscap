@@ -24,7 +24,7 @@ Use this tool to publish a git repository via a Foolscap application server
 a "FURL". You can then use this FURL as a git URL on any client which has the
 "git-remote-pb" helper installed.
 
-Run "git-foolscap --help" for more deatils (not "git foolscap --help", as
+Run "git-foolscap --help" for more details (not "git foolscap --help", as
 there is no man page).
 '''
 
