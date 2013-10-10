@@ -14,9 +14,10 @@ from foolscap.appserver.client import run_flappclient
 # since git ships with a git-remote-ext that spawns external commands.
 # But that would be hard to cut-and-paste.
 
-# maybe set up two furls, one which invokes git-upload-pack (for fetch from
-# server), second invokes git-receive-pack (for push to server). Switch
-# between them locally.
+# We actually use two furls, both derived from the "base_furl" we are given
+# by appending the specific git command. The first invokes git-upload-pack
+# (for fetch from server), and the second invokes git-receive-pack (for push
+# to server).
 
 repo, base_furl = sys.argv[1:3]
 

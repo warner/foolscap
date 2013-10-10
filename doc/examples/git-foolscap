@@ -276,7 +276,7 @@ def do_create(so, server_exists):
         if read_write:
             git_services.append("git-receive-pack")
 
-        base_swissnum = cli.make_swissnum() + "/" + reponame
+        base_swissnum = cli.make_swissnum() + "-" + reponame
 
         # each git command gets a sub-FURL
         for git_service in git_services:
@@ -320,6 +320,7 @@ def do_revoke(so):
 
 def do_list(so):
     serverdir = so.parent.serverdir
+    furl_prefix = cli.get_furl_prefix(serverdir)
     services = cli.list_services(serverdir)
     found = {}
     for s in services:
@@ -328,8 +329,7 @@ def do_list(so):
         if not re.search(r'allow read (\(and write\) )?access to the Git repository at',
                          s.comment):
             pass
-        chop = len(s.swissnum) - s.swissnum.index("-")
-        base_furl = s.furl[:-chop]
+        base_furl = furl_prefix + "-".join(s.swissnum.split("-", 2)[:-1])
         found[base_furl] = s.comment # possibly None
     for furl in sorted(found.keys()):
         print furl

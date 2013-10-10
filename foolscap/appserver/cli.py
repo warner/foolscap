@@ -252,8 +252,11 @@ class ListOptions(BaseOptions):
 class FlappService:
     pass
 
+def get_furl_prefix(basedir):
+    return open(os.path.join(basedir, "furl_prefix")).read().strip()
+
 def list_services(basedir):
-    furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
+    furl_prefix = get_furl_prefix(basedir)
     services = []
     services_basedir = os.path.join(basedir, "services")
     for swissnum in sorted(os.listdir(services_basedir)):
