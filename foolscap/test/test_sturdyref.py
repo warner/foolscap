@@ -10,7 +10,14 @@ class URL(unittest.TestCase):
         sr = SturdyRef("pb://%s@127.0.0.1:9900/name" % TUB1)
         self.failUnlessEqual(sr.tubID, TUB1)
         self.failUnlessEqual(sr.locationHints,
-                             [ ("ipv4", "127.0.0.1", 9900) ])
+                             [ ("tcp", "127.0.0.1", 9900) ])
+        self.failUnlessEqual(sr.name, "name")
+
+    def testURLTcp(self):
+        sr = SturdyRef("pb://%s@tcp:host=127.0.0.1:port=9900/name" % TUB1)
+        self.failUnlessEqual(sr.tubID, TUB1)
+        self.failUnlessEqual(sr.locationHints,
+                             [ ("tcp", "127.0.0.1", 9900) ])
         self.failUnlessEqual(sr.name, "name")
 
     def testTubIDExtensions(self):
@@ -24,7 +31,7 @@ class URL(unittest.TestCase):
         furl = "pb://%s@127.0.0.1:9900,udp:127.0.0.1:7700/name" % TUB1
         sr = SturdyRef(furl)
         self.failUnlessEqual(sr.locationHints,
-                             [ ("ipv4", "127.0.0.1", 9900) ])
+                             [ ("tcp", "127.0.0.1", 9900) ])
         self.failUnlessEqual(sr.getURL(), furl)
 
         furl = "pb://%s@udp:127.0.0.1:7700/name" % TUB1
@@ -54,27 +61,14 @@ class URL(unittest.TestCase):
         sr = SturdyRef(url)
         self.failUnlessEqual(sr.tubID, TUB1)
         self.failUnlessEqual(sr.locationHints,
-                             [ ("ipv4", "127.0.0.1", 9900),
-                               ("ipv4", "remote", 8899) ])
+                             [ ("tcp", "127.0.0.1", 9900),
+                               ("tcp", "remote", 8899) ])
         self.failUnlessEqual(sr.name, "name")
 
     def testBrokenHints(self):
-        # This should throw an exception
-        furl = "pb://%s@127.0.0.1/name" % TUB1 # missing portnum
-        f = self.failUnlessRaises(BadFURLError, SturdyRef, furl)
-        def _check(f, hostname):
-            self.failUnless(("bad connection hint '%s' "
-                             "(hostname, but no port)" % hostname) in str(f),
-                            f)
-        _check(f, "127.0.0.1")
-
-        furl = "pb://%s@example.com/name" % TUB1 # missing portnum
-        f = self.failUnlessRaises(BadFURLError, SturdyRef, furl)
-        _check(f, "example.com")
-
         furl = "pb://%s@,/name" % TUB1 # empty hints are not allowed
         f = self.failUnlessRaises(BadFURLError, SturdyRef, furl)
-        _check(f, "")
+        self.failUnless("empty string" in str(f), f)
 
         furl = "pb://%s@/name" % TUB1 # this is ok, and means "unrouteable"
         sr = SturdyRef(furl)

@@ -1314,7 +1314,7 @@ class TubConnector(object):
         # filter out the hints that we can actually use.. there may be
         # extensions from the future sitting in this list
         for h in self.target.getLocations():
-            if h[0] == "ipv4":
+            if h[0] == "tcp":
                 (host, port) = h[1:]
                 hints.append( (host, port) )
         self.remainingLocations = hints

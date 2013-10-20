@@ -773,34 +773,42 @@ class BadFURLError(Exception):
 AUTH_STURDYREF_RE = re.compile(r"pb://([^@]+)@([^/]*)/(.+)$")
 NONAUTH_STURDYREF_RE = re.compile(r"pbu://([^/]*)/(.+)$")
 
-IPV4_HINT_RE = re.compile(r"^([^:]+):(\d+)$")
+# This can match IPv4 IP addresses + port numbers *or* host names +
+# port numbers.
+DOTTED_QUAD_RESTR=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+
+DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
+
+OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR, DNS_NAME_RESTR))
+
 def encode_location_hint(hint):
-    assert hint[0] == "ipv4"
+    assert hint[0] == "tcp"
     host, port = hint[1:]
     return "%s:%d" % (host, port)
 def decode_location_hints(hints_s):
     hints = []
     if hints_s:
         for hint_s in hints_s.split(","):
-            if ":" not in hint_s:
+            if hint_s == '':
                 raise BadFURLError("bad connection hint '%s' "
-                                   "(hostname, but no port)" % hint_s)
-            mo = IPV4_HINT_RE.search(hint_s)
+                                   "(empty string)" % hint_s)
+
+            mo = OLD_STYLE_HINT_RE.search(hint_s)
             if mo:
-                hint = ( "ipv4", mo.group(1), int(mo.group(2)) )
+                hint = ( "tcp", mo.group(1), int(mo.group(2)) )
                 hints.append(hint)
             else:
-                # This is some extension from the future that we will ignore.
-                # All extensions are required to start with "TYPE:" (where
-                # TYPE is alphanumeric), and then can contain any characters
-                # except "," and "/". Most are expected to use ":"-separated
-                # arguments. To avoid being interpreted as an implicit ipv4
-                # hint, the part after "TYPE:" may not be all-digits. So
-                # "foo:" and "bar:stuff" and "baz:12stuff" and
-                # "foo:1234:stuff" and "foo:123:456" and "foo:123:" are all
-                # valid extensions, but "foo:123" is not (it looks like
-                # host="foo" and port="123").
-                pass
+                pieces = hint_s.split(':')
+                if pieces[0] == 'tcp':
+                    fields = dict([f.split("=") for f in pieces[1:]])
+                    hint = ("tcp", fields["host"], int(fields["port"]))
+                    hints.append(hint)
+                else:
+                    # Ignore other things. Future versions of foolscap
+                    # may put different hints in here, such that other
+                    # instances of those future versions can use them,
+                    # but instances of this version will ignore them.
+                    pass
     return hints
 
 def decode_furl(furl):
@@ -868,7 +876,7 @@ class SturdyRef(Copyable, RemoteCopy):
     name = None
 
     def __init__(self, url=None):
-        self.locationHints = [] # list of ("ipv4", host, port) tuples
+        self.locationHints = [] # list of (type, host, port) tuples
         self.url = url
         if url:
             self.encrypted, self.tubID, self.locationHints, self.name = \
