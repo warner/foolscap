@@ -779,12 +779,29 @@ DOTTED_QUAD_RESTR=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
 
 DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
 
-OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR, DNS_NAME_RESTR))
+OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+                                                        DNS_NAME_RESTR))
 
 def encode_location_hint(hint):
     assert hint[0] == "tcp"
     host, port = hint[1:]
     return "%s:%d" % (host, port)
+
+# Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
+# then can contain any characters except "," and "/". These are expected to
+# look like Twisted endpoin descriptors, or contain other ":"-separated
+# fields (e.g. "TYPE:key=value:key=value" or "TYPE:stuff:morestuff"). We also
+# accept old-syle implicit TCP hints (host:port). To avoid being interpreted
+# as an old-style hint, the part after TYPE: may not consist of only 1-5
+# digits (so "type:123" will be treated as type="tcp" and hostname="type").
+
+# Future versions of foolscap may put hints in their FURLs which we do not
+# understand. We will ignore such hints. This version understands two types
+# of hints:
+#
+#  HOST:PORT                 (implicit tcp)
+#  tcp:host=HOST:port=POST   (endpoint syntax for TCP connections)
+
 def decode_location_hints(hints_s):
     hints = []
     if hints_s:
@@ -804,10 +821,7 @@ def decode_location_hints(hints_s):
                     hint = ("tcp", fields["host"], int(fields["port"]))
                     hints.append(hint)
                 else:
-                    # Ignore other things. Future versions of foolscap
-                    # may put different hints in here, such that other
-                    # instances of those future versions can use them,
-                    # but instances of this version will ignore them.
+                    # Ignore other things from the future.
                     pass
     return hints
 
