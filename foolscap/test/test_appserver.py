@@ -350,7 +350,6 @@ class Server(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
                                       self.tub.getReference,
                                       self.furl+".bogus"))
         return d
-    
 
 class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
     def setUp(self):
@@ -497,7 +496,7 @@ class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
         d.addCallback(_check_client4)
 
         return d
-    
+
 class Client(unittest.TestCase):
 
     def run_client(self, *args):
@@ -718,4 +717,3 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
         d.addCallback(_check_client7)
 
         return d
-    

@@ -473,4 +473,3 @@ class BadLocationFURL(unittest.TestCase):
             self.failUnless(f.check(NoLocationHintsError), f)
         d.addBoth(_check)
         return d
-    
