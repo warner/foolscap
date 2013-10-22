@@ -421,9 +421,6 @@ class Tub(service.MultiService):
         ignored = self.getLogPortFURL()
         del ignored
         tubID = self.tubID
-        if tubID is None:
-            # RILogGatherer.logport requires a string for nodeid=
-            tubID = '<unauth>'
         rref.callRemoteOnly('logport', tubID, self.getLogPort())
 
 
