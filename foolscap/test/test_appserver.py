@@ -716,4 +716,22 @@ class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
                                  "cat: foo.txt: No such file or directory")
         d.addCallback(_check_client7)
 
+    def test_direct(self):
+        # connecting to the furl directly might let you bypass the schema and
+        # do something surprising like sending unicode instead of bytes
+        basedir = "appserver/RunCommand/direct"
+        os.makedirs(basedir)
+        self.tub = Tub()
+        self.tub.setServiceParent(self.s)
+        server = services.CommandRunner(basedir, self.tub, OPTIONS)
+        server.setServiceParent(self.s)
+        furl = self.tub.registerReference(server)
+        rc = client.RunCommand()
+        client_options = client.parse_options("run-command", [],
+                                              StringIO(), StringIO(),
+                                              client.StandardIO())
+        d = self.tub.getReference(furl)
+        d.addCallback(rc.run, client_options)
+        d.addCallback(lambda _ign: self.rref.callRemote("execute", X))
+
         return d
