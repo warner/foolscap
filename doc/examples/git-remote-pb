@@ -20,7 +20,7 @@ from foolscap.appserver.client import run_flappclient
 
 repo, base_furl = sys.argv[1:3]
 
-debug = False
+debug = True
 
 while True:
     command = sys.stdin.readline().strip()

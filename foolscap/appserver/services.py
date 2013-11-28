@@ -203,6 +203,8 @@ the exit code, optionally providing stdin and receiving stdout/stderr.
         self.targetdir = targetdir
         self.command_argv = command_argv
 
+import itertools, binascii
+counter = itertools.count()
 class CommandPP(protocol.ProcessProtocol):
     def __init__(self, outpipe, errpipe, watcher, log_stdout, log_stderr):
         self.outpipe = outpipe
@@ -210,24 +212,36 @@ class CommandPP(protocol.ProcessProtocol):
         self.watcher = watcher
         self.log_stdout = log_stdout
         self.log_stderr = log_stderr
+        self.counter = counter.next()
+        log.msg("CommandPP opening log /tmp/fl-serv-%d-*" % self.counter)
+        self.logfile_out = open("/tmp/fl-serv-%d-out" % self.counter, "w")
+        self.logfile_err = open("/tmp/fl-serv-%d-err" % self.counter, "w")
+        self.logfile_in = open("/tmp/fl-serv-%d-in" % self.counter, "w")
     def outReceived(self, data):
         if self.outpipe:
             self.outpipe.callRemoteOnly("stdout", data)
         if self.log_stdout:
             sent = {True:"sent", False:"not sent"}[bool(self.outpipe)]
             log.msg("stdout (%s): %r" % (sent, data))
+        self.logfile_out.write(binascii.hexlify(data))
     def errReceived(self, data):
         if self.errpipe:
             self.errpipe.callRemoteOnly("stderr", data)
         if self.log_stderr:
             sent = {True:"sent", False:"not sent"}[bool(self.errpipe)]
             log.msg("stderr (%s): %r" % (sent, data))
+        self.logfile_err.write(binascii.hexlify(data))
+    def log_in(self, data):
+        self.logfile_in.write(binascii.hexlify(data))
 
     def processEnded(self, reason):
         e = reason.value
         code = e.exitCode
         log.msg("process ended (signal=%s, rc=%s)" % (e.signal, code))
         self.watcher.callRemoteOnly("done", e.signal, code)
+        self.logfile_out.close()
+        self.logfile_err.close()
+        self.logfile_in.close()
 
 class Command(Referenceable):
     def __init__(self, process, log_stdin):
@@ -241,6 +255,7 @@ class Command(Referenceable):
         if self.log_stdin:
             log.msg("stdin: %r" % data)
         self.process.write(data)
+        self.process.log_in(data)
     def remote_close_stdin(self):
         if not self.closed:
             self.closed = True

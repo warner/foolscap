@@ -86,6 +86,8 @@ class StandardIO(TwitchyStandardIO):
 from twisted.internet.protocol import Protocol
 #from zope.interface import implements
 #from twisted.internet.interfaces import IHalfCloseableProtocol
+import itertools, binascii
+counter= itertools.count()
 
 class RunCommand(Referenceable, Protocol):
     #implements(IHalfCloseableProtocol)
@@ -97,6 +99,11 @@ class RunCommand(Referenceable, Protocol):
         self.stdio = options.stdio
         self.stdout = options.stdout
         self.stderr = options.stderr
+        self.counter= counter.next()
+        sys.stderr.write("RunCommand opening log /tmp/fl-cli-%d-*\n" % self.counter)
+        self.log_in = open("/tmp/fl-cli-%d-in" % self.counter, "w")
+        self.log_out = open("/tmp/fl-cli-%d-out" % self.counter, "w")
+        self.log_err = open("/tmp/fl-cli-%d-err" % self.counter, "w")
         d = rref.callRemote("execute", self)
         d.addCallback(self._started)
         d.addErrback(self._err)
@@ -108,6 +115,7 @@ class RunCommand(Referenceable, Protocol):
                             % (type(data),))
         # this is from stdin. It shouldn't be called until after _started
         # sets up stdio and self.stdin_writer
+        self.log_in.write(binascii.hexlify(data))
         self.stdin_writer.callRemoteOnly("feed_stdin", data)
 
     def connectionLost(self, reason):
@@ -121,12 +129,18 @@ class RunCommand(Referenceable, Protocol):
         # otherwise they don't want our stdin, so leave stdin_writer=None
 
     def remote_stdout(self, data):
+        self.log_out.write(binascii.hexlify(data))
         self.stdout.write(data)
         self.stdout.flush()
     def remote_stderr(self, data):
+        self.log_err.write(binascii.hexlify(data))
         self.stderr.write(data)
         self.stderr.flush()
     def remote_done(self, signal, exitcode):
+        sys.stderr.write("RC.r_done(%s %s)\n" % (signal, exitcode))
+        self.log_in.close()
+        self.log_out.close()
+        self.log_err.close()
         if signal:
             self._done(127)
         else:
