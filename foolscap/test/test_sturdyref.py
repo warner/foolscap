@@ -13,12 +13,32 @@ class URL(unittest.TestCase):
                              [ ("tcp", "127.0.0.1", 9900) ])
         self.failUnlessEqual(sr.name, "name")
 
-    def testURLTcp(self):
+    def testEndpointsURLTcp(self):
         sr = SturdyRef("pb://%s@tcp:host=127.0.0.1:port=9900/name" % TUB1)
         self.failUnlessEqual(sr.tubID, TUB1)
         self.failUnlessEqual(sr.locationHints,
                              [ ("tcp", "127.0.0.1", 9900) ])
         self.failUnlessEqual(sr.name, "name")
+
+    def testEndpointsURLTcpCompact(self):
+        sr = SturdyRef("pb://%s@tcp:127.0.0.1:9900/name" % TUB1)
+        self.failUnlessEqual(sr.tubID, TUB1)
+        self.failUnlessEqual(sr.locationHints,
+                             [ ("tcp", "127.0.0.1", 9900) ])
+        self.failUnlessEqual(sr.name, "name")
+
+    def testEndpointsURLTcpMixed(self):
+        sr1 = SturdyRef("pb://%s@tcp:host=127.0.0.1:9900/name" % TUB1)
+        sr2 = SturdyRef("pb://%s@tcp:127.0.0.1:port=9900/name" % TUB1)
+        self.failUnlessEqual(sr1, sr2)
+        self.failUnlessEqual(sr1.tubID, TUB1)
+        self.failUnlessEqual(sr1.locationHints,
+                             [ ("tcp", "127.0.0.1", 9900) ])
+        self.failUnlessEqual(sr1.name, "name")
+        self.failUnlessEqual(sr2.tubID, TUB1)
+        self.failUnlessEqual(sr2.locationHints,
+                             [ ("tcp", "127.0.0.1", 9900) ])
+        self.failUnlessEqual(sr2.name, "name")
 
     def testTubIDExtensions(self):
         sr = SturdyRef("pb://%s,otherstuff@127.0.0.1:9900/name" % TUB1)
