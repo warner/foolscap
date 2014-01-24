@@ -124,6 +124,7 @@ class ArgumentSlicer(slicer.ScopedSlicer):
             yield self.kwargs[argname]
 
     def describe(self):
+        print "XXXY"
         return "<%s>" % self.which
 
 
@@ -586,6 +587,7 @@ class AnswerSlicer(slicer.ScopedSlicer):
         yield self.results
 
     def describe(self):
+        print "XXX HERE"
         return "<answer-%s-to-%s>" % (self.reqID, self.methodname)
 
 class AnswerUnslicer(slicer.ScopedUnslicer):

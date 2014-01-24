@@ -230,6 +230,7 @@ class CommandPP(protocol.ProcessProtocol):
         self.watcher.callRemoteOnly("done", e.signal, code)
 
 class Command(Referenceable):
+    implements(RICommand)
     def __init__(self, process, log_stdin):
         self.process = process
         self.log_stdin = log_stdin

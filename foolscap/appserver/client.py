@@ -108,7 +108,12 @@ class RunCommand(Referenceable, Protocol):
                             % (type(data),))
         # this is from stdin. It shouldn't be called until after _started
         # sets up stdio and self.stdin_writer
-        self.stdin_writer.callRemoteOnly("feed_stdin", data)
+        d = self.stdin_writer.callRemote("feed_stdin", data)
+        d.addErrback(self._log_remote_error)
+
+    def _log_remote_error(self, f):
+        self.stderr.write(str(f))
+        self.stderr.flush()
 
     def connectionLost(self, reason):
         # likewise, this won't be called unless _started wanted stdin
