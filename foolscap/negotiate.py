@@ -4,6 +4,7 @@ import time
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor
 from twisted.internet.error import ConnectionDone
+from twisted.internet.endpoints import clientFromString
 
 from foolscap import broker, referenceable, vocab
 from foolscap.eventual import eventually
@@ -1367,8 +1368,9 @@ class TubConnector(object):
         self.remainingLocations = []
         self.stopConnectionTimer()
         for c in self.pendingConnections.values():
-            c.disconnect()
-        # as each disconnect() finishes, it will either trigger our
+            c.cancel()
+
+        # as each cancel() finishes, it will either trigger our
         # clientConnectionFailed or our negotiationFailed methods, both of
         # which will trigger checkForIdle, and the last such message will
         # invoke self.tub.connectorFinished()
@@ -1380,10 +1382,17 @@ class TubConnector(object):
                 continue
             self.attemptedLocations.append(location)
             host, port = location
-            lp = self.log("connectTCP to %s" % (location,))
+            lp = self.log("connect to %s" % (location,))
             f = TubConnectorClientFactory(self, host, lp)
-            c = reactor.connectTCP(host, port, f)
-            self.pendingConnections[f] = c
+
+            endpointDesc = "tcp:host=%s:port=%s" % (host, port)
+            endpoint = clientFromString(reactor, endpointDesc)
+
+            d = endpoint.connect(f)
+            d.addErrback(self.clientConnectionFailed)
+            d.addCallback(self.negotiationComplete)
+            self.pendingConnections[f] = d
+
             # the tcp.Connector that we get back from reactor.connectTCP will
             # retain a reference to the transport that it creates, so we can
             # use it to disconnect the established (but not yet negotiated)
@@ -1448,7 +1457,8 @@ class TubConnector(object):
             # clientConnectionFailed. For connections that are established
             # (and exchanging negotiation messages), this does
             # loseConnection() and will thus trigger negotiationFailed.
-            f.disconnect()
+            self.pendingConnections[f].cancel()
+            
         self.checkForIdle()
 
     def checkForFailure(self):
