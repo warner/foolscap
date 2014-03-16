@@ -1221,7 +1221,7 @@ class Negotiation(protocol.Protocol):
 
 # TODO: make sure code that examines self.receive_phase handles ABANDONED
 
-class TubConnectorClientFactory(protocol.ClientFactory, object):
+class TubConnectorFactory(protocol.Factory, object):
     # this is for internal use only. Application code should use
     # Tub.getReference(url)
 
@@ -1260,14 +1260,11 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
 
     def startFactory(self):
         self.log("Starting factory %r" % self)
-        return protocol.ClientFactory.startFactory(self)
+        return protocol.Factory.startFactory(self)
+
     def stopFactory(self):
         self.log("Stopping factory %r" % self)
-        return protocol.ClientFactory.stopFactory(self)
-
-    def disconnect(self):
-        self.log("told to disconnect")
-        self.connector.disconnect()
+        return protocol.Factory.stopFactory(self)
 
     def buildProtocol(self, addr):
         nc = self.tc.tub.negotiationClass # this is usually Negotiation
@@ -1275,9 +1272,6 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
         proto.initClient(self.tc, self.host)
         proto.factory = self
         return proto
-
-    def clientConnectionFailed(self, connector, reason):
-        self.tc.clientConnectionFailed(self, reason)
 
 
 class TubConnector(object):
@@ -1370,10 +1364,8 @@ class TubConnector(object):
         for c in self.pendingConnections.values():
             c.cancel()
 
-        # as each cancel() finishes, it will either trigger our
-        # clientConnectionFailed or our negotiationFailed methods, both of
-        # which will trigger checkForIdle, and the last such message will
-        # invoke self.tub.connectorFinished()
+            # XXX
+            self.checkForIdle()
 
     def connectToAll(self):
         while self.remainingLocations:
@@ -1383,20 +1375,15 @@ class TubConnector(object):
             self.attemptedLocations.append(location)
             host, port = location
             lp = self.log("connect to %s" % (location,))
-            f = TubConnectorClientFactory(self, host, lp)
+            f = TubConnectorFactory(self, host, lp)
 
             endpointDesc = "tcp:host=%s:port=%s" % (host, port)
             endpoint = clientFromString(reactor, endpointDesc)
 
             d = endpoint.connect(f)
-            d.addErrback(self.clientConnectionFailed)
-            d.addCallback(self.negotiationComplete)
             self.pendingConnections[f] = d
+            d.addErrback(lambda r: self.clientConnectionFailed(f, r))
 
-            # the tcp.Connector that we get back from reactor.connectTCP will
-            # retain a reference to the transport that it creates, so we can
-            # use it to disconnect the established (but not yet negotiated)
-            # connection
             if self.tub.options.get("debug_stall_second_connection"):
                 # for unit tests, hold off on making the second connection
                 # for a moment. This allows the first connection to get to a
@@ -1417,6 +1404,7 @@ class TubConnector(object):
         # established
         if not self.failureReason:
             self.failureReason = reason
+        self.pendingConnections[factory].cancel()
         del self.pendingConnections[factory]
         self.checkForFailure()
         self.checkForIdle()
@@ -1439,6 +1427,10 @@ class TubConnector(object):
             # don't let mundane things like ConnectionFailed override the
             # actually significant ones like NegotiationError
             self.failureReason = reason
+
+        # XXX
+        self.pendingConnections[factory].cancel()
+
         del self.pendingConnections[factory]
         self.checkForFailure()
         self.checkForIdle()
@@ -1458,7 +1450,6 @@ class TubConnector(object):
             # (and exchanging negotiation messages), this does
             # loseConnection() and will thus trigger negotiationFailed.
             self.pendingConnections[f].cancel()
-            
         self.checkForIdle()
 
     def checkForFailure(self):
