@@ -1361,11 +1361,8 @@ class TubConnector(object):
         self.active = False
         self.remainingLocations = []
         self.stopConnectionTimer()
-        for c in self.pendingConnections.values():
-            c.cancel()
-
-            # XXX
-            self.checkForIdle()
+        for factory in self.pendingConnections.keys():
+            self.pendingConnections[factory].cancel()
 
     def connectToAll(self):
         while self.remainingLocations:
@@ -1380,9 +1377,9 @@ class TubConnector(object):
             endpointDesc = "tcp:host=%s:port=%s" % (host, port)
             endpoint = clientFromString(reactor, endpointDesc)
 
-            d = endpoint.connect(f)
-            self.pendingConnections[f] = d
-            d.addErrback(lambda r: self.clientConnectionFailed(f, r))
+            connectDeferred = endpoint.connect(f)
+            self.pendingConnections[f] = connectDeferred
+            connectDeferred.addErrback(lambda r: self.clientConnectionFailed(f, r))
 
             if self.tub.options.get("debug_stall_second_connection"):
                 # for unit tests, hold off on making the second connection
@@ -1404,7 +1401,6 @@ class TubConnector(object):
         # established
         if not self.failureReason:
             self.failureReason = reason
-        self.pendingConnections[factory].cancel()
         del self.pendingConnections[factory]
         self.checkForFailure()
         self.checkForIdle()
@@ -1427,10 +1423,6 @@ class TubConnector(object):
             # don't let mundane things like ConnectionFailed override the
             # actually significant ones like NegotiationError
             self.failureReason = reason
-
-        # XXX
-        self.pendingConnections[factory].cancel()
-
         del self.pendingConnections[factory]
         self.checkForFailure()
         self.checkForIdle()
@@ -1449,6 +1441,8 @@ class TubConnector(object):
             # clientConnectionFailed. For connections that are established
             # (and exchanging negotiation messages), this does
             # loseConnection() and will thus trigger negotiationFailed.
+
+            # XXX
             self.pendingConnections[f].cancel()
         self.checkForIdle()
 
