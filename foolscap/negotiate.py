@@ -219,7 +219,7 @@ class Negotiation(protocol.Protocol):
             kwargs['level'] = log.NOISY
         return log.msg(*args, **kwargs)
 
-    def initClient(self, connector, targetHost):
+    def initClient(self, connector):
         # clients do connectTCP and speak first with a GET
         self.log("initClient: to target %s" % connector.target,
                  target=connector.target.getTubID())
@@ -229,7 +229,6 @@ class Negotiation(protocol.Protocol):
         self.myTubID = self.tub.tubID
         self.connector = connector
         self.target = connector.target
-        self.targetHost = targetHost
         self.wantEncryption = bool(self.target.encrypted
                                    or self.tub.myCertificate)
         self.options = self.tub.options.copy()
@@ -339,7 +338,6 @@ class Negotiation(protocol.Protocol):
         else:
             self.log("sendPlaintextClient: GET for no tubID")
             req.append("GET /id/ HTTP/1.1")
-        req.append("Host: %s" % self.targetHost)
         self.log("sendPlaintextClient: wantEncryption=%s" % self.wantEncryption)
         if self.wantEncryption:
             req.append("Upgrade: TLS/1.0")
@@ -1227,9 +1225,8 @@ class TubConnectorFactory(protocol.Factory, object):
 
     noisy = False
 
-    def __init__(self, tc, host, logparent):
+    def __init__(self, tc, logparent):
         self.tc = tc # the TubConnector
-        self.host = host
         self._logparent = logparent
 
     def log(self, *args, **kwargs):
@@ -1267,7 +1264,7 @@ class TubConnectorFactory(protocol.Factory, object):
         nc = self.tc.tub.negotiationClass # this is usually Negotiation
         # XXX
         self.proto = nc(self._logparent)
-        self.proto.initClient(self.tc, self.host)
+        self.proto.initClient(self.tc)
         self.proto.factory = self
         return self.proto
 
@@ -1380,7 +1377,7 @@ class TubConnector(object):
             self.attemptedLocations.append(location)
             host, port = location
             lp = self.log("connect to %s" % (location,))
-            f = TubConnectorFactory(self, host, lp)
+            f = TubConnectorFactory(self, lp)
 
             endpointDesc = "tcp:host=%s:port=%s" % (host, port)
             endpoint = clientFromString(reactor, endpointDesc)
