@@ -1452,6 +1452,8 @@ class TubConnector(object):
 
             # XXX
             self.pendingConnections[f].cancel()
+            f.disconnect()
+
         self.checkForIdle()
 
     def checkForFailure(self):
