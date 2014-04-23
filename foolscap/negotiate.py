@@ -1255,9 +1255,6 @@ class TubConnectorFactory(protocol.Factory, object):
             target = "<unauth>"
         return base[:at] + " [from %s]" % origin + " [to %s]" % target + base[at:]
 
-    def startedConnecting(self, connector):
-        self.connector = connector
-
     def startFactory(self):
         self.log("Starting factory %r" % self)
         return protocol.Factory.startFactory(self)
@@ -1268,10 +1265,15 @@ class TubConnectorFactory(protocol.Factory, object):
 
     def buildProtocol(self, addr):
         nc = self.tc.tub.negotiationClass # this is usually Negotiation
-        proto = nc(self._logparent)
-        proto.initClient(self.tc, self.host)
-        proto.factory = self
-        return proto
+        # XXX
+        self.proto = nc(self._logparent)
+        self.proto.initClient(self.tc, self.host)
+        self.proto.factory = self
+        return self.proto
+
+    # XXX
+    def disconnect(self):
+        self.proto.transport.loseConnection()
 
 
 class TubConnector(object):
@@ -1361,8 +1363,14 @@ class TubConnector(object):
         self.active = False
         self.remainingLocations = []
         self.stopConnectionTimer()
-        for factory in self.pendingConnections.keys():
-            self.pendingConnections[factory].cancel()
+        for factory, connectDeferred in self.pendingConnections.items():
+            connectDeferred.cancel()
+            # XXX
+            if factory in self.pendingConnections:
+                # my protocol factory is still in self.pendingConnections
+                # because the errback didn't fire because the callback already fired.
+                # so we need to disconnect like this...
+                factory.disconnect()
 
     def connectToAll(self):
         while self.remainingLocations:
