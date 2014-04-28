@@ -160,26 +160,6 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         self.failUnlessEqual(t1.calls, [(1,1)])
         self.failUnlessEqual(t2.calls, [(2,2)])
 
-    def testSharedTransfer(self):
-        s1,s2,s3 = self.services
-        # s1 and s2 will share a Listener
-        l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("127.0.0.1:%d" % l1.getPortnum())
-        s2.listenOn(l1)
-        s2.setLocation("127.0.0.1:%d" % l1.getPortnum())
-        self.failUnless(l1.parentTub is s1)
-        s1.stopListeningOn(l1)
-        self.failUnless(l1.parentTub is s2)
-        s3.listenOn(l1)
-        self.failUnless(l1.parentTub is s2)
-        d = s2.stopService()
-        d.addCallback(self._testSharedTransfer_1, l1, s2, s3)
-        return d
-    testSharedTransfer.timeout = 5
-    def _testSharedTransfer_1(self, res, l1, s2, s3):
-        self.services.remove(s2)
-        self.failUnless(l1.parentTub is s3)
-
     def testClone(self):
         s1,s2,s3 = self.services
         l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
