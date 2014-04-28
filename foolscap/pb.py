@@ -39,6 +39,26 @@ def parse_strport(port):
     # TODO: IPv6
     return (portnum, interface)
 
+
+ONLY_PORT_RE=re.compile(r"^(\d{1,5})$")
+
+# convert 'port' strings to twisted server endpoint descriptors
+# 'port' strings can look like this:
+# 80
+# tcp:80
+# tcp:80:interface=127.0.0.1
+#
+# Only the first 'port' string type is incompatible with twisted endpoints
+#
+# if no regex match then pass through
+def port_string_to_server_endpoint(port_s):
+    only_port_mo = ONLY_PORT_RE.search(port_s)
+    endpointDesc = port_s
+    if only_port_mo:
+        endpointDesc = "tcp:%s" % only_port_mo.group(1)
+    return endpointDesc
+
+
 Listeners = []
 class Listener(protocol.ServerFactory):
     """I am responsible for a single listening port, which may connect to
@@ -60,14 +80,14 @@ class Listener(protocol.ServerFactory):
         @param desc: a L{twisted.internet.endpoints.serverFromString} -style
         description, specifying the endpoint to use
         """
-        self.desc = desc
+        self.desc = port_string_to_server_endpoint(desc)
         self.options = options
         self.negotiationClass = negotiationClass
         self.tubs = {}
         self.redirects = {}
         # TODO: Is there a better place to get the reactor?
         from twisted.internet import reactor
-        self.e = serverFromString(reactor, desc)
+        self.e = serverFromString(reactor, self.desc)
         self.port = None
         Listeners.append(self)
 
