@@ -106,10 +106,7 @@ class SetLocation(unittest.TestCase):
             sr = SturdyRef(furl)
             portnum = l.getPortnum()
             if sr.encrypted:
-                for lh in sr.locationHints:
-                    self.failUnlessEqual(lh[2], portnum, lh)
-                self.failUnless( ("tcp", "127.0.0.1", portnum)
-                                 in sr.locationHints)
+                self.failUnless( "tcp:host=127.0.0.1:port=%d" % portnum in sr.locationHints)
             else:
                 # TODO: unauthenticated tubs need review, I think they
                 # deserve to have tubids and multiple connection hints
