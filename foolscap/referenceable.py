@@ -782,11 +782,6 @@ NEW_STYLE_HINT_RE=re.compile(r"^([A-Za-z.0-9\-]+):(%s|%s):(\d+){1,5}$" % (DOTTED
 OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
 
-def encode_location_hint(hint):
-    # keep the same behavior so the unit tests pass
-    assert hint.startswith("tcp")
-    return hint
-
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
 # then can contain any characters except "," and "/". These are expected to
 # look like Twisted endpoin descriptors, or contain other ":"-separated
@@ -856,8 +851,7 @@ def decode_furl(furl):
     return (encrypted, tubID, location_hints, name)
 
 def encode_furl(encrypted, tubID, location_hints, name):
-    location_hints_s = ",".join([encode_location_hint(hint)
-                                 for hint in location_hints])
+    location_hints_s = ",".join(location_hints)
     if encrypted:
         return "pb://" + tubID + "@" + location_hints_s + "/" + name
     else:
@@ -968,8 +962,7 @@ class NoAuthTubRef(TubRef):
         return "<unauth>"
 
     def __str__(self):
-        return "pbu://" + ",".join([encode_location_hint(location)
-                                    for location in self.locations])
+        return "pbu://" + ",".join(self.locations)
 
     def _distinguishers(self):
         """This serves the same purpose as SturdyRef._distinguishers."""
