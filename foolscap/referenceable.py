@@ -808,9 +808,9 @@ def decode_location_hints(hints_s):
             mo = OLD_STYLE_HINT_RE.search(hint_s)
             if mo:
                 hint = "tcp:host=%s:port=%s" % (mo.group(1), mo.group(2))
-                hints.append(hint)
+                hints.append(str(hint))
             else:
-                hints.append(hint_s)
+                hints.append(str(hint_s))
 
     return hints
 
