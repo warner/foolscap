@@ -778,14 +778,9 @@ NONAUTH_STURDYREF_RE = re.compile(r"pbu://([^/]*)/(.+)$")
 DOTTED_QUAD_RESTR=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
 
 DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
-
+NEW_STYLE_HINT_RE=re.compile(r"^([A-Za-z.0-9\-]+):(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR, DNS_NAME_RESTR))
 OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
-
-def encode_location_hint(hint):
-    assert hint[0] == "tcp"
-    host, port = hint[1:]
-    return "%s:%d" % (host, port)
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
 # then can contain any characters except "," and "/". These are expected to
@@ -812,17 +807,11 @@ def decode_location_hints(hints_s):
 
             mo = OLD_STYLE_HINT_RE.search(hint_s)
             if mo:
-                hint = ( "tcp", mo.group(1), int(mo.group(2)) )
-                hints.append(hint)
+                hint = "tcp:host=%s:port=%s" % (mo.group(1), mo.group(2))
+                hints.append(str(hint))
             else:
-                pieces = hint_s.split(':')
-                if pieces[0] == 'tcp':
-                    fields = dict([f.split("=") for f in pieces[1:]])
-                    hint = ("tcp", fields["host"], int(fields["port"]))
-                    hints.append(hint)
-                else:
-                    # Ignore other things from the future.
-                    pass
+                hints.append(str(hint_s))
+
     return hints
 
 def decode_furl(furl):
@@ -862,8 +851,7 @@ def decode_furl(furl):
     return (encrypted, tubID, location_hints, name)
 
 def encode_furl(encrypted, tubID, location_hints, name):
-    location_hints_s = ",".join([encode_location_hint(hint)
-                                 for hint in location_hints])
+    location_hints_s = ",".join(location_hints)
     if encrypted:
         return "pb://" + tubID + "@" + location_hints_s + "/" + name
     else:
@@ -974,8 +962,7 @@ class NoAuthTubRef(TubRef):
         return "<unauth>"
 
     def __str__(self):
-        return "pbu://" + ",".join([encode_location_hint(location)
-                                    for location in self.locations])
+        return "pbu://" + ",".join(self.locations)
 
     def _distinguishers(self):
         """This serves the same purpose as SturdyRef._distinguishers."""

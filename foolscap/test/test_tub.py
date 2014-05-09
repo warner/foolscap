@@ -106,10 +106,7 @@ class SetLocation(unittest.TestCase):
             sr = SturdyRef(furl)
             portnum = l.getPortnum()
             if sr.encrypted:
-                for lh in sr.locationHints:
-                    self.failUnlessEqual(lh[2], portnum, lh)
-                self.failUnless( ("tcp", "127.0.0.1", portnum)
-                                 in sr.locationHints)
+                self.failUnless( "tcp:host=127.0.0.1:port=%d" % portnum in sr.locationHints)
             else:
                 # TODO: unauthenticated tubs need review, I think they
                 # deserve to have tubids and multiple connection hints
@@ -437,31 +434,6 @@ class BadLocationFURL(unittest.TestCase):
         tubB.setServiceParent(self.s)
 
         tubB.setLocation("") # this is how you say "unrouteable"
-        r = Receiver(tubB)
-        furl = tubB.registerReference(r)
-        # the buggy behavior is that the following call raises an exception
-        d = tubA.getReference(furl)
-        # whereas it ought to return a Deferred
-        self.failUnless(isinstance(d, defer.Deferred))
-        def _check(f):
-            self.failUnless(isinstance(f, failure.Failure), f)
-            self.failUnless(f.check(NoLocationHintsError), f)
-        d.addBoth(_check)
-        return d
-
-    def test_future(self):
-        # bug #129: a FURL with no location hints causes a synchronous
-        # exception in Tub.getReference(), instead of an errback'ed Deferred.
-
-        tubA = GoodEnoughTub()
-        tubA.setServiceParent(self.s)
-        tubB = GoodEnoughTub()
-        tubB.setServiceParent(self.s)
-
-        # "future:stuff" is interpreted as a "location hint format from the
-        # future", which we're supposed to ignore, and are thus left with no
-        # hints
-        tubB.setLocation("future:stuff")
         r = Receiver(tubB)
         furl = tubB.registerReference(r)
         # the buggy behavior is that the following call raises an exception

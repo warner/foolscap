@@ -3,7 +3,8 @@
 import os.path, weakref, binascii, re
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
-from twisted.application import service, internet
+from twisted.internet.endpoints import serverFromString
+from twisted.application import service
 from twisted.python.failure import Failure
 
 from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
@@ -25,6 +26,8 @@ except ImportError:
     pass
 
 
+# TODO: Only used by foolscap.logging.web, remove when
+# that has been migrated to use Twisted endpoints.
 def parse_strport(port):
     if port.startswith("unix:"):
         raise ValueError("UNIX sockets are not supported for Listeners")
@@ -35,6 +38,26 @@ def parse_strport(port):
     interface = mo.group('interface') or ""
     # TODO: IPv6
     return (portnum, interface)
+
+
+ONLY_PORT_RE=re.compile(r"^(\d{1,5})$")
+
+# convert 'port' strings to twisted server endpoint descriptors
+# 'port' strings can look like this:
+# 80
+# tcp:80
+# tcp:80:interface=127.0.0.1
+#
+# Only the first 'port' string type is incompatible with twisted endpoints
+#
+# if no regex match then pass through
+def port_string_to_server_endpoint(port_s):
+    only_port_mo = ONLY_PORT_RE.search(port_s)
+    endpointDesc = port_s
+    if only_port_mo:
+        endpointDesc = "tcp:%s" % only_port_mo.group(1)
+    return endpointDesc
+
 
 Listeners = []
 class Listener(protocol.ServerFactory):
@@ -50,28 +73,26 @@ class Listener(protocol.ServerFactory):
 
     # this also serves as the ServerFactory
 
-    def __init__(self, port, options={},
+    def __init__(self, desc, options={},
                  negotiationClass=negotiate.Negotiation):
         """
-        @type port: string
-        @param port: a L{twisted.application.strports} -style description,
-        specifying a TCP server
+        @type desc: string
+        @param desc: a L{twisted.internet.endpoints.serverFromString} -style
+        description, specifying the endpoint to use
         """
-        # parse the following 'port' strings:
-        #  80
-        #  tcp:80
-        #  tcp:80:interface=127.0.0.1
-        # we reject UNIX sockets.. I don't know if they ever worked.
-
-        portnum, interface = parse_strport(port)
-        self.port = port
+        self.desc = port_string_to_server_endpoint(desc)
         self.options = options
         self.negotiationClass = negotiationClass
-        self.parentTub = None
         self.tubs = {}
         self.redirects = {}
-        self.s = internet.TCPServer(portnum, self, interface=interface)
+        # TODO: Is there a better place to get the reactor?
+        from twisted.internet import reactor
+        self.e = serverFromString(reactor, self.desc)
+        self.port = None
         Listeners.append(self)
+
+    def setPort(self, port):
+        self.port = port
 
     def getPortnum(self):
         """When this Listener was created with a port string of '0' or
@@ -85,54 +106,55 @@ class Listener(protocol.ServerFactory):
             t.setLocation('localhost:%d' % l.getPortnum())
         """
 
-        assert self.s.running
-        return self.s._port.getHost().port
+        # The IListeningPort is started when we get it.
+        assert self.port
+        # TODO: Not all endpoints will necessarily have a port?
+        return self.port.getHost().port
+
+    def getHost(self):
+        """
+        Returns the IAddress provider for the endpoint.
+        """
+        # The IListeningPort is started when we get it.
+        assert self.port
+        return self.port.getHost()
 
     def __repr__(self):
         if self.tubs:
             return "<Listener at 0x%x on %s with tubs %s>" % (
                 abs(id(self)),
-                self.port,
+                self.desc,
                 ",".join([str(k) for k in self.tubs.keys()]))
         return "<Listener at 0x%x on %s with no tubs>" % (abs(id(self)),
-                                                          self.port)
+                                                          self.desc)
 
     def addTub(self, tub):
         if tub.tubID in self.tubs:
             if tub.tubID is None:
                 raise RuntimeError("This Listener (on %s) already has an "
                                    "unauthenticated Tub, you cannot add a "
-                                   "second one" % self.port)
+                                   "second one" % self.desc)
             raise RuntimeError("This Listener (on %s) is already connected "
-                               "to TubID '%s'" % (self.port, tub.tubID))
+                               "to TubID '%s'" % (self.desc, tub.tubID))
         self.tubs[tub.tubID] = tub
-        if self.parentTub is None:
-            self.parentTub = tub
-            self.s.setServiceParent(self.parentTub)
+        if self.port is None:
+            d = self.e.listen(self)
+            d.addCallback(self.setPort)
 
     def removeTub(self, tub):
         # this might return a Deferred, since the removal might cause the
         # Listener to shut down. It might also return None.
         del self.tubs[tub.tubID]
-        if self.parentTub is tub:
-            # we need to switch to a new one
-            tubs = self.tubs.values()
-            if tubs:
-                self.parentTub = tubs[0]
-                # TODO: I want to do this without first doing
-                # disownServiceParent, so the port remains listening. Can we
-                # do this? It looks like setServiceParent does
-                # disownServiceParent first, so it may glitch.
-                self.s.setServiceParent(self.parentTub)
-            else:
-                # no more tubs, this Listener will go away now
-                d = self.s.disownServiceParent()
-                Listeners.remove(self)
-                return d
+        if not self.tubs:
+            # no more tubs, this Listener will go away now
+            d = self.port.stopListening()
+            Listeners.remove(self)
+            return d
         return None
 
-    def getService(self):
-        return self.s
+    def getEndpoint(self):
+        # TODO: Is this needed?
+        return self.e
 
     def addRedirect(self, tubID, location):
         assert tubID is not None # unauthenticated Tubs don't get redirects
