@@ -7,14 +7,9 @@ from twisted.application import service
 
 from foolscap.api import Tub, eventually
 from foolscap.appserver import cli, server, client
-from foolscap.test.common import ShouldFailMixin, crypto_available, StallMixin
+from foolscap.test.common import ShouldFailMixin, StallMixin
 
-class RequiresCryptoBase:
-    def setUp(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
-
-class CLI(RequiresCryptoBase, unittest.TestCase):
+class CLI(unittest.TestCase):
     def run_cli(self, *args):
         argv = ["flappserver"] + list(args)
         d = defer.maybeDeferred(cli.run_flappserver, argv=argv, run_by_human=False)
@@ -297,9 +292,8 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         d.addCallback(_check_list)
         return d
 
-class Server(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
+class Server(unittest.TestCase, ShouldFailMixin):
     def setUp(self):
-        RequiresCryptoBase.setUp(self)
         self.s = service.MultiService()
         self.s.startService()
     def tearDown(self):
@@ -352,9 +346,8 @@ class Server(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
         return d
     
 
-class Upload(RequiresCryptoBase, unittest.TestCase, ShouldFailMixin):
+class Upload(unittest.TestCase, ShouldFailMixin):
     def setUp(self):
-        RequiresCryptoBase.setUp(self)
         self.s = service.MultiService()
         self.s.startService()
     def tearDown(self):
@@ -537,9 +530,8 @@ class Client(unittest.TestCase):
         d.addCallback(_check_client)
         return d
 
-class RunCommand(unittest.TestCase, RequiresCryptoBase, StallMixin):
+class RunCommand(unittest.TestCase, StallMixin):
     def setUp(self):
-        RequiresCryptoBase.setUp(self)
         self.s = service.MultiService()
         self.s.startService()
     def tearDown(self):

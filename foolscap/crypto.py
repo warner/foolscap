@@ -1,7 +1,5 @@
 # -*- test-case-name: foolscap.test.test_crypto -*-
 
-available = False # hack to deal with half-broken imports in python <2.4
-
 from OpenSSL import SSL
 
 # we try to use ssl support classes from Twisted, if it is new enough. If
@@ -92,5 +90,3 @@ def digest32(colondigest):
     digest = "".join([chr(int(c,16)) for c in colondigest.split(":")])
     digest = base32.encode(digest)
     return digest
-
-available = True

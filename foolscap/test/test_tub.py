@@ -10,7 +10,7 @@ from foolscap.api import Tub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \
-     crypto_available, GoodEnoughTub, StallMixin
+     GoodEnoughTub, StallMixin
 from foolscap.tokens import WrongTubIdError, PBError, NoLocationHintsError
 
 # create this data with:
@@ -74,9 +74,6 @@ class TestCertFile(unittest.TestCase):
         t = Tub(certData=CERT_DATA)
         self.failUnlessEqual(t.getTubID(), CERT_TUBID)
 
-if not crypto_available:
-    del TestCertFile
-
 class SetLocation(unittest.TestCase):
 
     def setUp(self):
@@ -105,15 +102,10 @@ class SetLocation(unittest.TestCase):
         def _check(furl):
             sr = SturdyRef(furl)
             portnum = l.getPortnum()
-            if sr.encrypted:
-                for lh in sr.locationHints:
-                    self.failUnlessEqual(lh[2], portnum, lh)
-                self.failUnless( ("ipv4", "127.0.0.1", portnum)
-                                 in sr.locationHints)
-            else:
-                # TODO: unauthenticated tubs need review, I think they
-                # deserve to have tubids and multiple connection hints
-                pass
+            for lh in sr.locationHints:
+                self.failUnlessEqual(lh[2], portnum, lh)
+            self.failUnless( ("ipv4", "127.0.0.1", portnum)
+                             in sr.locationHints)
         d.addCallback(_check)
         return d
 
@@ -182,9 +174,6 @@ class FurlFile(unittest.TestCase):
             return t2.disownServiceParent()
         d.addCallback(_take2)
         return d
-
-if not crypto_available:
-    del FurlFile
 
 class QueuedStartup(TargetMixin, unittest.TestCase):
     # calling getReference and connectTo before the Tub has started should

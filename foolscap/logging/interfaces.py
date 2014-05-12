@@ -3,7 +3,7 @@ from zope.interface import Interface
 from foolscap.remoteinterface import RemoteInterface
 from foolscap.schema import DictOf, ListOf, Any, Optional, ChoiceOf
 
-TubID = str # printable: either base32 encoded or "<unauth>"
+TubID = str # printable, base32 encoded
 Incarnation = (str, ChoiceOf(str, None))
 Header = DictOf(str, Any())
 Event = DictOf(str, Any()) # this has message:, level:, facility:, etc

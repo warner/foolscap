@@ -7,7 +7,7 @@ from foolscap.api import RemoteInterface, Referenceable, flushEventualQueue, \
      BananaError
 from foolscap.referenceable import RemoteReference, encode_furl, decode_furl
 from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin, \
-     crypto_available, GoodEnoughTub
+     GoodEnoughTub
 from foolscap.tokens import NegotiationError
 
 class RIConstrainedHelper(RemoteInterface):
@@ -395,8 +395,6 @@ class Bad(Base, unittest.TestCase):
     # errback.
 
     def setUp(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
         Base.setUp(self)
 
     def test_swissnum(self):
@@ -430,10 +428,10 @@ class Bad(Base, unittest.TestCase):
             # unlikely to remain the same. NOTE: this will have to change
             # when we modify the way gifts are referenced, since tracker.url
             # is scheduled to go away.
-            (encrypted, tubid, location_hints, name) = \
+            (tubid, location_hints, name) = \
                 decode_furl(adave.tracker.url)
             tubid = "".join(reversed(tubid))
-            adave.tracker.url = encode_furl(encode_furl, tubid,
+            adave.tracker.url = encode_furl(tubid,
                                             location_hints, name)
             return self.shouldFail(BananaError, "Bad.test_tubid", "unknown TubID",
                                    self.acarol.callRemote, "set", adave)
@@ -449,11 +447,11 @@ class Bad(Base, unittest.TestCase):
             # result in a failure during negotiation as it attempts to
             # establish a TCP connection.
 
-            (encrypted, tubid, location_hints, name) = \
+            (tubid, location_hints, name) = \
                 decode_furl(adave.tracker.url)
             # highly unlikely that there's anything listening on this port
             location_hints = [ ("ipv4", "127.0.0.1", 2) ]
-            adave.tracker.url = encode_furl(encode_furl, tubid,
+            adave.tracker.url = encode_furl(tubid,
                                             location_hints, name)
             return self.shouldFail(ConnectionRefusedError, "Bad.test_location",
                                    "Connection was refused by other side",
@@ -475,10 +473,10 @@ class Bad(Base, unittest.TestCase):
             # case, but we can connect to a port which accepts the connection
             # and then stays silent. This should trigger the overall
             # connection timeout.
-            (encrypted, tubid, location_hints, name) = \
+            (tubid, location_hints, name) = \
                 decode_furl(adave.tracker.url)
             location_hints = [ ("ipv4", "127.0.0.1", p.getHost().port) ]
-            adave.tracker.url = encode_furl(encode_furl, tubid,
+            adave.tracker.url = encode_furl(tubid,
                                             location_hints, name)
             self.tubD.options['connect_timeout'] = 2
             return self.shouldFail(NegotiationError, "Bad.test_hang",

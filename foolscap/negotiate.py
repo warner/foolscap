@@ -15,12 +15,7 @@ from foolscap.banana import int2b128
 from foolscap.logging import log
 from foolscap.logging.log import NOISY, OPERATIONAL, WEIRD, UNUSUAL, CURIOUS
 
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
+from foolscap import crypto
 
 def isSubstring(small, big):
     assert type(small) is str and type(big) is str
@@ -149,7 +144,6 @@ class Negotiation(protocol.Protocol):
 
     receive_phase = PLAINTEXT # we are expecting this
     send_phase = PLAINTEXT # the other end is expecting this
-    encrypted = False
 
     doNegotiation = True
     debugNegotiation = False
@@ -229,11 +223,8 @@ class Negotiation(protocol.Protocol):
         self.connector = connector
         self.target = connector.target
         self.targetHost = targetHost
-        self.wantEncryption = bool(self.target.encrypted
-                                   or self.tub.myCertificate)
         self.options = self.tub.options.copy()
         tubID = self.target.getTubID()
-        # note that UnauthenticatedTubs will never have a record here
         slave_record = self.tub.slave_table.get(tubID, ("none",0))
         assert isinstance(slave_record, tuple), slave_record
         self.negotiationOffer['last-connection'] = "%s %s" % slave_record
@@ -326,24 +317,13 @@ class Negotiation(protocol.Protocol):
         # now we wait for the TLS Upgrade acceptance to come back
 
     def sendPlaintextClient(self):
-        # we want an encrypted connection if the Tub at either end uses
-        # encryption. We might not get it, though. Declaring whether or not
-        # we are using an encrypted Tub is separate, and expressed in our
-        # Hello block.
         req = []
-        if self.target.encrypted:
-            self.log("sendPlaintextClient: GET for tubID %s" %
-                     self.target.tubID)
-            req.append("GET /id/%s HTTP/1.1" % self.target.tubID)
-        else:
-            self.log("sendPlaintextClient: GET for no tubID")
-            req.append("GET /id/ HTTP/1.1")
+        self.log("sendPlaintextClient: GET for tubID %s" %
+                 self.target.tubID)
+        req.append("GET /id/%s HTTP/1.1" % self.target.tubID)
         req.append("Host: %s" % self.targetHost)
-        self.log("sendPlaintextClient: wantEncryption=%s" % self.wantEncryption)
-        if self.wantEncryption:
-            req.append("Upgrade: TLS/1.0")
-        else:
-            req.append("Upgrade: PB/1.0")
+        self.log("sendPlaintextClient: wantEncryption=True")
+        req.append("Upgrade: TLS/1.0")
         req.append("Connection: Upgrade")
         self.transport.write("\r\n".join(req))
         self.transport.write("\r\n\r\n")
@@ -485,6 +465,8 @@ class Negotiation(protocol.Protocol):
                  level=NOISY)
         if targetTubID == "":
             targetTubID = None
+xyz
+            raise NegotiationError("secure Tubs require encryption")
         if isSubstring("Upgrade: TLS/1.0\r\n", header):
             wantEncrypted = True
         else:
@@ -493,27 +475,7 @@ class Negotiation(protocol.Protocol):
                  level=NOISY)
         # we ignore the rest of the lines
 
-        if wantEncrypted and not crypto_available:
-            # this is a confused client, or a bad URL: if we don't have
-            # crypto, we couldn't have created a pb:// URL.
-            self.log("Negotiate.handlePLAINTEXTServer: client wants "
-                     "encryption for TubID=%s but we have no crypto, "
-                     "hanging up on them" % targetTubID,
-                     level=UNUSUAL)
-            # we could just not offer the encryption, but they won't be happy
-            # with the results, since they wanted to connect to a specific
-            # TubID.
-            raise NegotiationError("crypto not available")
-
-        if wantEncrypted and targetTubID is None:
-            # we wouldn't know which certificate to use, so don't use
-            # encryption at all, even though the client wants to. TODO: if it
-            # is possible to do startTLS on the server side without a server
-            # certificate, do that. It might be possible to do some sort of
-            # ephemeral non-signed certificate.
-            wantEncrypted = False
-
-        if targetTubID is not None and not wantEncrypted:
+        if targetTubID is not None:
             raise NegotiationError("secure Tubs require encryption")
 
         # now that we know which Tub the client wants to connect to, either
@@ -525,34 +487,26 @@ class Negotiation(protocol.Protocol):
             self.options.update(self.tub.options)
             self.brokerClass = self.tub.brokerClass
             self.myTubID = tub.tubID
-            self.sendPlaintextServerAndStartENCRYPTED(wantEncrypted)
+            self.sendPlaintextServerAndStartENCRYPTED()
         elif redirect:
             self.sendRedirect(redirect)
         else:
             raise NegotiationError("unknown TubID %s" % targetTubID)
 
-    def sendPlaintextServerAndStartENCRYPTED(self, encrypted):
+    def sendPlaintextServerAndStartENCRYPTED(self):
         # this is invoked on the server side
         if self.debug_doTimer("sendPlaintextServer", 1,
-                              self.sendPlaintextServerAndStartENCRYPTED,
-                              encrypted):
+                              self.sendPlaintextServerAndStartENCRYPTED):
             return
-        if encrypted:
-            resp = "\r\n".join(["HTTP/1.1 101 Switching Protocols",
-                                "Upgrade: TLS/1.0, PB/1.0",
-                                "Connection: Upgrade",
-                                ])
-        else:
-            # TODO: see if this makes sense, I haven't read the HTTP spec
-            resp = "\r\n".join(["HTTP/1.1 101 Switching Protocols",
-                                "Upgrade: PB/1.0",
-                                "Connection: Upgrade",
-                                ])
+        resp = "\r\n".join(["HTTP/1.1 101 Switching Protocols",
+                            "Upgrade: TLS/1.0, PB/1.0",
+                            "Connection: Upgrade",
+                            ])
         self.transport.write(resp)
         self.transport.write("\r\n\r\n")
         # the next thing they expect is the encrypted block
         self.send_phase = ENCRYPTED
-        self.startENCRYPTED(encrypted)
+        self.startENCRYPTED()
 
     def sendRedirect(self, redirect):
         # this is invoked on the server side
@@ -569,26 +523,20 @@ class Negotiation(protocol.Protocol):
             raise BananaError("not right, got '%s', "
                               "expected 101 Switching Protocols"
                               % lines[0])
-        isEncrypted = isSubstring("Upgrade: TLS/1.0", header)
-        if not isEncrypted:
-            # the connection is not encrypted, so don't claim a TubID
-            self.myTubID = None
+        if not isSubstring("Upgrade: TLS/1.0", header):
+            # XXX I'd like to fail loudly here, is this the right way to do it? --Zooko
+            raise NegotiationError("header didn't contain TLS upgrade: %r" % (header,))
         # we ignore everything else
 
         # now we upgrade to TLS
-        self.startENCRYPTED(isEncrypted)
+        self.startENCRYPTED()
         # and wait for their Hello to arrive
 
-    def startENCRYPTED(self, encrypted):
-        # this is invoked on both sides. We move to the "ENCRYPTED" phase,
-        # which might actually involve a TLS-encrypted session if that's what
-        # the client wanted, but if it isn't then we just "upgrade" to
-        # nothing and change modes.
-        self.log("startENCRYPTED(isClient=%s, encrypted=%s)" %
-                 (self.isClient, encrypted))
-        if encrypted:
-            self.startTLS(self.tub.myCertificate)
-        self.encrypted = encrypted
+    def startENCRYPTED(self):
+        # this is invoked on both sides. We move to the "ENCRYPTED"
+        # phase, which involves a TLS-encrypted session.
+        self.log("startENCRYPTED(isClient=%s)" % (self.isClient,))
+        self.startTLS(self.tub.myCertificate)
         # TODO: can startTLS trigger dataReceived?
         self.receive_phase = ENCRYPTED
         self.sendHello()
@@ -602,12 +550,12 @@ class Negotiation(protocol.Protocol):
 
         hello = self.negotiationOffer.copy()
 
-        if self.myTubID:
-            # this indicates which identity we wish to claim. This is the
-            # hash of the certificate we're using, or one of its parents. If
-            # we aren't using an encrypted connection, don't claim any
-            # identity.
-            hello['my-tub-id'] = self.myTubID
+        assert self.myTubID
+        # this indicates which identity we wish to claim. This is the
+        # hash of the certificate we're using, or one of its
+        # parents. If we aren't using an encrypted connection, don't
+        # claim any identity.
+        hello['my-tub-id'] = self.myTubID
 
         if self.tub:
             IR = self.tub.getIncarnationString()
@@ -624,15 +572,11 @@ class Negotiation(protocol.Protocol):
                                        self.handleENCRYPTED, header):
             return
         self.theirCertificate = None
-        if self.encrypted:
-            # we should be encrypted now
-            # get the peer's certificate, if any
-            try:
-                them = crypto.peerFromTransport(self.transport)
-                if them and them.original:
-                    self.theirCertificate = them
-            except crypto.CertificateError:
-                pass
+        # we should be encrypted now
+        # get the peer's certificate
+        them = crypto.peerFromTransport(self.transport)
+        if them and them.original:
+            self.theirCertificate = them
 
         hello = self.parseLines(header)
         if hello.has_key("error"):
@@ -728,17 +672,12 @@ class Negotiation(protocol.Protocol):
                 # certificate
                 raise BananaError("TubID mismatch")
 
-        if theirTubID:
-            theirTubRef = referenceable.TubRef(theirTubID)
-        else:
-            theirTubRef = None # unauthenticated
+        assert theirTubID
+        theirTubRef = referenceable.TubRef(theirTubID)
         self.theirTubRef = theirTubRef # for use by non-master side, later
 
-        if self.isClient and self.target.encrypted:
-            # verify that we connected to the Tub we expected to. If we
-            # weren't trying to connect to an encrypted tub, then don't
-            # bother checking.. we just accept whoever we managed to connect
-            # to.
+        if self.isClient:
+            # verify that we connected to the Tub we expected to.
             if theirTubRef != self.target:
                 # TODO: how (if at all) should this error message be
                 # communicated to the other side?
@@ -797,9 +736,7 @@ class Negotiation(protocol.Protocol):
 
             if theirTubRef:
                 # generate a new seqnum, one higher than the last one we've
-                # used. Note that UnauthenticatedTubs all share the same
-                # index, so we leak certain information about how many
-                # connections we've established.
+                # used.
                 old_seqnum = self.tub.master_table.get(theirTubRef.getTubID(),
                                                        0)
                 new_seqnum = old_seqnum + 1
@@ -1086,8 +1023,7 @@ class Negotiation(protocol.Protocol):
         current_connection = decision.get('current-connection')
         if current_connection:
             tubID = self.theirTubRef.getTubID()
-            if tubID != "<unauth>":
-                self.tub.slave_table[tubID] = tuple(current_connection.split())
+            self.tub.slave_table[tubID] = tuple(current_connection.split())
         else:
             self.log("no current-connection in decision from %s" %
                      self.theirTubRef, level=UNUSUAL)
@@ -1244,14 +1180,10 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
             # our annotation isn't really important, so don't fail just
             # because we guessed the default __repr__ incorrectly
             return base
-        if self.tc.tub.tubID:
-            origin = self.tc.tub.tubID[:8]
-        else:
-            origin = "<unauth>"
-        if self.tc.target.getTubID():
-            target = self.tc.target.getTubID()[:8]
-        else:
-            target = "<unauth>"
+        assert self.tc.tub.tubID
+        origin = self.tc.tub.tubID[:8]
+        assert self.tc.target.getTubID()
+        target = self.tc.target.getTubID()[:8]
         return base[:at] + " [from %s]" % origin + " [to %s]" % target + base[at:]
 
     def startedConnecting(self, connector):
@@ -1284,8 +1216,7 @@ class TubConnector(object):
     and a list of locationHints, and I try all of them until I establish a
     Broker connected to the target. I will consider redirections returned
     along the way. The first hint that yields a connected Broker will stop
-    the search. If targetTubID is None, we are going to make an unencrypted
-    connection.
+    the search.
 
     This is a single-use object. The connection attempt begins as soon as my
     connect() method is called.
