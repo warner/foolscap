@@ -5,7 +5,6 @@ import platform
 import twisted
 from twisted.internet import reactor
 from twisted.python import log
-from foolscap.test.common import crypto_available
 from foolscap.api import __version__
 
 def split_version(version_string):
@@ -18,8 +17,6 @@ def split_version(version_string):
 
 class Versions(unittest.TestCase):
     def test_required(self):
-        if not crypto_available:
-            return
         import OpenSSL
         ssl_ver = split_version(OpenSSL.__version__)
         tw_ver = split_version(twisted.__version__)

@@ -1,7 +1,7 @@
 # -*- test-case-name: foolscap.test.test_reconnector -*-
 
 from twisted.trial import unittest
-from foolscap.api import UnauthenticatedTub, eventually, flushEventualQueue
+from foolscap.api import Tub, eventually, flushEventualQueue
 from foolscap.test.common import HelperTarget
 from twisted.internet import defer, reactor, error
 from foolscap import negotiate
@@ -13,7 +13,7 @@ class AlwaysFailNegotiation(negotiate.Negotiation):
 class Reconnector(unittest.TestCase):
 
     def setUp(self):
-        self.services = [UnauthenticatedTub(), UnauthenticatedTub()]
+        self.services = [Tub(), Tub()]
         self.tubA, self.tubB = self.services
         for s in self.services:
             s.startService()
@@ -67,7 +67,7 @@ class Reconnector(unittest.TestCase):
         return d
 
     def test_retry(self):
-        tubC = UnauthenticatedTub()
+        tubC = Tub()
         connects = []
         target = HelperTarget("bob")
         url = self.tubB.registerReference(target, "target")
@@ -82,7 +82,7 @@ class Reconnector(unittest.TestCase):
                                           notifiers, connects)
             # give it a few tries, then start tubC listening on the same port
             # that tubB used to, which should allow the connection to
-            # complete (since they're both UnauthenticatedTubs)
+            # complete (since they're both UnauthenticatedTubs) XXXX oops, there is no such thing as an UnauthenticatedTub! We need to save the secret key for Tub B here and give it to Tub C. Brian: how do I do that? --Zooko
             return self.stall(2)
         d.addCallback(_start_connecting)
         def _start_tubC(res):
@@ -133,7 +133,7 @@ class Reconnector(unittest.TestCase):
         return d
 
     def test_lose_and_retry(self):
-        tubC = UnauthenticatedTub()
+        tubC = Tub()
         connects = []
         d1 = defer.Deferred()
         d2 = defer.Deferred()
@@ -158,7 +158,7 @@ class Reconnector(unittest.TestCase):
         def _start_tubC(res):
             # now start tubC listening on the same port that tubB used to,
             # which should allow the connection to complete (since they're
-            # both UnauthenticatedTubs)
+            # both Tub)
             self.services.append(tubC)
             tubC.startService()
             tubC.listenOn("tcp:%d:interface=127.0.0.1" % portb)
