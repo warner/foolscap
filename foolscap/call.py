@@ -192,7 +192,7 @@ class InboundDelivery(object):
         my_short_tubid = "??"
         if self.broker.tub: # for tests
             my_short_tubid = self.broker.tub.getShortTubID()
-        their_short_tubid = "<unauth>"
+        their_short_tubid = "<???>"
         if self.broker.remote_tubref:
             their_short_tubid = self.broker.remote_tubref.getShortTubID()
         lp = log.msg("an inbound callRemote that we [%s] executed (on behalf "

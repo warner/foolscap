@@ -1295,8 +1295,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = GoodEnoughTub()
         expected_tubid = t.tubID
-        if t.tubID is None:
-            expected_tubid = "<unauth>"
+        assert t.tubID is not None
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
@@ -1344,8 +1343,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = GoodEnoughTub()
         expected_tubid = t.tubID
-        if t.tubID is None:
-            expected_tubid = "<unauth>"
+        assert t.tubID is not None
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
@@ -1381,8 +1379,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = GoodEnoughTub()
         expected_tubid = t.tubID
-        if t.tubID is None:
-            expected_tubid = "<unauth>"
+        assert t.tubID is not None
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setOption("log-gatherer-furl", gatherer_furl)
@@ -1411,8 +1408,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = GoodEnoughTub()
         expected_tubid = t.tubID
-        if t.tubID is None:
-            expected_tubid = "<unauth>"
+        assert t.tubID is not None
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
@@ -1441,8 +1437,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = GoodEnoughTub()
         expected_tubid = t.tubID
-        if t.tubID is None:
-            expected_tubid = "<unauth>"
+        assert t.tubID is not None
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setOption("log-gatherer-furlfile", gatherer_furlfile)
@@ -1501,8 +1496,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = GoodEnoughTub()
         expected_tubid = t.tubID
-        if t.tubID is None:
-            expected_tubid = "<unauth>"
+        assert t.tubID is not None
         t.setOption("log-gatherer-furl", gatherer3_furl)
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")

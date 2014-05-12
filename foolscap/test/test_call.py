@@ -19,7 +19,7 @@ from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin
 from foolscap.test.common import RIMyTarget, Target, TargetWithoutInterfaces, \
      BrokenTarget
-from foolscap.api import RemoteException, UnauthenticatedTub, DeadReferenceError
+from foolscap.api import RemoteException, Tub, DeadReferenceError
 from foolscap.call import CopiedFailure
 from foolscap.logging import log as flog
 
@@ -755,11 +755,11 @@ class TubFailures(ExamineFailuresMixin, ShouldFailMixin, unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
         self.s.startService()
-        self.target_tub = UnauthenticatedTub()
+        self.target_tub = Tub()
         self.target_tub.setServiceParent(self.s)
         l = self.target_tub.listenOn("tcp:0:interface=127.0.0.1")
         self.target_tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        self.source_tub = UnauthenticatedTub()
+        self.source_tub = Tub()
         self.source_tub.setServiceParent(self.s)
 
     def tearDown(self):
@@ -803,11 +803,11 @@ class ReferenceCounting(ShouldFailMixin, unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
         self.s.startService()
-        self.target_tub = UnauthenticatedTub()
+        self.target_tub = Tub()
         self.target_tub.setServiceParent(self.s)
         l = self.target_tub.listenOn("tcp:0:interface=127.0.0.1")
         self.target_tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        self.source_tub = UnauthenticatedTub()
+        self.source_tub = Tub()
         self.source_tub.setServiceParent(self.s)
 
     def tearDown(self):

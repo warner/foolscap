@@ -20,7 +20,7 @@ from foolscap.constraint import IConstraint
 from foolscap.logging import log
 
 from foolscap.test.common import HelperTarget, TargetMixin, \
-     Target, TargetWithoutInterfaces, crypto_available, GoodEnoughTub
+     Target, TargetWithoutInterfaces, GoodEnoughTub
 from foolscap.eventual import fireEventually, flushEventualQueue
 
 
@@ -566,14 +566,9 @@ class TestService(unittest.TestCase):
         s.setLocation("127.0.0.1:%d" % l.getPortnum())
         t1 = Target()
         public_url = s.registerReference(t1, "target")
-        if crypto_available:
-            self.failUnless(public_url.startswith("pb://"))
-            self.failUnless(public_url.endswith("@127.0.0.1:%d/target"
-                                                % l.getPortnum()))
-        else:
-            self.failUnlessEqual(public_url,
-                                 "pbu://127.0.0.1:%d/target"
-                                 % l.getPortnum())
+        self.failUnless(public_url.startswith("pb://"))
+        self.failUnless(public_url.endswith("@127.0.0.1:%d/target"
+                                            % l.getPortnum()))
         self.failUnlessEqual(s.registerReference(t1, "target"), public_url)
         self.failUnlessIdentical(s.getReferenceForURL(public_url), t1)
         t2 = Target()

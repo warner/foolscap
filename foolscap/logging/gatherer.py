@@ -469,7 +469,7 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
 
     def remote_logport(self, nodeid, publisher):
         # we ignore nodeid (which is a printable string), and get the tubid
-        # (or its <unauth> name) from the publisher remoteReference.
+        # from the publisher remoteReference.
         # getRemoteTubID() protects us from .. and / and other nasties.
         tubid_s = publisher.getRemoteTubID()
         basedir = os.path.join(self.basedir, "incidents", tubid_s)
