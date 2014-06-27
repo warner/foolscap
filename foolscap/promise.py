@@ -5,8 +5,6 @@ from twisted.python.failure import Failure
 from twisted.internet import defer
 from foolscap.eventual import eventually
 
-id = util.unsignedID
-
 EVENTUAL, CHAINED, NEAR, BROKEN = range(4)
 
 class UsageError(Exception):
