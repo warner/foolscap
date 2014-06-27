@@ -7,5 +7,6 @@ install:
   - pip install twisted
   - pip install pyOpenSSL
 script:
+  - make pyflakes
   - python setup.py build
   - make test
