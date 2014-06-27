@@ -1,6 +1,5 @@
 # -*- test-case-name: foolscap.test.test_promise -*-
 
-from twisted.python import util
 from twisted.python.failure import Failure
 from twisted.internet import defer
 from foolscap.eventual import eventually
