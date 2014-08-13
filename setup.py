@@ -90,8 +90,6 @@ if have_setuptools:
             "flappclient = foolscap.appserver.client:run_flappclient",
             ] }
     setup_args['install_requires'] = setup_args['tests_require'] = ['twisted >= 2.5.0']
-    # note that pyOpenSSL-0.7 and recent Twisted causes unit test failures,
-    # see bug #62
 
 if __name__ == '__main__':
     setup(**setup_args)
