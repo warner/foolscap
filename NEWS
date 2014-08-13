@@ -1,5 +1,34 @@
 User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
 
+* Release 0.6.5 (12-Aug-2014)
+
+** Compatibility Fixes
+
+This release is compatible with Twisted-14.0.0.
+
+Foolscap no longer claims compatability with python-2.4.x or 2.5.x . These
+old versions might still work, but there are no longer automated tests to
+ensure this. Future versions will almost certainly *not* work with anything
+older than python-2.6.x . Foolscap remains incompatible with py3, sorry.
+
+** Forward Compatibility
+
+When parsing FURLs, the connection hints can now use TCP sockets described
+with the Twisted Endpoints syntax (e.g. "tcp:host=127.0.0.1:port=9999"), in
+addition to the earlier host:port "127.0.0.1:9999" form. Foolscap-0.6.5
+ignores any hint that is not in one of these two forms. This should make it
+easier to introduce new hint types in the future.
+
+** Minor Changes
+
+The "ChangeLog" file is no longer updated.
+
+Violation reports now include the method name. (#201)
+
+The "flappserver" tool explicitly rejects unicode input, rather than
+producing hard-to-diagnose errors later. (#209)
+
+
 * Release 0.6.4 (18-Jun-2012)
 
 ** Minor Changes
