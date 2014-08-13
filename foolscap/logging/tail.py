@@ -17,7 +17,7 @@ class LogSaver(Referenceable):
     implements(RILogObserver)
     def __init__(self, nodeid_s, savefile):
         self.nodeid_s = nodeid_s
-        self.f = savefile
+        self.f = savefile # we own this, and may close it
 
     def emit_header(self, versions, pid):
         header = {"header": {"type": "tail",
@@ -37,6 +37,7 @@ class LogSaver(Referenceable):
             print "GATHERER: unable to pickle %s: %s" % (e, ex)
 
     def disconnected(self):
+        self.f.close()
         del self.f
 
 class TailOptions(usage.Options):
@@ -77,8 +78,8 @@ class LogPrinter(Referenceable):
         self.options = options
         self.saver = None
         if options["save-to"]:
-            f = open(options["save-to"], "wb")
-            self.saver = LogSaver(target_tubid_s[:8], f)
+            self.saver = LogSaver(target_tubid_s[:8],
+                                  open(options["save-to"], "wb"))
         self.output = output
 
     def got_versions(self, versions, pid=None):
