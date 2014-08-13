@@ -729,8 +729,11 @@ class Tub(service.MultiService):
         furl = self.buildURL(name)
         if furlFile:
             need_to_chmod = not os.path.exists(furlFile)
-            open(furlFile, "w").write(furl + "\n")
+            f = open(furlFile, "w")
+            f.write(furl + "\n")
+            f.close()
             if need_to_chmod:
+                # XXX: open-to-chmod race here
                 os.chmod(furlFile, 0600)
         return furl
 

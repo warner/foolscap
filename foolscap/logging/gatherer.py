@@ -53,7 +53,9 @@ class GatheringBase(service.MultiService, Referenceable):
         l = self._tub.listenOn("tcp:%d" % desired_portnum)
 
         got_portnum = l.getPortnum()
-        open(portnumfile, "w").write("%d\n" % got_portnum)
+        f = open(portnumfile, "w")
+        f.write("%d\n" % got_portnum)
+        f.close()
 
         # we can't do setLocation until we have two things:
         #  portnum: this requires listenOn, if portnum=0 also startService

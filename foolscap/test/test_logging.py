@@ -792,8 +792,13 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         t.logger.setLogDir(logdir)
         t.logger.setIncidentReporterFactory(incident.NonTrailingIncidentReporter)
         # dump some other files in the incident directory
-        open(os.path.join(logdir, "distraction.bz2"), "w").write("stuff")
-        open(os.path.join(logdir, "noise"), "w").write("stuff")
+        f = open(os.path.join(logdir, "distraction.bz2"), "w")
+        f.write("stuff")
+        f.close()
+        f = open(os.path.join(logdir, "noise"), "w")
+        f.write("stuff")
+        f.close()
+
         # fill the buffers with some messages
         t.logger.msg("one")
         t.logger.msg("two")
