@@ -1,2 +1,2 @@
 
-verstr = "0.6.5"
+verstr = "0.6.5.post0"
