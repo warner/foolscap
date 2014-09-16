@@ -1,976 +1,1320 @@
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<title>Introduction to Foolscap</title>
-<style src="stylesheet-unprocessed.css"></style>
-</head>
 
-<body>
-<h1>Introduction to Foolscap</h1>
+:LastChangedDate: $LastChangedDate$
+:LastChangedRevision: $LastChangedRevision$
+:LastChangedBy: $LastChangedBy$
 
-<h2>Introduction</h2>
+Introduction to Foolscap
+========================
 
-<p>Suppose you find yourself in control of both ends of the wire: you have
+
+
+
+
+
+
+Introduction
+------------
+
+
+
+Suppose you find yourself in control of both ends of the wire: you have
 two programs that need to talk to each other, and you get to use any protocol
 you want. If you can think of your problem in terms of objects that need to
 make method calls on each other, then chances are good that you can use the
 Foolscap protocol rather than trying to shoehorn your needs into something
-like HTTP, or implementing yet another RPC mechanism.</p>
+like HTTP, or implementing yet another RPC mechanism.
 
-<p>Foolscap is based upon a few central concepts:</p>
 
-<ul>
 
-  <li><em>serialization</em>: taking fairly arbitrary objects and types,
+
+Foolscap is based upon a few central concepts:
+
+
+
+
+
+
+
+- *serialization* : taking fairly arbitrary objects and types,
   turning them into a chunk of bytes, sending them over a wire, then
   reconstituting them on the other end. By keeping careful track of object
   ids, the serialized objects can contain references to other objects and the
-  remote copy will still be useful. </li>
-  
-  <li><em>remote method calls</em>: doing something to a local proxy and
+  remote copy will still be useful. 
+- *remote method calls* : doing something to a local proxy and
   causing a method to get run on a distant object. The local proxy is called
-  a <code class="API" base="foolscap.referenceable">RemoteReference</code>,
-  and you <q>do something</q> by running its <code>.callRemote</code> method.
-  The distant object is called a <code class="API"
-  base="foolscap.referenceable">Referenceable</code>, and it has methods like
-  <code>remote_foo</code> that will be invoked.</li>
+  a :api:`foolscap.referenceable.RemoteReference <RemoteReference>` ,
+  and you "do something" by running its ``.callRemote`` method.
+  The distant object is called a :api:`foolscap.referenceable.Referenceable <Referenceable>` , and it has methods like
+   ``remote_foo`` that will be invoked.
 
-</ul>
 
-<p>Foolscap is the descendant of Perspective Broker (which lived in the
+
+
+
+Foolscap is the descendant of Perspective Broker (which lived in the
 twisted.spread package). For many years it was known as "newpb". A lot of the
 API still has the name "PB" in it somewhere. These will probably go away
-sooner or later.</p>
+sooner or later.
 
-<p>A "foolscap" is a size of paper, probably measuring 17 by 13.5 inches. A
+
+
+
+A "foolscap" is a size of paper, probably measuring 17 by 13.5 inches. A
 twisted foolscap of paper makes a good fool's cap. Also, "cap" makes me think
 of capabilities, and Foolscap is a protocol to implement a distributed
-object-capabilities model in python.</p>
+object-capabilities model in python.
 
 
-<h2>Getting Started</h2>
 
-<p>Any Foolscap application has at least two sides: one which hosts a
+
+
+
+Getting Started
+---------------
+
+
+
+Any Foolscap application has at least two sides: one which hosts a
 remotely-callable object, and another which calls (remotely) the methods of
 that object. We'll start with a simple example that demonstrates both ends.
 Later, we'll add more features like RemoteInterface declarations, and
-transferring object references.</p>
+transferring object references.
 
-<p>The most common way to make an object with remotely-callable methods is to
-subclass <code class="API"
-base="foolscap.referenceable">Referenceable</code>. Let's create a simple
+
+
+
+The most common way to make an object with remotely-callable methods is to
+subclass :api:`foolscap.referenceable.Referenceable <Referenceable>` . Let's create a simple
 server which does basic arithmetic. You might use such a service to perform
 difficult mathematical operations, like addition, on a remote machine which
-is faster and more capable than your own<span class="footnote"> although
-really, if your client machine is too slow to perform this kind of math, it
-is probably too slow to run python or use a network, so you should seriously
-consider a hardware upgrade</span>.</p>
+is faster and more capable than your own [#]_ .
 
-<pre class="python">
-from foolscap.api import Referenceable
 
-class MathServer(Referenceable):
-    def remote_add(self, a, b):
-        return a+b
-    def remote_subtract(self, a, b):
-        return a-b
-    def remote_sum(self, args):
-        total = 0
-        for a in args: total += a
-        return total
 
-myserver = MathServer()
-</pre>
 
-<p>On the other end of the wire (which you might call the <q>client</q>
-side), the code will have a <code class="API"
-base="foolscap.referenceable">RemoteReference</code> to this object. The
-<code>RemoteReference</code> has a method named <code class="API"
-base="foolscap.referenceable.RemoteReference">callRemote</code> which you
+
+.. code-block:: python
+
+    
+    from foolscap.api import Referenceable
+    
+    class MathServer(Referenceable):
+        def remote_add(self, a, b):
+            return a+b
+        def remote_subtract(self, a, b):
+            return a-b
+        def remote_sum(self, args):
+            total = 0
+            for a in args: total += a
+            return total
+    
+    myserver = MathServer()
+
+
+
+
+On the other end of the wire (which you might call the "client" 
+side), the code will have a :api:`foolscap.referenceable.RemoteReference <RemoteReference>` to this object. The``RemoteReference`` has a method named :api:`foolscap.referenceable.RemoteReference.callRemote <callRemote>` which you
 will use to invoke the method. It always returns a Deferred, which will fire
-with the result of the method. Assuming you've already acquired the
-<code>RemoteReference</code>, you would invoke the method like this:</p>
+with the result of the method. Assuming you've already acquired the``RemoteReference`` , you would invoke the method like this:
 
-<pre class="python">
-def gotAnswer(result):
-    print "result is", result
-def gotError(err):
-    print "error:", err
-d = remote.callRemote("add", 1, 2)
-d.addCallbacks(gotAnswer, gotError)
-</pre>
 
-<p>Ok, now how do you acquire that <code>RemoteReference</code>? How do you
-make the <code>Referenceable</code> available to the outside world? For this,
-we'll need to discuss the <q>Tub</q>, and the concept of a <q>FURL</q>.</p>
 
-<h2>Tubs: The Foolscap Service</h2>
 
-<p>The <code class="API" base="foolscap.pb">Tub</code> is the container that
-you use to publish <code>Referenceable</code>s, and is the middle-man you use
-to access <code>Referenceable</code>s on other systems. It is known as the
-<q>Tub</q>, since it provides similar naming and identification properties as
-the <a href="http://www.erights.org/">E language</a>'s <q>Vat</q><span
-class="footnote">but they do not provide quite the same insulation against
-other objects as E's Vats do. In this sense, Tubs are leaky Vats.</span>. If
-you want to make a <code>Referenceable</code> available to the world, you
-create a Tub, tell it to listen on a TCP port, and then register the
-<code>Referenceable</code> with it under a name of your choosing. If you want
-to access a remote <code>Referenceable</code>, you create a Tub and ask it to
-acquire a <code>RemoteReference</code> using that same name.</p>
 
-<p>The <code>Tub</code> is a Twisted <code class="API"
-base="twisted.application.service">Service</code> subclass, so you use it in
+.. code-block:: python
+
+    
+    def gotAnswer(result):
+        print "result is", result
+    def gotError(err):
+        print "error:", err
+    d = remote.callRemote("add", 1, 2)
+    d.addCallbacks(gotAnswer, gotError)
+
+
+
+
+Ok, now how do you acquire that ``RemoteReference`` ? How do you
+make the ``Referenceable`` available to the outside world? For this,
+we'll need to discuss the "Tub" , and the concept of a "FURL" .
+
+
+
+
+
+Tubs: The Foolscap Service
+--------------------------
+
+
+
+The :api:`foolscap.pb.Tub <Tub>` is the container that
+you use to publish ``Referenceable`` s, and is the middle-man you use
+to access ``Referenceable`` s on other systems. It is known as the"Tub" , since it provides similar naming and identification properties as
+the `E language <http://www.erights.org/>`_ 's "Vat"  [#]_ . If
+you want to make a ``Referenceable`` available to the world, you
+create a Tub, tell it to listen on a TCP port, and then register the``Referenceable`` with it under a name of your choosing. If you want
+to access a remote ``Referenceable`` , you create a Tub and ask it to
+acquire a ``RemoteReference`` using that same name.
+
+
+
+
+The ``Tub`` is a Twisted :api:`twisted.application.service.Service <Service>` subclass, so you use it in
 the same way: once you've created one, you attach it to a parent Service or
 Application object. Once the top-level Application object has been started,
 the Tub will start listening on any network ports you've requested. When the
 Tub is shut down, it will stop listening and drop any connections it had
 established since last startup. If you have no parent to attach it to, you
-can use <code>startService</code> and <code>stopService</code> on the Tub
-directly.</p>
+can use ``startService`` and ``stopService`` on the Tub
+directly.
 
-<p>Note that no network activity will occur until the Tub's
-<code>startService</code> method has been called. This means that any
-<code>getReference</code> or <code>connectTo</code> requests that occur
+
+
+
+Note that no network activity will occur until the Tub's ``startService`` method has been called. This means that any``getReference`` or ``connectTo`` requests that occur
 before the Tub is started will be deferred until startup. If the program
 forgets to start the Tub, these requests will never be serviced. A message to
 this effect is added to the twistd.log file to help developers discover this
-kind of problem.</p>
+kind of problem.
 
-<h3>Making your Tub remotely accessible</h3>
 
-<p>To make any of your <code>Referenceable</code>s available, you must make
+
+
+
+Making your Tub remotely accessible
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+To make any of your ``Referenceable`` s available, you must make
 your Tub available. There are three parts: give it an identity, have it
 listen on a port, and tell it the protocol/hostname/portnumber at which that
-port is accessible to the outside world.</p>
+port is accessibly to the outside world.
 
-<p>In general, the Tub will generate its own identity, the <em>TubID</em>, by
-creating a self-signed SSL public key certificate and hashing it into a suitably-long
+
+
+
+In general, the Tub will generate its own identity, the *TubID* , by
+creating an SSL public key certificate and hashing it into a suitably-long
 random-looking string. This is the primary identifier of the Tub: everything
-else is just a <em>location hint</em> that suggests how the Tub might be
+else is just a *location hint* that suggests how the Tub might be
 reached. The fact that the TubID is tied to the public key allows FURLs to
-be <q>secure</q> references (meaning that no third party can cause you to
+be "secure" references (meaning that no third party can cause you to
 connect to the wrong reference). You can also create a Tub with a
 pre-existing certificate, which is how Tubs can retain a persistent identity
-over multiple executions.</p>
+over multiple executions.
 
-<p>You can also create an <code>UnauthenticatedTub</code>, which has an empty
+
+
+
+You can also create an ``UnauthenticatedTub`` , which has an empty
 TubID. Hosting and connecting to unauthenticated Tubs do not require the
 pyOpenSSL library, but do not provide privacy, authentication, connection
 redirection, or shared listening ports. The FURLs that point to
-unauthenticated Tubs have a distinct form (starting with <code>pbu:</code>
-instead of <code>pb:</code>) to make sure they are not mistaken for
-authenticated Tubs. Foolscap uses authenticated Tubs by default.</p>
+unauthenticated Tubs have a distinct form (starting with ``pbu:`` 
+instead of ``pb:`` ) to make sure they are not mistaken for
+authenticated Tubs. Foolscap uses authenticated Tubs by default.
 
-<p>Having the Tub listen on a TCP port is as simple as calling <code
-class="API" base="foolscap.pb.Tub">listenOn</code> with a <code class="API"
-base="twisted.application">strports</code>-formatted port specification
-string. The simplest such string would be <q>tcp:12345</q>, to listen on port
-12345 on all interfaces. Using <q>tcp:12345:interface=127.0.0.1</q> would
+
+
+
+Having the Tub listen on a TCP port is as simple as calling :api:`foolscap.pb.Tub.listenOn <listenOn>` with a :api:`twisted.application.strports <strports>` -formatted port specification
+string. The simplest such string would be "tcp:12345" , to listen on port
+12345 on all interfaces. Using "tcp:12345:interface=127.0.0.1" would
 cause it to only listen on the localhost interface, making it available only
-to other processes on the same host. The <code>strports</code> module
-provides many other possibilities.</p>
+to other processes on the same host. The ``strports`` module
+provides many other possibilities.
 
-<p>The Tub needs to be told how it can be reached, so it knows what host and
+
+
+
+The Tub needs to be told how it can be reached, so it knows what host and
 port to put into the FURLs it creates. This location is simply a string in
-the format <q>host:port</q>, using the host name by which that TCP port
+the format "host:port" , using the host name by which that TCP port
 you've just opened can be reached. Foolscap cannot, in general, guess what
 this name is, especially if there are NAT boxes or port-forwarding devices in
-the way. If your machine is reachable directly over the internet as
-<q>myhost.example.com</q>, then you could use something like this:</p>
+the way. If your machine is reachable directly over the internet as"myhost.example.com" , then you could use something like this:
 
-<pre class="python">
-from foolscap.api import Tub
 
-tub = Tub()
-tub.listenOn("tcp:12345")  # start listening on TCP port 12345
-tub.setLocation("myhost.example.com:12345")
-</pre>
 
-<h3>Registering the Referenceable</h3>
 
-<p>Once the Tub has a Listener and a location, you can publish your
-<code>Referenceable</code> to the entire world by picking a name and
-registering it:</p>
 
-<pre class="python">
-furl = tub.registerReference(myserver, "math-service")
-</pre>
+.. code-block:: python
 
-<p>This returns the <q>FURL</q> for your <code>Referenceable</code>. Remote
+    
+    from foolscap.api import Tub
+    
+    tub = Tub()
+    tub.listenOn("tcp:12345")  # start listening on TCP port 12345
+    tub.setLocation("myhost.example.com:12345")
+
+
+
+
+
+Registering the Referenceable
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+Once the Tub has a Listener and a location, you can publish your ``Referenceable`` to the entire world by picking a name and
+registering it:
+
+
+
+
+
+.. code-block:: python
+
+    
+    furl = tub.registerReference(myserver, "math-service")
+
+
+
+
+This returns the "FURL" for your ``Referenceable`` . Remote
 systems will use this FURL to access your newly-published object. The
-registration just maps a per-Tub name to the <code>Referenceable</code>:
-technically the same <code>Referenceable</code> could be published multiple
+registration just maps a per-Tub name to the ``Referenceable`` :
+technically the same ``Referenceable`` could be published multiple
 times, under different names, or even be published by multiple Tubs in the
 same application. But in general, each program will have exactly one Tub, and
-each object will be registered under only one name.</p>
+each object will be registered under only one name.
 
-<p>In this example (if we pretend the generated TubID was <q>ABCD</q>), the
-FURL returned by <code>registerReference</code> would be
-<code>"pb://ABCD@myhost.example.com:12345/math-service"</code>.</p>
 
-<p>If you do not provide a name, a random (and unguessable) name will be
-generated for you. This is useful when you want to give access to your
-<code>Referenceable</code> to someone specific, but do not want to make it
-possible for someone else to acquire it by guessing the name.</p>
 
-<p>To use an unauthenticated Tub instead, you would do the following:</p>
-<pre class="python">
-from foolscap.api import UnauthenticatedTub
 
-tub = UnauthenticatedTub()
-tub.listenOn("tcp:12345")  # start listening on TCP port 12345
-tub.setLocation("myhost.example.com:12345")
-furl = tub.registerReference(myserver, "math-service")
-</pre>
+In this example (if we pretend the generated TubID was "ABCD" ), the
+FURL returned by ``registerReference`` would be``"pb://ABCD@myhost.example.com:12345/math-service"`` .
 
-<p>In this case, the FURL would be
-<code>"pbu://myhost.example.com:12345/math-service"</code>. The deterministic
+
+
+
+If you do not provide a name, a random (and unguessable) name will be
+generated for you. This is useful when you want to give access to your ``Referenceable`` to someone specific, but do not want to make it
+possible for someone else to acquire it by guessing the name.
+
+
+
+
+To use an unauthenticated Tub instead, you would do the following:
+
+
+
+
+.. code-block:: python
+
+    
+    from foolscap.api import UnauthenticatedTub
+    
+    tub = UnauthenticatedTub()
+    tub.listenOn("tcp:12345")  # start listening on TCP port 12345
+    tub.setLocation("myhost.example.com:12345")
+    furl = tub.registerReference(myserver, "math-service")
+
+
+
+
+In this case, the FURL would be ``"pbu://myhost.example.com:12345/math-service"`` . The deterministic
 nature of this form makes it slightly easier to throw together
 quick-and-dirty Foolscap applications, since you only need to hard-code the
 target host and port into the client side program. However any serious
 application should just used the default authenticated form and use a full
 FURL as their starting point. Note that the FURL can come from anywhere:
 typed in by the user, retrieved from a web page, or hardcoded into the
-application.</p>
+application.
 
-<h4>Using a persistent certificate</h4>
 
-<p>The Tub uses a TLS public-key certificate as the base of all its
+
+
+
+Using a persistent certificate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+The Tub uses a TLS public-key certificate as the base of all its
 cryptographic operations. If you don't give it one when you create the Tub,
-it will generate a brand-new one.</p>
+it will generate a brand-new one.
 
-<p>The TubID is simply the hash of this certificate, so if you are writing an
+
+
+
+The TubID is simply the hash of this certificate, so if you are writing an
 application that should have a stable long-term identity, you will need to
 insure that the Tub uses the same certificate every time your app starts. The
-easiest way to do this is to pass the <code>certFile=</code> argument into
-your <code>Tub()</code> constructor call. This argument provides a filename
+easiest way to do this is to pass the ``certFile=`` argument into
+your ``Tub()`` constructor call. This argument provides a filename
 where you want the Tub to store its certificate. The first time the Tub is
 started (when this file does not exist), the Tub will generate a new
 certificate and store it here. On subsequent invocations, the Tub will read
 the earlier certificate from this location. Make sure this filename points to
-a writable location, and that you pass the same filename to
-<code>Tub()</code> each time.</p>
+a writable location, and that you pass the same filename to``Tub()`` each time.
 
-<h4>Using a Persistent FURL</h4>
 
-<p>It is often useful to insure that a given Referenceable's FURL is both
+
+
+
+Using a Persistent FURL
+^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+It is often useful to insure that a given Referenceable's FURL is both
 unguessable and stable, remaining the same from one invocation of the program
 that hosts it to the next. One (bad) way to do this is to have the programmer
-choose an unguessable name, embed it in the program, and pass it into
-<code>registerReference</code> each time the program runs, but of course this
+choose an unguessable name, embed it in the program, and pass it into ``registerReference`` each time the program runs, but of course this
 means that the name will be visible to anyone who sees the source code for
 the program, and the same name will be used by all copies of the program
-everywhere.</p>
+everywhere.
 
-<p>A better approach is to use the <code>furlFile=</code> argument. This
+
+
+
+A better approach is to use the ``furlFile=`` argument. This
 argument provides a filename that is used to hold the stable FURL for this
-object. If the furlfile exists when <code>registerReference</code> is called,
+object. If the furlfile exists when ``registerReference`` is called,
 the Tub will use the name inside it when constructing the new FURL. If it
 doesn't exist, it will create a new (unguessable) name. The new FURL will
 always be written into the furlfile afterwards. In addition, the tubid in the
 old FURL will be checked against the current Tub's tubid to make sure it
 matches. (this means that if you use furlFile=, you should also use the
-certFile= argument when constructing the Tub).</p>
+certFile= argument when constructing the Tub).
 
 
-<h3>Retrieving a RemoteReference</h3>
-
-<p>On the <q>client</q> side, you also need to create a Tub, although you
-don't need to perform the (<code>listenOn</code>, <code>setLocation</code>,
-<code>registerReference</code>) sequence unless you are also publishing
-<code>Referenceable</code>s to the world. To acquire a reference to somebody
-else's object, just use <code class="API"
-base="foolscap.pb.Tub">getReference</code>:</p>
-
-<pre class="python">
-from foolscap.api import Tub
-
-tub = Tub()
-tub.startService()
-d = tub.getReference("pb://ABCD@myhost.example.com:12345/math-service")
-def gotReference(remote):
-    print "Got the RemoteReference:", remote
-def gotError(err):
-    print "error:", err
-d.addCallbacks(gotReference, gotError)
-</pre>
-
-<p><code>getReference</code> returns a Deferred which will fire with a
-<code>RemoteReference</code> that is connected to the remote
-<code>Referenceable</code> named by the FURL. It will use an existing
-connection, if one is available, and it will return an existing
-<code>RemoteReference</code>, it one has already been acquired.</p>
-
-<p>Since <code>getReference</code> requests are queued until the Tub starts,
-the following will work too. But don't forget to call
-<code>tub.startService()</code> eventually, otherwise your program will hang
-forever.</p>
-
-<pre class="python">
-from foolscap.api import Tub
-
-tub = Tub()
-d = tub.getReference("pb://ABCD@myhost.example.com:12345/math-service")
-def gotReference(remote):
-    print "Got the RemoteReference:", remote
-def gotError(err):
-    print "error:", err
-d.addCallbacks(gotReference, gotError)
-tub.startService()
-</pre>
 
 
-<h3>Complete example</h3>
 
-<p>Here are two programs, one implementing the server side of our
+
+Retrieving a RemoteReference
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+On the "client" side, you also need to create a Tub, although you
+don't need to perform the (``listenOn`` , ``setLocation`` ,``registerReference`` ) sequence unless you are also publishing``Referenceable`` s to the world. To acquire a reference to somebody
+else's object, just use :api:`foolscap.pb.Tub.getReference <getReference>` :
+
+
+
+
+
+.. code-block:: python
+
+    
+    from foolscap.api import Tub
+    
+    tub = Tub()
+    tub.startService()
+    d = tub.getReference("pb://ABCD@myhost.example.com:12345/math-service")
+    def gotReference(remote):
+        print "Got the RemoteReference:", remote
+    def gotError(err):
+        print "error:", err
+    d.addCallbacks(gotReference, gotError)
+
+
+
+
+``getReference`` returns a Deferred which will fire with a``RemoteReference`` that is connected to the remote``Referenceable`` named by the FURL. It will use an existing
+connection, if one is available, and it will return an existing``RemoteReference`` , it one has already been acquired.
+
+
+
+
+Since ``getReference`` requests are queued until the Tub starts,
+the following will work too. But don't forget to call``tub.startService()`` eventually, otherwise your program will hang
+forever.
+
+
+
+
+
+.. code-block:: python
+
+    
+    from foolscap.api import Tub
+    
+    tub = Tub()
+    d = tub.getReference("pb://ABCD@myhost.example.com:12345/math-service")
+    def gotReference(remote):
+        print "Got the RemoteReference:", remote
+    def gotError(err):
+        print "error:", err
+    d.addCallbacks(gotReference, gotError)
+    tub.startService()
+
+
+
+
+
+
+Complete example
+~~~~~~~~~~~~~~~~
+
+
+
+Here are two programs, one implementing the server side of our
 remote-addition protocol, the other behaving as a client. This first example
 uses an unauthenticated Tub so you don't have to manually copy a FURL from
 the server to the client. Both of these are standalone programs (you just run
-them), but normally you would create an <code class="API"
-base="twisted.application.service">Application</code> object and pass the
-file to <code>twistd -noy</code>. An example of that usage will be provided
-later.</p>
+them), but normally you would create an :api:`twisted.application.service.Application <Application>` object and pass the
+file to ``twistd -noy`` . An example of that usage will be provided
+later.
 
-<a href="listings/pb1server.py" class="py-listing"
-skipLines="2">pb1server.py</a>
 
-<a href="listings/pb1client.py" class="py-listing"
-skipLines="2">pb1client.py</a>
 
-<pre class="shell">
-% doc/listings/pb1server.py
-the object is available at: pbu://localhost:12345/math-service
-</pre>
 
-<pre class="shell">
-% doc/listings/pb1client.py
-got a RemoteReference
-asking it to add 1+2
-the answer is 3
-%
-</pre>
 
-<p>The second example uses authenticated Tubs. When running this example, you
+:download:`pb1server.py <listings/pb1server.py>`
+
+.. literalinclude:: listings/pb1server.py
+
+
+
+:download:`pb1client.py <listings/pb1client.py>`
+
+.. literalinclude:: listings/pb1client.py
+
+
+
+.. code-block:: console
+
+    
+    % doc/listings/pb1server.py
+    the object is available at: pbu://localhost:12345/math-service
+
+
+
+
+
+.. code-block:: console
+
+    
+    % doc/listings/pb1client.py
+    got a RemoteReference
+    asking it to add 1+2
+    the answer is 3
+    %
+
+
+
+
+The second example uses authenticated Tubs. When running this example, you
 must copy the FURL printed by the server and provide it as an argument to the
-client.</p>
-
-<a href="listings/pb2server.py" class="py-listing"
-skipLines="2">pb2server.py</a>
-
-<a href="listings/pb2client.py" class="py-listing"
-skipLines="2">pb2client.py</a>
-
-<pre class="shell">
-% doc/listings/pb2server.py
-the object is available at: pb://abcd123@localhost:12345/math-service
-</pre>
-
-<pre class="shell">
-% doc/listings/pb2client.py pb://abcd123@localhost:12345/math-service
-got a RemoteReference
-asking it to add 1+2
-the answer is 3
-%
-</pre>
+client.
 
 
-<h3>FURLs</h3>
 
-<p>In Foolscap, each world-accessible Referenceable has one or more FURLs
-which are <q>secure</q>, where we use the capability-security definition of
-the term, meaning those FURLs have the following properties:</p>
 
-<ul>
-  <li>The only way to acquire the FURL is either to get it from someone else
+
+:download:`pb2server.py <listings/pb2server.py>`
+
+.. literalinclude:: listings/pb2server.py
+
+
+
+:download:`pb2client.py <listings/pb2client.py>`
+
+.. literalinclude:: listings/pb2client.py
+
+
+
+.. code-block:: console
+
+    
+    % doc/listings/pb2server.py
+    the object is available at: pb://abcd123@localhost:12345/math-service
+
+
+
+
+
+.. code-block:: console
+
+    
+    % doc/listings/pb2client.py pb://abcd123@localhost:12345/math-service
+    got a RemoteReference
+    asking it to add 1+2
+    the answer is 3
+    %
+
+
+
+
+
+
+FURLs
+~~~~~
+
+
+
+In Foolscap, each world-accessible Referenceable has one or more FURLs
+which are "secure" , where we use the capability-security definition of
+the term, meaning those FURLs have the following properties:
+
+
+
+
+
+
+- The only way to acquire the FURL is either to get it from someone else
   who already has it, or to be the person who published it in the first
-  place.</li>
-
-  <li>Only that original creator of the FURL gets to determine which
+  place.
+- Only that original creator of the FURL gets to determine which
   Referenceable it will connect to. If your
-  <code>tub.getReference(url)</code> call succeeds, the Referenceable you
-  will be connected to will be the right one.</li>
-</ul>
+  ``tub.getReference(url)`` call succeeds, the Referenceable you
+  will be connected to will be the right one.
 
-<p>To accomplish the first goal, FURLs must be unguessable. You can register
+
+
+
+
+To accomplish the first goal, FURLs must be unguessable. You can register
 the reference with a human-readable name if your intention is to make it
-available to the world, but in general you will let
-<code>tub.registerReference</code> generate a random name for you, preserving
-the unguessability property.</p>
+available to the world, but in general you will let ``tub.registerReference`` generate a random name for you, preserving
+the unguessability property.
 
-<p>To accomplish the second goal, the cryptographically-secure TubID is used
-as the primary identifier, and the <q>location hints</q> are just that:
+
+
+
+To accomplish the second goal, the cryptographically-secure TubID is used
+as the primary identifier, and the "location hints" are just that:
 hints. If DNS has been subverted to point the hostname at a different
 machine, or if a man-in-the-middle attack causes you to connect to the wrong
 box, the TubID will not match the remote end, and the connection will be
 dropped. These attacks can cause a denial-of-service, but they cannot cause
-you to mistakenly connect to the wrong target.</p>
+you to mistakenly connect to the wrong target.
 
-<p>Obviously this second property only holds if you use SSL. If you choose to
-use unauthenticated Tubs, all security properties are lost.</p>
 
-<p>The format of a FURL, like
-<code>pb://abcd123@example.com:5901,backup.example.com:8800/math-server</code>,
-is as follows<span class="footnote">note that the FURL uses the same format
-as an <a href="http://www.waterken.com/dev/YURL/httpsy/">HTTPSY</a>
-URL</span>:</p>
 
-<ol>
-  <li>The literal string <code>pb://</code></li>
-  <li>The TubID (as a base32-encoded hash of the SSL certificate)</li>
-  <li>A literal <code>@</code> sign</li>
 
-  <li>A comma-separated list of <q>location hints</q>. Each is one of the
-  following:
-  <ul>
-    <li>TCP over IPv4 via DNS: <code>HOSTNAME:PORTNUM</code></li>
-    <li>TCP over IPv4 without DNS: <code>A.B.C.D:PORTNUM</code></li>
-    <li>TCP over IPv6: (TODO, maybe <code>tcp6:HOSTNAME:PORTNUM</code> ?</li>
-    <li>TCP over IPv6 w/o DNS: (TODO,
-        maybe <code>tcp6:[X:Y::Z]:PORTNUM</code></li>
-    <li>Unix-domain socket: (TODO)</li>
-  </ul>
+Obviously this second property only holds if you use SSL. If you choose to
+use unauthenticated Tubs, all security properties are lost.
 
-  Each location hint is attempted in turn. Servers can return a
-  <q>redirect</q>, which will cause the client to insert the provided
-  redirect targets into the hint list and start trying them before continuing
-  with the original list.</li>
 
-  <li>A literal <code>/</code> character</li>
-  <li>The reference's name</li>
-</ol>
 
-<p>(Unix-domain sockets are represented with only a single location hint, in
-the format <code>pb://ABCD@unix/path/to/socket/NAME</code>, but this needs
-some work)</p>
 
-<p>FURLs for unauthenticated Tubs, like
-<code>pbu://example.com:8700/math-server</code>, are formatted as
-follows:</p>
+The format of a FURL, like ``pb://abcd123@example.com:5901,backup.example.com:8800/math-server`` ,
+is as follows [#]_ :
 
-<ol>
-  <li>The literal string <code>pbu://</code></li>
-  <li>A comma-separated list of location hints, as above</li>
-  <li>A literal <code>/</code> character</li>
-  <li>The reference's name</li>
-</ol>
 
-<h2>Clients vs Servers, Names and Capabilities</h2>
 
-<p>It is worthwhile to point out that Foolscap is a symmetric protocol.
-<code>Referenceable</code> instances can live on either side of a wire, and
-the only difference between <q>client</q> and <q>server</q> is who publishes
-the object and who initiates the network connection.</p>
 
-<p>In any Foolscap-using system, the very first object exchanged must be
-acquired with a <code>tub.getReference(url)</code> call<span
-class="footnote">in fact, the very <em>very</em> first object exchanged is a
-special implicit RemoteReference to the remote Tub itself, which implements
-an internal protocol that includes a method named
-<code>remote_getReference</code>. The <code>tub.getReference(url)</code> call
-is turned into one step that connects to the remote Tub, and a second step
-which invokes remotetub.callRemote("getReference", refname) on the
-result</span>, which means it must have been published with a call to
-<code>tub.registerReference(ref, name)</code>. After that, other objects can
+
+#. The literal string ``pb://`` 
+#. The TubID (as a base32-encoded hash of the SSL certificate)
+#. A literal ``@`` sign
+#. A comma-separated list of "location hints" . Each is one of the
+   following:
+   
+   
+   
+   - TCP over IPv4 via DNS: ``HOSTNAME:PORTNUM`` 
+   - TCP over IPv4 without DNS: ``A.B.C.D:PORTNUM`` 
+   - TCP over IPv6: (TODO, maybe ``tcp6:HOSTNAME:PORTNUM`` ?
+   - TCP over IPv6 w/o DNS: (TODO,
+     maybe ``tcp6:[X:Y::Z]:PORTNUM`` 
+   - Unix-domain socket: (TODO)
+   
+   
+   Each location hint is attempted in turn. Servers can return a
+   
+   
+   "redirect" , which will cause the client to insert the provided
+   redirect targets into the hint list and start trying them before continuing
+   with the original list.
+#. A literal ``/`` character
+#. The reference's name
+
+
+
+(Unix-domain sockets are represented with only a single location hint, in
+the format ``pb://ABCD@unix/path/to/socket/NAME`` , but this needs
+some work)
+
+
+
+
+FURLs for unauthenticated Tubs, like ``pbu://example.com:8700/math-server`` , are formatted as
+follows:
+
+
+
+
+
+#. The literal string ``pbu://`` 
+#. A comma-separated list of location hints, as above
+#. A literal ``/`` character
+#. The reference's name
+
+
+
+
+Clients vs Servers, Names and Capabilities
+------------------------------------------
+
+
+
+It is worthwhile to point out that Foolscap is a symmetric protocol. ``Referenceable`` instances can live on either side of a wire, and
+the only difference between "client" and "server" is who publishes
+the object and who initiates the network connection.
+
+
+
+
+In any Foolscap-using system, the very first object exchanged must be
+acquired with a ``tub.getReference(url)`` call [#]_ , which means it must have been published with a call to``tub.registerReference(ref, name)`` . After that, other objects can
 be passed as an argument to (or a return value from) a remotely-invoked
-method of that first object. Any suitable <code>Referenceable</code> object
-that is passed over the wire will appear on the other side as a corresponding
-<code>RemoteReference</code>. It is not necessary to
-<code>registerReference</code> something to let it pass over the wire.</p>
+method of that first object. Any suitable ``Referenceable`` object
+that is passed over the wire will appear on the other side as a corresponding``RemoteReference`` . It is not necessary to``registerReference`` something to let it pass over the wire.
 
-<p>The converse of this property is thus: if you do <em>not</em>
-<code>registerReference</code> a particular <code>Referenceable</code>, and
-you do <em>not</em> give it to anyone else (by passing it in an argument to
+
+
+
+The converse of this property is thus: if you do *not* ``registerReference`` a particular ``Referenceable`` , and
+you do *not* give it to anyone else (by passing it in an argument to
 somebody's remote method, or return it from one of your own), then nobody
-else will be able to get access to that <code>Referenceable</code>. This
-property means the <code>Referenceable</code> is a <q>capability</q>, as
-holding a corresponding <code>RemoteReference</code> gives someone a power
-that they cannot acquire in any other way<span class="footnote">of course,
-the Foolscap connections must be secured with SSL (otherwise an eavesdropper
-or man-in-the-middle could get access), and the registered name must be
-unguessable (or someone else could acquire a reference), but both of these
-are the default.</span></p>
+else will be able to get access to that ``Referenceable`` . This
+property means the ``Referenceable`` is a "capability" , as
+holding a corresponding ``RemoteReference`` gives someone a power
+that they cannot acquire in any other way [#]_ 
 
-<p>In the following example, the first program creates an RPN-style
-<code>Calculator</code> object which responds to <q>push</q>, <q>pop</q>,
-<q>add</q>, and <q>subtract</q> messages from the user. The user can also
-register an <code>Observer</code>, to which the Calculator sends an
-<code>event</code> message each time something happens to the calculator's
-state. When you consider the <code>Calculator</code> object, the first
+
+
+
+In the following example, the first program creates an RPN-style ``Calculator`` object which responds to "push" , "pop" ,"add" , and "subtract" messages from the user. The user can also
+register an ``Observer`` , to which the Calculator sends an``event`` message each time something happens to the calculator's
+state. When you consider the ``Calculator`` object, the first
 program is the server and the second program is the client. When you think
-about the <code>Observer</code> object, the first program is a client and the
+about the ``Observer`` object, the first program is a client and the
 second program is the server. It also happens that the first program is
 listening on a socket, while the second program initiated a network
-connection to the first. It <em>also</em> happens that the first program
+connection to the first. It *also* happens that the first program
 published an object under some well-known name, while the second program has
-not published any objects. These are all independent properties.</p>
+not published any objects. These are all independent properties.
 
-<p>Also note that the Calculator side of the example is implemented using a
-<code class="API" base="twisted.application.service">Application</code>
+
+
+
+Also note that the Calculator side of the example is implemented using a:api:`twisted.application.service.Application <Application>` 
 object, which is the way you'd normally build a real-world application. You
-therefore use <code>twistd</code> to launch the program. The User side is
-written with the same <code>reactor.run()</code> style as the earlier
-example.</p>
+therefore use ``twistd`` to launch the program. The User side is
+written with the same ``reactor.run()`` style as the earlier
+example.
 
-<p>The server registers the Calculator instance and prints the FURL at which
+
+
+
+The server registers the Calculator instance and prints the FURL at which
 it is listening. You need to pass this FURL to the client program so it knows
 how to contact the server. If you have a modern version of Twisted (2.5 or
 later) and the right encryption libraries installed, you'll get an
 authenticated Tub (for which the FURL will start with "pb:" and will be
 fairly long). If you don't, you'll get an unauthenticated Tub (with a
-relatively short FURL that starts with "pbu:").</p>
-
-<a href="listings/pb3calculator.py" class="py-listing"
-skipLines="2">pb3calculator.py</a>
-
-<a href="listings/pb3user.py" class="py-listing"
-skipLines="2">pb3user.py</a>
-
-<pre class="shell">
-% twistd -noy doc/listings/pb3calculator.py 
-15:46 PDT [-] Log opened.
-15:46 PDT [-] twistd 2.4.0 (/usr/bin/python 2.4.4) starting up
-15:46 PDT [-] reactor class: twisted.internet.selectreactor.SelectReactor
-15:46 PDT [-] Loading doc/listings/pb3calculator.py...
-15:46 PDT [-] the object is available at:
-              pb://5ojw4cv4u4d5cenxxekjukrogzytnhop@localhost:12345/calculator
-15:46 PDT [-] Loaded.
-15:46 PDT [-] foolscap.pb.Listener starting on 12345
-15:46 PDT [-] Starting factory &lt;Listener at 0x4869c0f4 on tcp:12345
-              with tubs None&gt;
-</pre>
-
-<pre class="shell">
-% doc/listings/pb3user.py \
-   pb://5ojw4cv4u4d5cenxxekjukrogzytnhop@localhost:12345/calculator
-event: push(2)
-event: push(3)
-event: add
-event: pop
-the result is 5
-%
-</pre>
+relatively short FURL that starts with "pbu:").
 
 
-<h2>Invoking Methods, Method Arguments</h2>
 
-<p>As you've probably already guessed, all the methods with names that begin
-with <code>remote_</code> will be available to anyone who manages to acquire
-a corresponding <code>RemoteReference</code>. <code>remote_foo</code> matches
-a <code>ref.callRemote("foo")</code>, etc. This name lookup can be changed by
-overriding <code>Referenceable</code> (or, perhaps more usefully,
-implementing an <code class="API"
-base="foolscap.ipb">IRemotelyCallable</code> adapter).</p>
 
-<p>The arguments of a remote method may be passed as either positional
-parameters (<code>foo(1,2)</code>), or as keyword args
-(<code>foo(a=1,b=2)</code>), or a mixture of both. The usual python rules
-about not duplicating parameters apply.</p>
 
-<p>You can pass all sorts of normal objects to a remote method: strings,
+:download:`pb3calculator.py <listings/pb3calculator.py>`
+
+.. literalinclude:: listings/pb3calculator.py
+
+
+
+:download:`pb3user.py <listings/pb3user.py>`
+
+.. literalinclude:: listings/pb3user.py
+
+
+
+.. code-block:: console
+
+    
+    % twistd -noy doc/listings/pb3calculator.py 
+    15:46 PDT [-] Log opened.
+    15:46 PDT [-] twistd 2.4.0 (/usr/bin/python 2.4.4) starting up
+    15:46 PDT [-] reactor class: twisted.internet.selectreactor.SelectReactor
+    15:46 PDT [-] Loading doc/listings/pb3calculator.py...
+    15:46 PDT [-] the object is available at:
+                  pb://5ojw4cv4u4d5cenxxekjukrogzytnhop@localhost:12345/calculator
+    15:46 PDT [-] Loaded.
+    15:46 PDT [-] foolscap.pb.Listener starting on 12345
+    15:46 PDT [-] Starting factory <Listener at 0x4869c0f4 on tcp:12345
+                  with tubs None>
+
+
+
+
+
+.. code-block:: console
+
+    
+    % doc/listings/pb3user.py \
+       pb://5ojw4cv4u4d5cenxxekjukrogzytnhop@localhost:12345/calculator
+    event: push(2)
+    event: push(3)
+    event: add
+    event: pop
+    the result is 5
+    %
+
+
+
+
+
+
+Invoking Methods, Method Arguments
+----------------------------------
+
+
+
+As you've probably already guessed, all the methods with names that begin
+with ``remote_`` will be available to anyone who manages to acquire
+a corresponding ``RemoteReference`` . ``remote_foo`` matches
+a ``ref.callRemote("foo")`` , etc. This name lookup can be changed by
+overriding ``Referenceable`` (or, perhaps more usefully,
+implementing an :api:`foolscap.ipb.IRemotelyCallable <IRemotelyCallable>` adapter).
+
+
+
+
+The arguments of a remote method may be passed as either positional
+parameters (``foo(1,2)`` ), or as keyword args
+(``foo(a=1,b=2)`` ), or a mixture of both. The usual python rules
+about not duplicating parameters apply.
+
+
+
+
+You can pass all sorts of normal objects to a remote method: strings,
 numbers, tuples, lists, and dictionaries. The serialization of these objects
-is handled by <a href="specifications/banana.xhtml">Banana</a>, which knows
+is handled by :doc:`Banana <specifications/banana>` , which knows
 how to convey arbitrary object graphs over the wire. Things like containers
 which contain multiple references to the same object, and recursive
-references (cycles in the object graph) are all handled correctly<span
-class="footnote">you may not want to accept shared objects in your method
-arguments, as it could lead to surprising behavior depending upon how you
-have written your method. The <code class="API"
-base="foolscap.schema">Shared</code> constraint will let you express this,
-and is described in the <a href="#constraints">Constraints</a> section of
-this document</span>.</p>
+references (cycles in the object graph) are all handled correctly [#]_ .
 
-<p>Passing instances is handled specially. Foolscap will not send anything
+
+
+
+Passing instances is handled specially. Foolscap will not send anything
 over the wire that it does not know how to serialize, and (unlike the
-standard <code>pickle</code> module) it will not make assumptions about how
+standard ``pickle`` module) it will not make assumptions about how
 to handle classes that that have not been explicitly marked as serializable.
 This is for security, both for the sender (making sure you don't pass anything
 over the wire that you didn't intend to let out of your security perimeter),
 and for the recipient (making sure outsiders aren't allowed to create
 arbitrary instances inside your memory space, and therefore letting them run
-somewhat arbitrary code inside <em>your</em> perimeter).</p>
+somewhat arbitrary code inside *your* perimeter).
 
-<p>Sending <code>Referenceable</code>s is straightforward: they always appear
-as a corresponding <code>RemoteReference</code> on the other side. You can
-send the same <code>Referenceable</code> as many times as you like, and it
-will always show up as the same <code>RemoteReference</code> instance. A
+
+
+
+Sending ``Referenceable`` s is straightforward: they always appear
+as a corresponding ``RemoteReference`` on the other side. You can
+send the same ``Referenceable`` as many times as you like, and it
+will always show up as the same ``RemoteReference`` instance. A
 distributed reference count is maintained, so as long as the remote side
-hasn't forgotten about the <code>RemoteReference</code>, the original
-<code>Referenceable</code> will be kept alive.</p>
+hasn't forgotten about the ``RemoteReference`` , the original``Referenceable`` will be kept alive.
 
-<p>Sending <code>RemoteReference</code>s fall into two categories. If you are
-sending a <code>RemoteReference</code> back to the Tub that you got it from,
-they will see their original <code>Referenceable</code>. If you send it to
-some other Tub, they will (eventually) see a <code>RemoteReference</code> of
-their own. This last feature is called an <q>introduction</q>, and has a few
-additional requirements: see the <a href="#introductions">Introductions</a>
-section of this document for details.</p>
 
-<p>Sending instances of other classes requires that you tell Banana how they
-should be serialized. <code>Referenceable</code> is good for
-copy-by-reference semantics<span class="footnote">In fact, if all you want is
-referenceability (and not callability), you can use <code class="API"
-base="foolscap.referenceable">OnlyReferenceable</code>. Strictly speaking,
-<code>Referenceable</code> is both <q>Referenceable</q> (meaning it is sent
-over the wire using pass-by-reference semantics, and it survives a round
-trip) and <q>Callable</q> (meaning you can invoke remote methods on it).
-<code>Referenceable</code> should really be named <code>Callable</code>, but
-the existing name has a lot of historical weight behind it.</span>. For
-copy-by-value semantics, the easiest route is to subclass <code class="API"
-base="foolscap.copyable">Copyable</code>. See the <a
-href="#copyable">Copyable</a> section for details. Note that you can also
-register an <code class="API" base="foolscap.copyable">ICopyable</code>
+
+
+Sending ``RemoteReference`` s fall into two categories. If you are
+sending a ``RemoteReference`` back to the Tub that you got it from,
+they will see their original ``Referenceable`` . If you send it to
+some other Tub, they will (eventually) see a ``RemoteReference`` of
+their own. This last feature is called an "introduction" , and has a few
+additional requirements: see the :ref:`Introductions <using-foolscap-introductions>` 
+section of this document for details.
+
+
+
+
+Sending instances of other classes requires that you tell Banana how they
+should be serialized. ``Referenceable`` is good for
+copy-by-reference semantics [#]_ . For
+copy-by-value semantics, the easiest route is to subclass :api:`foolscap.copyable.Copyable <Copyable>` . See the :ref:`Copyable <using-foolscap-copyable>` section for details. Note that you can also
+register an :api:`foolscap.copyable.ICopyable <ICopyable>` 
 adapter on third-party classes to avoid subclassing. You will need to
-register the <code>Copyable</code>'s name on the receiving end too, otherwise
-Banana will not know how to unserialize the incoming data stream.</p>
+register the ``Copyable`` 's name on the receiving end too, otherwise
+Banana will not know how to unserialize the incoming data stream.
 
-<p>When returning a value from a remote method, you can do all these things,
+
+
+
+When returning a value from a remote method, you can do all these things,
 plus two more. If you raise an exception, the caller's Deferred will have the
-errback fired instead of the callback, with a <code class="API"
-base="foolscap.call">CopiedFailure</code> instance that describes what went
-wrong. The <code>CopiedFailure</code> is not quite as useful as a
-local <code class="API" base="twisted.python.failure">Failure</code> object
-would be: see <a href="failures.xhtml">failures.xhtml</a> for details.</p>
+errback fired instead of the callback, with a :api:`foolscap.call.CopiedFailure <CopiedFailure>` instance that describes what went
+wrong. The ``CopiedFailure`` is not quite as useful as a
+local :api:`twisted.python.failure.Failure <Failure>` object
+would be: see :doc:`failures.xhtml <failures>` for details.
 
-<p>The other alternative is for your method to return a <code class="API"
-base="twisted.internet.defer">Deferred</code>. If this happens, the caller
+
+
+
+The other alternative is for your method to return a :api:`twisted.internet.defer.Deferred <Deferred>` . If this happens, the caller
 will not actually get a response until you fire that Deferred. This is useful
 when the remote operation being requested cannot complete right away. The
 caller's Deferred will fire with whatever value you eventually fire your own
 Deferred with. If your Deferred is errbacked, their Deferred will be
-errbacked with a <code>CopiedFailure</code>.</p>
+errbacked with a ``CopiedFailure`` .
 
 
-<h2>Constraints and RemoteInterfaces</h2><a name="constraints" />
 
-<p>One major feature introduced by Foolscap (relative to oldpb) is the
-serialization <code class="API" base="foolscap.schema">Constraint</code>.
+
+
+
+Constraints and RemoteInterfaces
+--------------------------------
+.. _using-foolscap-constraints:
+
+
+
+
+
+
+
+
+One major feature introduced by Foolscap (relative to oldpb) is the
+serialization :api:`foolscap.schema.Constraint <Constraint>` .
 This lets you place limits on what kind of data you are willing to accept,
-which enables safer distributed programming. Typically python uses <q>duck
-typing</q>, wherein you usually just throw some arguments at the method and
+which enables safer distributed programming. Typically python uses "duck typing" , wherein you usually just throw some arguments at the method and
 see what happens. When you are less sure of the origin of those arguments,
 you may want to be more circumspect. Enforcing type checking at the boundary
 between your code and the outside world may make it safer to use duck typing
 inside those boundaries. The type specifications also form a convenient
 remote API reference you can publish for prospective clients of your
-remotely-invokable service.</p>
+remotely-invokable service.
 
-<p>In addition, these Constraints are enforced on each token as it arrives
+
+
+
+In addition, these Constraints are enforced on each token as it arrives
 over the wire. This means that you can calculate a (small) upper bound on how
 much received data your program will store before it decides to hang up on
 the violator, minimizing your exposure to DoS attacks that involve sending
-random junk at you.</p>
+random junk at you.
 
-<p>There are three pieces you need to know about: Tokens, Constraints, and
-RemoteInterfaces.</p>
 
-<h3>Tokens</h3>
 
-<p>The fundamental unit of serialization is the Banana Token. These are
-thoroughly documented in the <a href="specifications/banana.xhtml">Banana
-Specification</a>, but what you need to know here is that each piece of
+
+There are three pieces you need to know about: Tokens, Constraints, and
+RemoteInterfaces.
+
+
+
+
+
+Tokens
+~~~~~~
+
+
+
+The fundamental unit of serialization is the Banana Token. These are
+thoroughly documented in the :doc:`Banana Specification <specifications/banana>` , but what you need to know here is that each piece of
 non-container data, like a string or a number, is represented by a single
 token. Containers (like lists and dictionaries) are represented by a special
 OPEN token, followed by tokens for everything that is in the container,
 followed by the CLOSE token. Everything Banana does is in terms of these
-nested OPEN/stuff/stuff/CLOSE sequences of tokens.</p>
+nested OPEN/stuff/stuff/CLOSE sequences of tokens.
 
-<p>Each token consists of a header, a type byte, and an optional body. The
+
+
+
+Each token consists of a header, a type byte, and an optional body. The
 header is always a base-128 number with a maximum of 64 digits, and the type
 byte is always a single byte. The length of the body (if present) is
-indicated by the number encoded in the header.</p>
+indicated by the number encoded in the header.
 
-<p>The length-first token format means that the receiving system never has to
+
+
+
+The length-first token format means that the receiving system never has to
 accept more than 65 bytes before it knows the type and size of the token, at
 which point it can make a decision about accepting or rejecting the rest of
-it.</p>
+it.
 
-<h3>Constraints</h3>
 
-<p>The schema <code>foolscap.schema</code> module has a variety of <code
-class="API" base="foolscap.schema">Constraint</code> classes that can be
+
+
+
+Constraints
+~~~~~~~~~~~
+
+
+
+The schema ``foolscap.schema`` module has a variety of :api:`foolscap.schema.Constraint <Constraint>` classes that can be
 applied to incoming data. Most of them correspond to typical Python types,
-e.g. <code class="API" base="foolscap.schema">ListOf</code> matches a list,
-with a certain maximum length, and a child <code>Constraint</code> that gets
-applied to the contents of the list. You can nest <code>Constraint</code>s in
-this way to describe the <q>shape</q> of the object graph that you are
-willing to accept.</p>
+e.g. :api:`foolscap.schema.ListOf <ListOf>` matches a list,
+with a certain maximum length, and a child ``Constraint`` that gets
+applied to the contents of the list. You can nest ``Constraint`` s in
+this way to describe the "shape" of the object graph that you are
+willing to accept.
 
-<p>At any given time, the receiving Banana protocol has a single
-<code>Constraint</code> object that it enforces against the inbound data
-stream<span class="footnote">to be precise, each <code>Unslicer</code> on the
-receive stack has a <code>Constraint</code>, and the idea is that all of them
-get to pass judgement on the inbound token. A useful syntax to describe this
-sort of thing is still being worked out.</span>.</p>
 
-<h3>RemoteInterfaces</h3>
 
-<p>The <code class="API"
-base="foolscap.remoteinterface">RemoteInterface</code> is how you describe
+
+At any given time, the receiving Banana protocol has a single ``Constraint`` object that it enforces against the inbound data
+stream [#]_ .
+
+
+
+
+
+RemoteInterfaces
+~~~~~~~~~~~~~~~~
+
+
+
+The :api:`foolscap.remoteinterface.RemoteInterface <RemoteInterface>` is how you describe
 your constraints. You can provide a constraint for each argument of each
 method, as well as one for the return value. You can also specify additional
 flags on the methods. The convention (which is actually enforced by the code)
-is to name <code>RemoteInterface</code> objects with an <q>RI</q> prefix,
-like <code>RIFoo</code>.</p>
+is to name ``RemoteInterface`` objects with an "RI" prefix,
+like ``RIFoo`` .
 
-<p><code>RemoteInterfaces</code> are created and used a lot like the usual
-<code>zope.interface</code>-style <code>Interface</code>. They look like
-class definitions, inheriting from <code>RemoteInterface</code>. For each
-method, the default value of each argument is used to create a
-<code>Constraint</code> for that argument. Basic types (<code>int</code>,
-<code>str</code>, <code>bool</code>) are converted into a
-<code>Constraint</code> subclass (<code class="API"
-base="foolscap.schema">IntegerConstraint</code>, <code class="API"
-base="foolscap.schema">StringConstraint</code>, <code class="API"
-base="foolscap.schema">BooleanConstraint</code>). You can also use
-instances of other <code>Constraint</code> subclasses, like <code class="API"
-base="foolscap.schema">ListOf</code> and <code class="API"
-base="foolscap.schema">DictOf</code>. This <code>Constraint</code> will be
+
+
+
+``RemoteInterfaces`` are created and used a lot like the usual``zope.interface`` -style ``Interface`` . They look like
+class definitions, inheriting from ``RemoteInterface`` . For each
+method, the default value of each argument is used to create a``Constraint`` for that argument. Basic types (``int`` ,``str`` , ``bool`` ) are converted into a``Constraint`` subclass (:api:`foolscap.schema.IntegerConstraint <IntegerConstraint>` , :api:`foolscap.schema.StringConstraint <StringConstraint>` , :api:`foolscap.schema.BooleanConstraint <BooleanConstraint>` ). You can also use
+instances of other ``Constraint`` subclasses, like :api:`foolscap.schema.ListOf <ListOf>` and :api:`foolscap.schema.DictOf <DictOf>` . This ``Constraint`` will be
 enforced against the value for the given argument. Unless you specify
-otherwise, remote callers must match all the <code>Constraint</code>s you
+otherwise, remote callers must match all the ``Constraint`` s you
 specify, all arguments listed in the RemoteInterface must be present, and no
-arguments outside that list will be accepted.</p>
+arguments outside that list will be accepted.
 
-<p>Note that, like zope.interface, these methods should <b>not</b> include
-<q><code>self</code></q> in their argument list. This is because you are
-documenting how <em>other</em> people invoke your methods. <code>self</code>
-is an implementation detail. <code>RemoteInterface</code> will complain if
-you forget.</p>
 
-<p>The <q>methods</q> in a <code>RemoteInterface</code> should return a
+
+
+Note that, like zope.interface, these methods should **not** include"``self``" in their argument list. This is because you are
+documenting how *other* people invoke your methods. ``self`` 
+is an implementation detail. ``RemoteInterface`` will complain if
+you forget.
+
+
+
+
+The "methods" in a ``RemoteInterface`` should return a
 single value with the same format as the default arguments: either a basic
-type (<code>int</code>, <code>str</code>, etc) or a <code>Constraint</code>
-subclass. This <code>Constraint</code> is enforced on the return value of the
+type (``int`` , ``str`` , etc) or a ``Constraint`` 
+subclass. This ``Constraint`` is enforced on the return value of the
 method. If you are calling a method in somebody else's process, the argument
-constraints will be applied as a courtesy (<q>be conservative in what you
-send</q>), and the return value constraint will be applied to prevent the
+constraints will be applied as a courtesy ("be conservative in what you send" ), and the return value constraint will be applied to prevent the
 server from doing evil things to you. If you are running a method on behalf
-of a remote client, the argument constraints will be enforced to protect
-<em>you</em>, while the return value constraint will be applied as a
-courtesy.</p>
+of a remote client, the argument constraints will be enforced to protect*you* , while the return value constraint will be applied as a
+courtesy.
 
-<p>Attempting to send a value that does not satisfy the Constraint will
-result in a <code class="API" base="foolscap">Violation</code> exception
-being raised.</p>
 
-<p>You can also specify methods by defining attributes of the same name in
-the <code>RemoteInterface</code> object. Each attribute value should be an
-instance of <code class="API"
-base="foolscap.schema">RemoteMethodSchema</code><span
-class="footnote">although technically it can be any object which implements
-the <code class="API" base="foolscap.schema">IRemoteMethodConstraint</code>
-interface</span>. This approach is more flexible: there are some constraints
+
+
+Attempting to send a value that does not satisfy the Constraint will
+result in a :api:`foolscap.Violation <Violation>` exception
+being raised.
+
+
+
+
+You can also specify methods by defining attributes of the same name in
+the ``RemoteInterface`` object. Each attribute value should be an
+instance of :api:`foolscap.schema.RemoteMethodSchema <RemoteMethodSchema>`  [#]_ . This approach is more flexible: there are some constraints
 that are not easy to express with the default-argument syntax, and this is
 the only way to set per-method flags. Note that all such method-defining
-attributes must be set in the <code>RemoteInterface</code> body itself,
-rather than being set on it after the fact (i.e. <code>RIFoo.doBar =
-stuff</code>). This is required because the <code>RemoteInterface</code>
+attributes must be set in the ``RemoteInterface`` body itself,
+rather than being set on it after the fact (i.e. ``RIFoo.doBar = stuff`` ). This is required because the ``RemoteInterface`` 
 metaclass magic processes all of these attributes only once, immediately
-after the <code>RemoteInterface</code> body has been evaluated.</p>
+after the ``RemoteInterface`` body has been evaluated.
 
-<p>The <code>RemoteInterface</code> <q>class</q> has a name. Normally this is
-the (short) classname<span
-class="footnote"><code>RIFoo.__class__.__name__</code>, if
-<code>RemoteInterface</code>s were actually classes, which they're
-not</span>. You can override this
-name by setting a special <code>__remote_name__</code> attribute on the
-<code>RemoteInterface</code> (again, in the body). This name is important
-because it is externally visible: all <code>RemoteReference</code>s that
-point at your <code>Referenceable</code>s will remember the name of the
-<code>RemoteInterface</code>s it implements. This is what enables the
-type-checking to be performed on both ends of the wire.</p>
 
-<p>In the future, this ought to default to the <b>fully-qualified</b>
-classname (like <code>package.module.RIFoo</code>), so that two
+
+
+The ``RemoteInterface`` "class" has a name. Normally this is
+the (short) classname [#]_ . You can override this
+name by setting a special ``__remote_name__`` attribute on the``RemoteInterface`` (again, in the body). This name is important
+because it is externally visible: all ``RemoteReference`` s that
+point at your ``Referenceable`` s will remember the name of the``RemoteInterface`` s it implements. This is what enables the
+type-checking to be performed on both ends of the wire.
+
+
+
+
+In the future, this ought to default to the **fully-qualified** 
+classname (like ``package.module.RIFoo`` ), so that two
 RemoteInterfaces with the same name in different modules can co-exist. In the
 current release, these two RemoteInterfaces will collide (and provoke an
 import-time error message complaining about the duplicate name). As a result,
-if you have such classes (e.g. <code>foo.RIBar</code> and
-<code>baz.RIBar</code>), you <b>must</b> use <code>__remote_name__</code> to
-distinguish them (by naming one of them something other than
-<code>RIBar</code> to avoid this error.
+if you have such classes (e.g. ``foo.RIBar`` and``baz.RIBar`` ), you **must** use ``__remote_name__`` to
+distinguish them (by naming one of them something other than``RIBar`` to avoid this error.
 
 Hopefully this will be improved in a future version, but it looks like a
-difficult change to implement, so the standing recommendation is to use
-<code>__remote_name__</code> on all your RemoteInterfaces, and set it to a
-suitably unique string (like a URI).</p>
-
-<p>Here's an example:</p>
-
-<pre class="python">
-from foolscap.api import RemoteInterface, schema
-
-class RIMath(RemoteInterface):
-    __remote_name__ = "RIMath.using-foolscap.docs.foolscap.twistedmatrix.com"
-    def add(a=int, b=int):
-        return int
-    # declare it with an attribute instead of a function definition
-    subtract = schema.RemoteMethodSchema(a=int, b=int, _response=int)
-    def sum(args=schema.ListOf(int)):
-        return int
-</pre>
+difficult change to implement, so the standing recommendation is to use``__remote_name__`` on all your RemoteInterfaces, and set it to a
+suitably unique string (like a URI).
 
 
-<h3>Using RemoteInterface</h3>
 
-<p>To declare that your <code>Referenceable</code> responds to a particular
-<code>RemoteInterface</code>, use the normal <code>implements()</code>
-annotation:</p>
 
-<pre class="python">
-class MathServer(foolscap.Referenceable):
-    implements(RIMath)
+Here's an example:
 
-    def remote_add(self, a, b):
-        return a+b
-    def remote_subtract(self, a, b):
-        return a-b
-    def remote_sum(self, args):
-        total = 0
-        for a in args: total += a
-        return total
-</pre>
 
-<p>To enforce constraints everywhere, both sides will need to know about the
-<code>RemoteInterface</code>, and both must know it by the same name. It is a
-good idea to put the <code>RemoteInterface</code> in a common file that is
+
+
+
+.. code-block:: python
+
+    
+    from foolscap.api import RemoteInterface, schema
+    
+    class RIMath(RemoteInterface):
+        __remote_name__ = "RIMath.using-foolscap.docs.foolscap.twistedmatrix.com"
+        def add(a=int, b=int):
+            return int
+        # declare it with an attribute instead of a function definition
+        subtract = schema.RemoteMethodSchema(a=int, b=int, _response=int)
+        def sum(args=schema.ListOf(int)):
+            return int
+
+
+
+
+
+
+Using RemoteInterface
+~~~~~~~~~~~~~~~~~~~~~
+
+
+
+To declare that your ``Referenceable`` responds to a particular``RemoteInterface`` , use the normal ``implements()`` 
+annotation:
+
+
+
+
+
+.. code-block:: python
+
+    
+    class MathServer(foolscap.Referenceable):
+        implements(RIMath)
+    
+        def remote_add(self, a, b):
+            return a+b
+        def remote_subtract(self, a, b):
+            return a-b
+        def remote_sum(self, args):
+            total = 0
+            for a in args: total += a
+            return total
+
+
+
+
+To enforce constraints everywhere, both sides will need to know about the ``RemoteInterface`` , and both must know it by the same name. It is a
+good idea to put the ``RemoteInterface`` in a common file that is
 imported into the programs running on both sides. It is up to you to make
 sure that both sides agree on the interface. Future versions of Foolscap may
 implement some sort of checksum-verification or Interface-serialization as a
-failsafe, but fundamentally the <code>RemoteInterface</code> that
-<em>you</em> are using defines what <em>your</em> program is prepared to
+failsafe, but fundamentally the ``RemoteInterface`` that*you* are using defines what *your* program is prepared to
 handle. There is no difference between an old client accidentally using a
 different version of the RemoteInterface by mistake, and a malicious attacker
 actively trying to confuse your code. The only promise that Foolscap can make
 is that the constraints you provide in the RemoteInterface will be faithfully
 applied to the incoming data stream, so that you don't need to do the type
-checking yourself inside the method.</p>
+checking yourself inside the method.
 
-<p>When making a remote method call, you use the <code>RemoteInterface</code>
+
+
+
+When making a remote method call, you use the ``RemoteInterface`` 
 to identify the method instead of a string. This scopes the method name to
-the RemoteInterface:</p>
+the RemoteInterface:
 
-<pre class="python">
-d = remote.callRemote(RIMath["add"], a=1, b=2)
-# or
-d = remote.callRemote(RIMath["add"], 1, 2)
-</pre>
 
-<h2>Pass-By-Copy</h2>
 
-<p>You can pass (nearly) arbitrary instances over the wire. Foolscap knows
+
+
+.. code-block:: python
+
+    
+    d = remote.callRemote(RIMath["add"], a=1, b=2)
+    # or
+    d = remote.callRemote(RIMath["add"], 1, 2)
+
+
+
+
+
+Pass-By-Copy
+------------
+
+
+
+You can pass (nearly) arbitrary instances over the wire. Foolscap knows
 how to serialize all of Python's native data types already: numbers, strings,
 unicode strings, booleans, lists, tuples, dictionaries, sets, and the None
 object. You can teach it how to serialize instances of other types too.
 Foolscap will not serialize (or deserialize) any class that you haven't
 taught it about, both for security and because it refuses the temptation to
 guess your intentions about how these unknown classes ought to be
-serialized.</p>
+serialized.
 
-<p>The simplest possible way to pass things by copy is demonstrated in the
-following code fragment:</p>
 
-<pre class="python">
-from foolscap.api import Copyable, RemoteCopy
 
-class MyPassByCopy(Copyable, RemoteCopy):
-    typeToCopy = copytype = "MyPassByCopy"
-    def __init__(self):
-        # RemoteCopy subclasses may not accept any __init__ arguments
-        pass
-    def setCopyableState(self, state):
-        self.__dict__ = state
-</pre>
 
-<p>If the code on both sides of the wire import this class, then any
-instances of <code>MyPassByCopy</code> that are present in the arguments of a
+The simplest possible way to pass things by copy is demonstrated in the
+following code fragment:
+
+
+
+
+
+.. code-block:: python
+
+    
+    from foolscap.api import Copyable, RemoteCopy
+    
+    class MyPassByCopy(Copyable, RemoteCopy):
+        typeToCopy = copytype = "MyPassByCopy"
+        def __init__(self):
+            # RemoteCopy subclasses may not accept any __init__ arguments
+            pass
+        def setCopyableState(self, state):
+            self.__dict__ = state
+
+
+
+
+If the code on both sides of the wire import this class, then any
+instances of ``MyPassByCopy`` that are present in the arguments of a
 remote method call (or returned as the result of a remote method call) will
 be serialized and reconstituted into an equivalent instance on the other
-side.</p>
+side.
 
-<p>For more complicated things to do with pass-by-copy, see the documentation
-on <a href="copyable.xhtml">Copyable</a>. This explains the difference between
-<code>Copyable</code> and <code>RemoteCopy</code>, how to control the
+
+
+
+For more complicated things to do with pass-by-copy, see the documentation
+on :doc:`Copyable <copyable>` . This explains the difference between``Copyable`` and ``RemoteCopy`` , how to control the
 serialization and deserialization process, and how to arrange for
-serialization of third-party classes that are not subclasses of
-<code>Copyable</code>.</p>
+serialization of third-party classes that are not subclasses of``Copyable`` .
 
 
-<h2>Third-party References</h2><a name="introductions" />
 
-<p>Another new feature of Foolscap is the ability to send
-<code>RemoteReference</code>s to third parties. The classic scenario for this
-is illustrated by the <a
-href="http://www.erights.org/elib/capability/overview.html">three-party
-Granovetter diagram</a>. One party (Alice) has RemoteReferences to two other
+
+
+
+Third-party References
+----------------------
+.. _using-foolscap-introductions:
+
+
+
+
+
+
+
+
+Another new feature of Foolscap is the ability to send ``RemoteReference`` s to third parties. The classic scenario for this
+is illustrated by the `three-partyGranovetter diagram <http://www.erights.org/elib/capability/overview.html>`_ . One party (Alice) has RemoteReferences to two other
 objects named Bob and Carol. She wants to share her reference to Carol with
 Bob, by including it in a message she sends to Bob (i.e. by using it as an
 argument when she invokes one of Bob's remote methods). The Foolscap code for
-doing this would look like:</p>
+doing this would look like:
 
-<pre class="python">
-bobref.callRemote("foo", intro=carolref)
-</pre>
 
-<p>When Bob receives this message (i.e. when his <code>remote_foo</code>
-method is invoked), he will discover that he's holding a fully-functional
-<code>RemoteReference</code> to the object named Carol<span
-class="footnote">and if everyone involved is using authenticated Tubs, then
-Foolscap offers a guarantee, in the cryptographic sense, that Bob will wind
-up with a reference to the same object that Alice intended. The authenticated
-FURLs prevent DNS-spoofing and man-in-the-middle attacks.</span>. He can
-start using this RemoteReference right away:</p>
 
-<pre class="python">
-class Bob(foolscap.Referenceable):
-    def remote_foo(self, intro):
-        self.carol = intro
-        carol.callRemote("howdy", msg="Pleased to meet you", you=intro)
-        return carol
-</pre>
 
-<p>If Bob sends this <code>RemoteReference</code> back to Alice, her method
-will see the same <code>RemoteReference</code> that she sent to Bob. In this
-example, Bob sends the reference by returning it from the original
-<code>remote_foo</code> method call, but he could almost as easily send it in
-a separate method call.</p>
 
-<pre class="python">
-class Alice(foolscap.Referenceable):
-    def start(self, carol):
-        self.carol = carol
-        d = self.bob.callRemote("foo", intro=carol)
-        d.addCallback(self.didFoo)
-    def didFoo(self, result):
-        assert result is self.carol  # this will be true
-</pre>
+.. code-block:: python
 
-<p>Moreover, if Bob sends it back to <em>Carol</em> (completing the
-three-party round trip), Carol will see it as her original
-<code>Referenceable</code>.</p>
+    
+    bobref.callRemote("foo", intro=carolref)
 
-<pre class="python">
-class Carol(foolscap.Referenceable):
-    def remote_howdy(self, msg, you):
-        assert you is self  # this will be true
-</pre>
 
-<p>In addition to this, in the four-party introduction sequence as used by
-the <a
-href="http://www.erights.org/elib/equality/grant-matcher/index.html">Grant
-Matcher Puzzle</a>, when a Referenceable is sent to the same destination
-through multiple paths, the recipient will receive the same
-<code>RemoteReference</code> object from both sides.</p>
 
-<p>For a <code>RemoteReference</code> to be transferrable to third-parties in
-this fashion, the original <code>Referenceable</code> must live in a Tub
+
+When Bob receives this message (i.e. when his ``remote_foo`` 
+method is invoked), he will discover that he's holding a fully-functional``RemoteReference`` to the object named Carol [#]_ . He can
+start using this RemoteReference right away:
+
+
+
+
+
+.. code-block:: python
+
+    
+    class Bob(foolscap.Referenceable):
+        def remote_foo(self, intro):
+            self.carol = intro
+            carol.callRemote("howdy", msg="Pleased to meet you", you=intro)
+            return carol
+
+
+
+
+If Bob sends this ``RemoteReference`` back to Alice, her method
+will see the same ``RemoteReference`` that she sent to Bob. In this
+example, Bob sends the reference by returning it from the original``remote_foo`` method call, but he could almost as easily send it in
+a separate method call.
+
+
+
+
+
+.. code-block:: python
+
+    
+    class Alice(foolscap.Referenceable):
+        def start(self, carol):
+            self.carol = carol
+            d = self.bob.callRemote("foo", intro=carol)
+            d.addCallback(self.didFoo)
+        def didFoo(self, result):
+            assert result is self.carol  # this will be true
+
+
+
+
+Moreover, if Bob sends it back to *Carol* (completing the
+three-party round trip), Carol will see it as her original``Referenceable`` .
+
+
+
+
+
+.. code-block:: python
+
+    
+    class Carol(foolscap.Referenceable):
+        def remote_howdy(self, msg, you):
+            assert you is self  # this will be true
+
+
+
+
+In addition to this, in the four-party introduction sequence as used by
+the `GrantMatcher Puzzle <http://www.erights.org/elib/equality/grant-matcher/index.html>`_ , when a Referenceable is sent to the same destination
+through multiple paths, the recipient will receive the same``RemoteReference`` object from both sides.
+
+
+
+
+For a ``RemoteReference`` to be transferrable to third-parties in
+this fashion, the original ``Referenceable`` must live in a Tub
 which has a working listening port, and an established base FURL. It is not
-necessary for the Referenceable to have been published with
-<code>registerReference</code> first: if it is sent over the wire before a
+necessary for the Referenceable to have been published with``registerReference`` first: if it is sent over the wire before a
 name has been associated with it, it will be registered under a new random
-and unguessable name. The <code>RemoteReference</code> will contain the
-resulting FURL, enabling it to be sent to third parties.</p>
+and unguessable name. The ``RemoteReference`` will contain the
+resulting FURL, enabling it to be sent to third parties.
 
-<p>When this introduction is made, the receiving system must establish a
+
+
+
+When this introduction is made, the receiving system must establish a
 connection with the Tub that holds the original Referenceable, and acquire
 its own RemoteReference. These steps must take place before the remote method
 can be invoked, and other method calls might arrive before they do. All
@@ -980,13 +1324,68 @@ sent to a given Referenceable will be delivered in the same order. In the
 future there may be options to relax this guarantee, in exchange for higher
 performance, reduced memory consumption, multiple priority queues, limited
 latency, or other features. There might even be an option to turn off
-introductions altogether.</p>
+introductions altogether.
 
-<p>Also note that enabling this capability means any of your communication
+
+
+
+Also note that enabling this capability means any of your communication
 peers can make you create TCP connections to hosts and port numbers of their
 choosing. The fact that those connections can only speak the Foolscap
 protocol may reduce the security risk presented, but it still lets other
-people be annoying.</p>
+people be annoying.
 
 
-</body></html>
+
+
+
+
+.. rubric:: Footnotes
+
+.. [#] although
+       really, if your client machine is too slow to perform this kind of math, it
+       is probably too slow to run python or use a network, so you should seriously
+       consider a hardware upgrade
+.. [#] but they do not provide quite the same insulation against
+       other objects as E's Vats do. In this sense, Tubs are leaky Vats.
+.. [#] note that the FURL uses the same format
+       as an `HTTPSY <http://www.waterken.com/dev/YURL/httpsy/>`_ 
+       URL
+.. [#] in fact, the very *very*  first object exchanged is a
+       special implicit RemoteReference to the remote Tub itself, which implements
+       an internal protocol that includes a method named
+        ``remote_getReference`` . The ``tub.getReference(url)``  call
+       is turned into one step that connects to the remote Tub, and a second step
+       which invokes remotetub.callRemote("getReference", refname) on the
+       result
+.. [#] of course,
+       the Foolscap connections must be secured with SSL (otherwise an eavesdropper
+       or man-in-the-middle could get access), and the registered name must be
+       unguessable (or someone else could acquire a reference), but both of these
+       are the default.
+.. [#] you may not want to accept shared objects in your method
+       arguments, as it could lead to surprising behavior depending upon how you
+       have written your method. The :api:`foolscap.schema.Shared <Shared>`  constraint will let you express this,
+       and is described in the :ref:`Constraints <using-foolscap-constraints>`  section of
+       this document
+.. [#] In fact, if all you want is
+       referenceability (and not callability), you can use :api:`foolscap.referenceable.OnlyReferenceable <OnlyReferenceable>` . Strictly speaking,
+        ``Referenceable``  is both "Referenceable"  (meaning it is sent
+       over the wire using pass-by-reference semantics, and it survives a round
+       trip) and "Callable"  (meaning you can invoke remote methods on it).
+        ``Referenceable``  should really be named ``Callable`` , but
+       the existing name has a lot of historical weight behind it.
+.. [#] to be precise, each ``Unslicer``  on the
+       receive stack has a ``Constraint`` , and the idea is that all of them
+       get to pass judgement on the inbound token. A useful syntax to describe this
+       sort of thing is still being worked out.
+.. [#] although technically it can be any object which implements
+       the :api:`foolscap.schema.IRemoteMethodConstraint <IRemoteMethodConstraint>` 
+       interface
+.. [#] ``RIFoo.__class__.__name__`` , if
+        ``RemoteInterface`` s were actually classes, which they're
+       not
+.. [#] and if everyone involved is using authenticated Tubs, then
+       Foolscap offers a guarantee, in the cryptographic sense, that Bob will wind
+       up with a reference to the same object that Alice intended. The authenticated
+       FURLs prevent DNS-spoofing and man-in-the-middle attacks.
