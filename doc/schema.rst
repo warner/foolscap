@@ -1,15 +1,9 @@
-
-:LastChangedDate: $LastChangedDate$
-:LastChangedRevision: $LastChangedRevision$
-:LastChangedBy: $LastChangedBy$
-
 Foolscap Schemas
 ================
 
-
-
-
-*NOTE! This is all preliminary and is more an exercise in semiconscious protocol design than anything else. Do not believe this document. This sentence is lying. So there.* 
+*NOTE! This is all preliminary and is more an exercise in semiconscious
+protocol design than anything else. Do not believe this document. This
+sentence is lying. So there.*
 
 
 
@@ -303,16 +297,9 @@ Existing ``Constraint``  classes
     _decache(objID): dec refcount of self.remotelyCachedObjects[objID]
     
     _uncache(objID): remove obj from self.locallyCachedObjects[objID]
-    
-
-
-
-
 
 stuff
 -----
-
-
 
 A RemoteReference/RemoteCopy (called a Remote for now) has a schema
 attached to it. remote.callRemote(methodname, *args) does
@@ -322,14 +309,7 @@ other attributes which are used by either end: what arguments are allowed
 and/or expected, calling conventions (synchronous, in-order, priority, etc),
 and how the return value should be constrained.
 
-
-
-
 To use the Remote like a RemoteCopy ...
-
-
-
-
 
 ::
 
@@ -386,16 +366,9 @@ To use the Remote like a RemoteCopy ...
     
     For bonus points, it may be possible to send the object as a combination of
     these two. That may get pretty hard to follow, though.
-    
-
-
-
-
 
 adapters and Referenceable/Copyable
 -----------------------------------
-
-
 
 One possibility: rather than using a SlicerRegistry, use Adapters. The
 ISliceable interface has one method: getSlicer(). Slicer.py would register
@@ -409,26 +382,14 @@ Slicer (opentype='reference'?) which (possibly) registers itself in the
 broker and then sends the reference number (along with a schema if necessary
 (and the other end wants them)).
 
-
-
-
-Classes are also welcome to implement ISlicer themselves and produce
-whatever clever (streaming?) Slicer objects they like.
-
-
-
+Classes are also welcome to implement ISlicer themselves and produce whatever
+clever (streaming?) Slicer objects they like.
 
 On the receiving side, we still need a registry to provide reasonable
 security. There are two registries. The first is the
 RootUnslicer.openRegistry, and maps OPEN types to Unslicer factories. It is
 used in doOpen().
 
-
-
-
 The second registry should map opentype=instance class names to something
 which can handle the instance contents. Should this be a replacement
 Unslicer?
-
-
-
