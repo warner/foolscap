@@ -2,6 +2,5 @@ include ChangeLog.0.6.4 MANIFEST.in NEWS LICENSE README.packagers
 include doc/*.txt doc/*.xhtml doc/*.css doc/template.tpl
 include doc/listings/*.py
 include doc/specifications/*.xhtml
-include doc/examples/*
 include Makefile
 include misc/classify_foolscap.py
