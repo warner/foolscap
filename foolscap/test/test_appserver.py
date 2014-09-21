@@ -1,5 +1,5 @@
 
-import sys, os.path
+import os, sys, json
 from StringIO import StringIO
 from twisted.trial import unittest
 from twisted.internet import defer
@@ -13,6 +13,117 @@ class RequiresCryptoBase:
     def setUp(self):
         if not crypto_available:
             raise unittest.SkipTest("crypto not available")
+
+orig_service_data = {"version": 1,
+                     "services": {
+                         "swiss1": {"relative_basedir": "1",
+                                    "type": "type1",
+                                    "args": ["args1a", "args1b"],
+                                    "comment": None,
+                                    },
+                         "swiss2": {"relative_basedir": "2",
+                                    "type": "type2",
+                                    "args": ["args2a", "args2b"],
+                                    "comment": "comment2",
+                                    },
+                         }}
+
+# copied+trimmed from the old-format appserver/cli.py
+def old_add_service(basedir, service_type, service_args, comment, swissnum):
+    service_basedir = os.path.join(basedir, "services", swissnum)
+    os.makedirs(service_basedir)
+    f = open(os.path.join(service_basedir, "service_type"), "w")
+    f.write(service_type + "\n")
+    f.close()
+    f = open(os.path.join(service_basedir, "service_args"), "w")
+    f.write(repr(service_args) + "\n")
+    f.close()
+    if comment:
+        f = open(os.path.join(service_basedir, "comment"), "w")
+        f.write(comment + "\n")
+        f.close()
+    furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
+    furl = furl_prefix + swissnum
+    return furl, service_basedir
+
+class ServiceData(unittest.TestCase):
+    def test_parse_json(self):
+        basedir = "appserver/ServiceData/parse_json"
+        os.makedirs(basedir)
+        f = open(os.path.join(basedir, "services.json"), "wb")
+        json.dump(orig_service_data, f)
+        f.close()
+        data = server.load_service_data(basedir)
+        self.failUnlessEqual(orig_service_data, data)
+
+    def test_parse_files_and_upgrade(self):
+        # create a structure with individual files, and make sure we parse it
+        # correctly. Test the git-foolscap case with slashes in the swissnum.
+        basedir = "appserver/ServiceData/parse_files"
+        os.makedirs(basedir)
+
+        f = open(os.path.join(basedir, "furl_prefix"), "wb")
+        f.write("prefix")
+        f.close()
+
+        old_add_service(basedir,
+                        "type1", ("args1a", "args1b"), None, "swiss1")
+        old_add_service(basedir,
+                        "type2", ("args2a", "args2b"), "comment2", "swiss2")
+        old_add_service(basedir,
+                        "type3", ("args3a", "args3b"), "comment3", "swiss3/3")
+
+        data = server.load_service_data(basedir)
+        expected = {"version": 1,
+                    "services": {
+                        "swiss1": {"relative_basedir": "services/swiss1",
+                                   "type": "type1",
+                                   "args": ["args1a", "args1b"],
+                                   "comment": None,
+                                   },
+                        "swiss2": {"relative_basedir": "services/swiss2",
+                                   "type": "type2",
+                                   "args": ["args2a", "args2b"],
+                                   "comment": "comment2",
+                                   },
+                        "swiss3/3": {"relative_basedir": "services/swiss3/3",
+                                     "type": "type3",
+                                     "args": ["args3a", "args3b"],
+                                     "comment": "comment3",
+                                     },
+                        }}
+        self.failUnlessEqual(data, expected)
+
+        s4 = {"relative_basedir": "services/4",
+              "type": "type4",
+              "args": ["args4a", "args4b"],
+              "comment": "comment4",
+              }
+        data["services"]["swiss4"] = s4
+        server.save_service_data(basedir, data) # this upgrades to JSON
+        data2 = server.load_service_data(basedir) # reads JSON, not files
+        expected["services"]["swiss4"] = s4
+        self.failUnlessEqual(data2, expected)
+
+    def test_bad_version(self):
+        basedir = "appserver/ServiceData/bad_version"
+        os.makedirs(basedir)
+        orig = {"version": 99}
+        f = open(os.path.join(basedir, "services.json"), "wb")
+        json.dump(orig, f)
+        f.close()
+        e = self.failUnlessRaises(server.UnknownVersion,
+                                  server.load_service_data, basedir)
+        self.failUnlessIn("unable to handle version 99", str(e))
+
+    def test_save(self):
+        basedir = "appserver/ServiceData/save"
+        os.makedirs(basedir)
+        server.save_service_data(basedir, orig_service_data)
+
+        data = server.load_service_data(basedir)
+        self.failUnlessEqual(orig_service_data, data)
+
 
 class CLI(RequiresCryptoBase, unittest.TestCase):
     def run_cli(self, *args):
@@ -122,9 +233,12 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             self.failUnless(lines[1].startswith("FURL is pb://"))
             furl = lines[1].split()[-1]
             swiss = furl[furl.rfind("/")+1:]
-            servicedir2 = os.path.join(serverdir, "services", swiss)
+            data = server.load_service_data(serverdir)
+            servicedir2 = os.path.join(serverdir,
+                                       data["services"][swiss]["relative_basedir"])
             self.failUnlessEqual(os.path.abspath(servicedir),
                                  os.path.abspath(servicedir2))
+            self.failUnlessEqual(data["services"][swiss]["comment"], None)
         d.addCallback(_check_add)
         return d
 
@@ -140,13 +254,34 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             self.failUnless(os.path.isdir(serverdir))
         d.addCallback(_check)
         def _check_add(ign):
-            furl,servicedir = cli.add_service(serverdir,
-                                              "upload-file", (incomingdir,),
-                                              None)
-            swiss = furl[furl.rfind("/")+1:]
-            servicedir2 = os.path.join(serverdir, "services", swiss)
-            self.failUnlessEqual(os.path.abspath(servicedir),
-                                 os.path.abspath(servicedir2))
+            furl1,servicedir1a = cli.add_service(serverdir,
+                                                 "upload-file", (incomingdir,),
+                                                 None)
+            self.failUnless(os.path.isdir(servicedir1a))
+            asd1 = os.path.abspath(servicedir1a)
+            self.failUnless(asd1.startswith(os.path.abspath(basedir)))
+            swiss1 = furl1[furl1.rfind("/")+1:]
+            data = server.load_service_data(serverdir)
+            servicedir1b = os.path.join(serverdir,
+                                        data["services"][swiss1]["relative_basedir"])
+            self.failUnlessEqual(os.path.abspath(servicedir1a),
+                                 os.path.abspath(servicedir1b))
+
+            # add a second service, to make sure the "find the next-highest
+            # available servicedir" logic works from both empty and non-empty
+            # starting points
+            furl2,servicedir2a = cli.add_service(serverdir,
+                                                 "run-command", ("dummy",),
+                                                 None)
+            self.failUnless(os.path.isdir(servicedir2a))
+            asd2 = os.path.abspath(servicedir2a)
+            self.failUnless(asd2.startswith(os.path.abspath(basedir)))
+            swiss2 = furl2[furl2.rfind("/")+1:]
+            data = server.load_service_data(serverdir)
+            servicedir2b = os.path.join(serverdir,
+                                        data["services"][swiss2]["relative_basedir"])
+            self.failUnlessEqual(os.path.abspath(servicedir2a),
+                                 os.path.abspath(servicedir2b))
         d.addCallback(_check_add)
         return d
 
@@ -173,11 +308,13 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             self.failUnless(lines[1].startswith("FURL is pb://"))
             furl = lines[1].split()[-1]
             swiss = furl[furl.rfind("/")+1:]
-            servicedir2 = os.path.join(serverdir, "services", swiss)
+            data = server.load_service_data(serverdir)
+            servicedir2 = os.path.join(serverdir,
+                                       data["services"][swiss]["relative_basedir"])
             self.failUnlessEqual(os.path.abspath(servicedir),
                                  os.path.abspath(servicedir2))
-            comment = open(os.path.join(servicedir, "comment")).read().strip()
-            self.failUnlessEqual(comment, "commentary here")
+            self.failUnlessEqual(data["services"][swiss]["comment"],
+                                 "commentary here")
         d.addCallback(_check_add)
         return d
 
@@ -223,7 +360,6 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         basedir = "appserver/CLI/list"
         os.makedirs(basedir)
         serverdir = os.path.join(basedir, "fl")
-        servicesdir = os.path.join(serverdir, "services")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
         d = self.run_cli("create", serverdir)
@@ -242,22 +378,19 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
             self.failUnlessEqual(len(services), 1)
             s = services[0]
             self.failUnlessEqual(s.service_type, "upload-file")
-            self.failUnlessEqual(s.service_args, (incomingdir,) )
+            self.failUnlessEqual(s.service_args, [incomingdir] )
         d.addCallback(_check_list_services)
 
         d.addCallback(lambda ign: self.run_cli("list", serverdir))
         def _check_list((rc,out,err)):
             self.failUnlessEqual(rc, 0)
-            services = os.listdir(servicesdir)
-            self.failUnlessEqual(len(services), 1)
-            swissnum = services[0]
-            prefix = open(os.path.join(serverdir, "furl_prefix"), "r").read().strip()
-            expected_furl = prefix + swissnum
+            s = cli.list_services(serverdir)[0]
             lines = out.splitlines()
             self.failUnlessEqual(lines[0], "")
-            self.failUnlessEqual(lines[1], swissnum+":")
+            self.failUnlessEqual(lines[1], s.swissnum+":")
             self.failUnlessEqual(lines[2], " upload-file %s" % incomingdir)
-            self.failUnlessEqual(lines[3], " " + expected_furl)
+            self.failUnlessEqual(lines[3], " " + s.furl)
+            self.failUnlessEqual(lines[4], " " + s.service_basedir)
         d.addCallback(_check_list)
         return d
 
@@ -265,7 +398,6 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         basedir = "appserver/CLI/list_comment"
         os.makedirs(basedir)
         serverdir = os.path.join(basedir, "fl")
-        servicesdir = os.path.join(serverdir, "services")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
         d = self.run_cli("create", serverdir)
@@ -283,17 +415,14 @@ class CLI(RequiresCryptoBase, unittest.TestCase):
         d.addCallback(lambda ign: self.run_cli("list", serverdir))
         def _check_list((rc,out,err)):
             self.failUnlessEqual(rc, 0)
-            services = os.listdir(servicesdir)
-            self.failUnlessEqual(len(services), 1)
-            swissnum = services[0]
-            prefix = open(os.path.join(serverdir, "furl_prefix"), "r").read().strip()
-            expected_furl = prefix + swissnum
+            s = cli.list_services(serverdir)[0]
             lines = out.splitlines()
             self.failUnlessEqual(lines[0], "")
-            self.failUnlessEqual(lines[1], swissnum+":")
+            self.failUnlessEqual(lines[1], s.swissnum+":")
             self.failUnlessEqual(lines[2], " upload-file %s" % incomingdir)
             self.failUnlessEqual(lines[3], " # commentary here")
-            self.failUnlessEqual(lines[4], " " + expected_furl)
+            self.failUnlessEqual(lines[4], " " + s.furl)
+            self.failUnlessEqual(lines[5], " " + s.service_basedir)
         d.addCallback(_check_list)
         return d
 

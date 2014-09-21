@@ -11,7 +11,15 @@ import foolscap
 from foolscap.api import Tub, Referenceable, fireEventually
 from foolscap.pb import generateSwissnumber
 from foolscap.appserver.services import build_service, BadServiceArguments
-from foolscap.appserver.server import AppServer
+from foolscap.appserver.server import AppServer, load_service_data, save_service_data
+
+# external code can rely upon the stability of add_service() and
+# list_services(), as well as the following properties:
+# * services are instantiated with (basedir,tub,type,args)
+# * their basedir will already exist by the time they're instantiated
+# * their basedir will be somewhere inside the flappserver's basedir
+# all other functions and classes are for foolscap's own use, and may change
+# in future versions
 
 def get_umask():
     oldmask = os.umask(0)
@@ -105,6 +113,8 @@ class Create:
         f.write("%04o\n" % options["umask"])
         f.close()
 
+        save_service_data(basedir, {"version": 1, "services": {}})
+
         self.server = None
         d = fireEventually(basedir)
         d.addCallback(AppServer, stdout)
@@ -197,10 +207,26 @@ class AddOptions(BaseOptions):
 def make_swissnum():
     return generateSwissnumber(Tub.NAMEBITS)
 
+def find_next_service_basedir(basedir):
+    services_basedir = os.path.join(basedir, "services")
+    nums = []
+    for dirname in os.listdir(services_basedir):
+        try:
+            nums.append(int(dirname))
+            # this might also catch old-style swissnum-named directories, if
+            # their name contains entirely digits. The chances of that are
+            # (6/32)^32, or 5.4e-24, so we're probably safe.
+        except ValueError:
+            pass
+    # return value is relative to basedir
+    return os.path.join("services", str(max([0]+nums)+1))
+
 def add_service(basedir, service_type, service_args, comment, swissnum=None):
     if not swissnum:
         swissnum = make_swissnum()
-    service_basedir = os.path.join(basedir, "services", swissnum)
+    services_data = load_service_data(basedir)
+    relative_service_basedir = find_next_service_basedir(basedir)
+    service_basedir = os.path.join(basedir, relative_service_basedir)
     os.makedirs(service_basedir)
     try:
         # validate the service args by instantiating one
@@ -209,16 +235,15 @@ def add_service(basedir, service_type, service_args, comment, swissnum=None):
     except:
         shutil.rmtree(service_basedir)
         raise
-    f = open(os.path.join(service_basedir, "service_type"), "w")
-    f.write(service_type + "\n")
-    f.close()
-    f = open(os.path.join(service_basedir, "service_args"), "w")
-    f.write(repr(service_args) + "\n")
-    f.close()
-    if comment:
-        f = open(os.path.join(service_basedir, "comment"), "w")
-        f.write(comment + "\n")
-        f.close()
+
+    services_data["services"][swissnum] = {
+        "relative_basedir": relative_service_basedir,
+        "type": service_type,
+        "args": service_args,
+        "comment": comment,
+        }
+    save_service_data(basedir, services_data)
+
     furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
     furl = furl_prefix + swissnum
     return furl, service_basedir
@@ -254,20 +279,15 @@ class FlappService:
 
 def list_services(basedir):
     furl_prefix = open(os.path.join(basedir, "furl_prefix")).read().strip()
+    services_data = load_service_data(basedir)["services"]
     services = []
-    services_basedir = os.path.join(basedir, "services")
-    for swissnum in sorted(os.listdir(services_basedir)):
+    for swissnum, data in sorted(services_data.items()):
         s = FlappService()
         s.swissnum = swissnum
-        s.service_basedir = os.path.join(services_basedir, swissnum)
-        service_type_f = os.path.join(s.service_basedir, "service_type")
-        s.service_type = open(service_type_f).read().strip()
-        service_args_f = os.path.join(s.service_basedir, "service_args")
-        s.service_args = eval(open(service_args_f).read().strip())
-        comment_f = os.path.join(s.service_basedir, "comment")
-        s.comment = None
-        if os.path.exists(comment_f):
-            s.comment = open(comment_f).read().strip()
+        s.service_basedir = os.path.join(basedir, data["relative_basedir"])
+        s.service_type = data["type"]
+        s.service_args = data["args"]
+        s.comment = data["comment"] # maybe None
         s.furl = furl_prefix + swissnum
         services.append(s)
     return services
@@ -283,6 +303,7 @@ class List:
             if s.comment:
                 print >>stdout, " # %s" % s.comment
             print >>stdout, " %s" % s.furl
+            print >>stdout, " %s" % s.service_basedir
         print >>stdout
 
         return 0
