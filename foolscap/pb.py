@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import os.path, weakref, binascii, re
+import os.path, weakref, binascii, re, warnings
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
 from twisted.application import service, internet
@@ -1097,6 +1097,9 @@ class UnauthenticatedTub(Tub):
     encrypted = False
 
     def __init__(self, tubID=None, options={}):
+        warnings.warn("UnauthenticatedTub was deprecated in Foolscap-0.7.0 and will be removed in Foolscap-0.8.0. All Tubs will be authenticated. There is only one mode, and it is secure.", stacklevel=2)
+        # http://iang.org/ssl/h3_there_is_only_one_mode_and_it_is_secure.html
+        # http://foolscap.lothar.com/trac/ticket/67
         service.MultiService.__init__(self)
         self.setup(options)
         self.myCertificate = None
