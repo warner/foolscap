@@ -520,8 +520,7 @@ class Negotiation(protocol.Protocol):
                               "expected 101 Switching Protocols"
                               % lines[0])
         if not isSubstring("Upgrade: TLS/1.0", header):
-            # XXX I'd like to fail loudly here, is this the right way to do it? --Zooko
-            raise NegotiationError("header didn't contain TLS upgrade: %r" % (header,))
+            raise BananaError("header didn't contain TLS upgrade: %r" % (header,))
         # we ignore everything else
 
         # now we upgrade to TLS
