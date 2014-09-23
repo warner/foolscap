@@ -213,7 +213,8 @@ class Versus(BaseMixin, unittest.TestCase):
     testVersusHTTPServerAuthenticated.timeout = 10
 
     def testVersusHTTPClientAuthenticated(self):
-        from twisted.web import error
+        try:
+            from twisted.web import error
         except ImportError:
             raise unittest.SkipTest('this test needs twisted.web')
         url, portnum = self.makeServer()
@@ -248,7 +249,7 @@ class Versus(BaseMixin, unittest.TestCase):
         client = Tub(options={'connect_timeout': 1})
         client.startService()
         self.services.append(client)
-        url = "pbu://127.0.0.1:%d/target" % portnum
+        url = "pb://faketubid@127.0.0.1:%d/target" % portnum
         d = client.getReference(url)
         d.addCallbacks(lambda res: self.fail("hey! this is supposed to fail"),
                        lambda f: f.trap(tokens.NegotiationError))
@@ -300,7 +301,7 @@ class Parallel(BaseMixin, unittest.TestCase):
     #
 
     def makeServers(self, tubopts={}, lo1={}, lo2={}):
-        self.tub = tub = Tub(options=tubopts)
+        self.tub = tub = Tub(certData=certData_high, options=tubopts)
         tub.startService()
         self.services.append(tub)
         l1 = tub.listenOn("tcp:0", lo1)
@@ -315,7 +316,7 @@ class Parallel(BaseMixin, unittest.TestCase):
         self.clientPhases = []
         opts = {"debug_stall_second_connection": True,
                 "debug_gatherPhases": self.clientPhases}
-        self.client = client = Tub(options=opts)
+        self.client = client = Tub(certData_low, options=opts)
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -393,7 +394,8 @@ class Parallel(BaseMixin, unittest.TestCase):
         # when the first connection completes.
 
         # note: this requires that the listener winds up as the master. We
-        # force this by connecting from an unauthenticated Tub. XXX oops, need to force this some other way. Brian: help! --Zooko
+        # force this by ensuring that the server uses a stable certificate
+        # with a pre-calculated tubid sort order.
         url = self.makeServers(lo2={'debug_slow_sendDecision': True})
         d = self.connect(url)
         d.addCallback(self.checkConnectedToFirstListener,

@@ -67,7 +67,7 @@ class Reconnector(unittest.TestCase):
         return d
 
     def test_retry(self):
-        tubC = Tub()
+        tubC = Tub(certData=self.tubB.getCertData())
         connects = []
         target = HelperTarget("bob")
         url = self.tubB.registerReference(target, "target")
@@ -82,7 +82,7 @@ class Reconnector(unittest.TestCase):
                                           notifiers, connects)
             # give it a few tries, then start tubC listening on the same port
             # that tubB used to, which should allow the connection to
-            # complete (since they're both UnauthenticatedTubs) XXXX oops, there is no such thing as an UnauthenticatedTub! We need to save the secret key for Tub B here and give it to Tub C. Brian: how do I do that? --Zooko
+            # complete (since they both use the same certData)
             return self.stall(2)
         d.addCallback(_start_connecting)
         def _start_tubC(res):
@@ -133,7 +133,7 @@ class Reconnector(unittest.TestCase):
         return d
 
     def test_lose_and_retry(self):
-        tubC = Tub()
+        tubC = Tub(self.tubB.getCertData())
         connects = []
         d1 = defer.Deferred()
         d2 = defer.Deferred()
@@ -157,8 +157,8 @@ class Reconnector(unittest.TestCase):
         d1.addCallback(_wait)
         def _start_tubC(res):
             # now start tubC listening on the same port that tubB used to,
-            # which should allow the connection to complete (since they're
-            # both Tub)
+            # which should allow the connection to complete (since they both
+            # use the same certData)
             self.services.append(tubC)
             tubC.startService()
             tubC.listenOn("tcp:%d:interface=127.0.0.1" % portb)
