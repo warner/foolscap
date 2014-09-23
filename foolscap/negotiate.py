@@ -464,8 +464,7 @@ class Negotiation(protocol.Protocol):
         self.log("handlePLAINTEXTServer: targetTubID='%s'" % targetTubID,
                  level=NOISY)
         if targetTubID == "":
-            targetTubID = None
-xyz
+            # they're asking for an old UnauthenticatedTub. Refuse.
             raise NegotiationError("secure Tubs require encryption")
         if isSubstring("Upgrade: TLS/1.0\r\n", header):
             wantEncrypted = True
@@ -474,9 +473,6 @@ xyz
         self.log("handlePLAINTEXTServer: wantEncrypted=%s" % wantEncrypted,
                  level=NOISY)
         # we ignore the rest of the lines
-
-        if targetTubID is not None:
-            raise NegotiationError("secure Tubs require encryption")
 
         # now that we know which Tub the client wants to connect to, either
         # send a Redirect, or start the ENCRYPTED phase

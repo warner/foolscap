@@ -398,8 +398,6 @@ class ShouldFailMixin:
         d.addBoth(done)
         return d
 
-from foolscap import crypto
-
 from foolscap.api import Tub
 def GoodEnoughTub(certData=None, certFile=None, options={}):
     return Tub(certData, certFile, options)
