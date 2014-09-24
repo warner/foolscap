@@ -1,4 +1,57 @@
-User visible changes in Foolscap (aka newpb/pb2).           -*- outline -*-
+User visible changes in Foolscap                    -*- outline -*-
+
+* Release 0.7.0 (23-Sep-2014)
+
+** Security Fixes
+
+The "flappserver" feature was found to have a vulnerability in the
+service-lookup code which, when combined with an attacker who has the ability
+to write files to a location where the flappserver process could read them,
+would allow that attacker to obtain control of the flappserver process.
+
+Users who run flappservers should upgrade to 0.7.0, where this was fixed as
+part of #226.
+
+Each flappserver runs from a "base directory", and uses multiple files within
+the basedir to track the services that have been configured. The format of
+these files has changed. The flappserver tool in 0.7.0 remains capable of
+reading the old format (safely), but will upgrade the basedir to the new
+format when you use "flappserver add" to add a new service. Brand new
+servers, created with "flappserver create", will use the new format.
+
+The flappserver tool in 0.6.5 (or earlier) cannot handle this new format, and
+will believe that no services have been configured. Therefore downgrading to
+an older version of Foolscap will require manual reconstruction of the
+configured services.
+
+** Major Changes
+
+UnauthenticatedTub has been deprecated, and will be removed in the next
+release (0.8.0). This seldom-used feature provides Foolscap's RPC semantics
+without any of the security, and was included to enable the use of Foolscap
+without depending upon the (challenging-to-install) PyOpenSSL library.
+However, in practice, the lack of a solid dependency on PyOpenSSL has made
+installation more difficult for applications that *do* want the security, and
+UnauthenticatedTub is a footgun waiting to go off. Foolscap's code and
+packaging will be simpler without it. (#67)
+
+** Minor Changes
+
+The "git-foolscap" tools, which make it possible to publish and clone Git
+repositories over a Foolscap (flappserver) connection, have been moved from
+their hiding place in doc/examples/ into their own project, hosted at
+https://github.com/warner/git-foolscap . They will also be published on PyPI,
+to enable "pip install git-foolscap".
+
+The documentation was converted from Lore to ReStructuredText (.rst). Thanks
+to Koblaid for the patient work. (#148)
+
+The connection-hint parser in 0.7.0 has been changed to handle all TCP forms
+of Twisted's "Client Endpoint Descriptor" syntax, including the short
+"tcp:127.0.0.1:9999" variant. A future version should handle arbitrary
+endpoint descriptors (including Tor and i2p, see #203), but this small step
+should improve forward compatibility. (#216, #217)
+
 
 * Release 0.6.5 (12-Aug-2014)
 
