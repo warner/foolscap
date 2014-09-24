@@ -6,10 +6,10 @@ from cStringIO import StringIO
 import gc
 
 from foolscap.api import Referenceable, Copyable, RemoteCopy, \
-     flushEventualQueue, serialize, unserialize
+     flushEventualQueue, serialize, unserialize, Tub
 from foolscap.referenceable import RemoteReference
 from foolscap.tokens import Violation
-from foolscap.test.common import GoodEnoughTub, ShouldFailMixin
+from foolscap.test.common import ShouldFailMixin
 
 class Foo:
     # instances of non-Copyable classes are not serializable
@@ -100,7 +100,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
 
 
     def test_referenceable(self):
-        t1 = GoodEnoughTub()
+        t1 = Tub()
         t1.setServiceParent(self.s)
         l = t1.listenOn("tcp:0:interface=127.0.0.1")
         t1.setLocation("127.0.0.1:%d" % l.getPortnum())
@@ -108,7 +108,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         # the serialized blob can't keep the reference alive, so you must
         # arrange for that separately
         t1.registerReference(r1)
-        t2 = GoodEnoughTub()
+        t2 = Tub()
         t2.setServiceParent(self.s)
         obj = ("graph tangly", r1)
         d = t1.serialize(obj)
@@ -127,12 +127,12 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
 
     def test_referenceables_die(self):
         # serialized data will not keep the referenceable alive
-        t1 = GoodEnoughTub()
+        t1 = Tub()
         t1.setServiceParent(self.s)
         l = t1.listenOn("tcp:0:interface=127.0.0.1")
         t1.setLocation("127.0.0.1:%d" % l.getPortnum())
         r1 = Referenceable()
-        t2 = GoodEnoughTub()
+        t2 = Tub()
         t2.setServiceParent(self.s)
         obj = ("graph tangly", r1)
         d = t1.serialize(obj)

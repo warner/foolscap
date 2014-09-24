@@ -18,9 +18,10 @@ from foolscap.tokens import BananaFailure
 from foolscap import broker, call
 from foolscap.constraint import IConstraint
 from foolscap.logging import log
+from foolscap.api import Tub
 
 from foolscap.test.common import HelperTarget, TargetMixin, \
-     Target, TargetWithoutInterfaces, GoodEnoughTub
+     Target, TargetWithoutInterfaces
 from foolscap.eventual import fireEventually, flushEventualQueue
 
 
@@ -389,7 +390,7 @@ class TestFactory(unittest.TestCase):
 
 class TestCallable(unittest.TestCase):
     def setUp(self):
-        self.services = [GoodEnoughTub(), GoodEnoughTub()]
+        self.services = [Tub(), Tub()]
         self.tubA, self.tubB = self.services
         self.tub_ports = []
         for s in self.services:
@@ -552,7 +553,7 @@ class TestCallable(unittest.TestCase):
 
 class TestService(unittest.TestCase):
     def setUp(self):
-        self.services = [GoodEnoughTub()]
+        self.services = [Tub()]
         self.services[0].startService()
 
     def tearDown(self):
@@ -586,7 +587,7 @@ class TestService(unittest.TestCase):
         # under multiple URLs
 
     def getRef(self, target):
-        self.services.append(GoodEnoughTub())
+        self.services.append(Tub())
         s1 = self.services[0]
         s2 = self.services[1]
         s2.startService()

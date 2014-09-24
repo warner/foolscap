@@ -4,10 +4,9 @@ from twisted.trial import unittest
 from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionRefusedError
 from foolscap.api import RemoteInterface, Referenceable, flushEventualQueue, \
-     BananaError
+     BananaError, Tub
 from foolscap.referenceable import RemoteReference, encode_furl, decode_furl
-from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin, \
-     GoodEnoughTub
+from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin
 from foolscap.tokens import NegotiationError
 
 class RIConstrainedHelper(RemoteInterface):
@@ -28,7 +27,7 @@ class Base(ShouldFailMixin):
     debug = False
 
     def setUp(self):
-        self.services = [GoodEnoughTub() for i in range(4)]
+        self.services = [Tub() for i in range(4)]
         self.tubA, self.tubB, self.tubC, self.tubD = self.services
         for s in self.services:
             s.startService()
@@ -510,7 +509,7 @@ class Bad(Base, unittest.TestCase):
 class LongFURL(Base, unittest.TestCase):
     # make sure the old 200-byte limit on gift FURLs is gone
     def setUp(self):
-        self.services = [GoodEnoughTub() for i in range(4)]
+        self.services = [Tub() for i in range(4)]
         self.tubA, self.tubB, self.tubC, self.tubD = self.services
         for s in self.services:
             s.startService()

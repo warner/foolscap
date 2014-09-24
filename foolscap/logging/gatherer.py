@@ -21,7 +21,6 @@ class GatheringBase(service.MultiService, Referenceable):
     # requires self.furlFile and self.tacFile to be set on the class, both of
     # which should be relative to the basedir.
     use_local_addresses = True
-    tub_class = Tub
 
     def __init__(self, basedir):
         if basedir is None:
@@ -38,7 +37,7 @@ class GatheringBase(service.MultiService, Referenceable):
     def startService(self):
         service.MultiService.startService(self)
         certFile = os.path.join(self.basedir, "gatherer.pem")
-        self._tub = self.tub_class(certFile=certFile)
+        self._tub = Tub(certFile=certFile)
         self._tub.setServiceParent(self)
         local_addresses = ["127.0.0.1"]
         local_address = get_local_ip_for()

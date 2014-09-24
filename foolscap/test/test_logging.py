@@ -14,8 +14,8 @@ from foolscap.logging.interfaces import RILogObserver
 from foolscap.util import format_time
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.tokens import NoLocationError
-from foolscap.test.common import PollMixin, StallMixin, GoodEnoughTub
-from foolscap.api import RemoteException, Referenceable
+from foolscap.test.common import PollMixin, StallMixin
+from foolscap.api import RemoteException, Referenceable, Tub
 
 
 class Basic(unittest.TestCase):
@@ -72,7 +72,7 @@ class Basic(unittest.TestCase):
         log.msg("This goes to the One True Logger")
 
     def testTubLogger(self):
-        t = GoodEnoughTub()
+        t = Tub()
         t.log("this goes into the tub")
 
 class Advanced(unittest.TestCase):
@@ -451,7 +451,7 @@ class Publish(PollMixin, unittest.TestCase):
         basedir = "logging/Publish/logport_furlfile1"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
-        t = GoodEnoughTub()
+        t = Tub()
         # setOption before setServiceParent
         t.setOption("logport-furlfile", furlfile)
         t.setServiceParent(self.parent)
@@ -467,7 +467,7 @@ class Publish(PollMixin, unittest.TestCase):
         basedir = "logging/Publish/logport_furlfile2"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
-        t = GoodEnoughTub()
+        t = Tub()
         # setServiceParent before setOption
         t.setServiceParent(self.parent)
         self.failUnlessRaises(NoLocationError, t.getLogPort)
@@ -483,7 +483,7 @@ class Publish(PollMixin, unittest.TestCase):
         basedir = "logging/Publish/logpublisher"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
-        t = GoodEnoughTub()
+        t = Tub()
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         self.failUnlessRaises(NoLocationError, t.getLogPort)
@@ -497,7 +497,7 @@ class Publish(PollMixin, unittest.TestCase):
         tw_log = twisted_log.LogPublisher()
         tlb = t.setOption("bridge-twisted-logs", tw_log)
 
-        t2 = GoodEnoughTub()
+        t2 = Tub()
         t2.setServiceParent(self.parent)
         ob = Observer()
 
@@ -605,7 +605,7 @@ class Publish(PollMixin, unittest.TestCase):
         basedir = "logging/Publish/logpublisher_overload"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
-        t = GoodEnoughTub()
+        t = Tub()
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
@@ -615,7 +615,7 @@ class Publish(PollMixin, unittest.TestCase):
         logport_furl2 = open(furlfile, "r").read().strip()
         self.failUnlessEqual(logport_furl, logport_furl2)
 
-        t2 = GoodEnoughTub()
+        t2 = Tub()
         t2.setServiceParent(self.parent)
         ob = Observer()
 
@@ -664,7 +664,7 @@ class Publish(PollMixin, unittest.TestCase):
         basedir = "logging/Publish/logpublisher_catchup"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
-        t = GoodEnoughTub()
+        t = Tub()
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
@@ -672,7 +672,7 @@ class Publish(PollMixin, unittest.TestCase):
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
 
-        t2 = GoodEnoughTub()
+        t2 = Tub()
         t2.setServiceParent(self.parent)
         ob = Observer()
 
@@ -754,7 +754,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
     def test_list_incident_names(self):
         basedir = "logging/IncidentPublisher/list_incident_names"
         os.makedirs(basedir)
-        t = GoodEnoughTub()
+        t = Tub()
         t.setLocation("127.0.0.1:1234")
         t.logger = self.logger = log.FoolscapLogger()
         logdir = os.path.join(basedir, "logdir")
@@ -786,7 +786,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         basedir = "logging/IncidentPublisher/get_incidents"
         os.makedirs(basedir)
         furlfile = os.path.join(basedir, "logport.furl")
-        t = GoodEnoughTub()
+        t = Tub()
         t.logger = self.logger = log.FoolscapLogger()
         logdir = os.path.join(basedir, "logdir")
         t.logger.setLogDir(logdir)
@@ -817,7 +817,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         logport_furl2 = open(furlfile, "r").read().strip()
         self.failUnlessEqual(logport_furl, logport_furl2)
 
-        t2 = GoodEnoughTub()
+        t2 = Tub()
         t2.setServiceParent(self.parent)
 
         d = t2.getReference(logport_furl)
@@ -869,7 +869,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
     def test_subscribe(self):
         basedir = "logging/IncidentPublisher/subscribe"
         os.makedirs(basedir)
-        t = GoodEnoughTub()
+        t = Tub()
         t.logger = self.logger = log.FoolscapLogger()
         logdir = os.path.join(basedir, "logdir")
         t.logger.setLogDir(logdir)
@@ -890,7 +890,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         logport_furl = t.getLogPortFURL()
 
         ob = Observer()
-        t2 = GoodEnoughTub()
+        t2 = Tub()
         t2.setServiceParent(self.parent)
 
         d = t2.getReference(logport_furl)
@@ -1005,12 +1005,11 @@ class IncidentGatherer(unittest.TestCase,
         null = StringIO()
         ig = MyIncidentGathererService(classifiers=classifiers,
                                        basedir=ig_basedir, stdout=null)
-        ig.tub_class = GoodEnoughTub
         ig.d = defer.Deferred()
         return ig
 
     def create_connected_tub(self, ig):
-        t = GoodEnoughTub()
+        t = Tub()
         t.logger = self.logger
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
@@ -1286,14 +1285,13 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         # create a gatherer, which will create its own Tub
         gatherer = MyGatherer(None, True, basedir)
-        gatherer.tub_class = GoodEnoughTub
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
         # that will start the gatherer
         gatherer_furl = gatherer.my_furl
         starting_timestamp = gatherer._starting_timestamp
 
-        t = GoodEnoughTub()
+        t = Tub()
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
@@ -1323,7 +1321,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer1_basedir = os.path.join(basedir, "gatherer1")
         os.makedirs(gatherer1_basedir)
         gatherer1 = MyGatherer(None, False, gatherer1_basedir)
-        gatherer1.tub_class = GoodEnoughTub
         gatherer1.d = defer.Deferred()
         gatherer1.setServiceParent(self.parent)
         # that will start the gatherer
@@ -1334,14 +1331,13 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer2_basedir = os.path.join(basedir, "gatherer2")
         os.makedirs(gatherer2_basedir)
         gatherer2 = MyGatherer(None, False, gatherer2_basedir)
-        gatherer2.tub_class = GoodEnoughTub
         gatherer2.d = defer.Deferred()
         gatherer2.setServiceParent(self.parent)
         # that will start the gatherer
         gatherer2_furl = gatherer2.my_furl
         starting_timestamp2 = gatherer2._starting_timestamp
 
-        t = GoodEnoughTub()
+        t = Tub()
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
@@ -1370,14 +1366,13 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         # create a gatherer, which will create its own Tub
         gatherer = MyGatherer(3600, False, basedir)
-        gatherer.tub_class = GoodEnoughTub
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
         # that will start the gatherer
         gatherer_furl = gatherer.my_furl
         starting_timestamp = gatherer._starting_timestamp
 
-        t = GoodEnoughTub()
+        t = Tub()
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
@@ -1399,14 +1394,13 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         # create a gatherer, which will create its own Tub
         gatherer = MyGatherer(None, False, basedir)
-        gatherer.tub_class = GoodEnoughTub
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
         # that will start the gatherer
         gatherer_furlfile = os.path.join(basedir, gatherer.furlFile)
         starting_timestamp = gatherer._starting_timestamp
 
-        t = GoodEnoughTub()
+        t = Tub()
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
@@ -1428,14 +1422,13 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         # create a gatherer, which will create its own Tub
         gatherer = MyGatherer(None, False, basedir)
-        gatherer.tub_class = GoodEnoughTub
         gatherer.d = defer.Deferred()
         gatherer.setServiceParent(self.parent)
         # that will start the gatherer
         gatherer_furlfile = os.path.join(basedir, gatherer.furlFile)
         starting_timestamp = gatherer._starting_timestamp
 
-        t = GoodEnoughTub()
+        t = Tub()
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
@@ -1461,7 +1454,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer1_basedir = os.path.join(basedir, "gatherer1")
         os.makedirs(gatherer1_basedir)
         gatherer1 = MyGatherer(None, False, gatherer1_basedir)
-        gatherer1.tub_class = GoodEnoughTub
         gatherer1.d = defer.Deferred()
         gatherer1.setServiceParent(self.parent)
         # that will start the gatherer
@@ -1471,7 +1463,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer2_basedir = os.path.join(basedir, "gatherer2")
         os.makedirs(gatherer2_basedir)
         gatherer2 = MyGatherer(None, False, gatherer2_basedir)
-        gatherer2.tub_class = GoodEnoughTub
         gatherer2.d = defer.Deferred()
         gatherer2.setServiceParent(self.parent)
         # that will start the gatherer
@@ -1481,7 +1472,6 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         gatherer3_basedir = os.path.join(basedir, "gatherer3")
         os.makedirs(gatherer3_basedir)
         gatherer3 = MyGatherer(None, False, gatherer3_basedir)
-        gatherer3.tub_class = GoodEnoughTub
         gatherer3.d = defer.Deferred()
         gatherer3.setServiceParent(self.parent)
         # that will start the gatherer
@@ -1494,7 +1484,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         f.write(gatherer2_furl + "\n")
         f.close()
 
-        t = GoodEnoughTub()
+        t = Tub()
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setOption("log-gatherer-furl", gatherer3_furl)
@@ -1524,7 +1514,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         open(gatherer_fn, "w").close()
         # leave the furlfile empty: use no gatherer
 
-        t = GoodEnoughTub()
+        t = Tub()
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
@@ -1543,7 +1533,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         open(gatherer_fn, "w").close()
         # leave the furlfile missing: use no gatherer
 
-        t = GoodEnoughTub()
+        t = Tub()
         t.setServiceParent(self.parent)
         l = t.listenOn("tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
