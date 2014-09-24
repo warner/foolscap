@@ -1,5 +1,5 @@
 
-from twisted.python import failure, reflect
+from twisted.python import failure, reflect, log as twlog
 from twisted.internet import defer
 
 from foolscap import copyable, slicer, tokens
@@ -918,7 +918,7 @@ class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
     pickled = 1
     def printTraceback(self, file=None, elideFrameworkCode=0,
                        detail='default'):
-        if file is None: file = log.logerr
+        if file is None: file = twlog.logerr
         file.write("Traceback from remote host -- ")
         file.write(self.traceback)
 
