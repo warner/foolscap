@@ -988,8 +988,7 @@ class SturdyRef(Copyable, RemoteCopy):
         self.locationHints = [] # list of (type, host, port) tuples
         self.url = url
         if url:
-            self.tubID, self.locationHints, self.name = \
-                decode_furl(url)
+            self.tubID, self.locationHints, self.name = decode_furl(url)
 
     def getTubRef(self):
         return TubRef(self.tubID, self.locationHints)
@@ -1002,10 +1001,9 @@ class SturdyRef(Copyable, RemoteCopy):
         return str(self.url)
 
     def _distinguishers(self):
-        """Two SturdyRefs are equivalent if they point to the same
-        object.  SturdyRefs pay attention only to the TubID and the
-        reference name. This method makes it easier to compare a pair
-        of SturdyRefs."""
+        """Two SturdyRefs are equivalent if they point to the same object.
+        SturdyRefs pay attention only to the TubID and the reference name.
+        This method makes it easier to compare a pair of SturdyRefs."""
         return (True, self.tubID, self.name)
 
     def __hash__(self):

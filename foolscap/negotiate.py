@@ -528,8 +528,8 @@ class Negotiation(protocol.Protocol):
         # and wait for their Hello to arrive
 
     def startENCRYPTED(self):
-        # this is invoked on both sides. We move to the "ENCRYPTED"
-        # phase, which involves a TLS-encrypted session.
+        # this is invoked on both sides. We move to the "ENCRYPTED" phase,
+        # which involves a TLS-encrypted session.
         self.log("startENCRYPTED(isClient=%s)" % (self.isClient,))
         self.startTLS(self.tub.myCertificate)
         # TODO: can startTLS trigger dataReceived?
@@ -546,10 +546,8 @@ class Negotiation(protocol.Protocol):
         hello = self.negotiationOffer.copy()
 
         assert self.myTubID
-        # this indicates which identity we wish to claim. This is the
-        # hash of the certificate we're using, or one of its
-        # parents. If we aren't using an encrypted connection, don't
-        # claim any identity.
+        # This indicates which identity we wish to claim. This is the hash of
+        # the certificate we're using.
         hello['my-tub-id'] = self.myTubID
 
         if self.tub:
@@ -567,8 +565,7 @@ class Negotiation(protocol.Protocol):
                                        self.handleENCRYPTED, header):
             return
         self.theirCertificate = None
-        # we should be encrypted now
-        # get the peer's certificate
+        # We should be encrypted now. Get the peer's certificate.
         them = crypto.peerFromTransport(self.transport)
         if them and them.original:
             self.theirCertificate = them

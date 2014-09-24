@@ -428,11 +428,9 @@ class Bad(Base, unittest.TestCase):
             # unlikely to remain the same. NOTE: this will have to change
             # when we modify the way gifts are referenced, since tracker.url
             # is scheduled to go away.
-            (tubid, location_hints, name) = \
-                decode_furl(adave.tracker.url)
+            (tubid, location_hints, name) = decode_furl(adave.tracker.url)
             tubid = "".join(reversed(tubid))
-            adave.tracker.url = encode_furl(tubid,
-                                            location_hints, name)
+            adave.tracker.url = encode_furl(tubid, location_hints, name)
             return self.shouldFail(BananaError, "Bad.test_tubid", "unknown TubID",
                                    self.acarol.callRemote, "set", adave)
         d.addCallback(_introduce)
@@ -447,12 +445,10 @@ class Bad(Base, unittest.TestCase):
             # result in a failure during negotiation as it attempts to
             # establish a TCP connection.
 
-            (tubid, location_hints, name) = \
-                decode_furl(adave.tracker.url)
+            (tubid, location_hints, name) = decode_furl(adave.tracker.url)
             # highly unlikely that there's anything listening on this port
             location_hints = [ ("tcp", "127.0.0.1", 2) ]
-            adave.tracker.url = encode_furl(tubid,
-                                            location_hints, name)
+            adave.tracker.url = encode_furl(tubid, location_hints, name)
             return self.shouldFail(ConnectionRefusedError, "Bad.test_location",
                                    "Connection was refused by other side",
                                    self.acarol.callRemote, "set", adave)
@@ -473,11 +469,9 @@ class Bad(Base, unittest.TestCase):
             # case, but we can connect to a port which accepts the connection
             # and then stays silent. This should trigger the overall
             # connection timeout.
-            (tubid, location_hints, name) = \
-                decode_furl(adave.tracker.url)
+            (tubid, location_hints, name) = decode_furl(adave.tracker.url)
             location_hints = [ ("tcp", "127.0.0.1", p.getHost().port) ]
-            adave.tracker.url = encode_furl(tubid,
-                                            location_hints, name)
+            adave.tracker.url = encode_furl(tubid, location_hints, name)
             self.tubD.options['connect_timeout'] = 2
             return self.shouldFail(NegotiationError, "Bad.test_hang",
                                    "no connection established within client timeout",

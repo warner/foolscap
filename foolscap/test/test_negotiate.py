@@ -596,8 +596,8 @@ class Existing(CrossfireMixin, unittest.TestCase):
         self.failUnless(len(self.tub2.brokers) in expected)
 
     def testAuthenticated(self):
-        # When two Tubs connect, that connection should be used
-        # in the reverse connection too
+        # When two Tubs connect, that connection should be used in the
+        # reverse connection too
         self.makeServers()
         d = self.tub1.getReference(self.url2)
         d.addCallback(self._testAuthenticated_1)

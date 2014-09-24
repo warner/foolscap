@@ -287,8 +287,7 @@ class Tub(service.MultiService):
         self.strongReferences = []
         self.nameLookupHandlers = []
 
-        # remote stuff. Most of these use a TubRef as a
-        # dictionary key
+        # remote stuff. Most of these use a TubRef as a dictionary key
         self.tubConnectors = {} # maps TubRef to a TubConnector
         self.waitingForBrokers = {} # maps TubRef to list of Deferreds
         self.brokers = {} # maps TubRef to a Broker that connects to them

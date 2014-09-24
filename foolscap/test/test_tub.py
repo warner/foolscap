@@ -104,8 +104,7 @@ class SetLocation(unittest.TestCase):
             portnum = l.getPortnum()
             for lh in sr.locationHints:
                 self.failUnlessEqual(lh[2], portnum, lh)
-            self.failUnless( ("tcp", "127.0.0.1", portnum)
-                             in sr.locationHints)
+            self.failUnless(("tcp", "127.0.0.1", portnum) in sr.locationHints)
         d.addCallback(_check)
         return d
 
