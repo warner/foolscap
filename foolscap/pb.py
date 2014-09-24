@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import os.path, weakref, binascii, re, warnings
+import os.path, weakref, binascii, re
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
 from twisted.application import service, internet
@@ -1033,11 +1033,11 @@ class Tub(service.MultiService):
         # that's waiting on a remote broker to complete).
         output = []
         all_brokers = self.brokers.items()
-        for tubref,broker in all_brokers:
-            inbound = broker.inboundDeliveryQueue[:]
+        for tubref,_broker in all_brokers:
+            inbound = _broker.inboundDeliveryQueue[:]
             outbound = [pr
                         for (reqID, pr) in
-                        sorted(broker.waitingForAnswers.items()) ]
+                        sorted(_broker.waitingForAnswers.items()) ]
             output.append( (str(tubref), inbound, outbound) )
         output.sort(lambda x,y: cmp( (len(x[1]), len(x[2])),
                                      (len(y[1]), len(y[2])) ))
