@@ -10,7 +10,7 @@ from foolscap.api import Tub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \
-     crypto_available, GoodEnoughTub, StallMixin
+     StallMixin
 from foolscap.tokens import WrongTubIdError, PBError, NoLocationHintsError
 
 # create this data with:
@@ -74,9 +74,6 @@ class TestCertFile(unittest.TestCase):
         t = Tub(certData=CERT_DATA)
         self.failUnlessEqual(t.getTubID(), CERT_TUBID)
 
-if not crypto_available:
-    del TestCertFile
-
 class SetLocation(unittest.TestCase):
 
     def setUp(self):
@@ -89,7 +86,7 @@ class SetLocation(unittest.TestCase):
         return d
 
     def test_set_location(self):
-        t = GoodEnoughTub()
+        t = Tub()
         t.listenOn("tcp:0")
         t.setServiceParent(self.s)
         t.setLocation("127.0.0.1:12345")
@@ -97,7 +94,7 @@ class SetLocation(unittest.TestCase):
         self.failUnlessRaises(PBError, t.setLocation, "127.0.0.1:12345")
 
     def test_set_location_automatically(self):
-        t = GoodEnoughTub()
+        t = Tub()
         l = t.listenOn("tcp:0")
         t.setServiceParent(self.s)
         d = t.setLocationAutomatically()
@@ -105,15 +102,9 @@ class SetLocation(unittest.TestCase):
         def _check(furl):
             sr = SturdyRef(furl)
             portnum = l.getPortnum()
-            if sr.encrypted:
-                for lh in sr.locationHints:
-                    self.failUnlessEqual(lh[2], portnum, lh)
-                self.failUnless( ("tcp", "127.0.0.1", portnum)
-                                 in sr.locationHints)
-            else:
-                # TODO: unauthenticated tubs need review, I think they
-                # deserve to have tubids and multiple connection hints
-                pass
+            for lh in sr.locationHints:
+                self.failUnlessEqual(lh[2], portnum, lh)
+            self.failUnless(("tcp", "127.0.0.1", portnum) in sr.locationHints)
         d.addCallback(_check)
         return d
 
@@ -183,16 +174,13 @@ class FurlFile(unittest.TestCase):
         d.addCallback(_take2)
         return d
 
-if not crypto_available:
-    del FurlFile
-
 class QueuedStartup(TargetMixin, unittest.TestCase):
     # calling getReference and connectTo before the Tub has started should
     # put off network activity until the Tub is started.
 
     def setUp(self):
         TargetMixin.setUp(self)
-        self.tubB = GoodEnoughTub()
+        self.tubB = Tub()
         self.services = [self.tubB]
         for s in self.services:
             s.startService()
@@ -217,7 +205,7 @@ class QueuedStartup(TargetMixin, unittest.TestCase):
         return d
 
     def test_queued_getref(self):
-        t1 = GoodEnoughTub()
+        t1 = Tub()
         d1 = t1.getReference(self.barry_url)
         d2 = t1.getReference(self.bill_url)
         def _check(res):
@@ -235,7 +223,7 @@ class QueuedStartup(TargetMixin, unittest.TestCase):
         return dl
 
     def test_queued_reconnector(self):
-        t1 = GoodEnoughTub()
+        t1 = Tub()
         bill_connections = []
         barry_connections = []
         t1.connectTo(self.bill_url, bill_connections.append)
@@ -261,7 +249,7 @@ class NameLookup(TargetMixin, unittest.TestCase):
 
     def setUp(self):
         TargetMixin.setUp(self)
-        self.tubA, self.tubB = [GoodEnoughTub(), GoodEnoughTub()]
+        self.tubA, self.tubB = [Tub(), Tub()]
         self.services = [self.tubA, self.tubB]
         self.tubA.startService()
         self.tubB.startService()
@@ -346,7 +334,7 @@ class NameLookup(TargetMixin, unittest.TestCase):
 
 class Shutdown(unittest.TestCase, ShouldFailMixin):
     def test_doublestop(self):
-        tub = GoodEnoughTub()
+        tub = Tub()
         tub.startService()
         d = tub.stopService()
         d.addCallback(lambda res:
@@ -397,8 +385,8 @@ class CancelPendingDeliveries(unittest.TestCase, StallMixin):
         # arrive in the same chunk). TubB responds to remote_one by shutting
         # down. remote_two should be discarded. The bug was that remote_two
         # would cause an unhandled error on the TubB side.
-        self.tubA = GoodEnoughTub()
-        self.tubB = GoodEnoughTub()
+        self.tubA = Tub()
+        self.tubB = Tub()
         self.tubA.startService()
         self.tubB.startService()
 
@@ -431,9 +419,9 @@ class BadLocationFURL(unittest.TestCase):
         # bug #129: a FURL with no location hints causes a synchronous
         # exception in Tub.getReference(), instead of an errback'ed Deferred.
 
-        tubA = GoodEnoughTub()
+        tubA = Tub()
         tubA.setServiceParent(self.s)
-        tubB = GoodEnoughTub()
+        tubB = Tub()
         tubB.setServiceParent(self.s)
 
         tubB.setLocation("") # this is how you say "unrouteable"
@@ -453,9 +441,9 @@ class BadLocationFURL(unittest.TestCase):
         # bug #129: a FURL with no location hints causes a synchronous
         # exception in Tub.getReference(), instead of an errback'ed Deferred.
 
-        tubA = GoodEnoughTub()
+        tubA = Tub()
         tubA.setServiceParent(self.s)
-        tubB = GoodEnoughTub()
+        tubB = Tub()
         tubB.setServiceParent(self.s)
 
         # "future:stuff" is interpreted as a "location hint format from the

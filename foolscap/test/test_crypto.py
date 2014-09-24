@@ -7,7 +7,6 @@ from twisted.internet import defer
 from foolscap import pb
 from foolscap.api import RemoteInterface, Referenceable, Tub, flushEventualQueue
 from foolscap.remoteinterface import RemoteMethodSchema
-from foolscap.test.common import crypto_available
 
 class RIMyCryptoTarget(RemoteInterface):
     # method constraints can be declared directly:
@@ -42,8 +41,6 @@ class Target(Referenceable):
 class UsefulMixin:
     num_services = 2
     def setUp(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
         self.services = []
         for i in range(self.num_services):
             s = Tub()

@@ -5,9 +5,9 @@ from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
 from twisted.web.client import getPage
 from foolscap import pb, negotiate, tokens, eventual
-from foolscap.api import Referenceable, Tub, UnauthenticatedTub, BananaError
+from foolscap.api import Referenceable, Tub, BananaError
 from foolscap.eventual import flushEventualQueue
-from foolscap.test.common import crypto_available, ShouldFailMixin
+from foolscap.test.common import ShouldFailMixin
 
 tubid_low = "3hemthez7rvgvyhjx2n5kdj7mcyar3yt"
 certData_low = \
@@ -84,10 +84,6 @@ class OneTimeDeferred(defer.Deferred):
 
 class BaseMixin(ShouldFailMixin):
 
-    def requireCrypto(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
-
     def setUp(self):
         self.connections = []
         self.servers = []
@@ -120,11 +116,8 @@ class BaseMixin(ShouldFailMixin):
             d.addCallback(eventual.fireEventually)
         return d
 
-    def makeServer(self, authenticated, options={}, listenerOptions={}):
-        if authenticated:
-            self.tub = tub = Tub(options=options)
-        else:
-            self.tub = tub = UnauthenticatedTub(options=options)
+    def makeServer(self, options={}, listenerOptions={}):
+        self.tub = tub = Tub(options=options)
         tub.startService()
         self.services.append(tub)
         l = tub.listenOn("tcp:0", listenerOptions)
@@ -177,7 +170,7 @@ class BaseMixin(ShouldFailMixin):
         return portnum
 
     def connectClient(self, portnum):
-        tub = UnauthenticatedTub()
+        tub = Tub()
         tub.startService()
         self.services.append(tub)
         d = tub.getReference("pb://127.0.0.1:%d/hello" % portnum)
@@ -189,13 +182,11 @@ class BaseMixin(ShouldFailMixin):
 class Basic(BaseMixin, unittest.TestCase):
 
     def testOptions(self):
-        url, portnum = self.makeServer(False, {'opt': 12})
+        url, portnum = self.makeServer({'opt': 12})
         self.failUnlessEqual(self.tub.options['opt'], 12)
 
     def testAuthenticated(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
-        url, portnum = self.makeServer(True)
+        url, portnum = self.makeServer()
         client = Tub()
         client.startService()
         self.services.append(client)
@@ -203,42 +194,9 @@ class Basic(BaseMixin, unittest.TestCase):
         return d
     testAuthenticated.timeout = 10
 
-    def testUnauthenticated(self):
-        url, portnum = self.makeServer(False)
-        client = UnauthenticatedTub()
-        client.startService()
-        self.services.append(client)
-        d = client.getReference(url)
-        return d
-    testUnauthenticated.timeout = 10
-
-    def testHalfAuthenticated1(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
-        url, portnum = self.makeServer(True)
-        client = UnauthenticatedTub()
-        client.startService()
-        self.services.append(client)
-        d = client.getReference(url)
-        return d
-    testHalfAuthenticated1.timeout = 10
-
-    def testHalfAuthenticated2(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
-        url, portnum = self.makeServer(False)
-        client = Tub()
-        client.startService()
-        self.services.append(client)
-        d = client.getReference(url)
-        return d
-    testHalfAuthenticated2.timeout = 10
-
 class Versus(BaseMixin, unittest.TestCase):
 
     def testVersusHTTPServerAuthenticated(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
         portnum = self.makeHTTPServer()
         client = Tub()
         client.startService()
@@ -254,39 +212,12 @@ class Versus(BaseMixin, unittest.TestCase):
         return d
     testVersusHTTPServerAuthenticated.timeout = 10
 
-    def testVersusHTTPServerUnauthenticated(self):
-        portnum = self.makeHTTPServer()
-        client = UnauthenticatedTub()
-        client.startService()
-        self.services.append(client)
-        url = "pbu://127.0.0.1:%d/target" % portnum
-        d = client.getReference(url)
-        d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
-                       lambda f: f.trap(BananaError))
-        d.addCallback(self.stall, 1) # same reason as above
-        return d
-    testVersusHTTPServerUnauthenticated.timeout = 10
-
-    def testVersusHTTPClientUnauthenticated(self):
-        try:
-            from twisted.web import error
-        except ImportError:
-            raise unittest.SkipTest('this test needs twisted.web')
-        url, portnum = self.makeServer(False)
-        d = self.connectHTTPClient(portnum)
-        d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
-                       lambda f: f.trap(error.Error))
-        return d
-    testVersusHTTPClientUnauthenticated.timeout = 10
-
     def testVersusHTTPClientAuthenticated(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
         try:
             from twisted.web import error
         except ImportError:
             raise unittest.SkipTest('this test needs twisted.web')
-        url, portnum = self.makeServer(True)
+        url, portnum = self.makeServer()
         d = self.connectHTTPClient(portnum)
         d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
                        lambda f: f.trap(error.Error))
@@ -294,14 +225,14 @@ class Versus(BaseMixin, unittest.TestCase):
     testVersusHTTPClientAuthenticated.timeout = 10
 
     def testNoConnection(self):
-        url, portnum = self.makeServer(False)
+        url, portnum = self.makeServer()
         d = self.tub.stopService()
         d.addCallback(self._testNoConnection_1, url)
         return d
     testNoConnection.timeout = 10
     def _testNoConnection_1(self, res, url):
         self.services.remove(self.tub)
-        client = UnauthenticatedTub()
+        client = Tub()
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -315,10 +246,10 @@ class Versus(BaseMixin, unittest.TestCase):
     def testClientTimeout(self):
         portnum = self.makeNullServer()
         # lower the connection timeout to 2 seconds
-        client = UnauthenticatedTub(options={'connect_timeout': 1})
+        client = Tub(options={'connect_timeout': 1})
         client.startService()
         self.services.append(client)
-        url = "pbu://127.0.0.1:%d/target" % portnum
+        url = "pb://faketubid@127.0.0.1:%d/target" % portnum
         d = client.getReference(url)
         d.addCallbacks(lambda res: self.fail("hey! this is supposed to fail"),
                        lambda f: f.trap(tokens.NegotiationError))
@@ -336,7 +267,7 @@ class Versus(BaseMixin, unittest.TestCase):
         options = {'server_timeout': 1,
                    'debug_negotiationFailed_cb': d.callback
                    }
-        url, portnum = self.makeServer(False, listenerOptions=options)
+        url, portnum = self.makeServer(listenerOptions=options)
         f = protocol.ClientFactory()
         f.protocol = protocol.Protocol # discards everything
         s = internet.TCPClient("127.0.0.1", portnum, f)
@@ -370,8 +301,7 @@ class Parallel(BaseMixin, unittest.TestCase):
     #
 
     def makeServers(self, tubopts={}, lo1={}, lo2={}):
-        self.requireCrypto()
-        self.tub = tub = Tub(options=tubopts)
+        self.tub = tub = Tub(certData=certData_high, options=tubopts)
         tub.startService()
         self.services.append(tub)
         l1 = tub.listenOn("tcp:0", lo1)
@@ -382,14 +312,11 @@ class Parallel(BaseMixin, unittest.TestCase):
         self.target = Target()
         return tub.registerReference(self.target)
 
-    def connect(self, url, authenticated=True):
+    def connect(self, url):
         self.clientPhases = []
         opts = {"debug_stall_second_connection": True,
                 "debug_gatherPhases": self.clientPhases}
-        if authenticated:
-            self.client = client = Tub(options=opts)
-        else:
-            self.client = client = UnauthenticatedTub(options=opts)
+        self.client = client = Tub(certData_low, options=opts)
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -467,9 +394,10 @@ class Parallel(BaseMixin, unittest.TestCase):
         # when the first connection completes.
 
         # note: this requires that the listener winds up as the master. We
-        # force this by connecting from an unauthenticated Tub.
+        # force this by ensuring that the server uses a stable certificate
+        # with a pre-calculated tubid sort order.
         url = self.makeServers(lo2={'debug_slow_sendDecision': True})
-        d = self.connect(url, authenticated=False)
+        d = self.connect(url)
         d.addCallback(self.checkConnectedToFirstListener,
                       [negotiate.DECIDING])
         return d
@@ -482,19 +410,10 @@ class CrossfireMixin(BaseMixin):
     # connections to each other at the same time.
     tub1IsMaster = False
 
-    def makeServers(self, t1opts={}, t2opts={}, lo1={}, lo2={},
-                    tubAauthenticated=True, tubBauthenticated=True):
-        if tubAauthenticated or tubBauthenticated:
-            self.requireCrypto()
+    def makeServers(self, t1opts={}, t2opts={}, lo1={}, lo2={}):
         # first we create two Tubs
-        if tubAauthenticated:
-            a = Tub(options=t1opts)
-        else:
-            a = UnauthenticatedTub(options=t1opts)
-        if tubBauthenticated:
-            b = Tub(options=t1opts)
-        else:
-            b = UnauthenticatedTub(options=t1opts)
+        a = Tub(options=t1opts)
+        b = Tub(options=t1opts)
 
         # then we figure out which one will be the master, and call it tub1
         if a.tubID > b.tubID:
@@ -673,14 +592,12 @@ class Existing(CrossfireMixin, unittest.TestCase):
     def checkNumBrokers(self, res, expected, dummy):
         if type(expected) not in (tuple,list):
             expected = [expected]
-        self.failUnless(len(self.tub1.brokers) +
-                        len(self.tub1.unauthenticatedBrokers) in expected)
-        self.failUnless(len(self.tub2.brokers) +
-                        len(self.tub2.unauthenticatedBrokers) in expected)
+        self.failUnless(len(self.tub1.brokers) in expected)
+        self.failUnless(len(self.tub2.brokers) in expected)
 
     def testAuthenticated(self):
-        # When two authenticated Tubs connect, that connection should be used
-        # in the reverse connection too
+        # When two Tubs connect, that connection should be used in the
+        # reverse connection too
         self.makeServers()
         d = self.tub1.getReference(self.url2)
         d.addCallback(self._testAuthenticated_1)
@@ -689,56 +606,6 @@ class Existing(CrossfireMixin, unittest.TestCase):
         # this should use the existing connection
         d = self.tub2.getReference(self.url1)
         d.addCallback(self.checkNumBrokers, 1, (r12,))
-        return d
-
-    def testUnauthenticated(self):
-        # But when two non-authenticated Tubs connect, they don't get to
-        # share connections.
-        self.makeServers(tubAauthenticated=False, tubBauthenticated=False)
-        # the non-authenticated Tub gets a tubID of None, so it becomes tub2.
-        # We want to verify that connections are not shared regardless of
-        # which direction is authenticated. In this test, the first
-        # connection
-        d = self.tub1.getReference(self.url2)
-        d.addCallback(self._testUnauthenticated_1)
-        return d
-    def _testUnauthenticated_1(self, r12):
-        # this should *not* use the existing connection
-        d = self.tub2.getReference(self.url1)
-        d.addCallback(self.checkNumBrokers, 2, (r12,))
-        return d
-
-    def testHalfAuthenticated1(self):
-        # When an authenticated Tub connects to a non-authenticated Tub, the
-        # reverse connection *is* allowed to share the connection (although,
-        # due to what I think are limitations in SSL, it probably won't)
-        self.makeServers(tubAauthenticated=True, tubBauthenticated=False)
-        # The non-authenticated Tub gets a tubID of None, so it becomes tub2.
-        # Therefore this is the authenticated-to-non-authenticated
-        # connection.
-        d = self.tub1.getReference(self.url2)
-        d.addCallback(self._testHalfAuthenticated1_1)
-        return d
-    def _testHalfAuthenticated1_1(self, r12):
-        d = self.tub2.getReference(self.url1)
-        d.addCallback(self.checkNumBrokers, (1,2), (r12,))
-        return d
-
-    def testHalfAuthenticated2(self):
-        # On the other hand, when a non-authenticated Tub connects to an
-        # authenticated Tub, the reverse connection is forbidden (because the
-        # non-authenticated Tub's identity is based upon its Listener's
-        # location)
-        self.makeServers(tubAauthenticated=True, tubBauthenticated=False)
-        # The non-authenticated Tub gets a tubID of None, so it becomes tub2.
-        # Therefore this is the authenticated-to-non-authenticated
-        # connection.
-        d = self.tub2.getReference(self.url1)
-        d.addCallback(self._testHalfAuthenticated2_1)
-        return d
-    def _testHalfAuthenticated2_1(self, r21):
-        d = self.tub1.getReference(self.url2)
-        d.addCallback(self.checkNumBrokers, 2, (r21,))
         return d
 
 # this test will have to change when the regular Negotiation starts using
@@ -768,7 +635,6 @@ class Future(BaseMixin, unittest.TestCase):
 
         # the listening Tub will have the higher tubID, and thus make the
         # negotiation decision
-        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high)
         # the client
         client = Tub(certData=certData_low)
@@ -786,7 +652,6 @@ class Future(BaseMixin, unittest.TestCase):
     def testFuture2(self):
         # same as before, but the connecting Tub will have the higher tubID,
         # and thus make the negotiation decision
-        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low)
         # the client
         client = Tub(certData=certData_high)
@@ -804,7 +669,6 @@ class Future(BaseMixin, unittest.TestCase):
     def testFuture3(self):
         # same as testFuture1, but it is the listening server that
         # understands [1,2]
-        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high, NegotiationVbig)
         client = Tub(certData=certData_low)
         client.startService()
@@ -820,7 +684,6 @@ class Future(BaseMixin, unittest.TestCase):
     def testFuture4(self):
         # same as testFuture2, but it is the listening server that
         # understands [1,2]
-        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low, NegotiationVbig)
         # the client
         client = Tub(certData=certData_high)
@@ -840,7 +703,6 @@ class Future(BaseMixin, unittest.TestCase):
 
         # the listening Tub will have the higher tubID, and thus make the
         # negotiation decision
-        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high)
         # the client
         client = Tub(certData=certData_low)
@@ -859,7 +721,6 @@ class Future(BaseMixin, unittest.TestCase):
     def testTooFarInFuture2(self):
         # same as before, but the connecting Tub will have the higher tubID,
         # and thus make the negotiation decision
-        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low)
         client = Tub(certData=certData_high)
         client.negotiationClass = NegotiationVbigOnly
@@ -877,7 +738,6 @@ class Future(BaseMixin, unittest.TestCase):
     def testTooFarInFuture3(self):
         # same as testTooFarInFuture1, but it is the listening server which
         # only understands [2]
-        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_high,
                                                NegotiationVbigOnly)
         client = Tub(certData=certData_low)
@@ -895,7 +755,6 @@ class Future(BaseMixin, unittest.TestCase):
     def testTooFarInFuture4(self):
         # same as testTooFarInFuture2, but it is the listening server which
         # only understands [2]
-        self.requireCrypto()
         url, portnum = self.makeSpecificServer(certData_low,
                                                NegotiationVbigOnly)
         client = Tub(certData=certData_high)
@@ -930,7 +789,6 @@ class Replacement(BaseMixin, unittest.TestCase):
 
     def setUp(self):
         BaseMixin.setUp(self)
-        self.requireCrypto()
         (self.tub1, self.target1, self.furl1, l1) = \
                     self.createSpecificServer(certData_low)
         (self.tub2, self.target2, self.furl2, l2) = \

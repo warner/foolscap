@@ -3,14 +3,14 @@
 from twisted.trial import unittest
 
 import os, weakref, gc
-from foolscap.api import UnauthenticatedTub
+from foolscap.api import Tub
 from foolscap.test.common import HelperTarget
 from foolscap.tokens import WrongNameError
 
 class Registration(unittest.TestCase):
     def testStrong(self):
         t1 = HelperTarget()
-        tub = UnauthenticatedTub()
+        tub = Tub()
         tub.setLocation("bogus:1234567")
         u1 = tub.registerReference(t1)
         del u1
@@ -29,7 +29,7 @@ class Registration(unittest.TestCase):
 
     def testWeak(self):
         t1 = HelperTarget()
-        tub = UnauthenticatedTub()
+        tub = Tub()
         tub.setLocation("bogus:1234567")
         name = tub._assignName(t1)
         url = tub.buildURL(name)
@@ -49,7 +49,7 @@ class Registration(unittest.TestCase):
         # Copyables and ordinary data structures too. Let's just test that
         # this doesn't cause an error.
         target = []
-        tub = UnauthenticatedTub()
+        tub = Tub()
         tub.setLocation("bogus:1234567")
         url = tub.registerReference(target)
         del url
@@ -59,7 +59,7 @@ class Registration(unittest.TestCase):
         os.makedirs(basedir)
         ff = os.path.join(basedir, "duplicate.furl")
         t1 = HelperTarget()
-        tub = UnauthenticatedTub()
+        tub = Tub()
         tub.setLocation("bogus:1234567")
         u1 = tub.registerReference(t1, "name", furlFile=ff)
         u2 = tub.registerReference(t1, "name", furlFile=ff)

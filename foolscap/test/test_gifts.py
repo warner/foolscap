@@ -4,10 +4,9 @@ from twisted.trial import unittest
 from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionRefusedError
 from foolscap.api import RemoteInterface, Referenceable, flushEventualQueue, \
-     BananaError
+     BananaError, Tub
 from foolscap.referenceable import RemoteReference, encode_furl, decode_furl
-from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin, \
-     crypto_available, GoodEnoughTub
+from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin
 from foolscap.tokens import NegotiationError
 
 class RIConstrainedHelper(RemoteInterface):
@@ -28,7 +27,7 @@ class Base(ShouldFailMixin):
     debug = False
 
     def setUp(self):
-        self.services = [GoodEnoughTub() for i in range(4)]
+        self.services = [Tub() for i in range(4)]
         self.tubA, self.tubB, self.tubC, self.tubD = self.services
         for s in self.services:
             s.startService()
@@ -395,8 +394,6 @@ class Bad(Base, unittest.TestCase):
     # errback.
 
     def setUp(self):
-        if not crypto_available:
-            raise unittest.SkipTest("crypto not available")
         Base.setUp(self)
 
     def test_swissnum(self):
@@ -430,11 +427,9 @@ class Bad(Base, unittest.TestCase):
             # unlikely to remain the same. NOTE: this will have to change
             # when we modify the way gifts are referenced, since tracker.url
             # is scheduled to go away.
-            (encrypted, tubid, location_hints, name) = \
-                decode_furl(adave.tracker.url)
+            (tubid, location_hints, name) = decode_furl(adave.tracker.url)
             tubid = "".join(reversed(tubid))
-            adave.tracker.url = encode_furl(encode_furl, tubid,
-                                            location_hints, name)
+            adave.tracker.url = encode_furl(tubid, location_hints, name)
             return self.shouldFail(BananaError, "Bad.test_tubid", "unknown TubID",
                                    self.acarol.callRemote, "set", adave)
         d.addCallback(_introduce)
@@ -449,12 +444,10 @@ class Bad(Base, unittest.TestCase):
             # result in a failure during negotiation as it attempts to
             # establish a TCP connection.
 
-            (encrypted, tubid, location_hints, name) = \
-                decode_furl(adave.tracker.url)
+            (tubid, location_hints, name) = decode_furl(adave.tracker.url)
             # highly unlikely that there's anything listening on this port
             location_hints = [ ("tcp", "127.0.0.1", 2) ]
-            adave.tracker.url = encode_furl(encode_furl, tubid,
-                                            location_hints, name)
+            adave.tracker.url = encode_furl(tubid, location_hints, name)
             return self.shouldFail(ConnectionRefusedError, "Bad.test_location",
                                    "Connection was refused by other side",
                                    self.acarol.callRemote, "set", adave)
@@ -475,11 +468,9 @@ class Bad(Base, unittest.TestCase):
             # case, but we can connect to a port which accepts the connection
             # and then stays silent. This should trigger the overall
             # connection timeout.
-            (encrypted, tubid, location_hints, name) = \
-                decode_furl(adave.tracker.url)
+            (tubid, location_hints, name) = decode_furl(adave.tracker.url)
             location_hints = [ ("tcp", "127.0.0.1", p.getHost().port) ]
-            adave.tracker.url = encode_furl(encode_furl, tubid,
-                                            location_hints, name)
+            adave.tracker.url = encode_furl(tubid, location_hints, name)
             self.tubD.options['connect_timeout'] = 2
             return self.shouldFail(NegotiationError, "Bad.test_hang",
                                    "no connection established within client timeout",
@@ -518,7 +509,7 @@ class Bad(Base, unittest.TestCase):
 class LongFURL(Base, unittest.TestCase):
     # make sure the old 200-byte limit on gift FURLs is gone
     def setUp(self):
-        self.services = [GoodEnoughTub() for i in range(4)]
+        self.services = [Tub() for i in range(4)]
         self.tubA, self.tubB, self.tubC, self.tubD = self.services
         for s in self.services:
             s.startService()

@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import os.path, weakref, binascii, re, warnings
+import os.path, weakref, binascii, re
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
 from twisted.application import service, internet
@@ -17,12 +17,7 @@ from foolscap.logging import log
 from foolscap.logging import publish as flog_publish
 from foolscap.logging.log import UNUSUAL
 
-crypto_available = False
-try:
-    from foolscap import crypto
-    crypto_available = crypto.available
-except ImportError:
-    pass
+from foolscap import crypto
 
 
 def parse_strport(port):
@@ -41,10 +36,7 @@ class Listener(protocol.ServerFactory):
     """I am responsible for a single listening port, which may connect to
     multiple Tubs. I have a strports-based Service, which I will attach as a
     child of one of my Tubs. If that Tub disconnects, I will reparent the
-    Service to a remaining one.
-
-    Unauthenticated Tubs use a TubID of 'None'. There may be at most one such
-    Tub attached to any given Listener."""
+    Service to a remaining one. """
 
     noisy = False
 
@@ -99,10 +91,7 @@ class Listener(protocol.ServerFactory):
 
     def addTub(self, tub):
         if tub.tubID in self.tubs:
-            if tub.tubID is None:
-                raise RuntimeError("This Listener (on %s) already has an "
-                                   "unauthenticated Tub, you cannot add a "
-                                   "second one" % self.port)
+            assert tub.tubID is not None
             raise RuntimeError("This Listener (on %s) is already connected "
                                "to TubID '%s'" % (self.port, tub.tubID))
         self.tubs[tub.tubID] = tub
@@ -135,7 +124,7 @@ class Listener(protocol.ServerFactory):
         return self.s
 
     def addRedirect(self, tubID, location):
-        assert tubID is not None # unauthenticated Tubs don't get redirects
+        assert tubID is not None
         self.redirects[tubID] = location
     def removeRedirect(self, tubID):
         del self.redirects[tubID]
@@ -226,7 +215,6 @@ class Tub(service.MultiService):
     debugBanana = False
     NAMEBITS = 160 # length of swissnumber for each reference
     TUBIDBITS = 16 # length of non-crypto tubID
-    encrypted = True
     negotiationClass = negotiate.Negotiation
     brokerClass = broker.Broker
     keepaliveTimeout = 4*60 # ping when connection has been idle this long
@@ -257,10 +245,6 @@ class Tub(service.MultiService):
             f.close()
 
     def setupEncryption(self, certData):
-        if not crypto_available:
-            raise RuntimeError("crypto for PB is not available, "
-                               "try importing foolscap.crypto and see "
-                               "what happens")
         if certData:
             cert = crypto.PrivateCertificate.loadPEM(certData)
         else:
@@ -303,12 +287,10 @@ class Tub(service.MultiService):
         self.strongReferences = []
         self.nameLookupHandlers = []
 
-        # remote stuff. Most of these use a TubRef (or NoAuthTubRef) as a
-        # dictionary key
+        # remote stuff. Most of these use a TubRef as a dictionary key
         self.tubConnectors = {} # maps TubRef to a TubConnector
         self.waitingForBrokers = {} # maps TubRef to list of Deferreds
         self.brokers = {} # maps TubRef to a Broker that connects to them
-        self.unauthenticatedBrokers = [] # inbound Brokers without TubRefs
         self.reconnectors = []
 
         # all connections, used or not, go in here, so we can stall
@@ -421,9 +403,6 @@ class Tub(service.MultiService):
         ignored = self.getLogPortFURL()
         del ignored
         tubID = self.tubID
-        if tubID is None:
-            # RILogGatherer.logport requires a string for nodeid=
-            tubID = '<unauth>'
         rref.callRemoteOnly('logport', tubID, self.getLogPort())
 
 
@@ -498,12 +477,9 @@ class Tub(service.MultiService):
 
         You must set the location before you can register any references.
 
-        Encrypted Tubs can have multiple location hints, just provide
-        multiple arguments. Unauthenticated Tubs can only have one location."""
+        Tubs can have multiple location hints, just provide multiple
+        arguments. """
 
-        if not self.encrypted and len(hints) > 1:
-            raise PBError("Unauthenticated tubs may only have one "
-                          "location hint")
         if self.locationHints:
             raise PBError("Tub.setLocation() can only be called once")
         self.locationHints = hints
@@ -592,10 +568,7 @@ class Tub(service.MultiService):
     def clone(self):
         """Return a new Tub (with a different ID), listening on the same
         ports as this one."""
-        if self.encrypted:
-            t = Tub()
-        else:
-            t = UnauthenticatedTub()
+        t = Tub()
         for l in self.listeners:
             t.listenOn(l)
         return t
@@ -660,8 +633,6 @@ class Tub(service.MultiService):
         why = Failure(error.ConnectionDone("Tub.stopService was called"))
         for b in self.brokers.values():
             b.shutdown(why, fireDisconnectWatchers=False)
-        for b in list(self.unauthenticatedBrokers):
-            b.shutdown(why, fireDisconnectWatchers=False)
 
         return defer.DeferredList(dl)
 
@@ -669,12 +640,10 @@ class Tub(service.MultiService):
         return generateSwissnumber(bits)
 
     def buildURL(self, name):
-        if self.encrypted:
-            # TODO: IPv6 dotted-quad addresses have colons, but need to have
-            # host:port
-            hints = ",".join(self.locationHints)
-            return "pb://" + self.tubID + "@" + hints + "/" + name
-        return "pbu://" + self.locationHints[0] + "/" + name
+        # TODO: IPv6 dotted-quad addresses have colons, but need to have
+        # host:port
+        hints = ",".join(self.locationHints)
+        return "pb://" + self.tubID + "@" + hints + "/" + name
 
     def registerReference(self, ref, name=None, furlFile=None):
         """Make a Referenceable available to the outside world. A URL is
@@ -864,15 +833,6 @@ class Tub(service.MultiService):
             sturdy = sturdyOrURL
         else:
             sturdy = SturdyRef(sturdyOrURL)
-        # pb->pb: ok, requires crypto
-        # pbu->pb: ok, requires crypto
-        # pbu->pbu: ok
-        # pb->pbu: ok, requires crypto
-        if sturdy.encrypted and not crypto_available:
-            e = BananaError("crypto for PB is not available, "
-                            "we cannot handle encrypted PB-URLs like %s"
-                            % sturdy.getURL())
-            return defer.fail(e)
 
         if not self.running:
             # queue their request for service once the Tub actually starts
@@ -1022,12 +982,7 @@ class Tub(service.MultiService):
 
     def brokerAttached(self, tubref, broker, isClient):
         assert self.running
-        if not tubref:
-            # this is an inbound connection from an unauthenticated Tub
-            assert not isClient
-            # we just track it so we can disconnect it later
-            self.unauthenticatedBrokers.append(broker)
-            return
+        assert tubref
 
         if tubref in self.tubConnectors:
             # we initiated an outbound connection to this tubref
@@ -1062,8 +1017,6 @@ class Tub(service.MultiService):
         for tubref in self.brokers.keys():
             if self.brokers[tubref] is broker:
                 del self.brokers[tubref]
-        if broker in self.unauthenticatedBrokers:
-            self.unauthenticatedBrokers.remove(broker)
 
     def connectionDropped(self, broker):
         self._allConnections.discard(broker)
@@ -1079,34 +1032,13 @@ class Tub(service.MultiService):
         # 'outbound' is a list of PendingRequest objects (one per message
         # that's waiting on a remote broker to complete).
         output = []
-        all_brokers = (self.brokers.items()
-                       + [("unauth",broker)
-                          for broker in self.unauthenticatedBrokers])
-        for tubref,broker in all_brokers:
-            inbound = broker.inboundDeliveryQueue[:]
+        all_brokers = self.brokers.items()
+        for tubref,_broker in all_brokers:
+            inbound = _broker.inboundDeliveryQueue[:]
             outbound = [pr
                         for (reqID, pr) in
-                        sorted(broker.waitingForAnswers.items()) ]
+                        sorted(_broker.waitingForAnswers.items()) ]
             output.append( (str(tubref), inbound, outbound) )
         output.sort(lambda x,y: cmp( (len(x[1]), len(x[2])),
                                      (len(y[1]), len(y[2])) ))
         return output
-
-
-class UnauthenticatedTub(Tub):
-    encrypted = False
-
-    def __init__(self, tubID=None, options={}):
-        warnings.warn("UnauthenticatedTub was deprecated in Foolscap-0.7.0 and will be removed in Foolscap-0.8.0. All Tubs will be authenticated. There is only one mode, and it is secure.", stacklevel=2)
-        # http://iang.org/ssl/h3_there_is_only_one_mode_and_it_is_secure.html
-        # http://foolscap.lothar.com/trac/ticket/67
-        service.MultiService.__init__(self)
-        self.setup(options)
-        self.myCertificate = None
-        assert not tubID # not yet
-        self.tubID = tubID
-
-    def getTubID(self):
-        return "<unauth>"
-    def getShortTubID(self):
-        return "<unauth>"

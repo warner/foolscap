@@ -21,7 +21,6 @@ class GatheringBase(service.MultiService, Referenceable):
     # requires self.furlFile and self.tacFile to be set on the class, both of
     # which should be relative to the basedir.
     use_local_addresses = True
-    tub_class = Tub
 
     def __init__(self, basedir):
         if basedir is None:
@@ -38,7 +37,7 @@ class GatheringBase(service.MultiService, Referenceable):
     def startService(self):
         service.MultiService.startService(self)
         certFile = os.path.join(self.basedir, "gatherer.pem")
-        self._tub = self.tub_class(certFile=certFile)
+        self._tub = Tub(certFile=certFile)
         self._tub.setServiceParent(self)
         local_addresses = ["127.0.0.1"]
         local_address = get_local_ip_for()
@@ -469,8 +468,8 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
 
     def remote_logport(self, nodeid, publisher):
         # we ignore nodeid (which is a printable string), and get the tubid
-        # (or its <unauth> name) from the publisher remoteReference.
-        # getRemoteTubID() protects us from .. and / and other nasties.
+        # from the publisher remoteReference. getRemoteTubID() protects us
+        # from .. and / and other nasties.
         tubid_s = publisher.getRemoteTubID()
         basedir = os.path.join(self.basedir, "incidents", tubid_s)
         stdout = self.stdout or sys.stdout

@@ -4,9 +4,9 @@ from twisted.trial import unittest
 from twisted.internet import reactor, defer
 from twisted.python.failure import Failure
 
-from foolscap.api import DeadReferenceError, flushEventualQueue
+from foolscap.api import DeadReferenceError, flushEventualQueue, Tub
 from foolscap.broker import Broker
-from foolscap.test.common import TargetWithoutInterfaces, GoodEnoughTub
+from foolscap.test.common import TargetWithoutInterfaces
 
 from twisted.python import log
 
@@ -24,7 +24,7 @@ class PingCountingBroker(Broker):
 
 class Keepalives(unittest.TestCase):
     def setUp(self):
-        s0, s1 = self.services = [GoodEnoughTub(), GoodEnoughTub()]
+        s0, s1 = self.services = [Tub(), Tub()]
         s0.brokerClass = PingCountingBroker
         s1.brokerClass = PingCountingBroker
         s0.startService()

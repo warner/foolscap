@@ -285,9 +285,9 @@ class RemoteReferenceTracker(object):
         # not yet positive it would work.. how exactly does the base url get
         # sent, anyway? What about Tubs visible through multiple names?
         self.url = url
-        if url is not None and self.broker.remote_tubref:
-            # unit tests frequently set url=None, and UnauthenticatedTubs
-            # don't have a remote_tubref
+        if url is not None:
+            # unit tests frequently set url=None
+            assert self.broker.remote_tubref
             expected_tubid = self.broker.remote_tubref.getTubID()
             url_tubid = SturdyRef(url).getTubRef().getTubID()
             if expected_tubid != url_tubid:
@@ -349,9 +349,8 @@ class RemoteReferenceOnly(object):
         return SturdyRef(self.tracker.getURL())
     def getRemoteTubID(self):
         rt = self.tracker.broker.remote_tubref
-        if rt:
-            return rt.getTubID()
-        return "<unauth>"
+        assert rt
+        return rt.getTubID()
 
     def getPeer(self):
         """Return an IAddress-providing object that describes the remote
@@ -771,7 +770,6 @@ class BadFURLError(Exception):
     pass
 
 AUTH_STURDYREF_RE = re.compile(r"pb://([^@]+)@([^/]*)/(.+)$")
-NONAUTH_STURDYREF_RE = re.compile(r"pbu://([^/]*)/(.+)$")
 
 # This can match IPv4 IP addresses + port numbers *or* host names +
 # port numbers.
@@ -938,19 +936,15 @@ def decode_location_hints(hints_s):
     return hints
 
 def decode_furl(furl):
-    """Returns (encrypted, tubID, location_hints, name)"""
+    """Returns (tubID, location_hints, name)"""
     # pb://key@{ip:port,host:port,[ipv6]:port}[/unix]/swissnumber
     # i.e. pb://tubID@{locationHints..}/name
     #
     # it can live at any one of a (TODO) variety of network-accessible
     # locations, or (TODO) at a single UNIX-domain socket.
-    #
-    # there is also an unauthenticated form, which does not have a TubID
 
     mo_auth_furl = AUTH_STURDYREF_RE.search(furl)
-    mo_nonauth_furl = NONAUTH_STURDYREF_RE.search(furl)
     if mo_auth_furl:
-        encrypted = True
         # we only pay attention to the first 32 base32 characters
         # of the tubid string. Everything else is left for future
         # extensions.
@@ -962,24 +956,14 @@ def decode_furl(furl):
         location_hints = decode_location_hints(hints)
         name = mo_auth_furl.group(3)
 
-    elif mo_nonauth_furl:
-        encrypted = False
-        tubID = None
-        hints = mo_nonauth_furl.group(1)
-        location_hints = decode_location_hints(hints)
-        name = mo_nonauth_furl.group(2)
-
     else:
         raise ValueError("unknown FURL prefix in %r" % (furl,))
-    return (encrypted, tubID, location_hints, name)
+    return (tubID, location_hints, name)
 
-def encode_furl(encrypted, tubID, location_hints, name):
+def encode_furl(tubID, location_hints, name):
     location_hints_s = ",".join([encode_location_hint(hint)
                                  for hint in location_hints])
-    if encrypted:
-        return "pb://" + tubID + "@" + location_hints_s + "/" + name
-    else:
-        return "pbu://" + location_hints + "/" + name
+    return "pb://" + tubID + "@" + location_hints_s + "/" + name
 
 
 class SturdyRef(Copyable, RemoteCopy):
@@ -997,7 +981,6 @@ class SturdyRef(Copyable, RemoteCopy):
 
     typeToCopy = copytype = "foolscap.SturdyRef"
 
-    encrypted = False
     tubID = None
     name = None
 
@@ -1005,13 +988,10 @@ class SturdyRef(Copyable, RemoteCopy):
         self.locationHints = [] # list of (type, host, port) tuples
         self.url = url
         if url:
-            self.encrypted, self.tubID, self.locationHints, self.name = \
-                decode_furl(url)
+            self.tubID, self.locationHints, self.name = decode_furl(url)
 
     def getTubRef(self):
-        if self.encrypted:
-            return TubRef(self.tubID, self.locationHints)
-        return NoAuthTubRef(self.locationHints)
+        return TubRef(self.tubID, self.locationHints)
 
 
     def getURL(self):
@@ -1022,13 +1002,9 @@ class SturdyRef(Copyable, RemoteCopy):
 
     def _distinguishers(self):
         """Two SturdyRefs are equivalent if they point to the same object.
-        SturdyRefs to encrypted Tubs only pay attention to the TubID and the
-        reference name. SturdyRefs to unauthenticated Tubs must use the
-        location hints instead of the (missing) TubID. This method makes it
-        easier to compare a pair of SturdyRefs."""
-        if self.encrypted:
-            return (True, self.tubID, self.name)
-        return (False, self.locationHints, self.name)
+        SturdyRefs pay attention only to the TubID and the reference name.
+        This method makes it easier to compare a pair of SturdyRefs."""
+        return (True, self.tubID, self.name)
 
     def __hash__(self):
         return hash(self._distinguishers())
@@ -1042,7 +1018,6 @@ class TubRef(object):
     """This is a little helper class which provides a comparable identifier
     for Tubs. TubRefs can be used as keys in dictionaries that track
     connections to remote Tubs."""
-    encrypted = True
 
     def __init__(self, tubID, locationHints=None):
         self.tubID = tubID
@@ -1069,26 +1044,3 @@ class TubRef(object):
         return (cmp(type(self), type(them)) or
                 cmp(self.__class__, them.__class__) or
                 cmp(self._distinguishers(), them._distinguishers()))
-
-class NoAuthTubRef(TubRef):
-    # this is only used on outbound connections
-    encrypted = False
-
-    def __init__(self, locations):
-        self.locations = locations
-
-    def getLocations(self):
-        return self.locations
-
-    def getTubID(self):
-        return "<unauth>"
-    def getShortTubID(self):
-        return "<unauth>"
-
-    def __str__(self):
-        return "pbu://" + ",".join([encode_location_hint(location)
-                                    for location in self.locations])
-
-    def _distinguishers(self):
-        """This serves the same purpose as SturdyRef._distinguishers."""
-        return tuple(self.locations)
