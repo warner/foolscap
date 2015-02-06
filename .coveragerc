@@ -1,0 +1,8 @@
+# -*- conf -*-
+
+[run]
+include =
+ foolscap/*
+omit =
+ foolscap/_version.py
+ foolscap/test/*.py
