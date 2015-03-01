@@ -87,7 +87,7 @@ class SetLocation(unittest.TestCase):
 
     def test_set_location(self):
         t = Tub()
-        t.listenOn("tcp:0")
+        t.listenOn(u"tcp:0")
         t.setServiceParent(self.s)
         t.setLocation("127.0.0.1:12345")
         # setLocation may only be called once
@@ -95,7 +95,7 @@ class SetLocation(unittest.TestCase):
 
     def test_set_location_automatically(self):
         t = Tub()
-        l = t.listenOn("tcp:0")
+        l = t.listenOn(u"tcp:0")
         t.setServiceParent(self.s)
         d = t.setLocationAutomatically()
         d.addCallback(lambda res: t.registerReference(Referenceable()))
@@ -125,9 +125,9 @@ class FurlFile(unittest.TestCase):
         cfn = "test_tub.FurlFile.test_furlfile.certfile"
         t1 = Tub(certFile=cfn)
         t1.setServiceParent(self.s)
-        l = t1.listenOn("tcp:0:interface=127.0.0.1")
+        l = t1.listenOn(u"tcp:0:interface=127.0.0.1")
         t1.setLocation("127.0.0.1:%d" % l.getPortnum())
-        port1 = "tcp:%d:interface=127.0.0.1" % l.getPortnum()
+        port1 = u"tcp:%d:interface=127.0.0.1" % l.getPortnum()
         r1 = Referenceable()
         ffn = "test_tub.FurlFile.test_furlfile.furlfile"
         furl1 = t1.registerReference(r1, furlFile=ffn)
@@ -151,9 +151,9 @@ class FurlFile(unittest.TestCase):
     def test_tubid_check(self):
         t1 = Tub() # gets a new key
         t1.setServiceParent(self.s)
-        l = t1.listenOn("tcp:0:interface=127.0.0.1")
+        l = t1.listenOn(u"tcp:0:interface=127.0.0.1")
         t1.setLocation("127.0.0.1:%d" % l.getPortnum())
-        port1 = "tcp:%d:interface=127.0.0.1" % l.getPortnum()
+        port1 = u"tcp:%d:interface=127.0.0.1" % l.getPortnum()
         r1 = Referenceable()
         ffn = "test_tub.FurlFile.test_tubid_check.furlfile"
         furl1 = t1.registerReference(r1, furlFile=ffn)
@@ -184,7 +184,7 @@ class QueuedStartup(TargetMixin, unittest.TestCase):
         self.services = [self.tubB]
         for s in self.services:
             s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
+            l = s.listenOn(u"tcp:0:interface=127.0.0.1")
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
         self.barry = HelperTarget("barry")
@@ -253,7 +253,7 @@ class NameLookup(TargetMixin, unittest.TestCase):
         self.services = [self.tubA, self.tubB]
         self.tubA.startService()
         self.tubB.startService()
-        l = self.tubB.listenOn("tcp:0:interface=127.0.0.1")
+        l = self.tubB.listenOn(u"tcp:0:interface=127.0.0.1")
         self.tubB.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.url_on_b = self.tubB.registerReference(Referenceable())
         self.lookups = []
@@ -390,7 +390,7 @@ class CancelPendingDeliveries(unittest.TestCase, StallMixin):
         self.tubA.startService()
         self.tubB.startService()
 
-        self.tubB.listenOn("tcp:0")
+        self.tubB.listenOn(u"tcp:0")
         d = self.tubB.setLocationAutomatically()
         r = Receiver(self.tubB)
         d.addCallback(lambda res: self.tubB.registerReference(r))

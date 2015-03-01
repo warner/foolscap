@@ -15,7 +15,7 @@ class ConnectToSelf(unittest.TestCase):
         self.services = [tub]
         for s in self.services:
             s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
+            l = s.listenOn(u"tcp:0:interface=127.0.0.1")
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
     def tearDown(self):

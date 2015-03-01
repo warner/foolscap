@@ -102,7 +102,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
     def test_referenceable(self):
         t1 = Tub()
         t1.setServiceParent(self.s)
-        l = t1.listenOn("tcp:0:interface=127.0.0.1")
+        l = t1.listenOn(u"tcp:0:interface=127.0.0.1")
         t1.setLocation("127.0.0.1:%d" % l.getPortnum())
         r1 = Referenceable()
         # the serialized blob can't keep the reference alive, so you must
@@ -129,7 +129,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         # serialized data will not keep the referenceable alive
         t1 = Tub()
         t1.setServiceParent(self.s)
-        l = t1.listenOn("tcp:0:interface=127.0.0.1")
+        l = t1.listenOn(u"tcp:0:interface=127.0.0.1")
         t1.setLocation("127.0.0.1:%d" % l.getPortnum())
         r1 = Referenceable()
         t2 = Tub()

@@ -71,7 +71,7 @@ class AppServer(service.MultiService):
             self.umask = int(umask, 8) # octal string like 0022
         except EnvironmentError:
             self.umask = None
-        port = open(os.path.join(basedir, "port")).read().strip()
+        port = open(os.path.join(basedir, "port")).read().strip().decode('utf-8')
         self.tub = Tub(certFile=os.path.join(basedir, "tub.pem"))
         self.tub.listenOn(port)
         self.tub.setServiceParent(self)

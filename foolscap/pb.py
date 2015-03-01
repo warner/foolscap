@@ -544,7 +544,9 @@ class Tub(service.MultiService):
         and to figure out which port was allocated when you used a strports
         specification of 'tcp:0'. """
 
-        if type(what) is str:
+        assert not isinstance(what, str), "what should be either a unicode or some non-string thing, not %s :: %s" % (repr(what), type(what))
+
+        if type(what) is unicode:
             l = Listener(what, options, self.negotiationClass)
         else:
             assert not options

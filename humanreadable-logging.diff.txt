@@ -1,0 +1,29 @@
+diff --git a/foolscap/logging/log.py b/foolscap/logging/log.py
+index e21769d..1da2536 100644
+--- a/foolscap/logging/log.py
++++ b/foolscap/logging/log.py
+@@ -15,20 +15,11 @@ from foolscap.logging.levels import NOISY, OPERATIONAL, UNUSUAL, \
+ # hush pyflakes, these are imported to be available to other callers
+ _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
+ 
++from .humanreadable import hr
++
+ def format_message(e):
+     try:
+-        if "format" in e:
+-            assert isinstance(e['format'], str)
+-            return e['format'] % e
+-        elif "args" in e:
+-            assert "message" in e
+-            assert isinstance(e['message'], str)
+-            return e['message'] % e['args']
+-        elif "message" in e:
+-            assert isinstance(e['message'], str)
+-            return e['message']
+-        else:
+-            return ""
++        return hr(e)
+     except (ValueError, TypeError):
+         return e.get('message', "[no message]") + " [formatting failed]"
+ 
+

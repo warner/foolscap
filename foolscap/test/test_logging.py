@@ -457,7 +457,7 @@ class Publish(PollMixin, unittest.TestCase):
         t.setServiceParent(self.parent)
         self.failUnlessRaises(NoLocationError, t.getLogPort)
         self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         self.failIf(os.path.exists(furlfile))
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         logport_furl = open(furlfile, "r").read().strip()
@@ -472,7 +472,7 @@ class Publish(PollMixin, unittest.TestCase):
         t.setServiceParent(self.parent)
         self.failUnlessRaises(NoLocationError, t.getLogPort)
         self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setOption("logport-furlfile", furlfile)
         self.failIf(os.path.exists(furlfile))
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
@@ -485,7 +485,7 @@ class Publish(PollMixin, unittest.TestCase):
         furlfile = os.path.join(basedir, "logport.furl")
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         self.failUnlessRaises(NoLocationError, t.getLogPort)
         self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
 
@@ -607,7 +607,7 @@ class Publish(PollMixin, unittest.TestCase):
         furlfile = os.path.join(basedir, "logport.furl")
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
         t.setOption("logport-furlfile", furlfile)
@@ -666,7 +666,7 @@ class Publish(PollMixin, unittest.TestCase):
         furlfile = os.path.join(basedir, "logport.furl")
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
         t.setOption("logport-furlfile", furlfile)
@@ -809,7 +809,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
 
         # now set up a Tub to connect to the logport
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
         t.setOption("logport-furlfile", furlfile)
@@ -885,7 +885,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
 
         # now set up a Tub to connect to the logport
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         logport_furl = t.getLogPortFURL()
 
@@ -1012,7 +1012,7 @@ class IncidentGatherer(unittest.TestCase,
         t = Tub()
         t.logger = self.logger
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furl", ig.my_furl)
 
@@ -1295,7 +1295,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furl", gatherer_furl)
 
@@ -1341,7 +1341,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furl", (gatherer1_furl, gatherer2_furl))
 
@@ -1376,7 +1376,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setOption("log-gatherer-furl", gatherer_furl)
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
 
@@ -1404,7 +1404,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furlfile", gatherer_furlfile)
 
@@ -1432,7 +1432,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setOption("log-gatherer-furlfile", gatherer_furlfile)
         # one bug we had was that the log-gatherer was contacted before
         # setLocation had occurred, so exercise that case
@@ -1489,7 +1489,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         assert t.tubID is not None
         t.setOption("log-gatherer-furl", gatherer3_furl)
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furlfile", gatherer_furlfile)
         # now both log gatherer connections will be being established
@@ -1516,7 +1516,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furlfile", gatherer_fn)
 
@@ -1535,7 +1535,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        l = t.listenOn(u"tcp:0:interface=127.0.0.1")
         t.setLocation("127.0.0.1:%d" % l.getPortnum())
         t.setOption("log-gatherer-furlfile", gatherer_fn)
 

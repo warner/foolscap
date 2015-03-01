@@ -17,7 +17,7 @@ class Reconnector(unittest.TestCase):
         self.tubA, self.tubB = self.services
         for s in self.services:
             s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
+            l = s.listenOn(u"tcp:0:interface=127.0.0.1")
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
 
     def tearDown(self):
@@ -89,7 +89,7 @@ class Reconnector(unittest.TestCase):
             self.failUnlessEqual(len(connects), 0)
             self.services.append(tubC)
             tubC.startService()
-            tubC.listenOn("tcp:%d:interface=127.0.0.1" % portb)
+            tubC.listenOn(u"tcp:%d:interface=127.0.0.1" % portb)
             tubC.setLocation("127.0.0.1:%d" % portb)
             url2 = tubC.registerReference(target, "target")
             assert url2 == url
@@ -122,7 +122,7 @@ class Reconnector(unittest.TestCase):
             return self.tubB.stopListeningOn(l)
         d.addCallback(_failed_a_few_times)
         def _stopped(res):
-            self.tubB.listenOn("tcp:%d:interface=127.0.0.1" % portb)
+            self.tubB.listenOn(u"tcp:%d:interface=127.0.0.1" % portb)
             # the next time the reconnector tries, it should succeed
             return d1
         d.addCallback(_stopped)
@@ -161,7 +161,7 @@ class Reconnector(unittest.TestCase):
             # use the same certData)
             self.services.append(tubC)
             tubC.startService()
-            tubC.listenOn("tcp:%d:interface=127.0.0.1" % portb)
+            tubC.listenOn(u"tcp:%d:interface=127.0.0.1" % portb)
             tubC.setLocation("127.0.0.1:%d" % portb)
             url2 = tubC.registerReference(target, "target")
             assert url2 == url

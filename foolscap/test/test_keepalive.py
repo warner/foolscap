@@ -29,7 +29,7 @@ class Keepalives(unittest.TestCase):
         s1.brokerClass = PingCountingBroker
         s0.startService()
         s1.startService()
-        l = s0.listenOn("tcp:0:interface=127.0.0.1")
+        l = s0.listenOn(u"tcp:0:interface=127.0.0.1")
         s0.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.target = TargetWithoutInterfaces()
         public_url = s0.registerReference(self.target, "target")

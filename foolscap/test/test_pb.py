@@ -395,7 +395,7 @@ class TestCallable(unittest.TestCase):
         self.tub_ports = []
         for s in self.services:
             s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
+            l = s.listenOn(u"tcp:0:interface=127.0.0.1")
             s.setLocation("127.0.0.1:%d" % l.getPortnum())
             self.tub_ports.append(l.getPortnum())
         self._log_observers_to_remove = []
@@ -563,7 +563,7 @@ class TestService(unittest.TestCase):
 
     def testRegister(self):
         s = self.services[0]
-        l = s.listenOn("tcp:0:interface=127.0.0.1")
+        l = s.listenOn(u"tcp:0:interface=127.0.0.1")
         s.setLocation("127.0.0.1:%d" % l.getPortnum())
         t1 = Target()
         public_url = s.registerReference(t1, "target")
@@ -591,7 +591,7 @@ class TestService(unittest.TestCase):
         s1 = self.services[0]
         s2 = self.services[1]
         s2.startService()
-        l = s1.listenOn("tcp:0:interface=127.0.0.1")
+        l = s1.listenOn(u"tcp:0:interface=127.0.0.1")
         s1.setLocation("127.0.0.1:%d" % l.getPortnum())
         public_url = s1.registerReference(target, "target")
         self.public_url = public_url

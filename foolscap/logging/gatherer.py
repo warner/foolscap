@@ -49,7 +49,7 @@ class GatheringBase(service.MultiService, Referenceable):
             desired_portnum = int(open(portnumfile, "r").read())
         except (EnvironmentError, ValueError):
             desired_portnum = 0
-        l = self._tub.listenOn("tcp:%d" % desired_portnum)
+        l = self._tub.listenOn(u"tcp:%d" % desired_portnum)
 
         got_portnum = l.getPortnum()
         f = open(portnumfile, "w")

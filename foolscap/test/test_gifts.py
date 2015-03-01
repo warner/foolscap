@@ -31,7 +31,7 @@ class Base(ShouldFailMixin):
         self.tubA, self.tubB, self.tubC, self.tubD = self.services
         for s in self.services:
             s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
+            l = s.listenOn(u"tcp:0:interface=127.0.0.1")
             loc = "127.0.0.1:%d" % l.getPortnum()
             s.setLocation(loc)
 
@@ -513,7 +513,7 @@ class LongFURL(Base, unittest.TestCase):
         self.tubA, self.tubB, self.tubC, self.tubD = self.services
         for s in self.services:
             s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
+            l = s.listenOn(u"tcp:0:interface=127.0.0.1")
             loc = "127.0.0.1:%d" % l.getPortnum()
             loc = ",".join([loc]*15) # 239 bytes of location, 281 of FURL
             s.setLocation(loc)

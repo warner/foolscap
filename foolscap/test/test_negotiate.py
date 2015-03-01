@@ -120,7 +120,7 @@ class BaseMixin(ShouldFailMixin):
         self.tub = tub = Tub(options=options)
         tub.startService()
         self.services.append(tub)
-        l = tub.listenOn("tcp:0", listenerOptions)
+        l = tub.listenOn(u"tcp:0", listenerOptions)
         tub.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.target = Target()
         return tub.registerReference(self.target), l.getPortnum()
@@ -131,7 +131,7 @@ class BaseMixin(ShouldFailMixin):
         tub.negotiationClass = negotiationClass
         tub.startService()
         self.services.append(tub)
-        l = tub.listenOn("tcp:0")
+        l = tub.listenOn(u"tcp:0")
         tub.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.target = Target()
         return tub.registerReference(self.target), l.getPortnum()
@@ -142,7 +142,7 @@ class BaseMixin(ShouldFailMixin):
         tub.negotiationClass = negotiationClass
         tub.startService()
         self.services.append(tub)
-        l = tub.listenOn("tcp:0")
+        l = tub.listenOn(u"tcp:0")
         tub.setLocation("127.0.0.1:%d" % l.getPortnum())
         target = Target()
         return tub, target, tub.registerReference(target), l.getPortnum()
@@ -304,8 +304,8 @@ class Parallel(BaseMixin, unittest.TestCase):
         self.tub = tub = Tub(certData=certData_high, options=tubopts)
         tub.startService()
         self.services.append(tub)
-        l1 = tub.listenOn("tcp:0", lo1)
-        l2 = tub.listenOn("tcp:0", lo2)
+        l1 = tub.listenOn(u"tcp:0", lo1)
+        l2 = tub.listenOn(u"tcp:0", lo2)
         self.p1, self.p2 = l1.getPortnum(), l2.getPortnum()
         tub.setLocation("127.0.0.1:%d" % l1.getPortnum(),
                         "127.0.0.1:%d" % l2.getPortnum())
@@ -438,7 +438,7 @@ class CrossfireMixin(BaseMixin):
 
         tub1.startService()
         self.services.append(tub1)
-        l1 = tub1.listenOn("tcp:0", lo1)
+        l1 = tub1.listenOn(u"tcp:0", lo1)
         tub1.setLocation("127.0.0.1:%d" % l1.getPortnum())
         self.target1 = Target()
         self.url1 = tub1.registerReference(self.target1)
@@ -446,7 +446,7 @@ class CrossfireMixin(BaseMixin):
         # connection[1], the abandoned connection, will be from tub2 to tub1
         tub2.startService()
         self.services.append(tub2)
-        l2 = tub2.listenOn("tcp:0", lo2)
+        l2 = tub2.listenOn(u"tcp:0", lo2)
         tub2.setLocation("127.0.0.1:%d" % l2.getPortnum())
         self.target2 = Target()
         self.url2 = tub2.registerReference(self.target2)
@@ -782,7 +782,7 @@ class Replacement(BaseMixin, unittest.TestCase):
         tub.incarnation_string = oldtub.incarnation_string
         tub.slave_table = oldtub.slave_table.copy()
         tub.master_table = oldtub.master_table.copy()
-        l = tub.listenOn("tcp:0")
+        l = tub.listenOn(u"tcp:0")
         tub.setLocation("127.0.0.1:%d" % l.getPortnum())
         target = Target()
         return tub, target, tub.registerReference(target), l.getPortnum()
