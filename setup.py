@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import re
-from distutils.core import setup
+import re, platform
+from setuptools import setup, Command
 
 VERSIONFILE = "foolscap/_version.py"
 verstr = "unknown"
@@ -18,6 +18,20 @@ else:
         print "unable to find version in %s" % (VERSIONFILE,)
         raise RuntimeError("if %s.py exists, it is required to be well-formed"
                            % (VERSIONFILE,))
+
+class Trial(Command):
+    description = "run trial"
+    user_options = []
+
+    def initialize_options(self):
+        pass
+    def finalize_options(self):
+        pass
+    def run(self):
+        import sys
+        from twisted.scripts import trial
+        sys.argv = ['trial', '--rterrors', 'foolscap.test']
+        trial.run()  # does not return
 
 setup_args = {
         'name': "foolscap",
@@ -49,47 +63,18 @@ object reference system, and a capability-based security model.
         'packages': ["foolscap", "foolscap.slicers", "foolscap.logging",
                      "foolscap.appserver", "foolscap.test"],
         'scripts': ["bin/flogtool", "bin/flappserver", "bin/flappclient"],
+        'cmdclass': {"trial": Trial, "test": Trial},
+        'install_requires': ['twisted >= 2.5.0'],
 }
 
-have_setuptools = False
-try:
-    # If setuptools is installed, then we'll add setuptools-specific
-    # arguments to the setup args. If we're on windows, this includes
-    # entry_points= scripts to create the appropriate .bat files.
-    import setuptools
-    _hush_pyflakes = [setuptools]
-    have_setuptools = True
-except ImportError:
-    pass
-
-if have_setuptools:
-    from setuptools import Command
-
-    class Trial(Command):
-        description = "run trial"
-        user_options = []
-
-        def initialize_options(self):
-            pass
-        def finalize_options(self):
-            pass
-        def run(self):
-            import sys
-            from twisted.scripts import trial
-            sys.argv = ['trial', '--rterrors', 'foolscap.test']
-            trial.run()  # does not return
-
-    setup_args['cmdclass'] = {"trial": Trial, "test": Trial}
-
-    import platform
-    if platform.system() == "Windows":
-        del setup_args["scripts"]
-        setup_args["entry_points"] = {"console_scripts": [
-            "flogtool = foolscap.logging.cli.run_flogtool",
-            "flappserver = foolscap.appserver.cli:run_flappserver",
-            "flappclient = foolscap.appserver.client:run_flappclient",
-            ] }
-    setup_args['install_requires'] = setup_args['tests_require'] = ['twisted >= 2.5.0']
+if platform.system() == "Windows":
+    # I prefer scripts over entry_points, but they don't work on windows
+    del setup_args["scripts"]
+    setup_args["entry_points"] = {"console_scripts": [
+        "flogtool = foolscap.logging.cli.run_flogtool",
+        "flappserver = foolscap.appserver.cli:run_flappserver",
+        "flappclient = foolscap.appserver.client:run_flappclient",
+        ] }
 
 if __name__ == '__main__':
     setup(**setup_args)
