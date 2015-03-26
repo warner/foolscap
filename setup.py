@@ -1,23 +1,16 @@
 #!/usr/bin/env python
 
-import re, platform
+import platform
 from setuptools import setup, Command
 
-VERSIONFILE = "foolscap/_version.py"
-verstr = "unknown"
-try:
-    verstrline = open(VERSIONFILE, "rt").read()
-except EnvironmentError:
-    pass # Okay, there is no version file.
-else:
-    VSRE = r"^verstr = ['\"]([^'\"]*)['\"]"
-    mo = re.search(VSRE, verstrline, re.M)
-    if mo:
-        verstr = mo.group(1)
-    else:
-        print "unable to find version in %s" % (VERSIONFILE,)
-        raise RuntimeError("if %s.py exists, it is required to be well-formed"
-                           % (VERSIONFILE,))
+import versioneer
+versioneer.versionfile_source = "foolscap/_version.py"
+versioneer.versionfile_build = "foolscap/_version.py"
+versioneer.tag_prefix = "foolscap-"
+versioneer.parentdir_prefix = "foolscap-"
+versioneer.VCS = "git"
+
+commands = versioneer.get_cmdclass().copy()
 
 class Trial(Command):
     description = "run trial"
@@ -32,10 +25,12 @@ class Trial(Command):
         from twisted.scripts import trial
         sys.argv = ["trial", "--rterrors", "foolscap.test"]
         trial.run()  # does not return
+commands["trial"] = Trial
+commands["test"] = Trial
 
 setup_args = {
     "name": "foolscap",
-    "version": verstr,
+    "version": versioneer.get_version(),
     "description": "Foolscap contains an RPC protocol for Twisted.",
     "author": "Brian Warner",
     "author_email": "warner-foolscap@lothar.com",
@@ -63,8 +58,8 @@ object reference system, and a capability-based security model.
     "packages": ["foolscap", "foolscap.slicers", "foolscap.logging",
                  "foolscap.appserver", "foolscap.test"],
     "scripts": ["bin/flogtool", "bin/flappserver", "bin/flappclient"],
-    "cmdclass": {"trial": Trial, "test": Trial},
-    "install_requires": ["twisted >= 2.5.0", "pyOpenSSL"],
+    "cmdclass": commands,
+    "install_requires": ["twisted >= 2.5.0", "pyOpenSSL", "service_identity"],
 }
 
 if platform.system() == "Windows":

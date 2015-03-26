@@ -8,7 +8,9 @@
 # Anything you might import from outside foolscap.api is subject to movement
 # in new releases.
 
-from foolscap._version import verstr as __version__
+from foolscap._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
 
 # here is the primary entry point
 from foolscap.pb import Tub

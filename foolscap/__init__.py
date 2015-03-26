@@ -1,6 +1,5 @@
 """Foolscap"""
 
-from _version import verstr as __version__
-
-# hush pyflakes
-_unused = __version__; del _unused
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
