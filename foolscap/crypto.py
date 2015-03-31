@@ -41,7 +41,7 @@ def alwaysValidate(conn, cert, errno, depth, preverify_ok):
     # obvious sign of hostile attack.
     return 0
 
-class MyOptions(CertificateOptions):
+class FoolscapContextFactory(CertificateOptions):
     def getContext(self):
         ctx = CertificateOptions.getContext(self)
 

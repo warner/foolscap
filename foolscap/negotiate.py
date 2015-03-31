@@ -1063,9 +1063,9 @@ class Negotiation(protocol.Protocol):
         if cert:
             kwargs['privateKey'] = cert.privateKey.original
             kwargs['certificate'] = cert.original
-        opts = crypto.MyOptions(**kwargs)
+        ctxFactory = crypto.FoolscapContextFactory(**kwargs)
 
-        self.transport.startTLS(opts)
+        self.transport.startTLS(ctxFactory)
 
     def switchToBanana(self, params):
         # switch over to the new protocol (a Broker instance). This
