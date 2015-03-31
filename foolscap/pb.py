@@ -246,7 +246,7 @@ class Tub(service.MultiService):
 
     def setupEncryption(self, certData):
         if certData:
-            cert = crypto.PrivateCertificate.loadPEM(certData)
+            cert = crypto.loadCertificate(certData)
         else:
             cert = self.createCertificate()
         self.myCertificate = cert
@@ -446,20 +446,7 @@ class Tub(service.MultiService):
         return log.msg(*args, **kwargs)
 
     def createCertificate(self):
-        # this is copied from test_sslverify.py
-        dn = crypto.DistinguishedName(commonName="newpb_thingy")
-        keypair = crypto.KeyPair.generate(size=2048)
-        req = keypair.certificateRequest(dn)
-        certData = keypair.signCertificateRequest(dn, req,
-                                                  lambda dn: True,
-                                                  1, # serial number
-                                                  digestAlgorithm="sha256",
-                                                  )
-        cert = keypair.newCertificate(certData)
-        #opts = cert.options()
-        # 'opts' can be given to reactor.listenSSL, or to transport.startTLS
-
-        return cert
+        return crypto.createCertificate()
 
     def getCertData(self):
         # the string returned by this method can be used as the certData=
