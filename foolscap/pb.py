@@ -448,11 +448,13 @@ class Tub(service.MultiService):
     def createCertificate(self):
         # this is copied from test_sslverify.py
         dn = crypto.DistinguishedName(commonName="newpb_thingy")
-        keypair = crypto.KeyPair.generate()
+        keypair = crypto.KeyPair.generate(size=2048)
         req = keypair.certificateRequest(dn)
         certData = keypair.signCertificateRequest(dn, req,
                                                   lambda dn: True,
-                                                  132)
+                                                  1, # serial number
+                                                  digestAlgorithm="sha256",
+                                                  )
         cert = keypair.newCertificate(certData)
         #opts = cert.options()
         # 'opts' can be given to reactor.listenSSL, or to transport.startTLS
