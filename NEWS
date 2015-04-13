@@ -1,5 +1,30 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.8.0 ??
+
+** UnauthenticatedTub is gone
+
+As announced in the previous release, UnauthenticatedTub has been removed.
+All Tubs are fully authenticated now.
+
+** Security Improvements
+
+Foolscap now generates better TLS certificates, with 2048-bit RSA keys and
+SHA256 digests. Previous versions used OpenSSL's defaults, which typically
+meant 1024-bit MD5.
+
+To benefit from the new certificates, you must regenerate your Tubs, which
+means creating new FURLs (with new TubIDs). Previously-created Tubs will
+continue to work normally: only new Tubs will be different.
+
+** Minor Changes
+
+setup.py now requires setuptools
+
+Foolscap now requires pyOpenSSL unconditionally, because all Tubs are
+authenticated.
+
+
 * Release 0.7.0 (23-Sep-2014)
 
 ** Security Fixes
