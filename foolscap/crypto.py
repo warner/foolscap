@@ -64,7 +64,7 @@ def createCertificate():
     # this is copied from test_sslverify.py
     dn = DistinguishedName(commonName="newpb_thingy")
     keypair = KeyPair.generate(size=2048)
-    req = keypair.certificateRequest(dn)
+    req = keypair.certificateRequest(dn, digestAlgorithm="sha256")
     certData = keypair.signCertificateRequest(dn, req,
                                               lambda dn: True,
                                               1, # serial number
