@@ -56,6 +56,7 @@ class ServiceData(unittest.TestCase):
         # correctly. Test the git-foolscap case with slashes in the swissnum.
         basedir = "appserver/ServiceData/parse_files"
         os.makedirs(basedir)
+        J = os.path.join
 
         f = open(os.path.join(basedir, "furl_prefix"), "wb")
         f.write("prefix")
@@ -71,17 +72,17 @@ class ServiceData(unittest.TestCase):
         data = server.load_service_data(basedir)
         expected = {"version": 1,
                     "services": {
-                        "swiss1": {"relative_basedir": "services/swiss1",
+                        "swiss1": {"relative_basedir": J("services","swiss1"),
                                    "type": "type1",
                                    "args": ["args1a", "args1b"],
                                    "comment": None,
                                    },
-                        "swiss2": {"relative_basedir": "services/swiss2",
+                        "swiss2": {"relative_basedir": J("services","swiss2"),
                                    "type": "type2",
                                    "args": ["args2a", "args2b"],
                                    "comment": "comment2",
                                    },
-                        "swiss3/3": {"relative_basedir": "services/swiss3/3",
+                        "swiss3/3": {"relative_basedir": J("services","swiss3","3"),
                                      "type": "type3",
                                      "args": ["args3a", "args3b"],
                                      "comment": "comment3",
@@ -89,7 +90,7 @@ class ServiceData(unittest.TestCase):
                         }}
         self.failUnlessEqual(data, expected)
 
-        s4 = {"relative_basedir": "services/4",
+        s4 = {"relative_basedir": J("services","4"),
               "type": "type4",
               "args": ["args4a", "args4b"],
               "comment": "comment4",
