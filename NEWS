@@ -1,6 +1,6 @@
 User visible changes in Foolscap                    -*- outline -*-
 
-* Release 0.8.0 ??
+* Release 0.8.0 (14-Apr-2015)
 
 ** UnauthenticatedTub is gone
 
@@ -17,12 +17,15 @@ To benefit from the new certificates, you must regenerate your Tubs, which
 means creating new FURLs (with new TubIDs). Previously-created Tubs will
 continue to work normally: only new Tubs will be different.
 
-** Minor Changes
+** Packaging/Dependency Changes
 
 setup.py now requires setuptools
 
 Foolscap now requires pyOpenSSL unconditionally, because all Tubs are
 authenticated.
+
+We now recommend "pip install ." to install Foolscap and all its
+dependencies, instead of "python setup.py install". See #231 for details.
 
 
 * Release 0.7.0 (23-Sep-2014)
