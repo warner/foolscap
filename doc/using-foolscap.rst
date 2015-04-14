@@ -126,23 +126,14 @@ your Tub available. There are three parts: give it an identity, have it
 listen on a port, and tell it the protocol/hostname/portnumber at which that
 port is accessibly to the outside world.
 
-In general, the Tub will generate its own identity, the *TubID* , by
-creating an SSL public key certificate and hashing it into a suitably-long
-random-looking string. This is the primary identifier of the Tub: everything
-else is just a *location hint* that suggests how the Tub might be
-reached. The fact that the TubID is tied to the public key allows FURLs to
-be "secure" references (meaning that no third party can cause you to
-connect to the wrong reference). You can also create a Tub with a
-pre-existing certificate, which is how Tubs can retain a persistent identity
-over multiple executions.
-
-You can also create an ``UnauthenticatedTub`` , which has an empty TubID.
-Hosting and connecting to unauthenticated Tubs do not require the pyOpenSSL
-library, but do not provide privacy, authentication, connection redirection,
-or shared listening ports. The FURLs that point to unauthenticated Tubs have
-a distinct form (starting with ``pbu:`` instead of ``pb:`` ) to make sure
-they are not mistaken for authenticated Tubs. Foolscap uses authenticated
-Tubs by default.
+The Tub will generate its own identity, the *TubID* , by creating an SSL
+public key certificate and hashing it into a suitably-long random-looking
+string. This is the primary identifier of the Tub: everything else is just a
+*location hint* that suggests how the Tub might be reached. The fact that the
+TubID is tied to the public key allows FURLs to be "secure" references
+(meaning that no third party can cause you to connect to the wrong
+reference). You can also create a Tub with a pre-existing certificate, which
+is how Tubs can retain a persistent identity over multiple executions.
 
 Having the Tub listen on a TCP port is as simple as calling ``Tub.listenOn`
 with a ``twisted.application.strports`` -formatted port specification string.
@@ -198,26 +189,8 @@ generated for you. This is useful when you want to give access to your
 ``Referenceable`` to someone specific, but do not want to make it possible
 for someone else to acquire it by guessing the name.
 
-To use an unauthenticated Tub instead, you would do the following:
-
-.. code-block:: python
-
-    
-    from foolscap.api import UnauthenticatedTub
-    
-    tub = UnauthenticatedTub()
-    tub.listenOn("tcp:12345")  # start listening on TCP port 12345
-    tub.setLocation("myhost.example.com:12345")
-    furl = tub.registerReference(myserver, "math-service")
-
-In this case, the FURL would be
-``"pbu://myhost.example.com:12345/math-service"`` . The deterministic nature
-of this form makes it slightly easier to throw together quick-and-dirty
-Foolscap applications, since you only need to hard-code the target host and
-port into the client side program. However any serious application should
-just used the default authenticated form and use a full FURL as their
-starting point. Note that the FURL can come from anywhere: typed in by the
-user, retrieved from a web page, or hardcoded into the application.
+Note that the FURL can come from anywhere: typed in by the user, retrieved
+from a web page, or hardcoded into the application.
 
 
 Using a persistent certificate
@@ -307,102 +280,18 @@ eventually, otherwise your program will hang forever.
     d.addCallbacks(gotReference, gotError)
     tub.startService()
 
-Complete example 1
-~~~~~~~~~~~~~~~~~~
+Complete example
+~~~~~~~~~~~~~~~~
 
 Here are two programs, one implementing the server side of our
-remote-addition protocol, the other behaving as a client. This first example
-uses an unauthenticated Tub so you don't have to manually copy a FURL from
-the server to the client. Both of these are standalone programs (you just run
-them), but normally you would create an
-``twisted.application.service.Application`` object and pass the file to
-``twistd -noy`` . An example of that usage will be provided later.
+remote-addition protocol, the other behaving as a client. When running this
+example, you must copy the FURL printed by the server and provide it as an
+argument to the client.
 
-(doc/listings/pb1server.py)
-
-.. code-block:: python
-
-    #! /usr/bin/python
-    
-    from twisted.internet import reactor
-    from foolscap.api import Referenceable, UnauthenticatedTub
-    
-    class MathServer(Referenceable):
-        def remote_add(self, a, b):
-            return a+b
-        def remote_subtract(self, a, b):
-            return a-b
-    
-    myserver = MathServer()
-    tub = UnauthenticatedTub()
-    tub.listenOn("tcp:12345")
-    tub.setLocation("localhost:12345")
-    url = tub.registerReference(myserver, "math-service")
-    print "the object is available at:", url
-    
-    tub.startService()
-    reactor.run()
-
-(doc/listings/pb1client.py)
-
-.. code-block:: python
-
-    #! /usr/bin/python
-    
-    from twisted.internet import reactor
-    from foolscap.api import Tub
-    
-    def gotError1(why):
-        print "unable to get the RemoteReference:", why
-        reactor.stop()
-    
-    def gotError2(why):
-        print "unable to invoke the remote method:", why
-        reactor.stop()
-    
-    def gotReference(remote):
-        print "got a RemoteReference"
-        print "asking it to add 1+2"
-        d = remote.callRemote("add", a=1, b=2)
-        d.addCallbacks(gotAnswer, gotError2)
-    
-    def gotAnswer(answer):
-        print "the answer is", answer
-        reactor.stop()
-    
-    tub = Tub()
-    tub.startService()
-    d = tub.getReference("pbu://localhost:12345/math-service")
-    d.addCallbacks(gotReference, gotError1)
-    
-    reactor.run()
-
-(server output)
-
-.. code-block:: console
-
-    
-    % doc/listings/pb1server.py
-    the object is available at: pbu://localhost:12345/math-service
-
-(client output)
-
-.. code-block:: console
-
-    
-    % doc/listings/pb1client.py
-    got a RemoteReference
-    asking it to add 1+2
-    the answer is 3
-    %
-
-Complete example 2
-~~~~~~~~~~~~~~~~~~
-
-This second example uses authenticated Tubs. When running this example, you
-must copy the FURL printed by the server and provide it as an argument to the
-client.
-
+Both of these are standalone programs (you just run them), but normally you
+would create an ``twisted.application.service.Application`` object and pass
+the file to ``twistd -noy`` . An example of that usage will be provided
+later.
 
 (doc/listings/pb2server.py)
 
@@ -475,14 +364,14 @@ client.
 
     
     % doc/listings/pb2server.py
-    the object is available at: pb://abcd123@localhost:12345/math-service
+    the object is available at: pb://j7oxoz3qzdkpgxgefsqp6xgdqeq4pvad@localhost:12345/math-service
 
 (client output)
 
 .. code-block:: console
 
     
-    % doc/listings/pb2client.py pb://abcd123@localhost:12345/math-service
+    % doc/listings/pb2client.py pb://j7oxoz3qzdkpgxgefsqp6xgdqeq4pvad@localhost:12345/math-service
     got a RemoteReference
     asking it to add 1+2
     the answer is 3
@@ -515,9 +404,6 @@ will not match the remote end, and the connection will be dropped. These
 attacks can cause a denial-of-service, but they cannot cause you to
 mistakenly connect to the wrong target.
 
-Obviously this second property only holds if you use SSL. If you choose to
-use unauthenticated Tubs, all security properties are lost.
-
 The format of a FURL, like
 ``pb://abcd123@example.com:5901,backup.example.com:8800/math-server`` , is as
 follows [#]_ :
@@ -543,14 +429,6 @@ follows [#]_ :
 
 (Unix-domain sockets are represented with only a single location hint, in the
 format ``pb://ABCD@unix/path/to/socket/NAME`` , but this needs some work)
-
-FURLs for unauthenticated Tubs, like ``pbu://example.com:8700/math-server`` ,
-are formatted as follows:
-
-#. The literal string ``pbu://``
-#. A comma-separated list of location hints, as above
-#. A literal ``/`` character
-#. The reference's name
 
 Clients vs Servers, Names and Capabilities
 ------------------------------------------
@@ -598,11 +476,7 @@ style as the earlier example.
 
 The server registers the Calculator instance and prints the FURL at which it
 is listening. You need to pass this FURL to the client program so it knows
-how to contact the server. If you have a modern version of Twisted (2.5 or
-later) and the right encryption libraries installed, you'll get an
-authenticated Tub (for which the FURL will start with "pb:" and will be
-fairly long). If you don't, you'll get an unauthenticated Tub (with a
-relatively short FURL that starts with "pbu:").
+how to contact the server.
 
 (doc/listings/pb3calculator.py)
 
@@ -1165,8 +1039,7 @@ people be annoying.
        the ``IRemoteMethodConstraint`` interface
 .. [#] ``RIFoo.__class__.__name__`` , if ``RemoteInterface`` s were actually
        classes, which they're not
-.. [#] and if everyone involved is using authenticated Tubs, then Foolscap
-       offers a guarantee, in the cryptographic sense, that Bob will wind up
-       with a reference to the same object that Alice intended. The
-       authenticated FURLs prevent DNS-spoofing and man-in-the-middle
-       attacks.
+.. [#] and since Tubs are authenticated, Foolscap offers a guarantee, in the
+       cryptographic sense, that Bob will wind up with a reference to the
+       same object that Alice intended. The authenticated FURLs prevent
+       DNS-spoofing and man-in-the-middle attacks.
