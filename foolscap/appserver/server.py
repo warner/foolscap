@@ -6,6 +6,7 @@ from twisted.internet import defer
 from foolscap.api import Tub
 from foolscap.appserver.services import build_service
 from foolscap.observer import OneShotObserverList
+from foolscap.util import move_into_place
 
 class UnknownVersion(Exception):
     pass
@@ -60,7 +61,7 @@ def save_service_data(basedir, data):
     f = open(tmpfile, "wb")
     json.dump(data, f, indent=2)
     f.close()
-    os.rename(tmpfile, services_file)
+    move_into_place(tmpfile, services_file)
 
 class AppServer(service.MultiService):
     def __init__(self, basedir=".", stdout=sys.stdout):

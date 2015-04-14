@@ -2,6 +2,7 @@
 from twisted.python import usage
 import sys, os, pickle, bz2, time
 from foolscap.logging import log
+from foolscap.util import move_into_place
 
 class FilterOptions(usage.Options):
     stdout = sys.stdout
@@ -106,7 +107,7 @@ class Filter:
                     os.unlink(options.newfile)
                 except OSError:
                     pass
-            os.rename(newfilename, options.newfile)
+            move_into_place(newfilename, options.newfile)
         print >>stdout, "copied %d of %d events into new file" % (copied, total)
 
     def get_events(self, fn):

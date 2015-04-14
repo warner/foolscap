@@ -1,4 +1,4 @@
-
+import os, sys
 import socket
 import time
 from twisted.internet import defer, reactor, protocol
@@ -99,3 +99,15 @@ def format_time(when, mode):
     elif mode == "epoch":
         time_s = "%.03f" % when
     return time_s
+
+
+def move_into_place(source, dest):
+    """Atomically replace a file, or as near to it as the platform allows.
+    The dest file may or may not exist."""
+    # from Tahoe
+    if "win32" in sys.platform.lower():
+        try:
+            os.remove(dest)
+        except:
+            pass
+    os.rename(source, dest)

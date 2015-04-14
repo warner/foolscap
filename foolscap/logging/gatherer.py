@@ -12,7 +12,7 @@ from twisted.application import service, internet
 from foolscap.api import Tub, Referenceable
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.logging.incident import IncidentClassifierBase, TIME_FORMAT
-from foolscap.util import get_local_ip_for
+from foolscap.util import get_local_ip_for, move_into_place
 
 class BadTubID(Exception):
     pass
@@ -192,7 +192,7 @@ class GathererService(GatheringBase):
         to_time = self.format_time(now)
         new_name = "from-%s---to-%s.flog" % (from_time, to_time)
         new_name = os.path.join(self.basedir, new_name)
-        os.rename(self._savefile_name, new_name)
+        move_into_place(self._savefile_name, new_name)
         self._open_savefile(now)
         if self.bzip:
             # we spawn an external bzip process because it's easier than

@@ -7,6 +7,7 @@ from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
 from foolscap.logging import levels, app_versions
 from foolscap.eventual import eventually
+from foolscap.util import move_into_place
 from foolscap import base32
 
 TIME_FORMAT = "%Y-%m-%d--%H-%M-%S"
@@ -156,7 +157,7 @@ class IncidentReporter:
 
     def finished_recording(self):
         self.f2.close()
-        os.rename(self.abs_filename_bz2_tmp, self.abs_filename_bz2)
+        move_into_place(self.abs_filename_bz2_tmp, self.abs_filename_bz2)
         # the compressed logfile has closed successfully. We no longer care
         # about the uncompressed one.
         self.f1.close()
