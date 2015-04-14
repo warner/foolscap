@@ -82,11 +82,12 @@ class ServiceData(unittest.TestCase):
                                    "args": ["args2a", "args2b"],
                                    "comment": "comment2",
                                    },
-                        "swiss3/3": {"relative_basedir": J("services","swiss3","3"),
-                                     "type": "type3",
-                                     "args": ["args3a", "args3b"],
-                                     "comment": "comment3",
-                                     },
+                        J("swiss3","3"): {"relative_basedir":
+                                        J("services","swiss3","3"),
+                                        "type": "type3",
+                                        "args": ["args3a", "args3b"],
+                                        "comment": "comment3",
+                                        },
                         }}
         self.failUnlessEqual(data, expected)
 
@@ -745,7 +746,7 @@ class RunCommand(unittest.TestCase, StallMixin):
                       self.run_client("--furl", self.furls[0], "run-command"))
         def _check_client((rc,out,err)):
             self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out, DATA)
+            self.failUnlessEqual(out.strip(), DATA.strip())
             self.failUnlessEqual(err.strip(), "")
         d.addCallback(_check_client)
 
@@ -808,7 +809,7 @@ class RunCommand(unittest.TestCase, StallMixin):
                       self.run_client("--furl", self.furls[2], "run-command"))
         def _check_client4((rc,out,err)):
             self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out, DATA)
+            self.failUnlessEqual(out.strip(), DATA.strip())
             self.failUnlessEqual(err, "")
         d.addCallback(_check_client4)
 
