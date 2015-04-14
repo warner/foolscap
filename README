@@ -32,7 +32,7 @@ INSTALLATION:
  To install foolscap into your system's normal python library directory, just
  run the following (you will probably have to do this as root):
 
-  python setup.py install
+  pip install .
 
  You can also just add the foolscap source tree to your PYTHONPATH, since
  there are no compile steps or .so/.dll files involved.
