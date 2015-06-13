@@ -4,11 +4,6 @@ import platform
 from setuptools import setup, Command
 
 import versioneer
-versioneer.versionfile_source = "foolscap/_version.py"
-versioneer.versionfile_build = "foolscap/_version.py"
-versioneer.tag_prefix = "foolscap-"
-versioneer.parentdir_prefix = "foolscap-"
-versioneer.VCS = "git"
 
 commands = versioneer.get_cmdclass().copy()
 
