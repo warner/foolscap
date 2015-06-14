@@ -12,6 +12,21 @@ from foolscap.logging import app_versions
 from foolscap.logging.levels import NOISY, OPERATIONAL, UNUSUAL, \
      INFREQUENT, CURIOUS, WEIRD, SCARY, BAD
 
+llmap = {}
+try:
+    import logging as py_logging
+    from twisted.logger import LogLevel # added in Twisted-15.2.0
+    # twisted.logger._stdlib.toStdlibLogLevelMapping is private, alas
+    llmap = {
+        LogLevel.debug: py_logging.DEBUG, # == NOISY
+        LogLevel.info: py_logging.INFO, # == OPERATIONAL
+        LogLevel.warn: py_logging.WARNING, # == WEIRD
+        LogLevel.error: py_logging.ERROR, # == BAD,
+        LogLevel.critical: py_logging.CRITICAL, # == BAD+10
+        }
+except ImportError:
+    pass # Twisted < 15.2.0
+
 # hush pyflakes, these are imported to be available to other callers
 _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 
@@ -339,14 +354,41 @@ class TwistedLogBridge:
 
     def _new_twisted_log_observer(self, d):
         # Twisted will remove this for us if it fails.
-        # keys:
-        #  ['message']: *args
-        #  ['time']: float
-        #  ['isError']: bool, usually False
-        #  ['system']: string
-
         if "from-foolscap" in d:
             return
+
+        # Twisted-8.2.0's ILogObserver tends to give these keys:
+        #  log.msg(): message=*args, system, time, isError=False
+        #  log.err() adds: isError=True, failure, why
+        # plus any kwargs provided to msg()/err(), like format=
+
+        # Twisted-15.2.0 introduces a new logging system, and adds several
+        # new log_* keys to the observed event dictionary, two of which
+        # (log_level and log_legacy) are non-serializable. Convert all the
+        # new keys into foolscap-style values, or delete them altogether.
+
+        if "log_level" in d:
+            # d["log_level"] is a non-serializable ConstantString. Transform
+            # it into the corresponding (integer) Foolscap log level, and
+            # omit the original key.
+            log_level = d.pop("log_level")
+            new_log_level = llmap.get(log_level, log_level)
+            if isinstance(new_log_level, (int, long)):
+                d["level"] = new_log_level # foolscap level, not twisted level
+            else:
+                # it was something weird: just stringify it in-place
+                if not isinstance(new_log_level, (str, unicode, bool)):
+                    new_log_level = str(new_log_level)
+                d["log_level"] = new_log_level # twisted level
+
+        # Normal log.msg(foo) results in d["format"]="%(log_legacy)s" and a
+        # non-serializable d["log_legacy"] (which is meant to defer
+        # stringification).
+        if d.get("format") == "%(log_legacy)s":
+            # just get rid of format and log_legacy, since they'll give the
+            # same thing as textFromEventDict()
+            d.pop("format")
+            d.pop("log_legacy", None)
         event = d.copy()
         event['tubID'] = self.tubID
         message = twisted_log.textFromEventDict(d)
