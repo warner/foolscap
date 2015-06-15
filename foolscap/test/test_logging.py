@@ -409,10 +409,8 @@ class Observer(Referenceable):
         self.messages = []
         self.incidents = []
         self.done_with_incidents = False
-        self.last_received = time.time()
     def remote_msg(self, d):
         self.messages.append(d)
-        self.last_received = time.time()
 
     def remote_new_incident(self, name, trigger):
         self.incidents.append( (name, trigger) )
@@ -514,7 +512,6 @@ class Publish(PollMixin, unittest.TestCase):
                           logport.callRemote("subscribe_to_all", ob))
             def _emit(subscription):
                 self._subscription = subscription
-                ob.last_received = time.time()
                 log.msg("message 1 here")
                 tw_log.msg("message 2 here")
 
@@ -614,7 +611,6 @@ class Publish(PollMixin, unittest.TestCase):
             d = logport.callRemote("subscribe_to_all", ob)
             def _emit(subscription):
                 self._subscription = subscription
-                ob.last_received = time.time()
                 for i in range(10000):
                     log.msg("message %d here" % i)
             d.addCallback(_emit)
@@ -686,7 +682,6 @@ class Publish(PollMixin, unittest.TestCase):
                           logport.callRemote("subscribe_to_all", ob, True))
             def _emit(subscription):
                 self._subscription = subscription
-                ob.last_received = time.time()
                 log.msg("this is a later message")
             d.addCallback(_emit)
             # wait until we've received the later message
