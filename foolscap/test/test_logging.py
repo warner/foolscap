@@ -537,18 +537,8 @@ class Publish(PollMixin, unittest.TestCase):
                 err(failure.Failure(SampleError("err3")))
                 err(SampleError("err4"))
             d.addCallback(_emit)
-            # now we wait until the observer has seen nothing for a full
-            # second. I'd prefer something faster and more deterministic, but
-            # this ought to handle the normal slow-host cases.
-            def _check_f():
-                if ob.last_received < time.time() - 1.0:
-                    return True
-                return False
-            d.addCallback(lambda res: self.poll(_check_f))
-            # TODO: I'm not content with that absolute-time stall, and would
-            # prefer to do something faster and more deterministic
-            #d.addCallback(fireEventually)
-            #d.addCallback(fireEventually)
+            # wait until we've seen all the messages, or the test times out
+            d.addCallback(lambda res: self.poll(lambda: len(ob.messages) >= 8))
             def _check_observer(res):
                 msgs = ob.messages
                 self.failUnlessEqual(len(msgs), 8)
