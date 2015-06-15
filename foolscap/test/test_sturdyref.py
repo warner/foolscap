@@ -1,6 +1,7 @@
 from twisted.trial import unittest
 
-from foolscap.referenceable import SturdyRef, BadFURLError
+from foolscap.referenceable import SturdyRef
+from foolscap.furl import BadFURLError
 
 TUB1 = "q5l37rle6pojjnllrwjyryulavpqdlq5"
 TUB2 = "u5vgfpug7qhkxdtj76tcfh6bmzyo6w5s"

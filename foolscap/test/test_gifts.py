@@ -5,7 +5,8 @@ from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionRefusedError
 from foolscap.api import RemoteInterface, Referenceable, flushEventualQueue, \
      BananaError, Tub
-from foolscap.referenceable import RemoteReference, encode_furl, decode_furl
+from foolscap.referenceable import RemoteReference
+from foolscap.furl import encode_furl, decode_furl
 from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin
 from foolscap.tokens import NegotiationError
 
