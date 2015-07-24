@@ -6,6 +6,7 @@ import twisted
 from twisted.internet import reactor
 from twisted.python import log
 from foolscap.api import __version__
+import OpenSSL
 
 def split_version(version_string):
     def maybe_int(s):
@@ -17,7 +18,6 @@ def split_version(version_string):
 
 class Versions(unittest.TestCase):
     def test_required(self):
-        import OpenSSL
         ssl_ver = split_version(OpenSSL.__version__)
         tw_ver = split_version(twisted.__version__)
         # this is gross, but apps aren't supposed to care what sort of
@@ -55,5 +55,6 @@ class Versions(unittest.TestCase):
         log.msg("Versions:")
         log.msg("foolscap-%s" % __version__)
         log.msg("twisted-%s" % twisted.__version__)
+        log.msg("pyopenssl-%s" % OpenSSL.__version__)
         log.msg("python-%s" % platform.python_version())
         log.msg("platform: %s" % platform.version())
