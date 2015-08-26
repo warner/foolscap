@@ -65,6 +65,9 @@ class Listener(protocol.ServerFactory):
         self.s = internet.TCPServer(portnum, self, interface=interface)
         Listeners.append(self)
 
+    def getConnectionHint(self):
+        return ("tcp", HOST, self.getPortnum())
+
     def getPortnum(self):
         """When this Listener was created with a port string of '0' or
         'tcp:0' (meaning 'please allocate me something'), and if the Listener
