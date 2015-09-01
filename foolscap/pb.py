@@ -7,7 +7,7 @@ from twisted.application import service, internet
 from twisted.python.failure import Failure
 
 from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
-from foolscap import util
+from foolscap import connection, util
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
      WrongNameError, NoLocationError
@@ -921,7 +921,7 @@ class Tub(service.MultiService):
         if tubref not in self.tubConnectors:
             # the TubConnector will call our brokerAttached when it finishes
             # negotiation, which will fire waitingForBrokers[tubref].
-            c = negotiate.TubConnector(self, tubref)
+            c = connection.TubConnector(self, tubref)
             self.tubConnectors[tubref] = c
             c.connect()
 

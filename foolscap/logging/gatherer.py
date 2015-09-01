@@ -519,7 +519,7 @@ gs = gatherer.IncidentGathererService()
 #
 # %% cat classify_foolscap.py
 # import re
-# TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.negotiate.TubConnector instance at \w+> is not in \[')
+# TUBCON_RE = re.compile(r'^Tub.connectorFinished: WEIRD, <foolscap.connection.TubConnector instance at \w+> is not in \[')
 # def classify_incident(trigger):
 #     # match some foolscap messages
 #     m = trigger.get('message', '')

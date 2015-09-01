@@ -111,3 +111,7 @@ def move_into_place(source, dest):
         except:
             pass
     os.rename(source, dest)
+
+def isSubstring(small, big):
+    assert type(small) is str and type(big) is str
+    return small in big
