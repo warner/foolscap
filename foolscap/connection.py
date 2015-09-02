@@ -15,7 +15,7 @@ from foolscap.util import isSubstring
 #    # added in twisted-10.1.0, but IPv4-only
 #    BEST_TCP_ENDPOINT = endpoints.TCP4ClientEndpoint
 
-class TubConnectorClientFactory(protocol.ClientFactory, object):
+class TubConnectorFactory(protocol.Factory, object):
     # this is for internal use only. Application code should use
     # Tub.getReference(url)
 
@@ -25,11 +25,6 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
         self.tc = tc # the TubConnector
         self.host = host
         self._logparent = logparent
-
-    def log(self, *args, **kwargs):
-        kwargs['parent'] = self._logparent
-        kwargs['facility'] = "foolscap.negotiation"
-        return log.msg(*args, **kwargs)
 
     def __repr__(self):
         # make it clear which remote Tub we're trying to connect to
@@ -44,13 +39,6 @@ class TubConnectorClientFactory(protocol.ClientFactory, object):
         assert self.tc.target.getTubID()
         target = self.tc.target.getTubID()[:8]
         return base[:at] + " [from %s]" % origin + " [to %s]" % target + base[at:]
-
-    def startFactory(self):
-        self.log("Starting factory %r" % self)
-        return protocol.ClientFactory.startFactory(self)
-    def stopFactory(self):
-        self.log("Stopping factory %r" % self)
-        return protocol.ClientFactory.stopFactory(self)
 
     def buildProtocol(self, addr):
         nc = self.tc.tub.negotiationClass # this is usually Negotiation
@@ -171,7 +159,7 @@ class TubConnector(object):
             host, port = location
             hint = "tcp:%s:%s" % (host, port) # TODO: stash the original hint
             lp = self.log("connectTCP to %s" % (location,))
-            f = TubConnectorClientFactory(self, host, lp)
+            f = TubConnectorFactory(self, host, lp)
             ep = endpoints.TCP4ClientEndpoint(reactor, host, port)
             d = ep.connect(f)
             self.pendingConnections.add(d)
