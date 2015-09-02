@@ -23,7 +23,7 @@ Full documentation and examples are in the doc/ directory.
 DEPENDENCIES:
 
  * Python 2.6 or 2.7
- * Twisted 2.5.0 or later
+ * Twisted 10.1.0 or later
  * PyOpenSSL (tested against 0.6)
 
 
