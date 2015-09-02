@@ -42,7 +42,7 @@ class Listener(protocol.ServerFactory):
 
     # this also serves as the ServerFactory
 
-    def __init__(self, port, options={},
+    def __init__(self, port, options={}, advertise,
                  negotiationClass=negotiate.Negotiation):
         """
         @type port: string
@@ -58,6 +58,9 @@ class Listener(protocol.ServerFactory):
         portnum, interface = parse_strport(port)
         self.port = port
         self.options = options
+        if advertise is not None:
+            assert isinstance(advertise, str)
+        self.advertisement = advertise
         self.negotiationClass = negotiationClass
         self.parentTub = None
         self.tubs = {}
@@ -66,7 +69,9 @@ class Listener(protocol.ServerFactory):
         Listeners.append(self)
 
     def getConnectionHint(self):
-        return ("tcp", HOST, self.getPortnum())
+        if self.advertisement:
+            return self.advertisement
+        return "tcp:%s:%d" % (HOST, self.getPortnum())
 
     def getPortnum(self):
         """When this Listener was created with a port string of '0' or
@@ -521,7 +526,7 @@ class Tub(service.MultiService):
         d.addCallback(_got_local_ip)
         return d
 
-    def listenOn(self, what, options={}):
+    def listenOn(self, what, options={}, advertise=None):
         """Start listening for connections.
 
         @type  what: string or Listener instance
@@ -530,6 +535,11 @@ class Tub(service.MultiService):
                      listenOn.
         @param options: a dictionary of options that can influence connection
                         negotiation before the target Tub has been determined
+        @param advertise: string, will be used as the "connection hint" in
+                          generated FURLs. The default of None causes the
+                          standard TCP Listener to automatically detect the
+                          host's IP addresses, which may not be quite what
+                          you want.
 
         @return: The Listener object that was created. This can be used to
         stop listening later on, to have another Tub listen on the same port,
@@ -537,7 +547,7 @@ class Tub(service.MultiService):
         specification of 'tcp:0'. """
 
         if type(what) is str:
-            l = Listener(what, options, self.negotiationClass)
+            l = Listener(what, options, advertise, self.negotiationClass)
         else:
             assert not options
             l = what
