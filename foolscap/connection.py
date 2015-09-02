@@ -109,8 +109,8 @@ class TubConnector(object):
         return s
 
     def log(self, *args, **kwargs):
-        kwargs['parent'] = self._logparent
-        kwargs['facility'] = "foolscap.connection"
+        kwargs['parent'] = kwargs.get('parent') or self._logparent
+        kwargs['facility'] = kwargs.get('facility') or "foolscap.connection"
         return log.msg(*args, **kwargs)
 
     def connect(self):
@@ -167,8 +167,8 @@ class TubConnector(object):
                 self.pendingConnections.remove(d)
                 return res
             d.addBoth(_remove)
-            d.addCallback(self._connectionSuccess, hint)
-            d.addErrback(self._connectionFailed, hint)
+            d.addCallback(self._connectionSuccess, hint, lp)
+            d.addErrback(self._connectionFailed, hint, lp)
             if self.tub.options.get("debug_stall_second_connection"):
                 # for unit tests, hold off on making the second connection
                 # for a moment. This allows the first connection to get to a
@@ -186,28 +186,30 @@ class TubConnector(object):
         self.shutdown()
         self.failed()
 
-    def _connectionFailed(self, reason, hint):
+    def _connectionFailed(self, reason, hint, lp):
         # this is called if some individual TCP connection cannot be
         # established
-        if reason.check(error.ConnectingCancelledError,
-                        error.ConnectionRefusedError):
-            self.log("failed to connect to %s" % hint, level=OPERATIONAL,
-                     umid="rSrUxQ")
+        if reason.check(error.ConnectionRefusedError):
+            self.log("connection refused for %s" % hint, level=OPERATIONAL,
+                     parent=lp, umid="rSrUxQ")
+        elif reason.check(error.ConnectingCancelledError):
+            self.log("abandoned attempt to %s" % hint, level=OPERATIONAL,
+                     parent=lp, umid="CC8vwg")
         else:
             log.err(reason, "failed to connect to %s" % hint, level=CURIOUS,
-                    parent=self._logparent, facility="foolscap.connection",
+                    parent=lp, facility="foolscap.connection",
                     umid="2PEowg")
         if not self.failureReason:
             self.failureReason = reason
         self.checkForFailure()
         self.checkForIdle()
 
-    def _connectionSuccess(self, p, hint):
+    def _connectionSuccess(self, p, hint, lp):
         # fires with the Negotiation protocol instance, after
         # p.makeConnection(transport) returns, which is after
         # p.connectionMade() returns
         self.log("connected to %s, beginning negotiation" % hint,
-                 level=OPERATIONAL, umid="VN0XGQ")
+                 level=OPERATIONAL, parent=lp, umid="VN0XGQ")
         self.pendingNegotiations[p] = hint
 
     def redirectReceived(self, newLocation):
