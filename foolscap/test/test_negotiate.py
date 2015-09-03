@@ -403,6 +403,39 @@ class Parallel(BaseMixin, unittest.TestCase):
         return d
     test5.timeout = 10
 
+class ThreeInParallel(BaseMixin, unittest.TestCase):
+    # Reentrancy bugs can appear when multiple connections are abandoned at
+    # the same time. Create three hints, of which one wins, to exercise two
+    # being abandoned together.
+
+    def makeServers(self, tubopts={}):
+        self.tub = tub = Tub(certData=certData_high, options=tubopts)
+        tub.startService()
+        self.services.append(tub)
+        port = tub.listenOn("tcp:0").getPortnum()
+        tub.setLocation("127.0.0.1:%d" % port,
+                        "127.0.0.2:%d" % port,
+                        "127.0.0.3:%d" % port)
+        self.target = Target()
+        return tub.registerReference(self.target)
+
+    def connect(self, url):
+        self.client = client = Tub(certData_low)
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(url)
+        return d
+
+    def test1(self):
+        url = self.makeServers()
+        d = self.connect(url)
+        # We stall to notice any errors that might happen when the losing
+        # connections get cancelled. It doesn't matter so much for
+        # TCP4ClientEndpoint, but HostnameEndpoint throws them (see
+        # twisted#8014), so this will improve testing when we switch.
+        d.addCallback(self.stall, 0.5)
+        return d
+    test1.timeout = 10
 
 class CrossfireMixin(BaseMixin):
     # testSimultaneous*: similar to Parallel, but connection[0] is initiated
