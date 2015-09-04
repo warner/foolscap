@@ -20,15 +20,7 @@ class Convert(unittest.TestCase):
                               "127.0.0.1", 9900)
 
     def testTCP(self):
-        self.checkTCPEndpoint("tcp:host=127.0.0.1:port=9900",
-                              "127.0.0.1", 9900)
-        self.checkTCPEndpoint("tcp:port=9900:host=127.0.0.1",
-                              "127.0.0.1", 9900)
         self.checkTCPEndpoint("tcp:127.0.0.1:9900",
-                              "127.0.0.1", 9900)
-        self.checkTCPEndpoint("tcp:host=127.0.0.1:9900",
-                              "127.0.0.1", 9900)
-        self.checkTCPEndpoint("tcp:127.0.0.1:port=9900",
                               "127.0.0.1", 9900)
 
     def testExtensionsFromFuture(self):

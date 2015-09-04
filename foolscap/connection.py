@@ -4,7 +4,7 @@ from twisted.internet import protocol, reactor, endpoints, error
 from foolscap.tokens import (NoLocationHintsError, NegotiationError,
                              RemoteNegotiationError)
 from foolscap.logging import log
-from foolscap.logging.log import CURIOUS, OPERATIONAL
+from foolscap.logging.log import CURIOUS, UNUSUAL, OPERATIONAL
 from foolscap.util import isSubstring
 
 # once twisted#8014 is fixed, use HostnameEndpoint when possible
@@ -18,136 +18,27 @@ from foolscap.util import isSubstring
 # This can match IPv4 IP addresses + port numbers *or* host names +
 # port numbers.
 DOTTED_QUAD_RESTR=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
-
 DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
-
 OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
-
-# _tokenize(), _parse() and _parseClientTCP() are copied from
-# twisted.internet.endpoints
-
-_OP, _STRING = range(2)
-
-def _tokenize(description):
-    """
-    Tokenize a strports string and yield each token.
-
-    @param description: a string as described by L{serverFromString} or
-        L{clientFromString}.
-
-    @return: an iterable of 2-tuples of (L{_OP} or L{_STRING}, string).  Tuples
-        starting with L{_OP} will contain a second element of either ':' (i.e.
-        'next parameter') or '=' (i.e. 'assign parameter value').  For example,
-        the string 'hello:greet\=ing=world' would result in a generator
-        yielding these values::
-
-            _STRING, 'hello'
-            _OP, ':'
-            _STRING, 'greet=ing'
-            _OP, '='
-            _STRING, 'world'
-    """
-    current = ''
-    ops = ':='
-    nextOps = {':': ':=', '=': ':'}
-    description = iter(description)
-    for n in description:
-        if n in ops:
-            yield _STRING, current
-            yield _OP, n
-            current = ''
-            ops = nextOps[n]
-        elif n == '\\':
-            current += description.next()
-        else:
-            current += n
-    yield _STRING, current
-
-def _parse(description):
-    """
-    Convert a description string into a list of positional and keyword
-    parameters, using logic vaguely like what Python does.
-
-    @param description: a string as described by L{serverFromString} or
-        L{clientFromString}.
-
-    @return: a 2-tuple of C{(args, kwargs)}, where 'args' is a list of all
-        ':'-separated C{str}s not containing an '=' and 'kwargs' is a map of
-        all C{str}s which do contain an '='.  For example, the result of
-        C{_parse('a:b:d=1:c')} would be C{(['a', 'b', 'c'], {'d': '1'})}.
-    """
-    args, kw = [], {}
-    def add(sofar):
-        if len(sofar) == 1:
-            args.append(sofar[0])
-        else:
-            kw[sofar[0]] = sofar[1]
-    sofar = ()
-    for (type, value) in _tokenize(description):
-        if type is _STRING:
-            sofar += (value,)
-        elif value == ':':
-            add(sofar)
-            sofar = ()
-    add(sofar)
-    return args, kw
-
-def _parseClientTCP(*args, **kwargs):
-    """
-    Perform any argument value coercion necessary for TCP client parameters.
-
-    Valid positional arguments to this function are host and port.
-
-    Valid keyword arguments to this function are all L{IReactorTCP.connectTCP}
-    arguments.
-
-    @return: The coerced values as a C{dict}.
-    """
-
-    if len(args) == 2:
-        kwargs['port'] = int(args[1])
-        kwargs['host'] = args[0]
-    elif len(args) == 1:
-        if 'host' in kwargs:
-            kwargs['port'] = int(args[0])
-        else:
-            kwargs['host'] = args[0]
-
-    try:
-        kwargs['port'] = int(kwargs['port'])
-    except KeyError:
-        pass
-
-    try:
-        kwargs['timeout'] = int(kwargs['timeout'])
-    except KeyError:
-        pass
-
-    try:
-        kwargs['bindAddress'] = (kwargs['bindAddress'], 0)
-    except KeyError:
-        pass
-
-    return kwargs
+NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+                                                            DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
 # then can contain any characters except "," and "/". These are expected to
-# look like Twisted endpoint descriptors, or contain other ":"-separated
-# fields (e.g. "TYPE:key=value:key=value" or "TYPE:stuff:morestuff"). We also
-# accept old-syle implicit TCP hints (host:port). To avoid being interpreted
-# as an old-style hint, the part after TYPE: may not consist of only 1-5
-# digits (so "type:123" will be treated as type="tcp" and hostname="type").
+# contain ":"-separated fields (e.g. "TYPE:stuff:morestuff" or
+# "TYPE:key=value:key=value"). For compatibility with current and older
+# Foolscap releases, we also accept old-syle implicit TCP hints
+# ("host:port"). To avoid being interpreted as an old-style hint, the part
+# after TYPE: may not consist of only 1-5 digits (so "type:123" will be
+# treated as type="tcp" and hostname="type").
 
 # Future versions of foolscap may put hints in their FURLs which we do not
 # understand. We will ignore such hints. This version understands two types
 # of hints:
 #
 #  HOST:PORT                 (implicit tcp)
-#  tcp:host=HOST:port=PORT }
-#  tcp:HOST:PORT           } (endpoint syntax for TCP connections
-#  tcp:host=HOST:PORT      }  in full, compact and mixed forms)
-#  tcp:HOST:port=PORT      }
+#  tcp:HOST:PORT           } (endpoint syntax for TCP connections)
 
 def hint_to_endpoint(hint, reactor):
     # Return (endpoint, hostname), where "hostname" is what we pass to the
@@ -157,11 +48,9 @@ def hint_to_endpoint(hint, reactor):
     if mo:
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.TCP4ClientEndpoint(reactor, host, port), host
-    args, kwargs = _parse(hint)
-    aname = args.pop(0)
-    if aname.upper() == "TCP":
-        fields = _parseClientTCP(*args, **kwargs)
-        host, port = fields["host"], fields["port"]
+    mo = NEW_STYLE_HINT_RE.search(hint)
+    if mo:
+        host, port = mo.group(1), int(mo.group(2))
         return endpoints.TCP4ClientEndpoint(reactor, host, port), host
     # Ignore other things from the future.
     return (None, None)
@@ -301,7 +190,8 @@ class TubConnector(object):
             self.attemptedLocations.append(location)
             ep, host = hint_to_endpoint(location, reactor)
             if not ep:
-                self.log("unrecognized hint %s, skipping")
+                self.log(format="skipping unrecognized hint: '%(hint)s'",
+                         hint=location, level=UNUSUAL, umid="z62ctA")
                 continue
             triedAnything = True
             lp = self.log("connectTCP to %s" % (location,))

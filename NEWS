@@ -1,5 +1,18 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release ??? (???)
+
+Support for extended-form connection hints has been removed. These were hints
+with explicit key names like "tcp:host=example.org:port=12345", or
+"tcp:example.org:timeout=30". They were added in the 0.7.0 release, but since
+then we've realized that this is power that should not be granted to external
+FURL providers.
+
+The parser now only accepts "tcp:example.org:12345" and "example.org:12345".
+Foolscap has never particularly encouraged applications to call
+Tub.setLocation() with anything other than these two forms, so we do not
+expect any compatibility problems.
+
 * Release 0.8.0 (15-Apr-2015)
 
 ** UnauthenticatedTub is gone
