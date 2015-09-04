@@ -10,36 +10,8 @@ class URL(unittest.TestCase):
     def testURL(self):
         sr = SturdyRef("pb://%s@127.0.0.1:9900/name" % TUB1)
         self.failUnlessEqual(sr.tubID, TUB1)
-        self.failUnlessEqual(sr.locationHints,
-                             [ ("tcp", "127.0.0.1", 9900) ])
+        self.failUnlessEqual(sr.locationHints, ["127.0.0.1:9900"])
         self.failUnlessEqual(sr.name, "name")
-
-    def testEndpointsURLTcp(self):
-        sr = SturdyRef("pb://%s@tcp:host=127.0.0.1:port=9900/name" % TUB1)
-        self.failUnlessEqual(sr.tubID, TUB1)
-        self.failUnlessEqual(sr.locationHints,
-                             [ ("tcp", "127.0.0.1", 9900) ])
-        self.failUnlessEqual(sr.name, "name")
-
-    def testEndpointsURLTcpCompact(self):
-        sr = SturdyRef("pb://%s@tcp:127.0.0.1:9900/name" % TUB1)
-        self.failUnlessEqual(sr.tubID, TUB1)
-        self.failUnlessEqual(sr.locationHints,
-                             [ ("tcp", "127.0.0.1", 9900) ])
-        self.failUnlessEqual(sr.name, "name")
-
-    def testEndpointsURLTcpMixed(self):
-        sr1 = SturdyRef("pb://%s@tcp:host=127.0.0.1:9900/name" % TUB1)
-        sr2 = SturdyRef("pb://%s@tcp:127.0.0.1:port=9900/name" % TUB1)
-        self.failUnlessEqual(sr1, sr2)
-        self.failUnlessEqual(sr1.tubID, TUB1)
-        self.failUnlessEqual(sr1.locationHints,
-                             [ ("tcp", "127.0.0.1", 9900) ])
-        self.failUnlessEqual(sr1.name, "name")
-        self.failUnlessEqual(sr2.tubID, TUB1)
-        self.failUnlessEqual(sr2.locationHints,
-                             [ ("tcp", "127.0.0.1", 9900) ])
-        self.failUnlessEqual(sr2.name, "name")
 
     def testTubIDExtensions(self):
         sr = SturdyRef("pb://%s,otherstuff@127.0.0.1:9900/name" % TUB1)
@@ -47,23 +19,6 @@ class URL(unittest.TestCase):
         self.failUnlessRaises(BadFURLError,
                               SturdyRef,
                               "pb://badstuff,%s@127.0.0.1:9900/name" % TUB1)
-
-    def testLocationHintExtensions(self):
-        furl = "pb://%s@127.0.0.1:9900,udp:127.0.0.1:7700/name" % TUB1
-        sr = SturdyRef(furl)
-        self.failUnlessEqual(sr.locationHints,
-                             [ ("tcp", "127.0.0.1", 9900) ])
-        self.failUnlessEqual(sr.getURL(), furl)
-
-        furl = "pb://%s@udp:127.0.0.1:7700/name" % TUB1
-        sr = SturdyRef(furl)
-        self.failUnlessEqual(sr.locationHints, [])
-        self.failUnlessEqual(sr.getURL(), furl)
-
-        furl = "pb://%s@127.0.0.1:7700:postextension/name" % TUB1
-        sr = SturdyRef(furl)
-        self.failUnlessEqual(sr.locationHints, [])
-        self.failUnlessEqual(sr.getURL(), furl)
 
     def testCompare(self):
         sr1 = SturdyRef("pb://%s@127.0.0.1:9900/name" % TUB1)
@@ -82,14 +37,13 @@ class URL(unittest.TestCase):
         sr = SturdyRef(url)
         self.failUnlessEqual(sr.tubID, TUB1)
         self.failUnlessEqual(sr.locationHints,
-                             [ ("tcp", "127.0.0.1", 9900),
-                               ("tcp", "remote", 8899) ])
+                             ["127.0.0.1:9900", "remote:8899"])
         self.failUnlessEqual(sr.name, "name")
 
     def testBrokenHints(self):
         furl = "pb://%s@,/name" % TUB1 # empty hints are not allowed
         f = self.failUnlessRaises(BadFURLError, SturdyRef, furl)
-        self.failUnless("empty string" in str(f), f)
+        self.failUnless("no connection hint may be empty" in str(f), f)
 
         furl = "pb://%s@/name" % TUB1 # this is ok, and means "unrouteable"
         sr = SturdyRef(furl)

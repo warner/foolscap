@@ -785,7 +785,7 @@ class SturdyRef(Copyable, RemoteCopy):
     name = None
 
     def __init__(self, url=None):
-        self.locationHints = [] # list of (type, host, port) tuples
+        self.locationHints = [] # list of strings
         self.url = url
         if url:
             self.tubID, self.locationHints, self.name = decode_furl(url)
@@ -820,6 +820,11 @@ class TubRef(object):
     connections to remote Tubs."""
 
     def __init__(self, tubID, locationHints=None):
+        if locationHints is None:
+            locationHints = []
+        assert isinstance(locationHints, list), locationHints
+        assert all([isinstance(hint, str) for hint in locationHints]), \
+               locationHints
         self.tubID = tubID
         self.locationHints = locationHints
 

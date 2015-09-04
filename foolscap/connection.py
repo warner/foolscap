@@ -1,4 +1,4 @@
-
+import re
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor, endpoints, error
 from foolscap.tokens import (NoLocationHintsError, NegotiationError,
@@ -14,6 +14,157 @@ from foolscap.util import isSubstring
 #except NameError:
 #    # added in twisted-10.1.0, but IPv4-only
 #    BEST_TCP_ENDPOINT = endpoints.TCP4ClientEndpoint
+
+# This can match IPv4 IP addresses + port numbers *or* host names +
+# port numbers.
+DOTTED_QUAD_RESTR=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+
+DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
+
+OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+                                                        DNS_NAME_RESTR))
+
+# _tokenize(), _parse() and _parseClientTCP() are copied from
+# twisted.internet.endpoints
+
+_OP, _STRING = range(2)
+
+def _tokenize(description):
+    """
+    Tokenize a strports string and yield each token.
+
+    @param description: a string as described by L{serverFromString} or
+        L{clientFromString}.
+
+    @return: an iterable of 2-tuples of (L{_OP} or L{_STRING}, string).  Tuples
+        starting with L{_OP} will contain a second element of either ':' (i.e.
+        'next parameter') or '=' (i.e. 'assign parameter value').  For example,
+        the string 'hello:greet\=ing=world' would result in a generator
+        yielding these values::
+
+            _STRING, 'hello'
+            _OP, ':'
+            _STRING, 'greet=ing'
+            _OP, '='
+            _STRING, 'world'
+    """
+    current = ''
+    ops = ':='
+    nextOps = {':': ':=', '=': ':'}
+    description = iter(description)
+    for n in description:
+        if n in ops:
+            yield _STRING, current
+            yield _OP, n
+            current = ''
+            ops = nextOps[n]
+        elif n == '\\':
+            current += description.next()
+        else:
+            current += n
+    yield _STRING, current
+
+def _parse(description):
+    """
+    Convert a description string into a list of positional and keyword
+    parameters, using logic vaguely like what Python does.
+
+    @param description: a string as described by L{serverFromString} or
+        L{clientFromString}.
+
+    @return: a 2-tuple of C{(args, kwargs)}, where 'args' is a list of all
+        ':'-separated C{str}s not containing an '=' and 'kwargs' is a map of
+        all C{str}s which do contain an '='.  For example, the result of
+        C{_parse('a:b:d=1:c')} would be C{(['a', 'b', 'c'], {'d': '1'})}.
+    """
+    args, kw = [], {}
+    def add(sofar):
+        if len(sofar) == 1:
+            args.append(sofar[0])
+        else:
+            kw[sofar[0]] = sofar[1]
+    sofar = ()
+    for (type, value) in _tokenize(description):
+        if type is _STRING:
+            sofar += (value,)
+        elif value == ':':
+            add(sofar)
+            sofar = ()
+    add(sofar)
+    return args, kw
+
+def _parseClientTCP(*args, **kwargs):
+    """
+    Perform any argument value coercion necessary for TCP client parameters.
+
+    Valid positional arguments to this function are host and port.
+
+    Valid keyword arguments to this function are all L{IReactorTCP.connectTCP}
+    arguments.
+
+    @return: The coerced values as a C{dict}.
+    """
+
+    if len(args) == 2:
+        kwargs['port'] = int(args[1])
+        kwargs['host'] = args[0]
+    elif len(args) == 1:
+        if 'host' in kwargs:
+            kwargs['port'] = int(args[0])
+        else:
+            kwargs['host'] = args[0]
+
+    try:
+        kwargs['port'] = int(kwargs['port'])
+    except KeyError:
+        pass
+
+    try:
+        kwargs['timeout'] = int(kwargs['timeout'])
+    except KeyError:
+        pass
+
+    try:
+        kwargs['bindAddress'] = (kwargs['bindAddress'], 0)
+    except KeyError:
+        pass
+
+    return kwargs
+
+# Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
+# then can contain any characters except "," and "/". These are expected to
+# look like Twisted endpoint descriptors, or contain other ":"-separated
+# fields (e.g. "TYPE:key=value:key=value" or "TYPE:stuff:morestuff"). We also
+# accept old-syle implicit TCP hints (host:port). To avoid being interpreted
+# as an old-style hint, the part after TYPE: may not consist of only 1-5
+# digits (so "type:123" will be treated as type="tcp" and hostname="type").
+
+# Future versions of foolscap may put hints in their FURLs which we do not
+# understand. We will ignore such hints. This version understands two types
+# of hints:
+#
+#  HOST:PORT                 (implicit tcp)
+#  tcp:host=HOST:port=PORT }
+#  tcp:HOST:PORT           } (endpoint syntax for TCP connections
+#  tcp:host=HOST:PORT      }  in full, compact and mixed forms)
+#  tcp:HOST:port=PORT      }
+
+def hint_to_endpoint(hint, reactor):
+    # Return (endpoint, hostname), where "hostname" is what we pass to the
+    # HTTP "Host:" header so a dumb HTTP server can be used to redirect us.
+    # Return (None,None) if the hint isn't recognized.
+    mo = OLD_STYLE_HINT_RE.search(hint)
+    if mo:
+        host, port = mo.group(1), int(mo.group(2))
+        return endpoints.TCP4ClientEndpoint(reactor, host, port), host
+    args, kwargs = _parse(hint)
+    aname = args.pop(0)
+    if aname.upper() == "TCP":
+        fields = _parseClientTCP(*args, **kwargs)
+        host, port = fields["host"], fields["port"]
+        return endpoints.TCP4ClientEndpoint(reactor, host, port), host
+    # Ignore other things from the future.
+    return (None, None)
 
 class TubConnectorFactory(protocol.Factory, object):
     # this is for internal use only. Application code should use
@@ -78,16 +229,12 @@ class TubConnector(object):
                                   facility="foolscap.connection")
         self.tub = parent
         self.target = tubref
-        hints = []
-        # filter out the hints that we can actually use.. there may be
-        # extensions from the future sitting in this list
-        for h in self.target.getLocations():
-            if h[0] == "tcp":
-                (host, port) = h[1:]
-                hints.append( (host, port) )
-        self.remainingLocations = hints
+        self.remainingLocations = list(self.target.getLocations())
         # attemptedLocations keeps track of where we've already tried to
-        # connect, so we don't try them twice.
+        # connect, so we don't try them twice, even if they appear in the
+        # hints multiple times. this isn't too clever: slight variations of
+        # the same hint will fool it, but it should be enough to avoid
+        # infinite redirection loops.
         self.attemptedLocations = []
 
         # pendingConnections contains a Deferred for each endpoint.connect()
@@ -119,11 +266,6 @@ class TubConnector(object):
         the parent Tub's brokerAttached() method, or us calling the Tub's
         connectionFailed() method."""
         self.tub.connectorStarted(self)
-        if not self.remainingLocations:
-            # well, that's going to make it difficult. connectToAll() will
-            # pass through to checkForFailure(), which will notice our lack
-            # of options and deliver this failureReason to the caller.
-            self.failureReason = Failure(NoLocationHintsError())
         timeout = self.tub.options.get('connect_timeout',
                                        self.CONNECTION_TIMEOUT)
         self.timer = reactor.callLater(timeout, self.connectionTimedOut)
@@ -151,30 +293,35 @@ class TubConnector(object):
             # triggers n.connectionLost(), then self.negotiationFailed()
 
     def connectToAll(self):
+        triedAnything = False
         while self.remainingLocations:
             location = self.remainingLocations.pop()
             if location in self.attemptedLocations:
                 continue
             self.attemptedLocations.append(location)
-            host, port = location
-            hint = "tcp:%s:%s" % (host, port) # TODO: stash the original hint
+            ep, host = hint_to_endpoint(location, reactor)
+            if not ep:
+                self.log("unrecognized hint %s, skipping")
+                continue
+            triedAnything = True
             lp = self.log("connectTCP to %s" % (location,))
             f = TubConnectorFactory(self, host, lp)
-            ep = endpoints.TCP4ClientEndpoint(reactor, host, port)
             d = ep.connect(f)
             self.pendingConnections.add(d)
             def _remove(res, d=d):
                 self.pendingConnections.remove(d)
                 return res
             d.addBoth(_remove)
-            d.addCallback(self._connectionSuccess, hint, lp)
-            d.addErrback(self._connectionFailed, hint, lp)
+            d.addCallback(self._connectionSuccess, location, lp)
+            d.addErrback(self._connectionFailed, location, lp)
             if self.tub.options.get("debug_stall_second_connection"):
                 # for unit tests, hold off on making the second connection
                 # for a moment. This allows the first connection to get to a
                 # known state.
                 reactor.callLater(0.1, self.connectToAll)
                 return
+        if not triedAnything:
+            self.failureReason = Failure(NoLocationHintsError())
         self.checkForFailure()
 
     def connectionTimedOut(self):
