@@ -1102,7 +1102,6 @@ class Negotiation(protocol.Protocol):
 
         # finally let our Tub know that they can start using the new Broker.
         # This will wake up anyone who initiated an outbound connection.
-        self.tub.connectionAttached(b)
         self.tub.brokerAttached(theirTubRef, b, self.isClient)
 
     def negotiationFailed(self):

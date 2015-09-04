@@ -249,8 +249,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
         log.msg("connection to %s lost" % tubid, facility="foolscap.connection")
         banana.Banana.connectionLost(self, why)
         self.finish(why)
-        if self.tub:
-            self.tub.connectionDropped(self)
 
     def finish(self, why):
         if self.disconnected:

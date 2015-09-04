@@ -6,7 +6,7 @@ from twisted.internet import defer, protocol, error
 from twisted.application import service, internet
 from twisted.python.failure import Failure
 
-from foolscap import ipb, base32, negotiate, broker, observer, eventual, storage
+from foolscap import ipb, base32, negotiate, broker, eventual, storage
 from foolscap import connection, util
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
@@ -293,13 +293,7 @@ class Tub(service.MultiService):
         self.brokers = {} # maps TubRef to a Broker that connects to them
         self.reconnectors = []
 
-        # all connections, used or not, go in here, so we can stall
-        # stopService() until they're all gone.
-        self._allConnections = set()
-        self._allConnectionsAreDisconnected = observer.OneShotObserverList()
-
         self._activeConnectors = []
-        self._allConnectorsAreFinished = observer.OneShotObserverList()
 
         self._pending_getReferences = [] # list of (d, furl) pairs
 
@@ -573,8 +567,6 @@ class Tub(service.MultiService):
     def connectorFinished(self, c):
         if c in self._activeConnectors:
             self._activeConnectors.remove(c)
-            if not self.running and not self._activeConnectors:
-                self._allConnectorsAreFinished.fire(self)
 
     def startService(self):
         service.MultiService.startService(self)
@@ -599,6 +591,11 @@ class Tub(service.MultiService):
         self.startService = self._tubsAreNotRestartable
         self.getReference = self._tubHasBeenShutDown
         self.connectTo = self._tubHasBeenShutDown
+
+        # Tell everything to shut down now. We assume that it will stop
+        # twitching by the next tick, so Trial unit tests won't complain
+        # about a dirty reactor. We wait on a few things that might not
+        # behave.
         dl = []
         for rc in list(self.reconnectors):
             rc.stopConnecting()
@@ -607,23 +604,17 @@ class Tub(service.MultiService):
             # TODO: rethink this, what I want is for stopService to cause all
             # Listeners to shut down, but I'm not sure this is the right way
             # to do it.
-            d = l.removeTub(self)
-            if isinstance(d, defer.Deferred):
-                dl.append(d)
-        dl.append(service.MultiService.stopService(self))
-
-        if self._activeConnectors:
-            dl.append(self._allConnectorsAreFinished.whenFired())
+            dl.append(defer.maybeDeferred(l.removeTub, self))
         for c in list(self._activeConnectors):
             c.shutdown()
-
-        if self._allConnections:
-            dl.append(self._allConnectionsAreDisconnected.whenFired())
         why = Failure(error.ConnectionDone("Tub.stopService was called"))
         for b in self.brokers.values():
             b.shutdown(why, fireDisconnectWatchers=False)
 
-        return defer.DeferredList(dl)
+        d = defer.DeferredList(dl)
+        d.addCallback(lambda _: service.MultiService.stopService(self))
+        d.addCallback(eventual.fireEventually)
+        return d
 
     def generateSwissnumber(self, bits):
         return generateSwissnumber(bits)
@@ -941,8 +932,6 @@ class Tub(service.MultiService):
         b2.setTub(self)
         t1.protocol = b1; t2.protocol = b2
         b1.makeConnection(t1); b2.makeConnection(t2)
-        self.connectionAttached(b1)
-        self.connectionAttached(b2)
         self.brokerAttached(tubref, b1, False)
         return b1
 
@@ -965,9 +954,6 @@ class Tub(service.MultiService):
             del self.waitingForBrokers[tubref]
             for d in waiting:
                 d.errback(why)
-
-    def connectionAttached(self, broker):
-        self._allConnections.add(broker)
 
     def brokerAttached(self, tubref, broker, isClient):
         assert self.running
@@ -1006,13 +992,6 @@ class Tub(service.MultiService):
         for tubref in self.brokers.keys():
             if self.brokers[tubref] is broker:
                 del self.brokers[tubref]
-
-    def connectionDropped(self, broker):
-        self._allConnections.discard(broker)
-        # if the Tub has already shut down, we may need to notify observers
-        # who are waiting for all of our connections to finish shutting down.
-        if (not self.running and not self._allConnections):
-            self._allConnectionsAreDisconnected.fire(self)
 
     def debug_listBrokers(self):
         # return a list of (tubref, inbound, outbound) tuples. The tubref
