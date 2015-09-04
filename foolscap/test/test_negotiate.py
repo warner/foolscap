@@ -437,6 +437,35 @@ class ThreeInParallel(BaseMixin, unittest.TestCase):
         return d
     test1.timeout = 10
 
+class SharedConnections(BaseMixin, unittest.TestCase):
+    def makeServers(self):
+        self.tub = tub = Tub(certData=certData_high)
+        tub.startService()
+        self.services.append(tub)
+        port = tub.listenOn("tcp:0").getPortnum()
+        tub.setLocation("127.0.0.1:%d" % port)
+        furl1 = tub.registerReference(Target())
+        furl2 = tub.registerReference(Target())
+        return furl1, furl2
+
+    def test1(self):
+        # Two FURLs pointing at the same Tub should share a connection. This
+        # basically exercises TubRef.__cmp__ .
+        furl1, furl2 = self.makeServers()
+        client = Tub(certData_low)
+        client.startService()
+        self.services.append(client)
+        d = client.getReference(furl1)
+        rrefs = []
+        d.addCallback(rrefs.append)
+        d.addCallback(lambda _: client.getReference(furl2))
+        d.addCallback(rrefs.append)
+        def _check(_):
+            self.failUnlessIdentical(rrefs[0].tracker.broker,
+                                     rrefs[1].tracker.broker)
+        d.addCallback(_check)
+        return d
+
 class CrossfireMixin(BaseMixin):
     # testSimultaneous*: similar to Parallel, but connection[0] is initiated
     # in the opposite direction. This is the case when two Tubs initiate
