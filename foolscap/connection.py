@@ -1,59 +1,10 @@
-import re
 from twisted.python.failure import Failure
-from twisted.internet import protocol, reactor, endpoints, error
+from twisted.internet import protocol, reactor, error
 from foolscap.tokens import (NoLocationHintsError, NegotiationError,
                              RemoteNegotiationError)
 from foolscap.logging import log
 from foolscap.logging.log import CURIOUS, UNUSUAL, OPERATIONAL
 from foolscap.util import isSubstring
-
-# once twisted#8014 is fixed, use HostnameEndpoint when possible
-#try:
-#    # added in twisted-13.2.0, handles IPv4/IPv6
-#    BEST_TCP_ENDPOINT = endpoints.HostnameEndpoint
-#except NameError:
-#    # added in twisted-10.1.0, but IPv4-only
-#    BEST_TCP_ENDPOINT = endpoints.TCP4ClientEndpoint
-
-# This can match IPv4 IP addresses + port numbers *or* host names +
-# port numbers.
-DOTTED_QUAD_RESTR=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
-DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
-OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
-                                                        DNS_NAME_RESTR))
-NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
-                                                            DNS_NAME_RESTR))
-
-# Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
-# then can contain any characters except "," and "/". These are expected to
-# contain ":"-separated fields (e.g. "TYPE:stuff:morestuff" or
-# "TYPE:key=value:key=value"). For compatibility with current and older
-# Foolscap releases, we also accept old-syle implicit TCP hints
-# ("host:port"). To avoid being interpreted as an old-style hint, the part
-# after TYPE: may not consist of only 1-5 digits (so "type:123" will be
-# treated as type="tcp" and hostname="type").
-
-# Future versions of foolscap may put hints in their FURLs which we do not
-# understand. We will ignore such hints. This version understands two types
-# of hints:
-#
-#  HOST:PORT                 (implicit tcp)
-#  tcp:HOST:PORT           } (endpoint syntax for TCP connections)
-
-def hint_to_endpoint(hint, reactor):
-    # Return (endpoint, hostname), where "hostname" is what we pass to the
-    # HTTP "Host:" header so a dumb HTTP server can be used to redirect us.
-    # Return (None,None) if the hint isn't recognized.
-    mo = OLD_STYLE_HINT_RE.search(hint)
-    if mo:
-        host, port = mo.group(1), int(mo.group(2))
-        return endpoints.TCP4ClientEndpoint(reactor, host, port), host
-    mo = NEW_STYLE_HINT_RE.search(hint)
-    if mo:
-        host, port = mo.group(1), int(mo.group(2))
-        return endpoints.TCP4ClientEndpoint(reactor, host, port), host
-    # Ignore other things from the future.
-    return (None, None)
 
 class TubConnectorFactory(protocol.Factory, object):
     # this is for internal use only. Application code should use
@@ -109,15 +60,17 @@ class TubConnector(object):
     CONNECTION_TIMEOUT = 60
     timer = None
 
-    def __init__(self, parent, tubref):
+    def __init__(self, parent, tubref, connectionPlugins):
         self._logparent = log.msg(format="TubConnector created from "
                                   "%(fromtubid)s to %(totubid)s",
                                   fromtubid=parent.tubID,
                                   totubid=tubref.getTubID(),
                                   level=OPERATIONAL,
-                                  facility="foolscap.connection")
+                                  facility="foolscap.connection",
+                                  umid="pH4QDA")
         self.tub = parent
         self.target = tubref
+        self.connectionPlugins = connectionPlugins
         self.remainingLocations = list(self.target.getLocations())
         # attemptedLocations keeps track of where we've already tried to
         # connect, so we don't try them twice, even if they appear in the
@@ -188,7 +141,10 @@ class TubConnector(object):
             if location in self.attemptedLocations:
                 continue
             self.attemptedLocations.append(location)
-            ep, host = hint_to_endpoint(location, reactor)
+            for plugin in self.connectionPlugins:
+                ep, host = plugin.hint_to_endpoint(location, reactor)
+                if ep:
+                    break
             if not ep:
                 self.log(format="skipping unrecognized hint: '%(hint)s'",
                          hint=location, level=UNUSUAL, umid="z62ctA")

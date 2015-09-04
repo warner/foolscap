@@ -8,6 +8,7 @@ from twisted.python.failure import Failure
 
 from foolscap import ipb, base32, negotiate, broker, eventual, storage
 from foolscap import connection, util
+from foolscap.connection_plugins import DefaultTCP
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
      WrongNameError, NoLocationError
@@ -293,6 +294,7 @@ class Tub(service.MultiService):
         self.brokers = {} # maps TubRef to a Broker that connects to them
         self.reconnectors = []
 
+        self._connectionPlugins = [DefaultTCP()]
         self._activeConnectors = []
 
         self._pending_getReferences = [] # list of (d, furl) pairs
@@ -355,6 +357,12 @@ class Tub(service.MultiService):
             self._expose_remote_exception_types = bool(value)
         else:
             raise KeyError("unknown option name '%s'" % name)
+
+    def removeAllConnectionPlugins(self):
+        self._connectionPlugins = []
+
+    def addConnectionPlugin(self, plugin):
+        self._connectionPlugins.append(plugin)
 
     def setLogGathererFURL(self, gatherer_furl_or_furls):
         assert not self._log_gatherer_furls
@@ -912,7 +920,7 @@ class Tub(service.MultiService):
         if tubref not in self.tubConnectors:
             # the TubConnector will call our brokerAttached when it finishes
             # negotiation, which will fire waitingForBrokers[tubref].
-            c = connection.TubConnector(self, tubref)
+            c = connection.TubConnector(self, tubref, self._connectionPlugins)
             self.tubConnectors[tubref] = c
             c.connect()
 
