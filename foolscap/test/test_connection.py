@@ -1,10 +1,11 @@
 from twisted.trial import unittest
 from twisted.internet import reactor, endpoints
-from foolscap.connection import hint_to_endpoint
+from foolscap.connection_plugins import DefaultTCP
 
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
-        ep, host = hint_to_endpoint(hint, reactor)
+        p = DefaultTCP()
+        ep, host = p.hint_to_endpoint(hint, reactor)
         self.failUnless(isinstance(ep, endpoints.TCP4ClientEndpoint), ep)
         # note: this is fragile, and will break when Twisted changes the
         # internals of TCP4ClientEndpoint. Hopefully we'll switch to
@@ -13,7 +14,8 @@ class Convert(unittest.TestCase):
         self.failUnlessEqual(ep._port, expected_port)
 
     def checkUnknownEndpoint(self, hint):
-        self.failUnlessEqual(hint_to_endpoint(hint, reactor), (None,None))
+        p = DefaultTCP()
+        self.failUnlessEqual(p.hint_to_endpoint(hint, reactor), (None,None))
 
     def testLegacyTCP(self):
         self.checkTCPEndpoint("127.0.0.1:9900",
