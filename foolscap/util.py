@@ -118,15 +118,13 @@ def isSubstring(small, big):
     return small in big
 
 @defer.inlineCallbacks
-def available_tcp_port(reactor):
+def allocate_tcp_port():
     """
-    Returns a Deferred firing an available TCP port on localhost.
-    It does so by listening on port 0; then stopListening and fires the
-    assigned port number.
+    Returns a Deferred that fires with an available TCP port on localhost.
     """
 
-    endpoint = serverFromString(reactor, 'tcp:0:interface=127.0.0.1')
-    port = yield endpoint.listen(NoOpProtocolFactory())
+    endpoint = serverFromString(reactor, "tcp:0:interface=127.0.0.1")
+    port = yield endpoint.listen(protocol.Factory())
     address = port.getHost()
     yield port.stopListening()
     defer.returnValue(address.port)
