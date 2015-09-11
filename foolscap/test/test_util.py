@@ -112,15 +112,13 @@ class Time(unittest.TestCase):
 
 class AllocatePort(unittest.TestCase):
     def test_allocate(self):
-        d = util.allocate_tcp_port()
-        def _check(port):
-            self.failUnless(isinstance(port, int))
-            self.failUnless(1 <= port <= 65535, port)
-            # the allocation function should release the port before it
-            # returns, so it should be possible to listen on it immediately
-            desc = "tcp:%d:interface=127.0.0.1" % port
-            ep = endpoints.serverFromString(reactor, desc)
-            return ep.listen(protocol.Factory())
-        d.addCallback(_check)
+        p = util.allocate_tcp_port()
+        self.failUnless(isinstance(p, int))
+        self.failUnless(1 <= p <= 65535, p)
+        # the allocation function should release the port before it
+        # returns, so it should be possible to listen on it immediately
+        desc = "tcp:%d:interface=127.0.0.1" % p
+        ep = endpoints.serverFromString(reactor, desc)
+        d = ep.listen(protocol.Factory())
         d.addCallback(lambda port: port.stopListening())
         return d

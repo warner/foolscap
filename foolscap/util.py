@@ -2,8 +2,7 @@ import os, sys
 import socket
 import time
 from twisted.internet import defer, reactor, protocol
-from twisted.internet.endpoints import serverFromString
-
+from twisted.python.runtime import platformType
 
 class AsyncAND(defer.Deferred):
     """Like DeferredList, but results are discarded and failures handled
@@ -117,14 +116,18 @@ def isSubstring(small, big):
     assert type(small) is str and type(big) is str
     return small in big
 
-@defer.inlineCallbacks
 def allocate_tcp_port():
-    """
-    Returns a Deferred that fires with an available TCP port on localhost.
-    """
-
-    endpoint = serverFromString(reactor, "tcp:0:interface=127.0.0.1")
-    port = yield endpoint.listen(protocol.Factory())
-    address = port.getHost()
-    yield port.stopListening()
-    defer.returnValue(address.port)
+    """Return an (integer) available TCP port on localhost. This briefly
+    listens on the port in question, then closes it right away."""
+    # We want to bind() the socket but not listen(). Twisted (in
+    # tcp.Port.createInternetSocket) would do several other things:
+    # non-blocking, close-on-exec, and SO_REUSEADDR. We don't need
+    # non-blocking because we never listen on it, and we don't need
+    # close-on-exec because we close it right away. So just add SO_REUSEADDR.
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if platformType == "posix" and sys.platform != "cygwin":
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
