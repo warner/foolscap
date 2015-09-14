@@ -1,6 +1,6 @@
 
 from twisted.trial import unittest
-from twisted.internet import defer
+from twisted.internet import reactor, defer, protocol, endpoints
 from twisted.python import failure
 from foolscap import util, eventual, base32
 
@@ -109,3 +109,16 @@ class Time(unittest.TestCase):
                              "1339286175.707")
         self.failUnless(":" in util.format_time(when, "short-local"))
         self.failUnless(":" in util.format_time(when, "long-local"))
+
+class AllocatePort(unittest.TestCase):
+    def test_allocate(self):
+        p = util.allocate_tcp_port()
+        self.failUnless(isinstance(p, int))
+        self.failUnless(1 <= p <= 65535, p)
+        # the allocation function should release the port before it
+        # returns, so it should be possible to listen on it immediately
+        desc = "tcp:%d:interface=127.0.0.1" % p
+        ep = endpoints.serverFromString(reactor, desc)
+        d = ep.listen(protocol.Factory())
+        d.addCallback(lambda port: port.stopListening())
+        return d
