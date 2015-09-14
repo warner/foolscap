@@ -17,8 +17,8 @@ from foolscap.tokens import Violation
 from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin
 from foolscap.test.common import RIMyTarget, Target, TargetWithoutInterfaces, \
-     BrokenTarget
-from foolscap.api import RemoteException, Tub, DeadReferenceError
+     BrokenTarget, MakeTubsMixin
+from foolscap.api import RemoteException, DeadReferenceError
 from foolscap.call import CopiedFailure
 from foolscap.logging import log as flog
 
@@ -750,15 +750,12 @@ class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
     # TODO: test Tub.setOption("expose-remote-exception-types")
     # TODO: A calls B. B calls C. C raises an exception. What does A get?
 
-class TubFailures(ExamineFailuresMixin, ShouldFailMixin, unittest.TestCase):
+class TubFailures(ExamineFailuresMixin, ShouldFailMixin, MakeTubsMixin,
+                  unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
-        self.s.startService()
-        self.target_tub = Tub()
+        self.target_tub, self.source_tub = self.makeTubs(2)
         self.target_tub.setServiceParent(self.s)
-        l = self.target_tub.listenOn("tcp:0:interface=127.0.0.1")
-        self.target_tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        self.source_tub = Tub()
         self.source_tub.setServiceParent(self.s)
 
     def tearDown(self):
@@ -798,15 +795,11 @@ class TubFailures(ExamineFailuresMixin, ShouldFailMixin, unittest.TestCase):
         d.addCallback(self._examine_raise, False)
         return d
 
-class ReferenceCounting(ShouldFailMixin, unittest.TestCase):
+class ReferenceCounting(ShouldFailMixin, MakeTubsMixin, unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
-        self.s.startService()
-        self.target_tub = Tub()
+        self.target_tub, self.source_tub = self.makeTubs(2)
         self.target_tub.setServiceParent(self.s)
-        l = self.target_tub.listenOn("tcp:0:interface=127.0.0.1")
-        self.target_tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        self.source_tub = Tub()
         self.source_tub.setServiceParent(self.s)
 
     def tearDown(self):

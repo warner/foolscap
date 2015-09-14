@@ -5,6 +5,7 @@ from twisted.internet import protocol, defer
 from twisted.application import internet
 from foolscap import negotiate, tokens
 from foolscap.api import Referenceable, Tub, BananaError
+from foolscap.util import allocate_tcp_port
 from foolscap.test.common import (BaseMixin,
                                   tubid_low, certData_low,
                                   certData_high)
@@ -147,11 +148,10 @@ class Parallel(BaseMixin, unittest.TestCase):
         self.tub = tub = Tub(certData=certData_high, _test_options=tubopts)
         tub.startService()
         self.services.append(tub)
-        l1 = tub.listenOn("tcp:0", lo1)
-        l2 = tub.listenOn("tcp:0", lo2)
-        self.p1, self.p2 = l1.getPortnum(), l2.getPortnum()
-        tub.setLocation("127.0.0.1:%d" % l1.getPortnum(),
-                        "127.0.0.1:%d" % l2.getPortnum())
+        self.p1, self.p2 = allocate_tcp_port(), allocate_tcp_port()
+        tub.listenOn("tcp:%d" % self.p1, lo1)
+        tub.listenOn("tcp:%d" % self.p2, lo2)
+        tub.setLocation("127.0.0.1:%d" % self.p1, "127.0.0.1:%d" % self.p2)
         self.target = Target()
         return tub.registerReference(self.target)
 
@@ -255,7 +255,8 @@ class ThreeInParallel(BaseMixin, unittest.TestCase):
         self.tub = tub = Tub(certData=certData_high, _test_options=tubopts)
         tub.startService()
         self.services.append(tub)
-        port = tub.listenOn("tcp:0").getPortnum()
+        port = allocate_tcp_port()
+        tub.listenOn("tcp:%d" % port)
         tub.setLocation("127.0.0.1:%d" % port,
                         "127.0.0.2:%d" % port,
                         "127.0.0.3:%d" % port)
@@ -285,7 +286,8 @@ class SharedConnections(BaseMixin, unittest.TestCase):
         self.tub = tub = Tub(certData=certData_high)
         tub.startService()
         self.services.append(tub)
-        port = tub.listenOn("tcp:0").getPortnum()
+        port = allocate_tcp_port()
+        tub.listenOn("tcp:%d" % port)
         tub.setLocation("127.0.0.1:%d" % port)
         furl1 = tub.registerReference(Target())
         furl2 = tub.registerReference(Target())
@@ -343,16 +345,18 @@ class CrossfireMixin(BaseMixin):
 
         tub1.startService()
         self.services.append(tub1)
-        l1 = tub1.listenOn("tcp:0", lo1)
-        tub1.setLocation("127.0.0.1:%d" % l1.getPortnum())
+        self.portnum1 = allocate_tcp_port()
+        tub1.listenOn("tcp:%d" % self.portnum1, lo1)
+        tub1.setLocation("127.0.0.1:%d" % self.portnum1)
         self.target1 = Target()
         self.url1 = tub1.registerReference(self.target1)
 
         # connection[1], the abandoned connection, will be from tub2 to tub1
         tub2.startService()
         self.services.append(tub2)
-        l2 = tub2.listenOn("tcp:0", lo2)
-        tub2.setLocation("127.0.0.1:%d" % l2.getPortnum())
+        self.portnum2 = allocate_tcp_port()
+        tub2.listenOn("tcp:%d" % self.portnum2, lo2)
+        tub2.setLocation("127.0.0.1:%d" % self.portnum2)
         self.target2 = Target()
         self.url2 = tub2.registerReference(self.target2)
 
@@ -377,7 +381,7 @@ class CrossfireMixin(BaseMixin):
         # Therefore tub1's Broker (as used by its RemoteReference) will have
         # a far-end port number that should match tub2's Listener.
         self.failUnlessEqual(rref.tracker.broker.transport.getPeer().port,
-                             self.tub2.getListeners()[0].getPortnum())
+                             self.portnum2)
         # in addition, connection[1] should have been abandoned during a
         # specific phase.
         self.failUnlessEqual(self.tub2phases, targetPhases)
@@ -687,10 +691,11 @@ class Replacement(BaseMixin, unittest.TestCase):
         tub.incarnation_string = oldtub.incarnation_string
         tub.slave_table = oldtub.slave_table.copy()
         tub.master_table = oldtub.master_table.copy()
-        l = tub.listenOn("tcp:0")
-        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        tub.listenOn("tcp:%d" % portnum)
+        tub.setLocation("127.0.0.1:%d" % portnum)
         target = Target()
-        return tub, target, tub.registerReference(target), l.getPortnum()
+        return tub, target, tub.registerReference(target), portnum
 
     def setUp(self):
         BaseMixin.setUp(self)

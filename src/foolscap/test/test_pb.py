@@ -20,8 +20,9 @@ from foolscap.constraint import IConstraint
 from foolscap.logging import log
 from foolscap.api import Tub
 
+from foolscap.util import allocate_tcp_port
 from foolscap.test.common import HelperTarget, TargetMixin, \
-     Target, TargetWithoutInterfaces
+     Target, TargetWithoutInterfaces, MakeTubsMixin
 from foolscap.eventual import fireEventually, flushEventualQueue
 
 
@@ -388,16 +389,9 @@ class TestFactory(unittest.TestCase):
         d.addCallback(flushEventualQueue)
         return d
 
-class TestCallable(unittest.TestCase):
+class TestCallable(MakeTubsMixin, unittest.TestCase):
     def setUp(self):
-        self.services = [Tub(), Tub()]
-        self.tubA, self.tubB = self.services
-        self.tub_ports = []
-        for s in self.services:
-            s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
-            s.setLocation("127.0.0.1:%d" % l.getPortnum())
-            self.tub_ports.append(l.getPortnum())
+        self.tubA, self.tubB = self.makeTubs(2)
         self._log_observers_to_remove = []
 
     def addLogObserver(self, observer):
@@ -563,13 +557,13 @@ class TestService(unittest.TestCase):
 
     def testRegister(self):
         s = self.services[0]
-        l = s.listenOn("tcp:0:interface=127.0.0.1")
-        s.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        s.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        s.setLocation("127.0.0.1:%d" % portnum)
         t1 = Target()
         public_url = s.registerReference(t1, "target")
         self.failUnless(public_url.startswith("pb://"))
-        self.failUnless(public_url.endswith("@127.0.0.1:%d/target"
-                                            % l.getPortnum()))
+        self.failUnless(public_url.endswith("@127.0.0.1:%d/target" % portnum))
         self.failUnlessEqual(s.registerReference(t1, "target"), public_url)
         self.failUnlessIdentical(s.getReferenceForURL(public_url), t1)
         t2 = Target()
@@ -591,8 +585,9 @@ class TestService(unittest.TestCase):
         s1 = self.services[0]
         s2 = self.services[1]
         s2.startService()
-        l = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        s1.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        s1.setLocation("127.0.0.1:%d" % portnum)
         public_url = s1.registerReference(target, "target")
         self.public_url = public_url
         d = s2.getReference(public_url)

@@ -5,9 +5,11 @@ from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionRefusedError
 from foolscap.api import RemoteInterface, Referenceable, flushEventualQueue, \
      BananaError, Tub
+from foolscap.util import allocate_tcp_port
 from foolscap.referenceable import RemoteReference
 from foolscap.furl import encode_furl, decode_furl
-from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin
+from foolscap.test.common import (HelperTarget, RIHelper, ShouldFailMixin,
+                                  MakeTubsMixin)
 from foolscap.tokens import NegotiationError, Violation
 
 class RIConstrainedHelper(RemoteInterface):
@@ -23,18 +25,12 @@ class ConstrainedHelper(Referenceable):
     def remote_set(self, obj):
         self.obj = obj
 
-class Base(ShouldFailMixin):
+class Base(ShouldFailMixin, MakeTubsMixin):
 
     debug = False
 
     def setUp(self):
-        self.services = [Tub() for i in range(4)]
-        self.tubA, self.tubB, self.tubC, self.tubD = self.services
-        for s in self.services:
-            s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
-            loc = "127.0.0.1:%d" % l.getPortnum()
-            s.setLocation(loc)
+        self.tubA, self.tubB, self.tubC, self.tubD = self.makeTubs(4)
 
     def tearDown(self):
         d = defer.DeferredList([s.stopService() for s in self.services])
@@ -510,14 +506,12 @@ class Bad(Base, unittest.TestCase):
 class LongFURL(Base, unittest.TestCase):
     # make sure the old 200-byte limit on gift FURLs is gone
     def setUp(self):
-        self.services = [Tub() for i in range(4)]
-        self.tubA, self.tubB, self.tubC, self.tubD = self.services
-        for s in self.services:
-            s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
-            loc = "127.0.0.1:%d" % l.getPortnum()
+        def mangleLocation(portnum):
+            loc = "127.0.0.1:%d" % portnum
             loc = ",".join([loc]*15) # 239 bytes of location, 281 of FURL
-            s.setLocation(loc)
+            return loc
+        (self.tubA, self.tubB,
+         self.tubC, self.tubD) = self.makeTubs(4, mangleLocation)
 
     def testGift(self):
         self.createCharacters()
@@ -551,8 +545,9 @@ class Enabled(Base, unittest.TestCase):
         self.tubA, self.tubB, self.tubC, self.tubD = self.services
         for s in self.services:
             s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
-            s.setLocation("127.0.0.1:%d" % l.getPortnum())
+            p = allocate_tcp_port()
+            s.listenOn("tcp:%d:interface=127.0.0.1" % p)
+            s.setLocation("127.0.0.1:%d" % p)
         self.tubIDs = [self.tubA.getShortTubID(),
                        self.tubB.getShortTubID(),
                        self.tubC.getShortTubID(),

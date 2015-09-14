@@ -7,6 +7,7 @@ from twisted.internet import defer
 from foolscap import pb
 from foolscap.api import RemoteInterface, Referenceable, Tub, flushEventualQueue
 from foolscap.remoteinterface import RemoteMethodSchema
+from foolscap.util import allocate_tcp_port
 
 class RIMyCryptoTarget(RemoteInterface):
     # method constraints can be declared directly:
@@ -59,8 +60,8 @@ class TestPersist(UsefulMixin, unittest.TestCase):
     def testPersist(self):
         t1 = Target()
         s1,s2 = self.services
-        l1 = s1.listenOn("0")
-        port = l1.getPortnum()
+        port = allocate_tcp_port()
+        s1.listenOn("tcp:%d" % port)
         s1.setLocation("127.0.0.1:%d" % port)
         public_url = s1.registerReference(t1, "name")
         self.failUnless(public_url.startswith("pb:"))
@@ -74,8 +75,8 @@ class TestPersist(UsefulMixin, unittest.TestCase):
         s3.startService()
         self.services.append(s3)
         t2 = Target()
-        l3 = s3.listenOn("0")
-        newport = l3.getPortnum()
+        newport = allocate_tcp_port()
+        s3.listenOn("tcp:%d" % newport)
         s3.setLocation("127.0.0.1:%d" % newport)
         s3.registerReference(t2, "name")
         # now patch the URL to replace the port number
@@ -95,7 +96,7 @@ class TestListeners(UsefulMixin, unittest.TestCase):
 
     def testListenOn(self):
         s1 = self.services[0]
-        l = s1.listenOn("0")
+        l = s1.listenOn("tcp:%d" % allocate_tcp_port())
         self.failUnless(isinstance(l, pb.Listener))
         self.failUnlessEqual(len(s1.getListeners()), 1)
         s1.stopListeningOn(l)
@@ -103,7 +104,7 @@ class TestListeners(UsefulMixin, unittest.TestCase):
 
     def testGetPort1(self):
         s1,s2,s3 = self.services
-        s1.listenOn("0")
+        s1.listenOn("tcp:%d" % allocate_tcp_port())
         listeners = s1.getListeners()
         self.failUnlessEqual(len(listeners), 1)
         portnum = listeners[0].getPortnum()
@@ -111,12 +112,13 @@ class TestListeners(UsefulMixin, unittest.TestCase):
 
     def testGetPort2(self):
         s1,s2,s3 = self.services
-        s1.listenOn("0")
+        s1.listenOn("tcp:%d" % allocate_tcp_port())
         listeners = s1.getListeners()
         self.failUnlessEqual(len(listeners), 1)
         portnum = listeners[0].getPortnum()
         self.failUnless(portnum) # not 0, not None, must be *something*
-        s1.listenOn("0") # listen on a second port too
+        # listen on a second port too
+        s1.listenOn("tcp:%d" % allocate_tcp_port())
         l2 = s1.getListeners()
         self.failUnlessEqual(len(l2), 2)
         self.failIfEqual(l2[0].getPortnum(), l2[1].getPortnum())

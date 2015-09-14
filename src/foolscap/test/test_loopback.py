@@ -1,22 +1,13 @@
 
 from twisted.trial import unittest
 from twisted.internet import defer
-from foolscap.api import Tub
-from foolscap.test.common import HelperTarget
+from foolscap.test.common import HelperTarget, MakeTubsMixin
 from foolscap.eventual import flushEventualQueue
 
 
-class ConnectToSelf(unittest.TestCase):
-
+class ConnectToSelf(MakeTubsMixin, unittest.TestCase):
     def setUp(self):
-        self.services = []
-
-    def startTub(self, tub):
-        self.services = [tub]
-        for s in self.services:
-            s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
-            s.setLocation("127.0.0.1:%d" % l.getPortnum())
+        self.makeTubs(1)
 
     def tearDown(self):
         d = defer.DeferredList([s.stopService() for s in self.services])
@@ -24,8 +15,7 @@ class ConnectToSelf(unittest.TestCase):
         return d
 
     def testConnectAuthenticated(self):
-        tub = Tub()
-        self.startTub(tub)
+        tub = self.services[0]
         target = HelperTarget("bob")
         target.obj = "unset"
         url = tub.registerReference(target)

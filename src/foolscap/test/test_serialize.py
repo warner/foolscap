@@ -9,6 +9,7 @@ from foolscap.api import Referenceable, Copyable, RemoteCopy, \
      flushEventualQueue, serialize, unserialize, Tub
 from foolscap.referenceable import RemoteReference
 from foolscap.tokens import Violation
+from foolscap.util import allocate_tcp_port
 from foolscap.test.common import ShouldFailMixin
 
 class Foo:
@@ -102,8 +103,9 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
     def test_referenceable(self):
         t1 = Tub()
         t1.setServiceParent(self.s)
-        l = t1.listenOn("tcp:0:interface=127.0.0.1")
-        t1.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t1.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t1.setLocation("127.0.0.1:%d" % portnum)
         r1 = Referenceable()
         # the serialized blob can't keep the reference alive, so you must
         # arrange for that separately
@@ -129,8 +131,9 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         # serialized data will not keep the referenceable alive
         t1 = Tub()
         t1.setServiceParent(self.s)
-        l = t1.listenOn("tcp:0:interface=127.0.0.1")
-        t1.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t1.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t1.setLocation("127.0.0.1:%d" % portnum)
         r1 = Referenceable()
         t2 = Tub()
         t2.setServiceParent(self.s)
