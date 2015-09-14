@@ -117,8 +117,7 @@ class AllocatePort(unittest.TestCase):
         self.failUnless(1 <= p <= 65535, p)
         # the allocation function should release the port before it
         # returns, so it should be possible to listen on it immediately
-        desc = "tcp:%d:interface=127.0.0.1" % p
-        ep = endpoints.serverFromString(reactor, desc)
+        ep = endpoints.TCP4ServerEndpoint(reactor, p, interface="127.0.0.1")
         d = ep.listen(protocol.Factory())
         d.addCallback(lambda port: port.stopListening())
         return d
