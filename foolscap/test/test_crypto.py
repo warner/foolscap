@@ -52,7 +52,6 @@ class UsefulMixin:
         d.addCallback(self._tearDown_1)
         return d
     def _tearDown_1(self, res):
-        self.failIf(pb.Listeners)
         return flushEventualQueue()
 
 class TestPersist(UsefulMixin, unittest.TestCase):
@@ -99,11 +98,8 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         l = s1.listenOn("0")
         self.failUnless(isinstance(l, pb.Listener))
         self.failUnlessEqual(len(s1.getListeners()), 1)
-        self.failUnlessEqual(len(pb.Listeners), 1)
         s1.stopListeningOn(l)
         self.failUnlessEqual(len(s1.getListeners()), 0)
-        self.failUnlessEqual(len(pb.Listeners), 0)
-
 
     def testGetPort1(self):
         s1,s2,s3 = self.services
@@ -124,64 +120,3 @@ class TestListeners(UsefulMixin, unittest.TestCase):
         l2 = s1.getListeners()
         self.failUnlessEqual(len(l2), 2)
         self.failIfEqual(l2[0].getPortnum(), l2[1].getPortnum())
-
-        s2.listenOn(l2[0])
-        l3 = s2.getListeners()
-        self.failUnlessIdentical(l2[0], l3[0])
-        self.failUnlessEqual(l2[0].getPortnum(), l3[0].getPortnum())
-
-    def testShared(self):
-        s1,s2,s3 = self.services
-        # s1 and s2 will share a Listener
-        l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("127.0.0.1:%d" % l1.getPortnum())
-        s2.listenOn(l1)
-        s2.setLocation("127.0.0.1:%d" % l1.getPortnum())
-
-        t1 = Target("one")
-        t2 = Target("two")
-        self.targets = [t1,t2]
-        url1 = s1.registerReference(t1, "target")
-        url2 = s2.registerReference(t2, "target")
-        self.urls = [url1, url2]
-
-        d = s3.getReference(url1)
-        d.addCallback(lambda ref: ref.callRemote('add', a=1, b=1))
-        d.addCallback(lambda res: s3.getReference(url2))
-        d.addCallback(lambda ref: ref.callRemote('add', a=2, b=2))
-        d.addCallback(self._testShared_1)
-        return d
-    testShared.timeout = 5
-    def _testShared_1(self, res):
-        t1,t2 = self.targets
-        self.failUnlessEqual(t1.calls, [(1,1)])
-        self.failUnlessEqual(t2.calls, [(2,2)])
-
-    def testSharedTransfer(self):
-        s1,s2,s3 = self.services
-        # s1 and s2 will share a Listener
-        l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("127.0.0.1:%d" % l1.getPortnum())
-        s2.listenOn(l1)
-        s2.setLocation("127.0.0.1:%d" % l1.getPortnum())
-        self.failUnless(l1.parentTub is s1)
-        s1.stopListeningOn(l1)
-        self.failUnless(l1.parentTub is s2)
-        s3.listenOn(l1)
-        self.failUnless(l1.parentTub is s2)
-        d = s2.stopService()
-        d.addCallback(self._testSharedTransfer_1, l1, s2, s3)
-        return d
-    testSharedTransfer.timeout = 5
-    def _testSharedTransfer_1(self, res, l1, s2, s3):
-        self.services.remove(s2)
-        self.failUnless(l1.parentTub is s3)
-
-    def testClone(self):
-        s1,s2,s3 = self.services
-        l1 = s1.listenOn("tcp:0:interface=127.0.0.1")
-        s1.setLocation("127.0.0.1:%d" % l1.getPortnum())
-        s4 = s1.clone()
-        s4.startService()
-        self.services.append(s4)
-        self.failUnlessEqual(s1.getListeners(), s4.getListeners())

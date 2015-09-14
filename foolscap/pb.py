@@ -32,19 +32,18 @@ def parse_strport(port):
     # TODO: IPv6
     return (portnum, interface)
 
-Listeners = []
-class Listener(protocol.ServerFactory):
-    """I am responsible for a single listening port, which may connect to
-    multiple Tubs. I have a strports-based Service, which I will attach as a
-    child of one of my Tubs. If that Tub disconnects, I will reparent the
-    Service to a remaining one. """
+class Listener(protocol.ServerFactory, service.MultiService):
+    """I am responsible for a single listening port., which may connect to a
+    single Tub (or none). I have a strports-based Service, which I will
+    attach as a child."""
 
     noisy = False
 
     # this also serves as the ServerFactory
 
     def __init__(self, port, options={},
-                 negotiationClass=negotiate.Negotiation):
+                 negotiationClass=negotiate.Negotiation,
+                 tub=None):
         """
         @type port: string
         @param port: a L{twisted.application.strports} -style description,
@@ -56,15 +55,15 @@ class Listener(protocol.ServerFactory):
         #  tcp:80:interface=127.0.0.1
         # we reject UNIX sockets.. I don't know if they ever worked.
 
+        service.MultiService.__init__(self)
         portnum, interface = parse_strport(port)
         self.port = port
         self.options = options
         self.negotiationClass = negotiationClass
-        self.parentTub = None
-        self.tubs = {}
+        self.tub = tub
         self.redirects = {}
         self.s = internet.TCPServer(portnum, self, interface=interface)
-        Listeners.append(self)
+        self.s.setServiceParent(self)
 
     def getPortnum(self):
         """When this Listener was created with a port string of '0' or
@@ -82,44 +81,11 @@ class Listener(protocol.ServerFactory):
         return self.s._port.getHost().port
 
     def __repr__(self):
-        if self.tubs:
-            return "<Listener at 0x%x on %s with tubs %s>" % (
-                abs(id(self)),
-                self.port,
-                ",".join([str(k) for k in self.tubs.keys()]))
+        if self.tub:
+            return "<Listener at 0x%x on %s with tub %s>" % \
+                   (abs(id(self)), self.port, str(self.tub.tubID))
         return "<Listener at 0x%x on %s with no tubs>" % (abs(id(self)),
                                                           self.port)
-
-    def addTub(self, tub):
-        if tub.tubID in self.tubs:
-            assert tub.tubID is not None
-            raise RuntimeError("This Listener (on %s) is already connected "
-                               "to TubID '%s'" % (self.port, tub.tubID))
-        self.tubs[tub.tubID] = tub
-        if self.parentTub is None:
-            self.parentTub = tub
-            self.s.setServiceParent(self.parentTub)
-
-    def removeTub(self, tub):
-        # this might return a Deferred, since the removal might cause the
-        # Listener to shut down. It might also return None.
-        del self.tubs[tub.tubID]
-        if self.parentTub is tub:
-            # we need to switch to a new one
-            tubs = self.tubs.values()
-            if tubs:
-                self.parentTub = tubs[0]
-                # TODO: I want to do this without first doing
-                # disownServiceParent, so the port remains listening. Can we
-                # do this? It looks like setServiceParent does
-                # disownServiceParent first, so it may glitch.
-                self.s.setServiceParent(self.parentTub)
-            else:
-                # no more tubs, this Listener will go away now
-                d = self.s.disownServiceParent()
-                Listeners.remove(self)
-                return d
-        return None
 
     def getService(self):
         return self.s
@@ -150,7 +116,10 @@ class Listener(protocol.ServerFactory):
         return proto
 
     def lookupTubID(self, tubID):
-        return self.tubs.get(tubID), self.redirects.get(tubID)
+        tub = None
+        if tubID == self.tub.tubID:
+            tub = self.tub
+        return (tub, self.redirects.get(tubID))
 
 def generateSwissnumber(bits):
     bytes = os.urandom(bits/8)
@@ -523,46 +492,31 @@ class Tub(service.MultiService):
     def listenOn(self, what, options={}):
         """Start listening for connections.
 
-        @type  what: string or Listener instance
-        @param what: a L{twisted.application.strports} -style description,
-                     or a L{Listener} instance returned by a previous call to
-                     listenOn.
+        @type  what: string
+        @param what: a L{twisted.application.strports} -style description
         @param options: a dictionary of options that can influence connection
                         negotiation before the target Tub has been determined
 
         @return: The Listener object that was created. This can be used to
-        stop listening later on, to have another Tub listen on the same port,
-        and to figure out which port was allocated when you used a strports
-        specification of 'tcp:0'. """
+        stop listening later on, and to figure out which port was allocated
+        when you used a strports specification of 'tcp:0'."""
 
-        if type(what) is str:
-            l = Listener(what, options, self.negotiationClass)
-        else:
-            assert not options
-            l = what
-        assert l not in self.listeners
-        l.addTub(self)
+        if not isinstance(what, str):
+            raise TypeError("listenOn only accepts str")
+        l = Listener(what, options, self.negotiationClass, tub=self)
         self.listeners.append(l)
+        l.setServiceParent(self)
         return l
 
     def stopListeningOn(self, l):
         # this returns a Deferred when the port is shut down
         self.listeners.remove(l)
-        d = defer.maybeDeferred(l.removeTub, self)
-        return d
+        return l.disownServiceParent()
 
     def getListeners(self):
         """Return the set of Listener objects that allow the outside world to
         connect to this Tub."""
         return self.listeners[:]
-
-    def clone(self):
-        """Return a new Tub (with a different ID), listening on the same
-        ports as this one."""
-        t = Tub()
-        for l in self.listeners:
-            t.listenOn(l)
-        return t
 
     def getTubID(self):
         return self.tubID
@@ -608,11 +562,6 @@ class Tub(service.MultiService):
         for rc in list(self.reconnectors):
             rc.stopConnecting()
         del self.reconnectors
-        for l in list(self.listeners):
-            # TODO: rethink this, what I want is for stopService to cause all
-            # Listeners to shut down, but I'm not sure this is the right way
-            # to do it.
-            dl.append(defer.maybeDeferred(l.removeTub, self))
         for c in list(self._activeConnectors):
             c.shutdown()
         why = Failure(error.ConnectionDone("Tub.stopService was called"))

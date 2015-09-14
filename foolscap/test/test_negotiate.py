@@ -4,7 +4,7 @@ from twisted.trial import unittest
 from twisted.internet import protocol, defer, reactor
 from twisted.application import internet
 from twisted.web.client import getPage
-from foolscap import pb, negotiate, tokens, eventual
+from foolscap import negotiate, tokens, eventual
 from foolscap.api import Referenceable, Tub, BananaError
 from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import ShouldFailMixin
@@ -99,11 +99,8 @@ class BaseMixin(ShouldFailMixin):
         for s in self.services:
             dl.append(defer.maybeDeferred(s.stopService))
         d = defer.DeferredList(dl)
-        d.addCallback(self._checkListeners)
         d.addCallback(flushEventualQueue)
         return d
-    def _checkListeners(self, res):
-        self.failIf(pb.Listeners)
 
     def stall(self, res, timeout):
         d = defer.Deferred()
