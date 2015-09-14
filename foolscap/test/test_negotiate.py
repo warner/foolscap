@@ -1,15 +1,13 @@
 
 from twisted.trial import unittest
 
-from twisted.internet import protocol, defer, reactor
+from twisted.internet import protocol, defer
 from twisted.application import internet
-from twisted.web.client import getPage
-from foolscap import negotiate, tokens, eventual
+from foolscap import negotiate, tokens
 from foolscap.api import Referenceable, Tub, BananaError
-from foolscap.eventual import flushEventualQueue
-from foolscap.test.common import (ShouldFailMixin,
+from foolscap.test.common import (BaseMixin,
                                   tubid_low, certData_low,
-                                  tubid_high, certData_high)
+                                  certData_high)
 
 class Target(Referenceable):
     def __init__(self):
@@ -23,100 +21,6 @@ class OneTimeDeferred(defer.Deferred):
         if self.called:
             return
         return defer.Deferred.callback(self, res)
-
-class BaseMixin(ShouldFailMixin):
-
-    def setUp(self):
-        self.connections = []
-        self.servers = []
-        self.services = []
-
-    def tearDown(self):
-        for c in self.connections:
-            if c.transport:
-                c.transport.loseConnection()
-        dl = []
-        for s in self.servers:
-            dl.append(defer.maybeDeferred(s.stopListening))
-        for s in self.services:
-            dl.append(defer.maybeDeferred(s.stopService))
-        d = defer.DeferredList(dl)
-        d.addCallback(flushEventualQueue)
-        return d
-
-    def stall(self, res, timeout):
-        d = defer.Deferred()
-        reactor.callLater(timeout, d.callback, res)
-        return d
-
-    def insert_turns(self, res, count):
-        d = eventual.fireEventually(res)
-        for i in range(count-1):
-            d.addCallback(eventual.fireEventually)
-        return d
-
-    def makeServer(self, options={}, listenerOptions={}):
-        self.tub = tub = Tub(options=options)
-        tub.startService()
-        self.services.append(tub)
-        l = tub.listenOn("tcp:0", listenerOptions)
-        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        self.target = Target()
-        return tub.registerReference(self.target), l.getPortnum()
-
-    def makeSpecificServer(self, certData,
-                           negotiationClass=negotiate.Negotiation):
-        self.tub = tub = Tub(certData=certData)
-        tub.negotiationClass = negotiationClass
-        tub.startService()
-        self.services.append(tub)
-        l = tub.listenOn("tcp:0")
-        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        self.target = Target()
-        return tub.registerReference(self.target), l.getPortnum()
-
-    def createSpecificServer(self, certData,
-                             negotiationClass=negotiate.Negotiation):
-        tub = Tub(certData=certData)
-        tub.negotiationClass = negotiationClass
-        tub.startService()
-        self.services.append(tub)
-        l = tub.listenOn("tcp:0")
-        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        target = Target()
-        return tub, target, tub.registerReference(target), l.getPortnum()
-
-    def makeNullServer(self):
-        f = protocol.Factory()
-        f.protocol = protocol.Protocol # discards everything
-        s = internet.TCPServer(0, f)
-        s.startService()
-        self.services.append(s)
-        portnum = s._port.getHost().port
-        return portnum
-
-    def makeHTTPServer(self):
-        try:
-            from twisted.web import server, resource, static
-        except ImportError:
-            raise unittest.SkipTest('this test needs twisted.web')
-        root = resource.Resource()
-        root.putChild("", static.Data("hello\n", "text/plain"))
-        s = internet.TCPServer(0, server.Site(root))
-        s.startService()
-        self.services.append(s)
-        portnum = s._port.getHost().port
-        return portnum
-
-    def connectClient(self, portnum):
-        tub = Tub()
-        tub.startService()
-        self.services.append(tub)
-        d = tub.getReference("pb://127.0.0.1:%d/hello" % portnum)
-        return d
-
-    def connectHTTPClient(self, portnum):
-        return getPage("http://127.0.0.1:%d/foo" % portnum)
 
 class Basic(BaseMixin, unittest.TestCase):
 
