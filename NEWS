@@ -2,6 +2,32 @@ User visible changes in Foolscap                    -*- outline -*-
 
 * Release ??? (???)
 
+** Plugins for Connection Handlers
+
+New types of connection hints can now be used, by installing a suitable
+connection handler into the Tub. These hints could point to I2P servers or
+Tor hidden-service (.onion) addresses. The built-in TCP handler can be
+replaced entirely to protect a client's IP address by routing all connections
+through Tor. Implementation of these plugins are left as exercise for the
+reader: Foolscap only provides the built-in "DefaultTCP" handler. See
+doc/connection-handlers.rst for details. (ticket #236)
+
+** Shared Listeners are removed
+
+Until this version, it was possible to create a single Listener that serviced
+multiple Tubs (by passing the Listener returned from `l=tubA.listenOn(where)`
+into `tubB.listenOn(l)`). This seemed useful a long time ago, but in fact was
+not, and the implementation caused irreparable problems that were exposed
+while testing the new connection handlers. So support for shared Listeners
+has been removed: Tubs can still use multiple Listeners, but each Listener
+now services at most one Tub. In particular, `Tub.listenOn()` now only
+accepts a string, not a Listener instance.
+
+Note that relays and redirects are still on the roadmap, but neither feature
+requires sharing a Listener between multiple local Tubs.
+
+** Extended-Form Connection Hints are removed
+
 Support for extended-form connection hints has been removed. These were hints
 with explicit key names like "tcp:host=example.org:port=12345", or
 "tcp:example.org:timeout=30". They were added in the 0.7.0 release, but since
@@ -12,6 +38,23 @@ The parser now only accepts "tcp:example.org:12345" and "example.org:12345".
 Foolscap has never particularly encouraged applications to call
 Tub.setLocation() with anything other than these two forms, so we do not
 expect any compatibility problems.
+
+** new util.allocate_tcp_port() function
+
+To support a future deprecation of `Tub.listenOn("tcp:0")`, the new
+allocate_tcp_port() function was added to return (synchronously) a
+currently-unused TCP port integer. This can be used during app configuration
+to decide on a listening port, which can then be passed into
+`Tub.listenOn("tcp:%d" % portnum)`. This may allow Tub.setLocation() to be
+called *before* the reactor is started, simplifying application startup code
+(this also requires a suitable hostname or IP address, which is a separate
+issue).
+
+** Packaging/Dependency Changes
+
+Foolscap now requires Twisted 10.1.0 or newer, to use Endpoints and
+connection handler plugins.
+
 
 * Release 0.8.0 (15-Apr-2015)
 

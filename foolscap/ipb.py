@@ -8,7 +8,7 @@ from foolscap.tokens import ISlicer, IRootSlicer, IUnslicer
 _ignored = [ISlicer, IRootSlicer, IUnslicer] # hush pyflakes
 
 class IConnectionHintHandler(Interface):
-    def hint_to_endpoint(hint):
+    def hint_to_endpoint(hint, reactor):
         """Return (endpoint, hostname), where endpoint is an
         IStreamClientEndpoint object, and hostname is a string (for use in
         the HTTP headers during negotiation). The endpoint, once connected,
