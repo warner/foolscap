@@ -20,7 +20,7 @@ from foolscap.remoteinterface import RemoteInterface
 from foolscap.referenceable import Referenceable, SturdyRef
 from foolscap.copyable import Copyable, RemoteCopy, registerRemoteCopy
 from foolscap.copyable import registerCopier, registerRemoteCopyFactory
-from foolscap.ipb import DeadReferenceError
+from foolscap.ipb import DeadReferenceError, IConnectionHintHandler
 from foolscap.tokens import BananaError
 from foolscap.schema import StringConstraint, IntegerConstraint, \
     ListOf, TupleOf, SetOf, DictOf, ChoiceOf, Any
