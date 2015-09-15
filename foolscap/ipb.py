@@ -7,6 +7,15 @@ Interface = interface.Interface
 from foolscap.tokens import ISlicer, IRootSlicer, IUnslicer
 _ignored = [ISlicer, IRootSlicer, IUnslicer] # hush pyflakes
 
+class IConnectionHintHandler(Interface):
+    def hint_to_endpoint(hint):
+        """Return (endpoint, hostname), where endpoint is an
+        IStreamClientEndpoint object, and hostname is a string (for use in
+        the HTTP headers during negotiation). The endpoint, once connected,
+        must be capable of handling .startTLS(). Hints are strings which
+        always start with 'TYPE:'. Return (None, None) if this helper plugin
+        does not recognize the hint's type."""
+
 class DeadReferenceError(Exception):
     """The RemoteReference is dead, Jim."""
     def __init__(self, why=None, remote_tubid=None, request=None):

@@ -263,7 +263,7 @@ class Tub(service.MultiService):
         self.brokers = {} # maps TubRef to a Broker that connects to them
         self.reconnectors = []
 
-        self._connectionPlugins = [DefaultTCP()]
+        self._connectionHandlers = [DefaultTCP()]
         self._activeConnectors = []
 
         self._pending_getReferences = [] # list of (d, furl) pairs
@@ -327,11 +327,12 @@ class Tub(service.MultiService):
         else:
             raise KeyError("unknown option name '%s'" % name)
 
-    def removeAllConnectionPlugins(self):
-        self._connectionPlugins = []
+    def removeAllConnectionHintHandlers(self):
+        self._connectionHandlers = []
 
-    def addConnectionPlugin(self, plugin):
-        self._connectionPlugins.append(plugin)
+    def addConnectionHintHandler(self, handler):
+        assert ipb.IConnectionHintHandler.providedBy(handler)
+        self._connectionHandlers.append(handler)
 
     def setLogGathererFURL(self, gatherer_furl_or_furls):
         assert not self._log_gatherer_furls
@@ -869,7 +870,7 @@ class Tub(service.MultiService):
         if tubref not in self.tubConnectors:
             # the TubConnector will call our brokerAttached when it finishes
             # negotiation, which will fire waitingForBrokers[tubref].
-            c = connection.TubConnector(self, tubref, self._connectionPlugins)
+            c = connection.TubConnector(self, tubref, self._connectionHandlers)
             self.tubConnectors[tubref] = c
             c.connect()
 

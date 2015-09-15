@@ -141,6 +141,7 @@ class TubConnector(object):
             if location in self.attemptedLocations:
                 continue
             self.attemptedLocations.append(location)
+            ep = None
             for plugin in self.connectionPlugins:
                 ep, host = plugin.hint_to_endpoint(location, reactor)
                 if ep:

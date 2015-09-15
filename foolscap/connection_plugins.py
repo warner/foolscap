@@ -1,5 +1,7 @@
 import re
+from zope.interface import implementer
 from twisted.internet import endpoints
+from foolscap.ipb import IConnectionHintHandler
 
 # This can match IPv4 IP addresses + port numbers *or* host names +
 # port numbers.
@@ -26,6 +28,7 @@ NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
 #  HOST:PORT                 (implicit tcp)
 #  tcp:HOST:PORT           } (endpoint syntax for TCP connections)
 
+@implementer(IConnectionHintHandler)
 class DefaultTCP:
     def hint_to_endpoint(self, hint, reactor):
         # Return (endpoint, hostname), where "hostname" is what we pass to the
