@@ -108,8 +108,8 @@ class TubConnector(object):
         the parent Tub's brokerAttached() method, or us calling the Tub's
         connectionFailed() method."""
         self.tub.connectorStarted(self)
-        timeout = self.tub.options.get('connect_timeout',
-                                       self.CONNECTION_TIMEOUT)
+        timeout = self.tub._test_options.get('connect_timeout',
+                                             self.CONNECTION_TIMEOUT)
         self.timer = reactor.callLater(timeout, self.connectionTimedOut)
         self.active = True
         self.connectToAll()
@@ -161,7 +161,7 @@ class TubConnector(object):
             d.addBoth(_remove)
             d.addCallback(self._connectionSuccess, location, lp)
             d.addErrback(self._connectionFailed, location, lp)
-            if self.tub.options.get("debug_stall_second_connection"):
+            if self.tub._test_options.get("debug_stall_second_connection"):
                 # for unit tests, hold off on making the second connection
                 # for a moment. This allows the first connection to get to a
                 # known state.

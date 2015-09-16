@@ -26,7 +26,7 @@ class Basic(BaseMixin, unittest.TestCase):
 
     def testOptions(self):
         url, portnum = self.makeServer({'opt': 12})
-        self.failUnlessEqual(self.tub.options['opt'], 12)
+        self.failUnlessEqual(self.tub._test_options['opt'], 12)
 
     def testAuthenticated(self):
         url, portnum = self.makeServer()
@@ -89,7 +89,7 @@ class Versus(BaseMixin, unittest.TestCase):
     def testClientTimeout(self):
         portnum = self.makeNullServer()
         # lower the connection timeout to 2 seconds
-        client = Tub(options={'connect_timeout': 1})
+        client = Tub(_test_options={'connect_timeout': 1})
         client.startService()
         self.services.append(client)
         url = "pb://faketubid@127.0.0.1:%d/target" % portnum
@@ -144,7 +144,7 @@ class Parallel(BaseMixin, unittest.TestCase):
     #
 
     def makeServers(self, tubopts={}, lo1={}, lo2={}):
-        self.tub = tub = Tub(certData=certData_high, options=tubopts)
+        self.tub = tub = Tub(certData=certData_high, _test_options=tubopts)
         tub.startService()
         self.services.append(tub)
         l1 = tub.listenOn("tcp:0", lo1)
@@ -159,7 +159,7 @@ class Parallel(BaseMixin, unittest.TestCase):
         self.clientPhases = []
         opts = {"debug_stall_second_connection": True,
                 "debug_gatherPhases": self.clientPhases}
-        self.client = client = Tub(certData_low, options=opts)
+        self.client = client = Tub(certData_low, _test_options=opts)
         client.startService()
         self.services.append(client)
         d = client.getReference(url)
@@ -252,7 +252,7 @@ class ThreeInParallel(BaseMixin, unittest.TestCase):
     # being abandoned together.
 
     def makeServers(self, tubopts={}):
-        self.tub = tub = Tub(certData=certData_high, options=tubopts)
+        self.tub = tub = Tub(certData=certData_high, _test_options=tubopts)
         tub.startService()
         self.services.append(tub)
         port = tub.listenOn("tcp:0").getPortnum()
@@ -317,8 +317,8 @@ class CrossfireMixin(BaseMixin):
 
     def makeServers(self, t1opts={}, t2opts={}, lo1={}, lo2={}):
         # first we create two Tubs
-        a = Tub(options=t1opts)
-        b = Tub(options=t1opts)
+        a = Tub(_test_options=t1opts)
+        b = Tub(_test_options=t1opts)
 
         # then we figure out which one will be the master, and call it tub1
         if a.tubID > b.tubID:
@@ -334,10 +334,10 @@ class CrossfireMixin(BaseMixin):
         # now fix up the options and everything else
         self.tub1phases = []
         t1opts['debug_gatherPhases'] = self.tub1phases
-        tub1.options = t1opts
+        tub1._test_options = t1opts
         self.tub2phases = []
         t2opts['debug_gatherPhases'] = self.tub2phases
-        tub2.options = t2opts
+        tub2._test_options = t2opts
 
         # connection[0], the winning connection, will be from tub1 to tub2
 

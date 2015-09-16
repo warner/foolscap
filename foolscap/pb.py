@@ -41,7 +41,7 @@ class Listener(protocol.ServerFactory, service.MultiService):
 
     # this also serves as the ServerFactory
 
-    def __init__(self, port, options={},
+    def __init__(self, port, _test_options={},
                  negotiationClass=negotiate.Negotiation,
                  tub=None):
         """
@@ -58,7 +58,7 @@ class Listener(protocol.ServerFactory, service.MultiService):
         service.MultiService.__init__(self)
         portnum, interface = parse_strport(port)
         self.port = port
-        self.options = options
+        self._test_options = _test_options
         self.negotiationClass = negotiationClass
         self.tub = tub
         self.redirects = {}
@@ -160,10 +160,11 @@ class Tub(service.MultiService):
                      You may provide certData, or certFile, (or neither), but
                      not both.
 
-    @param options: a dictionary of options that can influence connection
-                    connection negotiation. Currently defined keys are:
-                     - debug_slow: if True, wait half a second between
-                                   each negotiation response
+    @param _test_options: a dictionary of options that can influence
+                          connection connection negotiation. Currently
+                          defined keys are:
+                          - debug_slow: if True, wait half a second between
+                                        each negotiation response
 
     @ivar brokers: maps TubIDs to L{Broker} instances
 
@@ -191,9 +192,9 @@ class Tub(service.MultiService):
     disconnectTimeout = None # disconnect after this much idle time
     tubID = None
 
-    def __init__(self, certData=None, certFile=None, options={}):
+    def __init__(self, certData=None, certFile=None, _test_options={}):
         service.MultiService.__init__(self)
-        self.setup(options)
+        self.setup(_test_options)
         if certFile:
             self.setupEncryptionFile(certFile)
         else:
@@ -233,8 +234,8 @@ class Tub(service.MultiService):
     def getIncarnationString(self):
         return self.incarnation_string
 
-    def setup(self, options):
-        self.options = options
+    def setup(self, _test_options):
+        self._test_options = _test_options
         self.logger = flog.theLogger
         self.listeners = []
         self.locationHints = []
@@ -493,13 +494,14 @@ class Tub(service.MultiService):
         d.addCallback(_got_local_ip)
         return d
 
-    def listenOn(self, what, options={}):
+    def listenOn(self, what, _test_options={}):
         """Start listening for connections.
 
         @type  what: string
         @param what: a L{twisted.application.strports} -style description
-        @param options: a dictionary of options that can influence connection
-                        negotiation before the target Tub has been determined
+        @param _test_options: a dictionary of options that can influence
+                              connection negotiation before the target Tub
+                              has been determined
 
         @return: The Listener object that was created. This can be used to
         stop listening later on, and to figure out which port was allocated
@@ -507,7 +509,7 @@ class Tub(service.MultiService):
 
         if not isinstance(what, str):
             raise TypeError("listenOn only accepts str")
-        l = Listener(what, options, self.negotiationClass, tub=self)
+        l = Listener(what, _test_options, self.negotiationClass, tub=self)
         self.listeners.append(l)
         l.setServiceParent(self)
         return l

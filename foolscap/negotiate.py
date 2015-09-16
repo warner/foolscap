@@ -175,19 +175,20 @@ class Negotiation(protocol.Protocol):
             # offer and decision.
             self.negotiationOffer['negotiation-forced'] = "True"
         self.buffer = ""
-        self.options = {}
+        self._test_options = {}
         # to trigger specific race conditions during unit tests, it is useful
         # to allow certain operations to be stalled for a moment.
-        # self.options will contain a key like debug_slow_connectionMade to
-        # indicate that there should be a 1 second delay between the real
-        # connectionMade and the time our self.connectionMade() method is
-        # invoked. To support this, the first time connectionMade() is
-        # invoked, self.debugTimers['connectionMade'] is set to a 1s
-        # DelayedCall, which fires self.debug_fireTimer('connectionMade',
-        # callable, *args). That will set self.debugTimers['connectionMade']
-        # to None, so the condition is not fired again, then invoke the
-        # actual connectionMade method. When the connection is lost, all
-        # remaining timers will be canceled.
+        # self._test_options will contain a key like
+        # debug_slow_connectionMade to indicate that there should be a 1
+        # second delay between the real connectionMade and the time our
+        # self.connectionMade() method is invoked. To support this, the first
+        # time connectionMade() is invoked,
+        # self.debugTimers['connectionMade'] is set to a 1s DelayedCall,
+        # which fires self.debug_fireTimer('connectionMade', callable,
+        # *args). That will set self.debugTimers['connectionMade'] to None,
+        # so the condition is not fired again, then invoke the actual
+        # connectionMade method. When the connection is lost, all remaining
+        # timers will be canceled.
         self.debugTimers = {}
 
         # if anything goes wrong during negotiation (version mismatch,
@@ -219,7 +220,7 @@ class Negotiation(protocol.Protocol):
         self.connector = connector
         self.target = connector.target
         self.targetHost = targetHost
-        self.options = self.tub.options.copy()
+        self._test_options = self.tub._test_options.copy()
         tubID = self.target.getTubID()
         slave_record = self.tub.slave_table.get(tubID, ("none",0))
         assert isinstance(slave_record, tuple), slave_record
@@ -230,7 +231,7 @@ class Negotiation(protocol.Protocol):
         self.log("initServer", listener=repr(listener))
         self.isClient = False
         self.listener = listener
-        self.options = self.listener.options.copy()
+        self._test_options = self.listener._test_options.copy()
         # the broker class is set when we find out which Tub we should use
 
     def parseLines(self, header):
@@ -251,12 +252,12 @@ class Negotiation(protocol.Protocol):
         self.transport.write("\r\n") # end block
 
     def debug_doTimer(self, name, timeout, call, *args):
-        if (self.options.has_key("debug_slow_%s" % name) and
+        if (self._test_options.has_key("debug_slow_%s" % name) and
             not self.debugTimers.has_key(name)):
             self.log("debug_doTimer(%s)" % name)
             t = reactor.callLater(timeout, self.debug_fireTimer, name)
             self.debugTimers[name] = (t, [(call, args)])
-            cb = self.options["debug_slow_%s" % name]
+            cb = self._test_options["debug_slow_%s" % name]
             if cb is not None and cb is not True:
                 cb()
             return True
@@ -331,7 +332,7 @@ class Negotiation(protocol.Protocol):
         # server timeout first
         if self.debug_doTimer("connectionMade", 1, self.connectionMade):
             return
-        timeout = self.options.get('server_timeout', self.SERVER_TIMEOUT)
+        timeout = self._test_options.get('server_timeout', self.SERVER_TIMEOUT)
         if timeout:
             # oldpb clients will hit this case.
             self.negotiationTimer = reactor.callLater(timeout,
@@ -354,7 +355,8 @@ class Negotiation(protocol.Protocol):
 
     def dataReceived(self, chunk):
         self.log("dataReceived(isClient=%s,phase=%s,options=%s): %r"
-                 % (self.isClient, self.receive_phase, self.options, chunk),
+                 % (self.isClient, self.receive_phase, self._test_options,
+                    chunk),
                  level=NOISY)
         if self.receive_phase == ABANDONED:
             return
@@ -440,7 +442,7 @@ class Negotiation(protocol.Protocol):
                 t[0].cancel()
                 self.debugTimers[k] = None
         if self.isClient:
-            l = self.tub.options.get("debug_gatherPhases")
+            l = self.tub._test_options.get("debug_gatherPhases")
             if l is not None:
                 l.append(self.receive_phase)
         if not self.failureReason:
@@ -476,7 +478,7 @@ class Negotiation(protocol.Protocol):
         tub, redirect = self.listener.lookupTubID(targetTubID)
         if tub:
             self.tub = tub # our tub
-            self.options.update(self.tub.options)
+            self._test_options.update(self.tub._test_options)
             self.brokerClass = self.tub.brokerClass
             self.myTubID = tub.tubID
             self.sendPlaintextServerAndStartENCRYPTED()
@@ -1110,7 +1112,7 @@ class Negotiation(protocol.Protocol):
         if self.receive_phase != ABANDONED and self.isClient:
             eventually(self.connector.negotiationFailed, self, reason)
         self.receive_phase = ABANDONED
-        cb = self.options.get("debug_negotiationFailed_cb")
+        cb = self._test_options.get("debug_negotiationFailed_cb")
         if cb:
             # note that this gets called with a NegotiationError, not a
             # Failure. ACTUALLY: not true, gets a Failure

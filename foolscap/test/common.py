@@ -494,10 +494,10 @@ class BaseMixin(ShouldFailMixin):
         return d
 
     def makeServer(self, options={}, listenerOptions={}):
-        self.tub = tub = Tub(options=options)
+        self.tub = tub = Tub(_test_options=options)
         tub.startService()
         self.services.append(tub)
-        l = tub.listenOn("tcp:0", listenerOptions)
+        l = tub.listenOn("tcp:0", _test_options=listenerOptions)
         tub.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.target = Target()
         return tub.registerReference(self.target), l.getPortnum()

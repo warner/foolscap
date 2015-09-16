@@ -472,7 +472,7 @@ class Bad(Base, unittest.TestCase):
             (tubid, location_hints, name) = decode_furl(adave.tracker.url)
             location_hints = ["tcp:127.0.0.1:%d" % p.getHost().port]
             adave.tracker.url = encode_furl(tubid, location_hints, name)
-            self.tubD.options['connect_timeout'] = 2
+            self.tubD._test_options['connect_timeout'] = 2
             return self.shouldFail(NegotiationError, "Bad.test_hang",
                                    "no connection established within client timeout",
                                    self.acarol.callRemote, "set", adave)
