@@ -997,6 +997,19 @@ choosing. The fact that those connections can only speak the Foolscap
 protocol may reduce the security risk presented, but it still lets other
 people be annoying.
 
+If this property bothers you, you can instruct the Tub to disable these
+introductions. When disabled, attempts to send or receive an introduction
+will fail (with a Violation error).
+
+
+.. code-block:: python
+
+    tub = Tub()
+    tub.setOption("accept-gifts", False)
+
+Note that you should set this option before your Tub has an opportunity to
+connect to any other Tub. Doing this before `tub.startService()` is one
+approach.
 
 
 

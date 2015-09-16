@@ -720,8 +720,12 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
     def receiveClose(self):
         if self.giftID is None or self.url is None:
             raise BananaError("sequence ended too early")
-        d = self.broker.tub.getReference(self.url)
-        d.addBoth(self.ackGift)
+        if self.broker.tub.accept_gifts:
+            d = self.broker.tub.getReference(self.url)
+            d.addBoth(self.ackGift)
+        else:
+            d = defer.fail(Violation("gifts are prohibited in this Tub"))
+
         # we return a Deferred that will fire with the RemoteReference when
         # it becomes available. The RemoteReference is not even referenceable
         # until then. In addition, we provide a ready_deferred, since any

@@ -39,6 +39,17 @@ Foolscap has never particularly encouraged applications to call
 Tub.setLocation() with anything other than these two forms, so we do not
 expect any compatibility problems.
 
+** Option to Disable Gifts
+
+"Gifts", more precisely known as "third-party reference introductions", occur
+when one Tub sends you a message that includes a reference to some object on
+a third Tub. This allows references to be passed around transparently,
+without regard to which Tub they live on (yours, mine, or theirs), but allows
+other Tubs to cause you to create network connections to hosts and ports of
+their choosing. If this bothers you, the new `tub.setOption("accept-gifts",
+False)` option instructs your Tub to reject these third-party references,
+causing the calls that used them to signal a Violation error instead.
+
 ** new util.allocate_tcp_port() function
 
 To support a future deprecation of `Tub.listenOn("tcp:0")`, the new

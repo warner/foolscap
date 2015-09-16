@@ -8,7 +8,7 @@ from foolscap.api import RemoteInterface, Referenceable, flushEventualQueue, \
 from foolscap.referenceable import RemoteReference
 from foolscap.furl import encode_furl, decode_furl
 from foolscap.test.common import HelperTarget, RIHelper, ShouldFailMixin
-from foolscap.tokens import NegotiationError
+from foolscap.tokens import NegotiationError, Violation
 
 class RIConstrainedHelper(RemoteInterface):
     def set(obj=RIHelper): return None
@@ -544,3 +544,77 @@ class LongFURL(Base, unittest.TestCase):
             self.failUnlessEqual(res, 12)
         d.addCallback(_carolCalled)
         return d
+
+class Enabled(Base, unittest.TestCase):
+    def setUp(self):
+        self.services = [Tub() for i in range(4)]
+        self.tubA, self.tubB, self.tubC, self.tubD = self.services
+        for s in self.services:
+            s.startService()
+            l = s.listenOn("tcp:0:interface=127.0.0.1")
+            s.setLocation("127.0.0.1:%d" % l.getPortnum())
+        self.tubIDs = [self.tubA.getShortTubID(),
+                       self.tubB.getShortTubID(),
+                       self.tubC.getShortTubID(),
+                       self.tubD.getShortTubID()]
+
+    def get_connections(self, tub):
+        self.failIf(tub.waitingForBrokers)
+        return set([tr.getShortTubID() for tr in tub.brokers.keys()])
+
+    def testGiftsEnabled(self):
+        # enabled is the default, so this shouldn't change anything
+        self.tubB.setOption("accept-gifts", True)
+        self.createCharacters()
+        d = self.createInitialReferences()
+        def _introduce(res):
+            d2 = self.bob.waitfor()
+            d3 = self.abob.callRemote("set", obj=(self.alice, self.acarol))
+            d3.addCallback(lambda _: d2)
+            return d3 # this fires with the gift that bob got
+        d.addCallback(_introduce)
+        def _bobGotCarol((balice,bcarol)):
+            A,B,C,D = self.tubIDs
+            b_connections = self.get_connections(self.tubB)
+            self.assertIn(C, b_connections)
+            self.failUnlessEqual(b_connections, set([A, C, D]))
+        d.addCallback(_bobGotCarol)
+        return d
+
+    def testGiftsDisabled(self):
+        self.tubB.setOption("accept-gifts", False)
+        self.createCharacters()
+        self.bob.obj = None
+        d = self.createInitialReferences()
+        d.addCallback(lambda _:
+                      self.shouldFail(Violation, "testGiftsDisabled",
+                                      "gifts are prohibited in this Tub",
+                                      self.abob.callRemote,
+                                      "set", obj=(self.alice, self.acarol)))
+        d.addCallback(lambda _: self.failIf(self.bob.obj))
+        def _check_tub(_):
+            A,B,C,D = self.tubIDs
+            b_connections = self.get_connections(self.tubB)
+            self.failIfIn(C, b_connections)
+            self.failUnlessEqual(b_connections, set([A, D]))
+        d.addCallback(_check_tub)
+        return d
+
+    def testGiftsDisabledReturn(self):
+        self.tubA.setOption("accept-gifts", False)
+        self.createCharacters()
+        d = self.createInitialReferences()
+        def _created(_):
+            self.bob.obj = self.bdave
+            return self.shouldFail(Violation, "testGiftsDisabledReturn",
+                                   "gifts are prohibited in this Tub",
+                                   self.abob.callRemote,
+                                   "get")
+        d.addCallback(_created)
+        def _check_tub(_):
+            A,B,C,D = self.tubIDs
+            a_connections = self.get_connections(self.tubA)
+            self.failIfIn(D, a_connections)
+            self.failUnlessEqual(a_connections, set([B,C]))
+        return d
+
