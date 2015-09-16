@@ -37,7 +37,7 @@ _unused = [
     Referenceable, SturdyRef,
     Copyable, RemoteCopy, registerRemoteCopy,
     registerCopier, registerRemoteCopyFactory,
-    DeadReferenceError,
+    DeadReferenceError, IConnectionHintHandler,
     BananaError,
     StringConstraint, IntegerConstraint,
     ListOf, TupleOf, SetOf, DictOf, ChoiceOf, Any,
