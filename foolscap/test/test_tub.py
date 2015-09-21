@@ -433,7 +433,9 @@ class BadLocationFURL(unittest.TestCase):
         tubB = Tub()
         tubB.setServiceParent(self.s)
 
-        tubB.setLocation("") # this is how you say "unrouteable"
+        # This is a hack to get a FURL with empty location hints. The correct
+        # way to make a Tub unreachable is to not call .setLocation() at all.
+        tubB.setLocation("")
         r = Receiver(tubB)
         furl = tubB.registerReference(r)
         # the buggy behavior is that the following call raises an exception
@@ -447,9 +449,6 @@ class BadLocationFURL(unittest.TestCase):
         return d
 
     def test_future(self):
-        # bug #129: a FURL with no location hints causes a synchronous
-        # exception in Tub.getReference(), instead of an errback'ed Deferred.
-
         tubA = Tub()
         tubA.setServiceParent(self.s)
         tubB = Tub()

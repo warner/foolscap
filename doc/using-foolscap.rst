@@ -135,7 +135,7 @@ TubID is tied to the public key allows FURLs to be "secure" references
 reference). You can also create a Tub with a pre-existing certificate, which
 is how Tubs can retain a persistent identity over multiple executions.
 
-Having the Tub listen on a TCP port is as simple as calling ``Tub.listenOn`
+Having the Tub listen on a TCP port is as simple as calling ``Tub.listenOn``
 with a ``twisted.application.strports`` -formatted port specification string.
 The simplest such string would be "tcp:12345" , to listen on port 12345 on
 all interfaces. Using "tcp:12345:interface=127.0.0.1" would cause it to only
@@ -160,6 +160,11 @@ as "myhost.example.com" , then you could use something like this:
     tub.listenOn("tcp:12345")  # start listening on TCP port 12345
     tub.setLocation("myhost.example.com:12345")
 
+If your Tub is client-only, and you don't want it to be remotely accessible,
+you should skip the ``listenOn`` and ``setLocation`` calls. You will be able
+to connect to remote objects, and objects you send over the wire will be
+available to the remote system, but ``registerReference`` will throw an
+error.
 
 Registering the Referenceable
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
