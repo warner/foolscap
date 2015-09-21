@@ -2,9 +2,10 @@ import os
 from twisted.trial import unittest
 from twisted.application import service
 from foolscap.api import Tub, Referenceable
-from foolscap.tokens import NoLocationError
+from foolscap.tokens import NoLocationError, NoLocationHintsError
 from foolscap.util import allocate_tcp_port
 from foolscap.eventual import flushEventualQueue
+from foolscap.test.common import ShouldFailMixin
 
 class Receiver(Referenceable):
     def __init__(self):
@@ -12,8 +13,10 @@ class Receiver(Referenceable):
     def remote_call(self, obj):
         self.obj = obj
         return 1
+    def remote_gift_me(self):
+        return self.obj
 
-class References(unittest.TestCase):
+class References(ShouldFailMixin, unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
         self.s.startService()
@@ -50,6 +53,40 @@ class References(unittest.TestCase):
         d.addCallback(_inspect_obj)
         d.addCallback(lambda _: r.obj.callRemote("call", 2))
         d.addCallback(lambda _: self.failUnlessEqual(s.obj, 2))
+        return d
+
+    def test_unreachable_gift(self):
+        client_tub = Tub()
+        client_tub.setServiceParent(self.s)
+        server_tub = Tub()
+        server_tub.setServiceParent(self.s)
+        recipient_tub = Tub()
+        recipient_tub.setServiceParent(self.s)
+
+        portnum = allocate_tcp_port()
+        server_tub.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        server_tub.setLocation("tcp:127.0.0.1:%d" % portnum)
+        s = Receiver() # no FURL, not directly reachable
+        r = Receiver()
+        furl = server_tub.registerReference(r)
+
+        d = client_tub.getReference(furl)
+        d.addCallback(lambda rref: rref.callRemote("call", s))
+        d.addCallback(lambda res: self.failUnlessEqual(res, 1))
+        d.addCallback(lambda _: recipient_tub.getReference(furl))
+        # when server_tub tries to send the lame 's' rref to recipient_tub,
+        # the RemoteReferenceTracker won't have a FURL, so it will be
+        # serialized as a (their-reference furl="") sequence. Then
+        # recipient_tub will try to resolve it, and will throw a
+        # NoLocationHintsError. It might be more natural to send
+        # (their-reference furl=None), but the constraint schema on
+        # their-references forbids non-strings. It might also seem
+        # appropriate to raise a Violation (i.e. server_tub is bad for trying
+        # to send it, rather than foisting the problem off to recipient_tub),
+        # but that causes the connection explode and fall out of sync.
+        d.addCallback(lambda rref:
+                      self.shouldFail(NoLocationHintsError, "gift_me", None,
+                                      rref.callRemote, "gift_me"))
         return d
 
     def test_logport_furlfile1(self):

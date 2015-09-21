@@ -647,11 +647,15 @@ class YourReferenceSlicer(slicer.BaseSlicer):
             yield tracker.clid
         else:
             # sending somewhere else
-            assert isinstance(tracker.url, str)
+            furl = tracker.getURL()
+            if furl is None:
+                log.msg("gift has no FURL, host Tub is unreachable, sending ''")
+                furl = ""
+            assert isinstance(furl, str)
             giftID = broker.makeGift(self.obj)
             yield 'their-reference'
             yield giftID
-            yield tracker.getURL()
+            yield furl
 
     def describe(self):
         return "<your-ref-%s>" % self.obj.tracker.clid
