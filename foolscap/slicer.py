@@ -40,9 +40,9 @@ class BaseSlicer(object):
             raise Violation(msg)
         return broker
 
-    def registerReference(self, refid, obj):
+    def registerRefID(self, refid, obj):
         # optimize: most Slicers will delegate this up to the Root
-        return self.parent.registerReference(refid, obj)
+        return self.parent.registerRefID(refid, obj)
     def slicerForObject(self, obj):
         # optimize: most Slicers will delegate this up to the Root
         return self.parent.slicerForObject(obj)
@@ -72,7 +72,7 @@ class ScopedSlicer(BaseSlicer):
         BaseSlicer.__init__(self, obj)
         self.references = {} # maps id(obj) -> (obj,refid)
 
-    def registerReference(self, refid, obj):
+    def registerRefID(self, refid, obj):
         # keep references here, not in the actual PBRootSlicer
 
         # This use of id(obj) requires a bit of explanation. We are making

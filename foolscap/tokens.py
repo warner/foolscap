@@ -177,7 +177,7 @@ This attribute is read when each child Slicer is started.""")
         the Deferred is errbacked, the connection will be dropped. TODO: it
         should be possible to errback with a Violation."""
 
-    def registerReference(refid, obj):
+    def registerRefID(refid, obj):
         """Register the relationship between 'refid' (a number taken from
         the cumulative count of OPEN tokens sent over our connection: 0 is
         the object described by the very first OPEN sent over the wire) and

@@ -107,7 +107,7 @@ class PBRootSlicer(RootSlicer):
     slicerTable = {types.MethodType: referenceable.CallableSlicer,
                    types.FunctionType: referenceable.CallableSlicer,
                    }
-    def registerReference(self, refid, obj):
+    def registerRefID(self, refid, obj):
         # references are never Broker-scoped: they're always scoped more
         # narrowly, by the CallSlicer or the AnswerSlicer.
         assert 0

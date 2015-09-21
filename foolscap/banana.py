@@ -332,9 +332,9 @@ class Banana(protocol.Protocol):
         # connection will be dropped.
 
         # the downside to this approach is that .slice happens before
-        # .registerReference, so any late-validation being done in .slice
-        # will not be able to detect the fact that this object has already
-        # begun serialization. Validation performed in .next is ok.
+        # .registerRefID, so any late-validation being done in .slice will
+        # not be able to detect the fact that this object has already begun
+        # serialization. Validation performed in .next is ok.
 
         # also note that if .slice is a generator, any exception it raises
         # will not occur until .next is called, which happens *after* the
@@ -351,7 +351,7 @@ class Banana(protocol.Protocol):
         if slicer.sendOpen:
             openID = self.sendOpen()
             if slicer.trackReferences:
-                topSlicer.registerReference(openID, obj)
+                topSlicer.registerRefID(openID, obj)
             # note that the only reason to hold on to the openID here is for
             # the debug/optional copy in the CLOSE token. Consider ripping
             # this code out if we decide to stop sending that copy.

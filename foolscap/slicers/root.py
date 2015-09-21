@@ -27,7 +27,7 @@ class RootSlicer:
     def allowStreaming(self, streamable):
         self.streamableInGeneral = streamable
 
-    def registerReference(self, refid, obj):
+    def registerRefID(self, refid, obj):
         pass
 
     def slicerForObject(self, obj):
@@ -128,7 +128,7 @@ class ScopedRootSlicer(RootSlicer):
         RootSlicer.__init__(self, obj)
         self.references = {} # maps id(obj) -> (obj,refid)
 
-    def registerReference(self, refid, obj):
+    def registerRefID(self, refid, obj):
         self.references[id(obj)] = (obj,refid)
 
     def slicerForObject(self, obj):
