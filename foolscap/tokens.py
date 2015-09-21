@@ -131,7 +131,7 @@ class WrongNameError(Exception):
     """getReference(furlFule=) used a FURL with a different name"""
 
 class NoLocationError(Exception):
-    """Tub.setLocation() must be called first"""
+    """This Tub has no location set, so we cannot make references to it."""
 
 class NoLocationHintsError(Exception):
     """We cannot make a connection without some location hints"""

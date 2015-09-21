@@ -612,8 +612,8 @@ class Tub(service.MultiService):
         """
 
         if not self.locationHints:
-            raise RuntimeError("you must setLocation() before "
-                               "you can registerReference()")
+            raise NoLocationError("you must setLocation() before "
+                                  "you can registerReference()")
         oldfurl = None
         if furlFile:
             try:

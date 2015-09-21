@@ -11,7 +11,8 @@ from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \
      StallMixin
-from foolscap.tokens import WrongTubIdError, PBError, NoLocationHintsError
+from foolscap.tokens import WrongTubIdError, PBError, NoLocationHintsError, \
+    NoLocationError
 
 # create this data with:
 #  t = Tub()
@@ -92,6 +93,14 @@ class SetLocation(unittest.TestCase):
         t.setLocation("127.0.0.1:12345")
         # setLocation may only be called once
         self.failUnlessRaises(PBError, t.setLocation, "127.0.0.1:12345")
+
+    def test_unreachable(self):
+        t = Tub()
+        t.setServiceParent(self.s)
+        # we call neither .listenOn nor .setLocation
+        self.failUnlessEqual(t.locationHints, [])
+        self.failUnlessRaises(NoLocationError,
+                              t.registerReference, Referenceable())
 
     def test_set_location_automatically(self):
         t = Tub()
