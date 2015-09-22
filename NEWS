@@ -1,5 +1,10 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.9.1 (21-Sep-2015)
+
+Point release to deal with PyPI upload problems. No code changes.
+
+
 * Release 0.9.0 (21-Sep-2015)
 
 ** Plugins for Connection Handlers (#236)
