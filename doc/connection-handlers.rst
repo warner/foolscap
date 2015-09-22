@@ -76,11 +76,14 @@ The handler is required to implement `foolscap.ipb.IConnectionHintHandler`,
 and to provide a method named `hint_to_endpoint()`. This method takes two
 arguments (hint and reactor), and must return a (endpoint, hostname) tuple.
 The handler will not be given hints for which it was not registered, but if
-it is unable to parse the hint, it should raise `ipb.InvalidHintError`.
-Otherwise the endpoint should implement
+it is unable to parse the hint, it should raise `ipb.InvalidHintError`. Also
+note that the handler will be given the whole hint, including the type prefix
+that was used to locate the handler.
+
+The endpoint returned should implement
 `twisted.internet.interfaces.IStreamClientEndpoint`, and the endpoint's final
 connection object must implement `ITLSTransport` and offer the `startTLS`
-method (note that normal TCP sockets are fine).
+method. Normal TCP sockets (TCP4ClientEndpoint objects) do exactly this.
 
 The `hostname` value is used to construct an HTTP `Host:` header during
 negotiation. This is currently underused, but if the connection hint has
