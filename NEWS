@@ -2,7 +2,7 @@ User visible changes in Foolscap                    -*- outline -*-
 
 * Release ??? (???)
 
-** Plugins for Connection Handlers
+** Plugins for Connection Handlers (#236)
 
 New types of connection hints can now be used, by installing a suitable
 connection handler into the Tub. These hints could point to I2P servers or
@@ -10,9 +10,9 @@ Tor hidden-service (.onion) addresses. The built-in TCP handler can be
 replaced entirely to protect a client's IP address by routing all connections
 through Tor. Implementation of these plugins are left as exercise for the
 reader: Foolscap only provides the built-in "DefaultTCP" handler. See
-doc/connection-handlers.rst for details. (ticket #236)
+doc/connection-handlers.rst for details.
 
-** Shared Listeners are removed
+** Shared Listeners are removed (#239)
 
 Until this version, it was possible to create a single Listener that serviced
 multiple Tubs (by passing the Listener returned from `l=tubA.listenOn(where)`
@@ -39,7 +39,7 @@ Foolscap has never particularly encouraged applications to call
 Tub.setLocation() with anything other than these two forms, so we do not
 expect any compatibility problems.
 
-** Option to Disable Gifts
+** Option to Disable Gifts (#126)
 
 "Gifts", more precisely known as "third-party reference introductions", occur
 when one Tub sends you a message that includes a reference to some object on
@@ -49,6 +49,16 @@ other Tubs to cause you to create network connections to hosts and ports of
 their choosing. If this bothers you, the new `tub.setOption("accept-gifts",
 False)` option instructs your Tub to reject these third-party references,
 causing the calls that used them to signal a Violation error instead.
+
+** Unreachable Tubs now fully supported (#208)
+
+Unreachable "client-only" Tubs can be created by simply not calling either
+`tub.listenOn()` nor `tub.setLocation()`. These Tubs can make outbound
+connections, but will not accept inbound ones. `tub.registerReference()` will
+throw an error, and Gifts delivered to third parties will not work.
+
+Previous versions suggested using `tub.setLocation("")`: this is no longer
+recommended.
 
 ** new util.allocate_tcp_port() function
 
@@ -65,6 +75,10 @@ issue).
 
 Foolscap now requires Twisted 10.1.0 or newer, to use Endpoints and
 connection handler plugins.
+
+Foolscap's logging system (specifically the twisted-to-foolscap bridge) is
+now compatible with Twisted-15.2.0. The previous version had problems with
+the new contents of twisted.logger's "eventDict" objects. (#235)
 
 
 * Release 0.8.0 (15-Apr-2015)
