@@ -1,9 +1,10 @@
 from zope.interface import implementer
 from twisted.trial import unittest
-from twisted.internet import reactor, endpoints
+from twisted.internet import endpoints
 from twisted.application import service
 from foolscap.api import Tub
-from foolscap.connection_plugins import DefaultTCP
+from foolscap.connection import get_endpoint
+from foolscap.connection_plugins import convert_legacy_hint, DefaultTCP
 from foolscap.tokens import NoLocationHintsError
 from foolscap.test.common import (certData_low, certData_high, Target,
                                   ShouldFailMixin)
@@ -11,8 +12,7 @@ from foolscap import ipb, util
 
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
-        p = DefaultTCP()
-        ep, host = p.hint_to_endpoint(hint, reactor)
+        ep, host = get_endpoint(hint, {"tcp": DefaultTCP()})
         self.failUnless(isinstance(ep, endpoints.TCP4ClientEndpoint), ep)
         # note: this is fragile, and will break when Twisted changes the
         # internals of TCP4ClientEndpoint. Hopefully we'll switch to
@@ -21,15 +21,30 @@ class Convert(unittest.TestCase):
         self.failUnlessEqual(ep._port, expected_port)
 
     def checkUnknownEndpoint(self, hint):
-        p = DefaultTCP()
-        self.failUnlessEqual(p.hint_to_endpoint(hint, reactor), (None,None))
+        self.failUnlessRaises(ipb.InvalidHintError,
+                              get_endpoint, hint, {"tcp": DefaultTCP()})
 
-    def testLegacyTCP(self):
-        self.checkTCPEndpoint("127.0.0.1:9900",
-                              "127.0.0.1", 9900)
+    def testConvertLegacyHint(self):
+        self.failUnlessEqual(convert_legacy_hint("127.0.0.1:9900"),
+                             "tcp:127.0.0.1:9900")
+        self.failUnlessEqual(convert_legacy_hint("tcp:127.0.0.1:9900"),
+                             "tcp:127.0.0.1:9900")
+        self.failUnlessEqual(convert_legacy_hint("other:127.0.0.1:9900"),
+                             "other:127.0.0.1:9900")
+        # this is unfortunate
+        self.failUnlessEqual(convert_legacy_hint("unix:1"), "tcp:unix:1")
+        # so new hints should do one of these:
+        self.failUnlessEqual(convert_legacy_hint("tor:host:1234"),
+                             "tor:host:1234") # multiple colons
+        self.failUnlessEqual(convert_legacy_hint("unix:fd=1"),
+                             "unix:fd=1") # equals signs, key=value -style
 
     def testTCP(self):
         self.checkTCPEndpoint("tcp:127.0.0.1:9900",
+                              "127.0.0.1", 9900)
+
+    def testLegacyTCP(self):
+        self.checkTCPEndpoint("127.0.0.1:9900",
                               "127.0.0.1", 9900)
 
     def testExtensionsFromFuture(self):
@@ -37,17 +52,16 @@ class Convert(unittest.TestCase):
         self.checkUnknownEndpoint("127.0.0.1:7700:postextension")
 
 @implementer(ipb.IConnectionHintHandler)
-class TYPEn:
-    def __init__(self, n):
-        self.n = n
+class NewHandler:
+    def __init__(self):
         self.asked = 0
         self.accepted = 0
     def hint_to_endpoint(self, hint, reactor):
         self.asked += 1
-        pieces = hint.split(":")
-        if pieces[0] != "type%d" % self.n:
-            return (None, None)
+        if "bad" in hint:
+            raise ipb.InvalidHintError
         self.accepted += 1
+        pieces = hint.split(":")
         new_hint = "tcp:%s:%d" % (pieces[1], int(pieces[2])+0)
         return DefaultTCP().hint_to_endpoint(new_hint, reactor)
 
@@ -85,8 +99,8 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
 
     def testExtraHandler(self):
         furl, tubB = self.makeTub("type2")
-        h = TYPEn(2)
-        tubB.addConnectionHintHandler(h)
+        h = NewHandler()
+        tubB.addConnectionHintHandler("type2", h)
         d = tubB.getReference(furl)
         def _got(rref):
             self.failUnlessEqual(h.asked, 1)
@@ -96,9 +110,9 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
 
     def testOnlyHandler(self):
         furl, tubB = self.makeTub("type2")
-        h = TYPEn(2)
+        h = NewHandler()
         tubB.removeAllConnectionHintHandlers()
-        tubB.addConnectionHintHandler(h)
+        tubB.addConnectionHintHandler("type2", h)
         d = tubB.getReference(furl)
         def _got(rref):
             self.failUnlessEqual(h.asked, 1)
@@ -108,30 +122,30 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
 
     def testOrdering(self):
         furl, tubB = self.makeTub("type2")
-        h1 = TYPEn(2)
-        h2 = TYPEn(2)
+        h1 = NewHandler()
+        h2 = NewHandler()
         tubB.removeAllConnectionHintHandlers()
-        tubB.addConnectionHintHandler(h1) # this short-circuits the lookup
-        tubB.addConnectionHintHandler(h2)
+        tubB.addConnectionHintHandler("type2", h1) # replaced by h2
+        tubB.addConnectionHintHandler("type2", h2)
         d = tubB.getReference(furl)
         def _got(rref):
-            self.failUnlessEqual(h1.asked, 1)
-            self.failUnlessEqual(h1.accepted, 1)
-            self.failUnlessEqual(h2.asked, 0)
-            self.failUnlessEqual(h2.accepted, 0)
+            self.failUnlessEqual(h1.asked, 0)
+            self.failUnlessEqual(h1.accepted, 0)
+            self.failUnlessEqual(h2.asked, 1)
+            self.failUnlessEqual(h2.accepted, 1)
         d.addCallback(_got)
         return d
 
     def testUnhelpfulHandlers(self):
         furl, tubB = self.makeTub("type2")
-        h1 = TYPEn(1)
-        h2 = TYPEn(2)
+        h1 = NewHandler()
+        h2 = NewHandler()
         tubB.removeAllConnectionHintHandlers()
-        tubB.addConnectionHintHandler(h1) # this says no
-        tubB.addConnectionHintHandler(h2) # so we fall through to here
+        tubB.addConnectionHintHandler("type1", h1) # this is ignored
+        tubB.addConnectionHintHandler("type2", h2) # this handles it
         d = tubB.getReference(furl)
         def _got(rref):
-            self.failUnlessEqual(h1.asked, 1)
+            self.failUnlessEqual(h1.asked, 0)
             self.failUnlessEqual(h1.accepted, 0)
             self.failUnlessEqual(h2.asked, 1)
             self.failUnlessEqual(h2.accepted, 1)

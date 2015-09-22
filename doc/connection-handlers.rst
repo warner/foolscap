@@ -18,10 +18,10 @@ connection with one to a locally-configured Tor daemon's SOCKS proxy.
 
 These handlers are given the connection hint, and are expected to return an
 "Endpoint" object. Endpoints are a Twisted concept: they implement the
-IStreamClientEndpoint interface, and have a "connect()" method. If the
-handler doesn't recognize the hint type, it should return None, and the Tub
-will the other handlers until one of them reports success (or the hint is
-ignored because nobody can handle it).
+IStreamClientEndpoint interface, and have a "connect()" method. Handlers are
+registered for specific hint types. If the handler is unable to parse the
+hint it was given (or is otherwise unable to produce a suitable Endpoint), it
+should raise InvalidHintError, and the Tub will ignore the hint.
 
 Adding New Connection Handlers
 ------------------------------
@@ -31,20 +31,22 @@ Connection handlers can be added to the Tub with `addConnectionHintHandler`:
 .. code-block:: python
 
     tub = Tub()
-    tub.addConnectionHintHandler(OnionThroughTor(proxyaddr))
+    tub.addConnectionHintHandler("tor", OnionThroughTor(proxyaddr))
 
 Note that each Tub has a separate list of handlers, so if your application
 uses multiple Tubs, you must add the handler to all of them. Handlers are
-called in the order they were added, with the built-in `DefaultTCP` handler
-coming first.
+stored in a dictionary, with "tcp:" hints handled by the built-in
+`DefaultTCP` handler.
 
 
 Disabling Built-In TCP Processing
 ---------------------------------
 
 Normal "tcp" hints are handled by a built-in connection handler named
-DefaultTCP. This handles both "tcp:example.org:12345" and the
-backwards-compatible "example.org:12345" format (still in common use).
+DefaultTCP. This handles "tcp:example.org:12345". It also handles the
+backwards-compatible "example.org:12345" format (still in common use),
+because all such hints are translated into the modern "tcp:example.org:12345"
+format before the handler lookup takes place.
 
 You might want to disable the DefaultTCP handler, for example to run a client
 behind Tor. In this configuration, all outbound connections must be made
@@ -54,14 +56,14 @@ connection handler.
 
 To accomplish this, you would use `Tub.removeAllConnectionHintHandlers()` to
 remove the DefaultTCP handler, then you would add a Tor-aware "tcp:" handler.
-You might also add a "onion:" handler, to handle hints that point at hidden
+You might also add a "tor:" handler, to handle hints that point at hidden
 services.
 
 .. code-block:: python
 
     tub.removeAllConnectionHintHandlers()
-    tub.addConnectionHintHandler(TCPThroughTor(proxyaddr))
-    tub.addConnectionHintHandler(OnionThroughTor(proxyaddr))
+    tub.addConnectionHintHandler("tcp", TCPThroughTor(proxyaddr))
+    tub.addConnectionHintHandler("tor", OnionThroughTor(proxyaddr))
 
 (note that neither of these handlers are included with Foolscap: they are
 left as an exercise for the reader)
@@ -73,8 +75,9 @@ IConnectionHintHandler
 The handler is required to implement `foolscap.ipb.IConnectionHintHandler`,
 and to provide a method named `hint_to_endpoint()`. This method takes two
 arguments (hint and reactor), and must return a (endpoint, hostname) tuple.
-If the handler does not recognize the hint type, it should return (None,
-None). Otherwise the endpoint should implement
+The handler will not be given hints for which it was not registered, but if
+it is unable to parse the hint, it should raise `ipb.InvalidHintError`.
+Otherwise the endpoint should implement
 `twisted.internet.interfaces.IStreamClientEndpoint`, and the endpoint's final
 connection object must implement `ITLSTransport` and offer the `startTLS`
 method (note that normal TCP sockets are fine).
@@ -89,5 +92,5 @@ or setuptools entrypoint plugins). You must explicitly install them into each
 Tub to have any effect. Applications are free to use plugin-management
 frameworks to discover objects that implement `IConnectionHintHandler` and
 install them into each Tub, however most handlers probably need some local
-configuration (e.g. which SOCKS port to use), so this may not be as
-productive as it looks.
+configuration (e.g. which SOCKS port to use), and all need a hint_type for
+the registration, so this may not be as productive as it first appears.

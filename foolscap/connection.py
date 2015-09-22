@@ -5,6 +5,8 @@ from foolscap.tokens import (NoLocationHintsError, NegotiationError,
 from foolscap.logging import log
 from foolscap.logging.log import CURIOUS, UNUSUAL, OPERATIONAL
 from foolscap.util import isSubstring
+from foolscap.ipb import InvalidHintError
+from foolscap.connection_plugins import convert_legacy_hint
 
 class TubConnectorFactory(protocol.Factory, object):
     # this is for internal use only. Application code should use
@@ -38,6 +40,16 @@ class TubConnectorFactory(protocol.Factory, object):
         proto.factory = self
         return proto
 
+def get_endpoint(location, connectionPlugins):
+    hint = convert_legacy_hint(location)
+    if ":" not in hint:
+        raise InvalidHintError("no colon in hint")
+    hint_type = hint.split(":", 1)[0]
+    plugin = connectionPlugins.get(hint_type)
+    if not plugin:
+        raise InvalidHintError("no handler registered for hint")
+    ep, host = plugin.hint_to_endpoint(hint, reactor)
+    return ep, host
 
 class TubConnector(object):
     """I am used to make an outbound connection. I am given a target TubID
@@ -141,13 +153,10 @@ class TubConnector(object):
             if location in self.attemptedLocations:
                 continue
             self.attemptedLocations.append(location)
-            ep = None
-            for plugin in self.connectionPlugins:
-                ep, host = plugin.hint_to_endpoint(location, reactor)
-                if ep:
-                    break
-            if not ep:
-                self.log(format="skipping unrecognized hint: '%(hint)s'",
+            try:
+                ep, host = get_endpoint(location, self.connectionPlugins)
+            except InvalidHintError as e:
+                self.log(e, format="unable to use hint: '%(hint)s'",
                          hint=location, level=UNUSUAL, umid="z62ctA")
                 continue
             triedAnything = True

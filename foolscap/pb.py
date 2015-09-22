@@ -264,7 +264,7 @@ class Tub(service.MultiService):
         self.brokers = {} # maps TubRef to a Broker that connects to them
         self.reconnectors = []
 
-        self._connectionHandlers = [DefaultTCP()]
+        self._connectionHandlers = {"tcp": DefaultTCP()}
         self._activeConnectors = []
 
         self._pending_getReferences = [] # list of (d, furl) pairs
@@ -332,11 +332,11 @@ class Tub(service.MultiService):
             raise KeyError("unknown option name '%s'" % name)
 
     def removeAllConnectionHintHandlers(self):
-        self._connectionHandlers = []
+        self._connectionHandlers = {}
 
-    def addConnectionHintHandler(self, handler):
+    def addConnectionHintHandler(self, hint_type, handler):
         assert ipb.IConnectionHintHandler.providedBy(handler)
-        self._connectionHandlers.append(handler)
+        self._connectionHandlers[hint_type] = handler
 
     def setLogGathererFURL(self, gatherer_furl_or_furls):
         assert not self._log_gatherer_furls
