@@ -65,6 +65,7 @@ class IncidentReporter:
         self.logger = logger
         self.tubid_s = tubid_s
         self.active = True
+        self.timer = None
 
     def is_active(self):
         return self.active
@@ -109,7 +110,7 @@ class IncidentReporter:
             wrapper = {"from": self.tubid_s,
                        "rx_time": now,
                        "d": e}
-            pickle.dump(wrapper, self.f1)
+            pickle.dump(wrapper, self.f1) # XXX first failure
             pickle.dump(wrapper, self.f2)
 
         self.f1.flush()
@@ -146,7 +147,9 @@ class IncidentReporter:
     def stop_recording(self):
         self.still_recording = False
         self.active = False
-        if self.timer.active():
+        if self.timer and self.timer.active():
+            # this managed to hit AttributeError, which means stop_recording
+            # was called before incident_declared finished
             self.timer.cancel()
 
         self.logger.removeObserver(self.trailing_event)

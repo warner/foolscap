@@ -6,6 +6,7 @@ from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer
 from twisted.python import log as twisted_log
+from twisted.logger import LogLevel as tw_loglevel
 from twisted.python import failure, runtime, usage
 import foolscap
 from foolscap.logging import gatherer, log, tail, incident, cli, web, \
@@ -402,6 +403,15 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
 
         d.addCallback(_check)
         return d
+
+    def test_unloggable(self):
+        l = log.FoolscapLogger()
+        l.setLogDir("logging/Incidents/unloggable")
+        #l.msg("one", arg=lambda: "lambdas are unloggable")
+        import weakref
+        o = Observer()
+        l.msg("one", arg=weakref.ref(o))
+        l.msg("trigger incident", level=log.BAD)
 
 class Observer(Referenceable):
     implements(RILogObserver)
@@ -2115,7 +2125,6 @@ class Bridge(unittest.TestCase):
             self.failUnless(tw_out[0]["from-foolscap"])
             self.failUnlessEqual(tw_out[1]["message"], ("two 2",))
             self.failUnless(tw_out[1]["from-foolscap"])
-
         d.addCallback(_check)
         return d
 
@@ -2142,10 +2151,38 @@ class Bridge(unittest.TestCase):
             self.failUnless(fl_out[0]["from-twisted"])
             self.failUnlessEqual(fl_out[1]["format"], "two %(two)d")
             self.failUnless(fl_out[1]["from-twisted"])
-
         d.addCallback(_check)
         return d
 
+    def test_twisted_loglevel(self):
+        fl = log.FoolscapLogger()
+        fl.setLogDir("logging/Bridge/twisted_loglevel")
+        fl.setIncidentReporterFactory(incident.NonTrailingIncidentReporter)
+        tw = twisted_log.LogPublisher()
+        log.bridgeLogsFromTwisted(None, tw, fl)
+        tw_out = []
+        tw.addObserver(tw_out.append)
+        fl_out = []
+        fl.addObserver(fl_out.append)
+
+        tw.msg("one", logLevel=tw_loglevel.info)
+        print tw_loglevel.info
+        tw.msg(format="two %(two)d", two=2)
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnlessEqual(len(tw_out), 2)
+            self.failUnlessEqual(tw_out[0]["message"], ("one",))
+            self.failUnlessEqual(tw_out[1]["format"], "two %(two)d")
+            self.failUnlessEqual(tw_out[1]["two"], 2)
+
+            self.failUnlessEqual(len(fl_out), 2)
+            self.failUnlessEqual(fl_out[0]["message"], "one")
+            self.failUnless(fl_out[0]["from-twisted"])
+            self.failUnlessEqual(fl_out[1]["format"], "two %(two)d")
+            self.failUnless(fl_out[1]["from-twisted"])
+        d.addCallback(_check)
+        d.addCallback(lambda _: fl.msg("incident", level=log.BAD))
+        return d
 
     def test_no_loops(self):
         fl = log.FoolscapLogger()
