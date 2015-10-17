@@ -407,11 +407,17 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
     def test_unloggable(self):
         l = log.FoolscapLogger()
         l.setLogDir("logging/Incidents/unloggable")
+        log.bridgeLogsFromTwisted(foolscap_logger=l)
         #l.msg("one", arg=lambda: "lambdas are unloggable")
         import weakref
         o = Observer()
         l.msg("one", arg=weakref.ref(o))
         l.msg("trigger incident", level=log.BAD)
+        self.failUnlessEqual(l.incidents_declared, 1)
+        d = defer.Deferred()
+        from twisted.internet import reactor
+        reactor.callLater(5, d.callback, None)
+        return d
 
 class Observer(Referenceable):
     implements(RILogObserver)
