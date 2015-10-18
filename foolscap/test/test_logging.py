@@ -226,7 +226,7 @@ class LogfileReaderMixin:
         f.close()
         return events
 
-class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
+class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin, StallMixin):
     def test_basic(self):
         l = log.FoolscapLogger()
         self.failUnlessEqual(l.incidents_declared, 0)
@@ -404,19 +404,53 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         d.addCallback(_check)
         return d
 
-    def test_unloggable(self):
+class Unloggable(unittest.TestCase, PollMixin, LogfileReaderMixin, StallMixin):
+
+    def test_incident(self):
+        # this used to cause an infinite loop of Incidents, see #244
+        incident.IncidentReporter.TRAILING_EVENT_LIMIT = 2
+        incident.IncidentReporter.TRAILING_DELAY = 1.0
         l = log.FoolscapLogger()
         l.setLogDir("logging/Incidents/unloggable")
         log.bridgeLogsFromTwisted(foolscap_logger=l)
-        #l.msg("one", arg=lambda: "lambdas are unloggable")
-        import weakref
-        o = Observer()
-        l.msg("one", arg=weakref.ref(o))
+        twisted_log.msg("hello from twisted")
+        twisted_log.msg("do not speak of this",
+                        arg=lambda: "lambdas are unloggable")
+        #import weakref
+        #o = Observer()
+        #l.msg("one", arg=weakref.ref(o))
+        print "the unloggable has been logged (to twisted)"
         l.msg("trigger incident", level=log.BAD)
-        self.failUnlessEqual(l.incidents_declared, 1)
-        d = defer.Deferred()
+        print "the incident has been declared", l.incidents_declared
+        ir = l.active_incident_reporter_weakref()
+        print "ir.timer:", getattr(ir, "timer", None)
+        for i in range(4):
+            # these are delivered eventually
+            l.msg("trailing event %d" % i)
+            # the 3rd event causes stop_recording(), which fails because the
+            # timer wasn't set up. That error is reported to twisted log.err
+        print " -- TEST DONE, stalling 1s"
+        d = self.stall(None, 2.0)
+        def _then(_):
+            for i in range(10,15):
+                l.msg("trailing event %d" % i)
+        d.addCallback(_then)
+        d.addCallback(self.stall, 2.0)
+        return d
+
+        def _boom():
+            raise TypeError # I will be Unhandled
         from twisted.internet import reactor
-        reactor.callLater(5, d.callback, None)
+        d = self.stall(None, 1.0)
+        def _then(_):
+            reactor.callLater(0, _boom)
+            #self.failUnlessEqual(l.incidents_declared, 1)
+            print "the incident has been declared", l.incidents_declared
+        d.addCallback(_then)
+        d.addCallback(self.stall, 10)
+        def _later(_):
+            print "later", l.incidents_declared
+        d.addCallback(_later)
         return d
 
 class Observer(Referenceable):

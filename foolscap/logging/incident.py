@@ -65,7 +65,7 @@ class IncidentReporter:
         self.logger = logger
         self.tubid_s = tubid_s
         self.active = True
-        self.timer = None
+        #self.timer = None
 
     def is_active(self):
         return self.active
@@ -106,12 +106,14 @@ class IncidentReporter:
         # use self.logger.buffers, copy events into logfile
         events = list(self.logger.get_buffered_events())
         events.sort(lambda a,b: cmp(a['num'], b['num']))
+        print "starting dump of existing events"
         for e in events:
             wrapper = {"from": self.tubid_s,
                        "rx_time": now,
                        "d": e}
             pickle.dump(wrapper, self.f1) # XXX first failure
             pickle.dump(wrapper, self.f2)
+        print "finished dump of existing events"
 
         self.f1.flush()
         # the BZ2File has no flush method
@@ -125,19 +127,24 @@ class IncidentReporter:
                                            self.stop_recording)
 
     def trailing_event(self, ev):
+        print "trailing_event"
         if not self.still_recording:
             return
 
         self.remaining_events -= 1
         if self.remaining_events >= 0:
+            print " starting to dump trailing_event", str(ev)
             wrapper = {"from": self.tubid_s,
                        "rx_time": time.time(),
                        "d": ev}
             pickle.dump(wrapper, self.f1)
             pickle.dump(wrapper, self.f2)
+            print " finished dumping trailing_event"
             return
 
+        print " attempting to call stop_recording()"
         self.stop_recording()
+        print " called stop_recording()"
 
     def new_trigger(self, ev):
         # it is too late to add this to the header. We could add it to a
@@ -147,7 +154,7 @@ class IncidentReporter:
     def stop_recording(self):
         self.still_recording = False
         self.active = False
-        if self.timer and self.timer.active():
+        if self.timer.active():
             # this managed to hit AttributeError, which means stop_recording
             # was called before incident_declared finished
             self.timer.cancel()

@@ -354,6 +354,7 @@ class TwistedLogBridge:
 
     def _new_twisted_log_observer(self, d):
         # Twisted will remove this for us if it fails.
+        print "_new_twisted_log_observer", d
         if "from-foolscap" in d:
             return
 
@@ -381,6 +382,7 @@ class TwistedLogBridge:
                     new_log_level = str(new_log_level)
                 d["log_level"] = new_log_level # twisted level
 
+        print "  (log_level=%s)" % d.get("level")
         # Normal log.msg(foo) results in d["format"]="%(log_legacy)s" and a
         # non-serializable d["log_legacy"] (which is meant to defer
         # stringification).
