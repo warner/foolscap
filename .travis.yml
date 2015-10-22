@@ -11,3 +11,6 @@ script:
   - coverage run `which trial` foolscap
 after_success:
   - coveralls
+matrix:
+  allow_failures:
+    - python: "pypy"
