@@ -74,6 +74,8 @@ class IncidentReporter:
 
     def incident_declared(self, triggering_event):
         self.trigger = triggering_event
+        with open("/tmp/err2.out", "a") as f:
+            f.write("incident trigger: %s\n" % (triggering_event,))
         # choose a name for the logfile
         now = time.time()
         unique = os.urandom(4)
@@ -132,6 +134,20 @@ class IncidentReporter:
             wrapper = {"from": self.tubid_s,
                        "rx_time": time.time(),
                        "d": ev}
+            try:
+                for k0 in sorted(ev.keys()):
+                    pickle.dumps(ev[k0])
+            except (TypeError, pickle.PicklingError, AssertionError) as e:
+                with open("/tmp/err.out", "w") as f:
+                    f.write("cannot pickle log message: %s\n" % (ev,))
+                    f.write(" key '%s'\n" % (k0,))
+                    f.write(" unpicklable object contents:\n")
+                    for k in sorted(ev.keys()):
+                        f.write("  %s: (%s) %r\n" % (k, type(ev[k]), ev[k]))
+                    f.write(" -done-\n")
+                    #f.write("log_logger: %s\n" % (ev["log_logger"].__dict__,))
+                    #f.write("log_logger.observer: %s\n" % (ev["log_logger"].observer.__dict__,))
+                pass
             pickle.dump(wrapper, self.f1)
             pickle.dump(wrapper, self.f2)
             return
@@ -141,6 +157,8 @@ class IncidentReporter:
     def new_trigger(self, ev):
         # it is too late to add this to the header. We could add it to a
         # trailer, though.
+        with open("/tmp/err2.out", "a") as f:
+            f.write("new incident trigger: %s\n" % (ev,))
         pass
 
     def stop_recording(self):

@@ -218,6 +218,19 @@ class FoolscapLogger:
         except Exception, e:
             print "problem in log message %s: %r %s" % (event, e, e)
             pass
+        try:
+            for k0 in sorted(event.keys()):
+                #pickle.dumps(event[k0])
+                pass
+        except (TypeError, pickle.PicklingError, AssertionError) as e:
+            with open("/tmp/err.out", "w") as f:
+                f.write("cannot pickle log message: %s\n" % (e,))
+                f.write(" key '%s'\n" % (k0,))
+                f.write(" unpicklable object contents:\n")
+                for k in sorted(event.keys()):
+                    f.write("  %s: (%s) %r\n" % (k, type(event[k]), event[k]))
+                f.write(" -done-\n")
+            pass
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
         event['incarnation'] = self.incarnation
@@ -282,11 +295,15 @@ class FoolscapLogger:
                 print failure.Failure() # for debugging
 
     def declare_incident(self, triggering_event):
+        with open("/tmp/err2.out", "a") as f:
+            f.write("declare_incident\n")
         self.incidents_declared += 1
         ir = self.get_active_incident_reporter()
         if ir:
             ir.new_trigger(triggering_event)
             return
+        with open("/tmp/err2.out", "a") as f:
+            f.write("creating new incident reporter\n")
         if self.logdir: # just in case
             ir = self.incident_reporter_factory(self.logdir, self, "local")
             self.active_incident_reporter_weakref = weakref.ref(ir)
@@ -394,6 +411,7 @@ class TwistedLogBridge:
         message = twisted_log.textFromEventDict(d)
         event.pop('message', None)
         event['from-twisted'] = True
+        #event.pop('log_logger', None)
         self.logger.msg(message, **event)
 
     def _old_twisted_log_observer(self, d):
