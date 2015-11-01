@@ -1,10 +1,11 @@
 
-import os, pickle, time, bz2
+import os, sys, pickle, time, bz2
 from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer
+from twisted import logger as twisted_logger
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
@@ -194,6 +195,115 @@ class Advanced(unittest.TestCase):
         n = l.msg("one")
         n2 = l.msg("two", parent=n)
         l.msg("three", parent=n2)
+
+class ErrorfulQualifier(incident.IncidentQualifier):
+    def check_event(self, ev):
+        raise ValueError("oops")
+
+class NoStdio(unittest.TestCase):
+    # bug #244 is caused, in part, by Foolscap-side logging failures which
+    # write an error message ("unable to serialize X") to stderr, which then
+    # gets captured by twisted's logging (when run in a program under
+    # twistd), then fed back into foolscap logging. Check that unserializable
+    # objects don't cause anything to be written to a mock stdout/stderr
+    # object.
+    #
+    # FoolscapLogger used stdio in two places:
+    # * msg() when format_message() throws
+    # * add_event() when IncidentQualifier.event() throws
+
+    def setUp(self):
+        self.fl = log.FoolscapLogger()
+        self.mock_stdout = StringIO()
+        self.mock_stderr = StringIO()
+        self.orig_stdout = sys.stdout
+        self.orig_stderr = sys.stderr
+        sys.stdout = self.mock_stdout
+        sys.stderr = self.mock_stderr
+
+    def tearDown(self):
+        sys.stdout = self.orig_stdout
+        sys.stderr = self.orig_stderr
+
+    def check_stdio(self):
+        self.failUnlessEqual(self.mock_stdout.getvalue(), "")
+        self.failUnlessEqual(self.mock_stderr.getvalue(), "")
+
+    def test_unformattable(self):
+        self.fl.msg(format="one=%(unformattable)s") # missing format key
+        self.check_stdio()
+
+    def test_unserializable_incident(self):
+        # one #244 pathway involved an unserializable event that caused an
+        # exception during IncidentReporter.incident_declared(), as it tried
+        # to record all recent events. We can test the lack of stdio by using
+        # a qualifier that throws an error directly.
+        self.fl.setIncidentQualifier(ErrorfulQualifier())
+        self.fl.activate_incident_qualifier()
+        # make sure we set it up correctly
+        self.failUnless(self.fl.active_incident_qualifier)
+        self.fl.msg("oops", arg=lambda : "lambdas are unserializable",
+                    level=log.BAD)
+        self.check_stdio()
+
+class Serialization(unittest.TestCase):
+    def test_lazy_serialization(self):
+        # Both foolscap and twisted allow (somewhat) arbitrary kwargs in the
+        # log.msg() call. Twisted will either discard the event (if nobody is
+        # listening), or stringify it right away.
+        #
+        # Foolscap does neither. It records the event (kwargs and all) in a
+        # circular buffer, so a later observer can learn about them (either
+        # 'flogtool tail' or a stored Incident file). And it stores the
+        # arguments verbatim, leaving stringification to the future observer
+        # (if they want it), so tools can filter events without using regexps
+        # or parsing prematurely-flattened strings.
+        #
+        # Test this by logging a mutable object, modifying it, then checking
+        # the buffer. We expect to see the modification.
+        fl = log.FoolscapLogger()
+        mutable = {"key": "old"}
+        fl.msg("one", arg=mutable)
+        mutable["key"] = "new"
+        events = list(fl.get_buffered_events())
+        self.failUnless(events[0]["arg"]["key"], "new")
+
+    def test_not_pickle(self):
+        # Older versions of Foolscap used pickle to store events into the
+        # Incident log. Newer ones use JSON. Test that pickleable (but not
+        # JSON-able) objects are *not* written to the file.
+        basedir = "logging/Serialization/not_pickle"
+        os.makedirs(basedir)
+        fl = log.FoolscapLogger()
+        ir = incident.IncidentReporter(basedir, fl, "tubid")
+        ir.TRAILING_DELAY = None
+        fl.msg("first")
+        unjsonable = [object()] # still picklable
+        unserializable = [lambda: "neither pickle nor JSON can capture me"]
+        # having unserializble data in the logfile should not break the rest
+        fl.msg("unjsonable", arg=unjsonable)
+        fl.msg("unserializable", arg=unserializable)
+        fl.msg("last")
+        events = list(fl.get_buffered_events())
+        # if unserializable data breaks incident reporting, this
+        # incident_declared() call will cause an exception
+        ir.incident_declared(events[0])
+        # that won't record any trailing events, but does
+        # eventually(finished_Recording), so wait for that to conclude
+        d = flushEventualQueue()
+        def _check(_):
+            files = os.listdir(basedir)
+            self.failUnlessEqual(len(files), 1)
+            fn = os.path.join(basedir, files[0])
+            events = list(flogfile.get_events(fn))
+            self.failUnlessEqual(events[0]["header"]["type"], "incident")
+            self.failUnlessEqual(events[1]["d"]["message"], "first")
+            self.failUnlessEqual(len(events), 3)
+            # actually this should record 5 events: both unrecordable events
+            # should be replaced with error messages that *are* recordable
+            self.failUnlessEqual(events[2]["d"]["message"], "last")
+        d.addCallback(_check)
+        return d
 
 class SuperstitiousQualifier(incident.IncidentQualifier):
     def check_event(self, ev):
@@ -2109,18 +2219,74 @@ class Bridge(unittest.TestCase):
 
         tw.msg("one")
         tw.msg(format="two %(two)d", two=2)
+        # twisted now has places (e.g. Factory.doStart) where the new
+        # Logger.info() is called with arbitrary (unserializable) kwargs for
+        # string formatting, which are passed into the old LogPublisher(),
+        # from which they arrive in foolscap. Make sure we can tolerate that.
+        # The rule is that foolscap immediately stringifies all events it
+        # gets from twisted (with log.textFromEventDict), and doesn't store
+        # the additional arguments.
+        unserializable = lambda: "unserializable"
+        tw.msg(format="three is %(evil)s", evil=unserializable)
+
         d = flushEventualQueue()
         def _check(res):
-            self.failUnlessEqual(len(tw_out), 2)
+            self.failUnlessEqual(len(tw_out), 3)
             self.failUnlessEqual(tw_out[0]["message"], ("one",))
             self.failUnlessEqual(tw_out[1]["format"], "two %(two)d")
             self.failUnlessEqual(tw_out[1]["two"], 2)
-
-            self.failUnlessEqual(len(fl_out), 2)
+            self.failUnlessEqual(tw_out[2]["format"], "three is %(evil)s")
+            self.failUnlessEqual(tw_out[2]["evil"], unserializable)
+            #from pprint import pprint
+            #pprint(fl_out)
+            self.failUnlessEqual(len(fl_out), 3)
             self.failUnlessEqual(fl_out[0]["message"], "one")
             self.failUnless(fl_out[0]["from-twisted"])
             self.failUnlessEqual(fl_out[1]["message"], "two 2")
             self.failUnless(fl_out[1]["from-twisted"])
+            # str(unserializable) is like "<function <lambda> at 0xblahblah>"
+            self.failUnlessEqual(fl_out[2]["message"],
+                                 "three is " + str(unserializable))
+            self.failUnless(fl_out[2]["from-twisted"])
+
+        d.addCallback(_check)
+        return d
+
+    def test_twisted_logger_to_foolscap(self):
+        new_pub = twisted_logger.LogPublisher()
+        old_pub = twisted_log.LogPublisher(observerPublisher=new_pub,
+                                           publishPublisher=new_pub)
+        fl = log.FoolscapLogger()
+        log.bridgeLogsFromTwisted(None, old_pub, fl)
+        tw_out = []
+        old_pub.addObserver(tw_out.append)
+        fl_out = []
+        fl.addObserver(fl_out.append)
+
+        tl = twisted_logger.Logger(observer=new_pub)
+        tl.info("one")
+        tl.info(format="two %(two)d", two=2)
+        # twisted's new Logger.info() takes arbitrary (unserializable) kwargs
+        # for string formatting, and passes them into the old LogPublisher(),
+        # so make sure we can tolerate that. The rule is that foolscap
+        # stringifies all events it gets from twisted, and doesn't store the
+        # additional arguments.
+        unserializable = lambda: "unserializable"
+        tl.info("three is %(evil)s", evil=unserializable)
+
+        d = flushEventualQueue()
+        def _check(res):
+            #from pprint import pprint
+            #pprint(fl_out)
+            self.failUnlessEqual(len(fl_out), 3)
+            self.failUnlessEqual(fl_out[0]["message"], "one")
+            self.failUnless(fl_out[0]["from-twisted"])
+            self.failUnlessEqual(fl_out[1]["message"], "two 2")
+            self.failUnless(fl_out[1]["from-twisted"])
+            # str(unserializable) is like "<function <lambda> at 0xblahblah>"
+            self.failUnlessEqual(fl_out[2]["message"],
+                                 "three is " + str(unserializable))
+            self.failUnless(fl_out[2]["from-twisted"])
 
         d.addCallback(_check)
         return d
@@ -2151,4 +2317,3 @@ class Bridge(unittest.TestCase):
 
         d.addCallback(_check)
         return d
-
