@@ -1,12 +1,11 @@
 
 import os
-import pickle
 from collections import deque
 from zope.interface import implements
 from twisted.python import filepath
 from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
-from foolscap.logging import app_versions
+from foolscap.logging import app_versions, flogfile
 from foolscap.eventual import eventually
 
 class Subscription(Referenceable):
@@ -205,13 +204,9 @@ class LogPublisher(Referenceable):
                     yield (basename, os.path.join(basedir, fn))
 
     def get_incident_trigger(self, abs_fn):
-        if abs_fn.endswith(".bz2"):
-            import bz2
-            f = bz2.BZ2File(abs_fn, "r")
-        else:
-            f = open(abs_fn, "rb")
+        events = flogfile.get_events(abs_fn)
         try:
-            header = pickle.load(f)
+            header = next(iter(events))
         except (EOFError, ValueError):
             return None
         assert header["header"]["type"] == "incident"
@@ -232,23 +227,16 @@ class LogPublisher(Referenceable):
         incident_dir = filepath.FilePath(self._logger.logdir)
         abs_fn = incident_dir.child(name).path + ".flog"
         try:
-            if os.path.exists(abs_fn + ".bz2"):
-                import bz2
-                f = bz2.BZ2File(abs_fn + ".bz2", "r")
-            else:
-                f = open(abs_fn, "rb")
+            fn = abs_fn + ".bz2"
+            if not os.path.exists(fn):
+                fn = abs_fn
+            events = flogfile.get_events(fn, ignore_value_error=True)
+            # note the generator isn't actually cycled yet, not until next()
+            header = next(events)["header"]
         except EnvironmentError:
             raise KeyError("no incident named %s" % name)
-        header = pickle.load(f)["header"]
-        events = []
-        while True:
-            try:
-                wrapped = pickle.load(f)
-            except (EOFError, ValueError):
-                break
-            events.append(wrapped["d"])
-        f.close()
-        return (header, events)
+        wrapped_events = [event["d"] for event in events]
+        return (header, wrapped_events)
 
     def remote_subscribe_to_incidents(self, observer, catch_up=False, since=""):
         s = IncidentSubscription(observer, self._logger, self)

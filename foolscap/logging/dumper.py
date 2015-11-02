@@ -1,6 +1,7 @@
 
-import sys, pickle, errno
+import sys, errno
 from twisted.python import usage
+from foolscap.logging import flogfile
 from foolscap.logging.log import format_message
 from foolscap.util import format_time, FORMAT_TIME_MODES
 
@@ -32,10 +33,12 @@ class LogDumper:
         self.trigger = None
 
     def run(self, options):
-        self.options = options
-        f = self.open_dumpfile()
         try:
-            self.start(f)
+            for e in flogfile.get_events(options.dumpfile):
+                if "header" in e:
+                    self.print_header(e, options)
+                if "d" in e:
+                    self.print_event(e, options)
         except EnvironmentError, e:
             # "flogtool dump FLOGFILE |less" is very common, and if you quit
             # it early with "q", the stdout pipe is broken and python dies
@@ -43,50 +46,45 @@ class LogDumper:
             if e.errno == errno.EPIPE:
                 return 1
             raise
-        except IndexError:
-            # this happens when you point "flogtool dump" at a furl by
-            # mistake (which cannot be parsed as a pickle). Emit a useful
-            # error message.
-            f.seek(0)
-            if f.read(3) == "pb:":
-                print >>self.options.stderr, (
-                    "Error: %s appears to be a FURL file.\n"
-                    "Perhaps you meant to run"
-                    " 'flogtool tail' instead of 'flogtool dump'?"
-                    % (self.options.dumpfile,))
-                return 1
-            raise
+        except flogfile.ThisIsActuallyAFurlFileError:
+            print >>options.stderr, (
+                "Error: %s appears to be a FURL file.\n"
+                "Perhaps you meant to run"
+                " 'flogtool tail' instead of 'flogtool dump'?"
+                % (options.dumpfile,))
+            return 1
+        except ValueError, ex:
+            print >>options.stderr, (
+                "truncated pickle file? (%s): %s" % (options.dumpfile, ex))
+            return 1
 
-    def start(self, f):
-        stdout = self.options.stdout
-        for e in self.get_events(f):
-            if "header" in e:
-                h = e["header"]
-                if h["type"] == "incident":
-                    t = h["trigger"]
-                    self.trigger = (t["incarnation"], t["num"])
-                if self.options['verbose']:
-                    print >>stdout, e
-                if not self.options["just-numbers"] and not self.options["verbose"]:
-                    if "versions" in h:
-                        print >>stdout, "Application versions (embedded in logfile):"
-                        versions = h["versions"]
-                        longest = max([len(name) for name in versions] + [0])
-                        fmt = "%" + str(longest) + "s: %s"
-                        for name in sorted(versions.keys()):
-                            print >>stdout, fmt % (name, versions[name])
-                    if "pid" in h:
-                        print >>stdout, "PID: %s" % (h["pid"],)
-                    print >>stdout
-            if "d" in e:
-                self.print_event(e)
+    def print_header(self, e, options):
+        stdout = options.stdout
+        h = e["header"]
+        if h["type"] == "incident":
+            t = h["trigger"]
+            self.trigger = (t["incarnation"], t["num"])
+        if options['verbose']:
+            print >>stdout, e
+        if not options["just-numbers"] and not options["verbose"]:
+            if "versions" in h:
+                print >>stdout, "Application versions (embedded in logfile):"
+                versions = h["versions"]
+                longest = max([len(name) for name in versions] + [0])
+                fmt = "%" + str(longest) + "s: %s"
+                for name in sorted(versions.keys()):
+                    print >>stdout, fmt % (name, versions[name])
+            if "pid" in h:
+                print >>stdout, "PID: %s" % (h["pid"],)
+            print >>stdout
 
-    def print_event(self, e):
+    def print_event(self, e, options):
+        stdout = options.stdout
         short = e['from'][:8]
         d = e['d']
-        when = format_time(d['time'], self.options["timestamps"])
-        if self.options['just-numbers']:
-            print >>self.options.stdout, when, d.get('num')
+        when = format_time(d['time'], options["timestamps"])
+        if options['just-numbers']:
+            print >>stdout, when, d.get('num')
             return
 
         eid = (d["incarnation"], d["num"])
@@ -96,38 +94,20 @@ class LogDumper:
         text = format_message(d)
 
         t = "%s#%d " % (short, d['num'])
-        if self.options['rx-time']:
-            rx_when = format_time(e['rx_time'], self.options["timestamps"])
+        if options['rx-time']:
+            rx_when = format_time(e['rx_time'], options["timestamps"])
             t += "rx(%s) " % rx_when
             t += "emit(%s)" % when
         else:
             t += "%s" % when
         t += ": %s" % text
-        if self.options['verbose']:
+        if options['verbose']:
             t += ": %r" % d
         if is_trigger:
             t += " [INCIDENT-TRIGGER]"
-        print >>self.options.stdout, t
+        print >>stdout, t
         if 'failure' in d:
-            print >>self.options.stdout," FAILURE:"
+            print >>stdout," FAILURE:"
             lines = str(d['failure']).split("\n")
             for line in lines:
-                print >>self.options.stdout, " %s" % (line,)
-
-    def open_dumpfile(self):
-        fn = self.options.dumpfile
-        if fn.endswith(".bz2"):
-            import bz2
-            f = bz2.BZ2File(fn, "r")
-        else:
-            f = open(fn, "rb")
-        return f
-
-    def get_events(self, f):
-        while True:
-            try:
-                e = pickle.load(f)
-                yield e
-            except EOFError:
-                break
-
+                print >>stdout, " %s" % (line,)

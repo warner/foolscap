@@ -1,11 +1,11 @@
 
-import pickle, time, urllib
+import time, urllib
 from twisted.internet import reactor
 from twisted.application import internet
 from twisted.python import usage
 from foolscap import base32
 from foolscap.eventual import fireEventually
-from foolscap.logging import log
+from foolscap.logging import log, flogfile
 from foolscap.util import format_time, FORMAT_TIME_MODES
 from foolscap.pb import parse_strport
 from twisted.web import server, static, html, resource
@@ -408,7 +408,7 @@ class WebViewer:
             levels = {}
             pid = None
 
-            for e in self.get_events(lf):
+            for e in flogfile.get_events(lf):
                 if "header" in e:
                     h = e["header"]
                     if h["type"] == "incident":
@@ -472,20 +472,3 @@ class WebViewer:
         triggers = [(first_event_from, num) for num in trigger_numbers]
 
         return summaries, roots, number_map, triggers
-
-    def get_events(self, fn):
-        if fn.endswith(".bz2"):
-            import bz2
-            f = bz2.BZ2File(fn, "r")
-        else:
-            f = open(fn, "rb")
-        while True:
-            try:
-                e = pickle.load(f)
-                yield e
-            except EOFError:
-                break
-            except ValueError, ex:
-                print "truncated pickle file? (%s): %s" % (fn, ex)
-                break
-

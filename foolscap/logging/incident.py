@@ -5,7 +5,7 @@ from zope.interface import implements
 from twisted.python import usage
 from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
-from foolscap.logging import levels, app_versions
+from foolscap.logging import levels, app_versions, flogfile
 from foolscap.eventual import eventually
 from foolscap.util import move_into_place
 from foolscap import base32
@@ -209,17 +209,10 @@ class IncidentClassifierBase:
 
     def load_incident(self, abs_fn):
         assert abs_fn.endswith(".bz2")
-        f = bz2.BZ2File(abs_fn, "r")
-        header = pickle.load(f)["header"]
-        events = []
-        while True:
-            try:
-                wrapped = pickle.load(f)
-            except (EOFError, ValueError):
-                break
-            events.append(wrapped["d"])
-        f.close()
-        return (header, events)
+        events = flogfile.get_events(abs_fn, ignore_value_error=True)
+        header = next(events)["header"]
+        wrapped_events = [event["d"] for event in events]
+        return (header, wrapped_events)
 
     def classify_incident(self, incident):
         categories = set()

@@ -9,7 +9,7 @@ from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
 from foolscap.logging import gatherer, log, tail, incident, cli, web, \
-     publish, dumper
+     publish, dumper, flogfile
 from foolscap.logging.interfaces import RILogObserver
 from foolscap.util import format_time
 from foolscap.eventual import fireEventually, flushEventualQueue
@@ -210,20 +210,7 @@ class NoFollowUpReporter(incident.IncidentReporter):
 
 class LogfileReaderMixin:
     def _read_logfile(self, fn):
-        if fn.endswith(".bz2"):
-            f = bz2.BZ2File(fn, "r")
-        else:
-            f = open(fn, "rb")
-        events = []
-        while True:
-            try:
-                events.append(pickle.load(f))
-            except EOFError:
-                break
-            except ValueError:
-                break
-        f.close()
-        return events
+        return list(flogfile.get_events(fn, ignore_value_error=True))
 
 class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
     def test_basic(self):

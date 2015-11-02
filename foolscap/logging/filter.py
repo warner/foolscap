@@ -1,7 +1,7 @@
 
 from twisted.python import usage
 import sys, os, pickle, bz2, time
-from foolscap.logging import log
+from foolscap.logging import log, flogfile
 from foolscap.util import move_into_place
 
 class FilterOptions(usage.Options):
@@ -78,7 +78,7 @@ class Filter:
             print >>stdout, "--strip-facility: removing events for %s and children" % strip_facility
         total = 0
         copied = 0
-        for e in self.get_events(options.oldfile):
+        for e in flogfile.get_events(options.oldfile):
             if options['verbose']:
                 if "d" in e:
                     print >>stdout, e['d']['num']
@@ -109,16 +109,3 @@ class Filter:
                     pass
             move_into_place(newfilename, options.newfile)
         print >>stdout, "copied %d of %d events into new file" % (copied, total)
-
-    def get_events(self, fn):
-        if fn.endswith(".bz2"):
-            import bz2
-            f = bz2.BZ2File(fn, "r")
-        else:
-            f = open(fn, "rb")
-        while True:
-            try:
-                e = pickle.load(f)
-                yield e
-            except EOFError:
-                break
