@@ -343,16 +343,10 @@ class TwistedLogBridge:
         self.tubID = tubID
         self.logger = foolscap_logger
 
-        # newer versions of Twisted have a function called
-        # textFromEventDict() that we can use to format the message. Older
-        # versions (twisted-2.5.0 and earlier) have this functionality buried
-        # in the FileLogObserver where it isn't very easy to get to.
-        if hasattr(twisted_log, "textFromEventDict"):
-            self.observer = self._new_twisted_log_observer
-        else:
-            self.observer = self._old_twisted_log_observer
+    # we currently depend on Twisted >= 10.1.0, so we can use
+    # t.p.log.textFromEventDict
 
-    def _new_twisted_log_observer(self, d):
+    def observer(self, d):
         # Twisted will remove this for us if it fails.
         if "from-foolscap" in d:
             return
@@ -395,23 +389,6 @@ class TwistedLogBridge:
         event.pop('message', None)
         event['from-twisted'] = True
         self.logger.msg(message, **event)
-
-    def _old_twisted_log_observer(self, d):
-        if "from-foolscap" in d:
-            return
-        event = d.copy()
-        if "format" in d:
-            # 'message' will be treated as a format string, with the rest of
-            # the arguments as its % dictionary.
-            pass
-        else:
-            # no string interpolation, but if there are multiple args, then
-            # join them together, to match what twisted does.
-            event['message'] = " ".join([str(m) for m in d['message']])
-        event.pop('args', None)
-        event['tubID'] = self.tubID
-        event['from-twisted'] = True
-        self.logger.msg(**event)
 
 _bridges = {} # maps (twisted_logger,foolscap_logger) to TwistedLogBridge
 
