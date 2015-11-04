@@ -526,14 +526,15 @@ class Publish(PollMixin, unittest.TestCase):
             def _check_observer(res):
                 msgs = ob.messages
                 self.failUnlessEqual(len(msgs), 8)
-                #print msgs
                 self.failUnlessEqual(msgs[0]["message"], "message 1 here")
+                self.failUnlessEqual(msgs[1]["from-twisted"], True)
                 self.failUnlessEqual(msgs[1]["message"], "message 2 here")
                 self.failUnlessEqual(msgs[1]["tubID"], t.tubID)
+                self.failUnlessEqual(msgs[2]["from-twisted"], True)
                 self.failUnlessEqual(msgs[2]["message"], "message 3 here")
                 self.failUnlessEqual(msgs[2]["tubID"], None)
-                self.failUnlessEqual(msgs[3]["format"], "%(foo)s is foo")
-                self.failUnlessEqual(msgs[3]["foo"], "foo")
+                self.failUnlessEqual(msgs[3]["from-twisted"], True)
+                self.failUnlessEqual(msgs[3]["message"], "foo is foo")
 
                 # check the errors
                 self.failUnlessEqual(msgs[4]["message"], "")
@@ -547,25 +548,16 @@ class Publish(PollMixin, unittest.TestCase):
                 self.failUnless(msgs[5]["failure"].check(SampleError))
                 self.failUnless("err2" in str(msgs[5]["failure"]))
 
-                # twisted-8.0 has textFromEventDict, which means we get a
-                # ["message"] key from log.err . In older version of
-                # twisted, we don't.
-                if msgs[6]["message"]:
-                    self.failUnless("Unhandled Error" in msgs[6]["message"])
-                    self.failUnless("SampleError: err3" in msgs[6]["message"])
+                # errors coming from twisted are stringified
+                self.failUnlessEqual(msgs[6]["from-twisted"], True)
+                self.failUnless("Unhandled Error" in msgs[6]["message"])
+                self.failUnless("SampleError: err3" in msgs[6]["message"])
                 self.failUnless(msgs[6]["isError"])
-                self.failUnless("failure" in msgs[6])
-                self.failUnless(msgs[6]["failure"].check(SampleError))
-                self.failUnless("err3" in str(msgs[6]["failure"]))
 
-                # same
-                if msgs[7]["message"]:
-                    self.failUnless("Unhandled Error" in msgs[7]["message"])
-                    self.failUnless("SampleError: err4" in msgs[7]["message"])
+                self.failUnlessEqual(msgs[7]["from-twisted"], True)
+                self.failUnless("Unhandled Error" in msgs[7]["message"])
+                self.failUnless("SampleError: err4" in msgs[7]["message"])
                 self.failUnless(msgs[7]["isError"])
-                self.failUnless("failure" in msgs[7])
-                self.failUnless(msgs[7]["failure"].check(SampleError))
-                self.failUnless("err4" in str(msgs[7]["failure"]))
 
             d.addCallback(_check_observer)
             def _done(res):
@@ -2127,7 +2119,7 @@ class Bridge(unittest.TestCase):
             self.failUnlessEqual(len(fl_out), 2)
             self.failUnlessEqual(fl_out[0]["message"], "one")
             self.failUnless(fl_out[0]["from-twisted"])
-            self.failUnlessEqual(fl_out[1]["format"], "two %(two)d")
+            self.failUnlessEqual(fl_out[1]["message"], "two 2")
             self.failUnless(fl_out[1]["from-twisted"])
 
         d.addCallback(_check)

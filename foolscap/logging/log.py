@@ -344,7 +344,10 @@ class TwistedLogBridge:
         self.logger = foolscap_logger
 
     # we currently depend on Twisted >= 10.1.0, so we can use
-    # t.p.log.textFromEventDict
+    # t.p.log.textFromEventDict . However we cannot add ourselves as a
+    # new-style observer (t.l.globalLogPublisher.addObserver()) because that
+    # wasn't added until 15.2.0. So even on newer Twisteds, we'll be wrapped
+    # by t.l._legacy.LegacyLogObserverWrapper
 
     def observer(self, d):
         # Twisted will remove this for us if it fails.
@@ -356,39 +359,42 @@ class TwistedLogBridge:
         #  log.err() adds: isError=True, failure, why
         # plus any kwargs provided to msg()/err(), like format=
 
-        # Twisted-15.2.0 introduces a new logging system, and adds several
-        # new log_* keys to the observed event dictionary, two of which
-        # (log_level and log_legacy) are non-serializable. Convert all the
-        # new keys into foolscap-style values, or delete them altogether.
+        # With Twisted-15.2.0 we are wrapped by
+        # t.l._legacy.LegacyLogObserverWrapper , so we still get those keys,
+        # but we'll also see some log_* keys that the new logging system
+        # adds. Some of the new keys are non-serializable.
 
+        # So we stringify the Twisted event right now, and produce a new
+        # event with a small set of known keys.
+
+        message = twisted_log.textFromEventDict(d)
+        kwargs = {'tubID': self.tubID, 'from-twisted': True}
+
+        # log_level was added in 15.2.0
         if "log_level" in d:
-            # d["log_level"] is a non-serializable ConstantString. Transform
-            # it into the corresponding (integer) Foolscap log level, and
-            # omit the original key.
+            # d["log_level"] might be a non-serializable ConstantString.
+            # Transform it into the corresponding (integer) Foolscap log
+            # level.
             log_level = d.pop("log_level")
             new_log_level = llmap.get(log_level, log_level)
-            if isinstance(new_log_level, (int, long)):
-                d["level"] = new_log_level # foolscap level, not twisted level
-            else:
+            if not isinstance(new_log_level, (int, long, str, unicode, bool)):
                 # it was something weird: just stringify it in-place
-                if not isinstance(new_log_level, (str, unicode, bool)):
-                    new_log_level = str(new_log_level)
-                d["log_level"] = new_log_level # twisted level
+                new_log_level = str(new_log_level)
+            kwargs["level"] = new_log_level # foolscap level, not twisted
 
-        # Normal log.msg(foo) results in d["format"]="%(log_legacy)s" and a
-        # non-serializable d["log_legacy"] (which is meant to defer
-        # stringification).
-        if d.get("format") == "%(log_legacy)s":
-            # just get rid of format and log_legacy, since they'll give the
-            # same thing as textFromEventDict()
-            d.pop("format")
-            d.pop("log_legacy", None)
-        event = d.copy()
-        event['tubID'] = self.tubID
-        message = twisted_log.textFromEventDict(d)
-        event.pop('message', None)
-        event['from-twisted'] = True
-        self.logger.msg(message, **event)
+        # d["isError"]=1 for pre-15.2.0 calls to t.p.log.err(), and is
+        # synthesized by the LegacyLogObserverWrapper for post-15.2.0 calls
+        # when the event includes a Failure or a log_level of "error" or
+        # "critical". In post-15.2.0 calls, "time" and "system" are copied
+        # from log_time and log_system, and "log_namespace" seems pretty
+        # useful.
+        for k in ["isError", "why", "time", "system", "log_namespace"]:
+            if k in d:
+                kwargs[k] = d[k]
+        # we don't copy d["failure"] or d["why"], because its text should
+        # already be copied into "message".
+
+        self.logger.msg(message, **kwargs)
 
 _bridges = {} # maps (twisted_logger,foolscap_logger) to TwistedLogBridge
 
