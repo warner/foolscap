@@ -1,4 +1,5 @@
 import pickle
+from contextlib import closing
 
 class ThisIsActuallyAFurlFileError(Exception):
     pass
@@ -7,10 +8,11 @@ def get_events(fn, ignore_value_error=False):
     if fn.endswith(".bz2"):
         import bz2
         f = bz2.BZ2File(fn, "r")
+        # note: BZ2File in py2.6 is not a context manager
     else:
         f = open(fn, "rb")
 
-    with f:
+    with closing(f):
         while True:
             try:
                 e = pickle.load(f)
