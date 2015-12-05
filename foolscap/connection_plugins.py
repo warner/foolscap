@@ -1,4 +1,5 @@
 import re
+from txsocksx.client import SOCKS5ClientEndpoint
 from zope.interface import implementer
 from twisted.internet import endpoints
 from foolscap.ipb import IConnectionHintHandler, InvalidHintError
@@ -52,3 +53,19 @@ class DefaultTCP:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.TCP4ClientEndpoint(reactor, host, port), host
+
+@implementer(IConnectionHintHandler)
+class TorPlugin:
+    def __init__(self, socks_endpoint_desc=None):
+        self.socks_endpoint_desc = socks_endpoint_desc
+        self.socks_endpoint = None
+
+    def hint_to_endpoint(self, hint, reactor):
+        if self.socks_endpoint is None:
+            self.socks_endpoint = clientFromString(reactor, self.socks_endpoint_desc)
+        mo = NEW_STYLE_HINT_RE.search(hint)
+        if not mo:
+            raise InvalidHintError("unrecognized TCP hint")
+        host, port = mo.group(1), int(mo.group(2))
+
+        return SOCKS5ClientEndpoint(host, port, self.socks_endpoint)
