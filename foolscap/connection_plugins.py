@@ -12,7 +12,7 @@ OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
 NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
-TOR_HINT_RE=re.compile(r"^(tcp|tor):(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+SOCKS_HINT_RE=re.compile(r"^(tcp|tor):(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
@@ -64,7 +64,7 @@ def default_tcp4_endpoint_generator(*args, **kw):
     return endpoints.TCP4ClientEndpoint(*args, **kw)
 
 @implementer(IConnectionHintHandler)
-class TorPlugin:
+class SocksPlugin:
     def __init__(self, socks_host, socks_port, proxy_endpoint_generator=default_tcp4_endpoint_generator):
         self.socks_host = socks_host
         self.socks_port = socks_port
@@ -73,7 +73,7 @@ class TorPlugin:
     def hint_to_endpoint(self, hint, reactor):
         proxy_endpoint = self._proxy_endpoint_generator(reactor, self.socks_host, self.socks_port)
 
-        mo = TOR_HINT_RE.search(hint)
+        mo = SOCKS_HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(2), int(mo.group(3))
