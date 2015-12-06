@@ -68,4 +68,4 @@ class TorPlugin:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
 
-        return SOCKS5ClientEndpoint(host, port, self.socks_endpoint)
+        return SOCKS5ClientEndpoint(host, port, self.socks_endpoint), host
