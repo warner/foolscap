@@ -54,7 +54,7 @@ object reference system, and a capability-based security model.
                  "foolscap.appserver", "foolscap.test"],
     "scripts": ["bin/flogtool", "bin/flappserver", "bin/flappclient"],
     "cmdclass": commands,
-    "install_requires": ["twisted >= 10.1.0", "txsocksx", "pyOpenSSL", "service_identity"],
+    "install_requires": ["twisted >= 10.1.0", "pyOpenSSL", "service_identity"],
 }
 
 if platform.system() == "Windows":
