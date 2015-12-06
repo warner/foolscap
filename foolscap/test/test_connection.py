@@ -1,15 +1,10 @@
 
-from mock import Mock
 from txsocksx.client import SOCKS5ClientEndpoint
 from txsocksx.test.util import FakeEndpoint
 
 from zope.interface import implementer
-from twisted.internet.interfaces import IStreamClientEndpoint, IStreamServerEndpoint, IAddress, IListeningPort, IProtocolFactory, ILoggingContext
-from twisted.test import proto_helpers
-from twisted.internet.endpoints import clientFromString, serverFromString
-from twisted.internet.protocol import Factory, Protocol
 from twisted.trial import unittest
-from twisted.internet import endpoints, reactor, defer
+from twisted.internet import endpoints, reactor
 from twisted.application import service
 from foolscap.api import Tub
 from foolscap.connection import get_endpoint
