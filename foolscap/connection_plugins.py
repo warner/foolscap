@@ -62,7 +62,7 @@ class TorPlugin:
 
     def hint_to_endpoint(self, hint, reactor):
         if self.socks_endpoint is None:
-            self.socks_endpoint = clientFromString(reactor, self.socks_endpoint_desc)
+            self.socks_endpoint = endpoints.clientFromString(reactor, self.socks_endpoint_desc)
         mo = NEW_STYLE_HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("unrecognized TCP hint")
