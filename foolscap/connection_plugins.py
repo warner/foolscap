@@ -67,7 +67,7 @@ def default_tcp4_endpoint_generator(*args, **kw):
 class SocksPlugin:
     def __init__(self, socks_host, socks_port, proxy_endpoint_generator=default_tcp4_endpoint_generator):
         self.socks_host = socks_host
-        self.socks_port = socks_port
+        self.socks_port = int(socks_port)
         self._proxy_endpoint_generator = proxy_endpoint_generator
 
     def hint_to_endpoint(self, hint, reactor):
