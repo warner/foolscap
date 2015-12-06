@@ -60,7 +60,7 @@ class TorPlugin:
         self.socks_endpoint_desc = socks_endpoint_desc
         self.socks_endpoint = None
 
-    def hint_to_endpoint(self, hint, reactor):
+    def hint_to_endpoint(self, hint, reactor, proxy_endpoint=SOCKS5ClientEndpoint):
         if self.socks_endpoint is None:
             self.socks_endpoint = endpoints.clientFromString(reactor, self.socks_endpoint_desc)
         mo = NEW_STYLE_HINT_RE.search(hint)
@@ -68,4 +68,4 @@ class TorPlugin:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
 
-        return SOCKS5ClientEndpoint(host, port, self.socks_endpoint), host
+        return proxy_endpoint(host, port, self.socks_endpoint), host
