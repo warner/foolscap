@@ -1,6 +1,15 @@
+
+from mock import Mock
+from txsocksx.client import SOCKS5ClientEndpoint
+from txsocksx.test.util import FakeEndpoint
+
 from zope.interface import implementer
+from twisted.internet.interfaces import IStreamClientEndpoint, IStreamServerEndpoint, IAddress, IListeningPort, IProtocolFactory, ILoggingContext
+from twisted.test import proto_helpers
+from twisted.internet.endpoints import clientFromString, serverFromString
+from twisted.internet.protocol import Factory, Protocol
 from twisted.trial import unittest
-from twisted.internet import endpoints, reactor
+from twisted.internet import endpoints, reactor, defer
 from twisted.application import service
 from foolscap.api import Tub
 from foolscap.connection import get_endpoint
@@ -10,45 +19,20 @@ from foolscap.test.common import (certData_low, certData_high, Target,
                                   ShouldFailMixin)
 from foolscap import ipb, util
 
-class FakeSocksEndpoint(object):
-    def __init__(self, *args, **kw):
-        self.host = args[1]
-        self.port = args[2]
-        self.transport = None
-
-        self.failure = kw.get('failure', None)
-        self.accept_port = kw.get('accept_port', None)
-
-    def connect(self, fac):
-        self.factory = fac
-        if self.accept_port:
-            if self.port != self.accept_port:
-                return defer.fail(self.failure)
-        else:
-            if self.failure:
-                return defer.fail(self.failure)
-        self.proto = fac.buildProtocol(None)
-        transport = proto_helpers.StringTransport()
-        self.proto.makeConnection(transport)
-        self.transport = transport
-        return defer.succeed(self.proto)
-
 class TorPluginTests(unittest.TestCase):
-    def setUp(self):
-        pass
+    def test_defaultFactory(self):
+        def SocksEndpointGenerator(*args, **kw):
+            return FakeEndpoint()
+        plugin = TorPlugin("127.0.0.1", "9050", proxy_endpoint_generator = SocksEndpointGenerator)
+        hint = "tor:meowhost:80"
+        endpoint, host = plugin.hint_to_endpoint(hint, reactor)
 
-    def testTorPluginBasic1(self):
-        endpoints = []
-        def fake_socks_endpoint_generator(*args, **kw):
-            endpoints.append(FakeSocksEndpoint(*args, **kw))
-            return endpoints[-1]
-        plugin = TorPlugin(socks_endpoint_desc="tcp:127.0.0.1:9050")
-        hint = "tor:123:80"
-        endpoint, host = plugin.hint_to_endpoint(hint, reactor, proxy_endpoint=fake_socks_endpoint_generator)
-        endpoint.connect(Mock)
-        self.assertEqual(1, len(endpoints))
-        self.assertEqual(endpoints[0].transport.value(), '\x05\x01\x00')
+        self.failUnlessEqual("meowhost", host)
+        self.failUnless(isinstance(endpoint, SOCKS5ClientEndpoint))
 
+        endpoint.connect(None)
+        # equivalent to the TestSOCKS5ClientEndpoint.test_defaultFactory test-case.
+        self.assertEqual(endpoint.proxyEndpoint.transport.value(), '\x05\x01\x00')
 
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):

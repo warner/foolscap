@@ -12,6 +12,8 @@ OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
 NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
+TOR_HINT_RE=re.compile(r"^(tcp|tor):(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+                                                            DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
 # then can contain any characters except "," and "/". These are expected to
@@ -54,18 +56,25 @@ class DefaultTCP:
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.TCP4ClientEndpoint(reactor, host, port), host
 
+def default_tcp4_endpoint_generator(*args, **kw):
+    """
+    Default generator used to create client-side TCP4ClientEndpoint
+    instances.  We do this to make the unit tests work...
+    """
+    return TCP4ClientEndpoint(*args, **kw)
+
 @implementer(IConnectionHintHandler)
 class TorPlugin:
-    def __init__(self, socks_endpoint_desc=None):
-        self.socks_endpoint_desc = socks_endpoint_desc
-        self.socks_endpoint = None
+    def __init__(self, socks_host, socks_port, proxy_endpoint_generator=default_tcp4_endpoint_generator):
+        self.socks_host = socks_host
+        self.socks_port = socks_port
+        self._proxy_endpoint_generator = proxy_endpoint_generator
 
-    def hint_to_endpoint(self, hint, reactor, proxy_endpoint=SOCKS5ClientEndpoint):
-        if self.socks_endpoint is None:
-            self.socks_endpoint = endpoints.clientFromString(reactor, self.socks_endpoint_desc)
-        mo = NEW_STYLE_HINT_RE.search(hint)
+    def hint_to_endpoint(self, hint, reactor):
+        proxy_endpoint = self._proxy_endpoint_generator(reactor, self.socks_host, self.socks_port)
+
+        mo = TOR_HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("unrecognized TCP hint")
-        host, port = mo.group(1), int(mo.group(2))
-
-        return proxy_endpoint(host, port, self.socks_endpoint), host
+        host, port = mo.group(2), int(mo.group(3))
+        return SOCKS5ClientEndpoint(host, port, proxy_endpoint), host
