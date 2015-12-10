@@ -200,8 +200,14 @@ class Advanced(unittest.TestCase):
         l.msg("three", parent=n2)
 
 class ErrorfulQualifier(incident.IncidentQualifier):
+    def __init__(self):
+        self._first = True
+
     def check_event(self, ev):
-        raise ValueError("oops")
+        if self._first:
+            self._first = False
+            raise ValueError("oops")
+        return False
 
 class NoStdio(unittest.TestCase):
     # bug #244 is caused, in part, by Foolscap-side logging failures which
@@ -248,6 +254,14 @@ class NoStdio(unittest.TestCase):
         self.fl.msg("oops", arg=lambda : "lambdas are unserializable",
                     level=log.BAD)
         self.check_stdio()
+        # now examine the logs and make sure we see an "internal error" event
+        # to replace the one that we were trying to log
+        events = list(self.fl.get_buffered_events())
+        #print >>self.orig_stderr, events
+        m = events[0]["message"]
+        expected = "internal error in log._msg, args=('oops',)"
+        self.failUnless(m.startswith(expected), m)
+
 
 class Serialization(unittest.TestCase):
     def test_lazy_serialization(self):
