@@ -254,13 +254,17 @@ class NoStdio(unittest.TestCase):
         self.fl.msg("oops", arg=lambda : "lambdas are unserializable",
                     level=log.BAD)
         self.check_stdio()
-        # now examine the logs and make sure we see an "internal error" event
-        # to replace the one that we were trying to log
+        # The internal error will cause a new "metaevent" to be recorded. The
+        # original event may or may not get recorded first, depending upon
+        # the error (i.e. does it happen before or after buffer.append is
+        # called). So we look at the last event, and make sure it's the
+        # metaevent.
         events = list(self.fl.get_buffered_events())
         #print >>self.orig_stderr, events
-        m = events[0]["message"]
+        m = events[-1]["message"]
         expected = "internal error in log._msg, args=('oops',)"
-        self.failUnless(m.startswith(expected), m)
+        self.assert_(m.startswith(expected), m)
+        self.assertIn("ValueError('oops'", m)
 
 
 class Serialization(unittest.TestCase):
