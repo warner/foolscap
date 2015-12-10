@@ -2272,14 +2272,15 @@ class Bridge(unittest.TestCase):
 
         tl = twisted_logger.Logger(observer=new_pub)
         tl.info("one")
-        tl.info(format="two %(two)d", two=2)
+        # note: new twisted logger wants PEP3101 format strings, {} not %
+        tl.info(format="two {two}", two=2)
         # twisted's new Logger.info() takes arbitrary (unserializable) kwargs
         # for string formatting, and passes them into the old LogPublisher(),
         # so make sure we can tolerate that. The rule is that foolscap
         # stringifies all events it gets from twisted, and doesn't store the
         # additional arguments.
         unserializable = lambda: "unserializable"
-        tl.info("three is %(evil)s", evil=unserializable)
+        tl.info("three is {evil!s}", evil=unserializable)
 
         d = flushEventualQueue()
         def _check(res):
