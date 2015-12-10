@@ -2289,6 +2289,7 @@ class Bridge(unittest.TestCase):
             self.failUnlessEqual(fl_out[0]["message"], "one")
             self.failUnless(fl_out[0]["from-twisted"])
             self.failUnlessEqual(fl_out[1]["message"], "two 2")
+            self.failIf("two" in fl_out[1])
             self.failUnless(fl_out[1]["from-twisted"])
             # str(unserializable) is like "<function <lambda> at 0xblahblah>"
             self.failUnlessEqual(fl_out[2]["message"],
