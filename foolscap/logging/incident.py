@@ -37,6 +37,25 @@ class IncidentQualifier:
         if self.check_event(ev) and self.handler:
             self.handler.declare_incident(ev)
 
+def serialize_with_header_pickle(type, trigger, versions, pid, *files):
+    header = {"header": {"type": type,
+                         "trigger": trigger,
+                         "versions": versions,
+                         "pid": pid,
+                         }}
+    for f in files:
+        pickle.dump(header, f)
+
+def serialize_with_wrapper_pickle(w_from, w_rx_time, ev, *files):
+    wrapper = {"from": w_from,
+               "rx_time": w_rx_time,
+               "d": ev}
+    for f in files:
+        pickle.dump(wrapper, f)
+
+serialize_with_header = serialize_with_header_pickle
+serialize_with_wrapper = serialize_with_wrapper_pickle
+
 class IncidentReporter:
     """Once an Incident has been declared, I am responsible for making a
     durable record all relevant log events. I do this by creating a logfile
@@ -88,13 +107,9 @@ class IncidentReporter:
         self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
 
         # write header with triggering_event
-        header = {"header": {"type": "incident",
-                             "trigger": triggering_event,
-                             "versions": app_versions.versions,
-                             "pid": os.getpid(),
-                             }}
-        pickle.dump(header, self.f1)
-        pickle.dump(header, self.f2)
+        serialize_with_header("incident", triggering_event,
+                              app_versions.versions, os.getpid(),
+                              self.f1, self.f2)
 
         if self.TRAILING_DELAY is not None:
             # subscribe to events that occur after this one
@@ -106,11 +121,7 @@ class IncidentReporter:
         events = list(self.logger.get_buffered_events())
         events.sort(lambda a,b: cmp(a['num'], b['num']))
         for e in events:
-            wrapper = {"from": self.tubid_s,
-                       "rx_time": now,
-                       "d": e}
-            pickle.dump(wrapper, self.f1)
-            pickle.dump(wrapper, self.f2)
+            serialize_with_wrapper(self.tubid_s, now, e, self.f1, self.f2)
 
         self.f1.flush()
         # the BZ2File has no flush method
@@ -129,11 +140,8 @@ class IncidentReporter:
 
         self.remaining_events -= 1
         if self.remaining_events >= 0:
-            wrapper = {"from": self.tubid_s,
-                       "rx_time": time.time(),
-                       "d": ev}
-            pickle.dump(wrapper, self.f1)
-            pickle.dump(wrapper, self.f2)
+            now = time.time()
+            serialize_with_wrapper(self.tubid_s, now, ev, self.f1, self.f2)
             return
 
         self.stop_recording()
