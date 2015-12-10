@@ -212,12 +212,6 @@ class FoolscapLogger:
                 f2.setCopyableState(fs.getStateToCopy(f, FakeBroker))
                 event["failure"] = f2
 
-        # verify that we can stringify the event correctly
-        try:
-            format_message(event)
-        except Exception, e:
-            print "problem in log message %s: %r %s" % (event, e, e)
-            pass
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
         event['incarnation'] = self.incarnation
