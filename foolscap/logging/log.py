@@ -179,6 +179,18 @@ class FoolscapLogger:
         if level < threshold:
             return num # not worth logging
 
+        try:
+            self._msg(num, level, facility, args, kwargs)
+        except:
+            try:
+                errormsg = ("internal error in log._msg, args=%r, kwargs=%r"
+                            % (args, kwargs))
+                self._msg(num, WEIRD, "foolscap/internal-error", (errormsg,), {})
+            except:
+                pass # bummer
+        return num
+
+    def _msg(self, num, level, facility, args, kwargs):
         event = kwargs
 
         if "format" in event:
@@ -217,7 +229,6 @@ class FoolscapLogger:
         event['incarnation'] = self.incarnation
         event['num'] = num
         self.add_event(facility, level, event)
-        return num
 
     def err(self, _stuff=None, _why=None, **kw):
         """
