@@ -169,29 +169,34 @@ class FoolscapLogger:
 
         if "num" not in kwargs:
             num = self.seqnum.next()
+            kwargs['num'] = num
         else:
             num = kwargs['num']
+
+        try:
+            self._msg(*args, **kwargs)
+        except Exception as e:
+            try:
+                errormsg = ("internal error in log._msg,"
+                            " args=%r, kwargs=%r, exception=%r"
+                            % (args, kwargs, e))
+                self._msg(errormsg, num=num, level=WEIRD,
+                          facility="foolscap/internal-error")
+            except:
+                pass # bummer
+        return num
+
+    def _msg(self, *args, **kwargs):
         facility = kwargs.get('facility')
         if "level" not in kwargs:
             kwargs['level'] = OPERATIONAL
         level = kwargs["level"]
         threshold = self.get_generation_threshold(facility)
         if level < threshold:
-            return num # not worth logging
+            return # not worth logging
 
-        try:
-            self._msg(num, level, facility, args, kwargs)
-        except:
-            try:
-                errormsg = ("internal error in log._msg, args=%r, kwargs=%r"
-                            % (args, kwargs))
-                self._msg(num, WEIRD, "foolscap/internal-error", (errormsg,), {})
-            except:
-                pass # bummer
-        return num
-
-    def _msg(self, num, level, facility, args, kwargs):
         event = kwargs
+        # kwargs always has 'num'
 
         if "format" in event:
             pass
@@ -227,7 +232,6 @@ class FoolscapLogger:
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
         event['incarnation'] = self.incarnation
-        event['num'] = num
         self.add_event(facility, level, event)
 
     def err(self, _stuff=None, _why=None, **kw):
