@@ -5,7 +5,10 @@ from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer
-from twisted import logger as twisted_logger
+try:
+    from twisted import logger as twisted_logger
+except ImportError:
+    twisted_logger = None
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
@@ -2225,7 +2228,9 @@ class Bridge(unittest.TestCase):
         # from which they arrive in foolscap. Make sure we can tolerate that.
         # The rule is that foolscap immediately stringifies all events it
         # gets from twisted (with log.textFromEventDict), and doesn't store
-        # the additional arguments.
+        # the additional arguments. So it's ok to put an *unserializable*
+        # argument into the log.msg() call, as long as it's still
+        # *stringifyable*.
         unserializable = lambda: "unserializable"
         tw.msg(format="three is %(evil)s", evil=unserializable)
 
@@ -2253,6 +2258,8 @@ class Bridge(unittest.TestCase):
         return d
 
     def test_twisted_logger_to_foolscap(self):
+        if not twisted_logger:
+            raise unittest.SkipTest("needs twisted.logger from Twisted>=15.2.0")
         new_pub = twisted_logger.LogPublisher()
         old_pub = twisted_log.LogPublisher(observerPublisher=new_pub,
                                            publishPublisher=new_pub)
