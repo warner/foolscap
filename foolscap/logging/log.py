@@ -280,11 +280,8 @@ class FoolscapLogger:
         # eventual-send.
 
         if self.active_incident_qualifier:
-            try:
-                # this might call declare_incident
-                self.active_incident_qualifier.event(event)
-            except:
-                print failure.Failure() # for debugging
+            # this might call declare_incident
+            self.active_incident_qualifier.event(event)
 
     def declare_incident(self, triggering_event):
         self.incidents_declared += 1
