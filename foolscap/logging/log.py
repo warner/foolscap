@@ -465,6 +465,7 @@ class LogFileObserver:
         else:
             self._logFile = open(filename, "wb")
         self._level = level
+        self._logFile.write(flogfile.MAGIC)
         flogfile.serialize_header(self._logFile,
                                   "log-file-observer",
                                   versions=app_versions.versions,
