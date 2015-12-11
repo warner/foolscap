@@ -1,5 +1,5 @@
 
-import os, sys, time, pickle, weakref
+import os, sys, time, weakref
 import traceback
 import collections
 from twisted.python import log as twisted_log
@@ -7,7 +7,7 @@ from twisted.python import failure
 from foolscap import eventual
 from foolscap.logging.interfaces import IIncidentReporter
 from foolscap.logging.incident import IncidentQualifier, IncidentReporter
-from foolscap.logging import app_versions
+from foolscap.logging import app_versions, flogfile
 
 from foolscap.logging.levels import NOISY, OPERATIONAL, UNUSUAL, \
      INFREQUENT, CURIOUS, WEIRD, SCARY, BAD
@@ -465,12 +465,11 @@ class LogFileObserver:
         else:
             self._logFile = open(filename, "wb")
         self._level = level
-        header = {"header": {"type": "log-file-observer",
-                             "threshold": level,
-                             "versions": app_versions.versions,
-                             "pid": os.getpid(),
-                             }}
-        pickle.dump(header, self._logFile)
+        flogfile.serialize_header(self._logFile,
+                                  "log-file-observer",
+                                  versions=app_versions.versions,
+                                  pid=os.getpid(),
+                                  threshold=level)
 
     def stop_on_shutdown(self):
         from twisted.internet import reactor
@@ -481,11 +480,8 @@ class LogFileObserver:
         #if event.get('facility', '').startswith('foolscap'):
         #    threshold = UNUSUAL
         if event['level'] >= threshold:
-            e = {"from": "local",
-                 "rx_time": time.time(),
-                 "d": event,
-                 }
-            pickle.dump(e, self._logFile, 2)
+            flogfile.serialize_wrapper(self._logFile, event,
+                                       from_="local", rx_time=time.time())
 
     def _stop(self):
         self._logFile.close()

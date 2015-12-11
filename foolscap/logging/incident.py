@@ -89,9 +89,14 @@ class IncidentReporter:
         self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
 
         # write header with triggering_event
-        flogfile.serialize_with_header("incident", triggering_event,
-                                       app_versions.versions, os.getpid(),
-                                       self.f1, self.f2)
+        flogfile.serialize_header(self.f1, "incident",
+                                  trigger=triggering_event,
+                                  versions=app_versions.versions,
+                                  pid=os.getpid())
+        flogfile.serialize_header(self.f2, "incident",
+                                  trigger=triggering_event,
+                                  versions=app_versions.versions,
+                                  pid=os.getpid())
 
         if self.TRAILING_DELAY is not None:
             # subscribe to events that occur after this one
@@ -103,8 +108,10 @@ class IncidentReporter:
         events = list(self.logger.get_buffered_events())
         events.sort(lambda a,b: cmp(a['num'], b['num']))
         for e in events:
-            flogfile.serialize_with_wrapper(self.tubid_s, now, e,
-                                            self.f1, self.f2)
+            flogfile.serialize_wrapper(self.f1, e,
+                                       from_=self.tubid_s, rx_time=now)
+            flogfile.serialize_wrapper(self.f2, e,
+                                       from_=self.tubid_s, rx_time=now)
 
         self.f1.flush()
         # the BZ2File has no flush method
@@ -124,8 +131,10 @@ class IncidentReporter:
         self.remaining_events -= 1
         if self.remaining_events >= 0:
             now = time.time()
-            flogfile.serialize_with_wrapper(self.tubid_s, now, ev,
-                                            self.f1, self.f2)
+            flogfile.serialize_wrapper(self.f1, ev,
+                                       from_=self.tubid_s, rx_time=now)
+            flogfile.serialize_wrapper(self.f2, ev,
+                                       from_=self.tubid_s, rx_time=now)
             return
 
         self.stop_recording()
