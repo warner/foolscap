@@ -49,6 +49,6 @@ def get_events(fn):
                 # (e.g. logport.furl) by mistake. Emit a useful error
                 # message.
                 raise ThisIsActuallyAFurlFileError
-            raise BadMagic()
+            raise BadMagic(repr(maybe_magic))
         for line in f.readlines():
             yield json.loads(line)
