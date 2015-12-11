@@ -37,7 +37,7 @@ class IncidentQualifier:
         if self.check_event(ev) and self.handler:
             self.handler.declare_incident(ev)
 
-def serialize_with_header_pickle(type, trigger, versions, pid, *files):
+def serialize_with_header(type, trigger, versions, pid, *files):
     header = {"header": {"type": type,
                          "trigger": trigger,
                          "versions": versions,
@@ -46,15 +46,12 @@ def serialize_with_header_pickle(type, trigger, versions, pid, *files):
     for f in files:
         pickle.dump(header, f)
 
-def serialize_with_wrapper_pickle(w_from, w_rx_time, ev, *files):
+def serialize_with_wrapper(w_from, w_rx_time, ev, *files):
     wrapper = {"from": w_from,
                "rx_time": w_rx_time,
                "d": ev}
     for f in files:
         pickle.dump(wrapper, f)
-
-serialize_with_header = serialize_with_header_pickle
-serialize_with_wrapper = serialize_with_wrapper_pickle
 
 class IncidentReporter:
     """Once an Incident has been declared, I am responsible for making a
