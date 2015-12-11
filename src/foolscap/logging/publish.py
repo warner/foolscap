@@ -230,7 +230,7 @@ class LogPublisher(Referenceable):
             fn = abs_fn + ".bz2"
             if not os.path.exists(fn):
                 fn = abs_fn
-            events = flogfile.get_events(fn, ignore_value_error=True)
+            events = flogfile.get_events(fn)
             # note the generator isn't actually cycled yet, not until next()
             header = next(events)["header"]
         except EnvironmentError:

@@ -1,5 +1,5 @@
 
-import os, sys, time, weakref
+import os, sys, time, weakref, binascii
 import traceback
 import collections
 from twisted.python import log as twisted_log
@@ -33,14 +33,14 @@ _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 def format_message(e):
     try:
         if "format" in e:
-            assert isinstance(e['format'], str)
+            assert isinstance(e['format'], (str,unicode))
             return e['format'] % e
         elif "args" in e:
             assert "message" in e
-            assert isinstance(e['message'], str)
+            assert isinstance(e['message'], (str,unicode))
             return e['message'] % e['args']
         elif "message" in e:
-            assert isinstance(e['message'], str)
+            assert isinstance(e['message'], (str,unicode))
             return e['message']
         else:
             return ""
@@ -93,7 +93,7 @@ class FoolscapLogger:
         self.recent_recorded_incidents = []
 
     def get_incarnation(self):
-        unique = os.urandom(8)
+        unique = binascii.b2a_hex(os.urandom(8))
         sequential = None
         return (unique, sequential)
 
@@ -213,21 +213,13 @@ class FoolscapLogger:
             event['time'] = time.time()
 
         if "failure" in event:
-            f = event["failure"]
             # we need to avoid pickling the exception class, since that will
             # require the original application code to unpickle, and log
             # viewers may not have it installed. A CopiedFailure works great
             # for this purpose. TODO: I'd prefer to not use a local import
             # here, but doing at the top level causes a circular import
             # failure.
-            from foolscap.call import FailureSlicer, CopiedFailure
-            class FakeBroker:
-                unsafeTracebacks = True
-            if not isinstance(f, CopiedFailure):
-                fs = FailureSlicer(f)
-                f2 = CopiedFailure()
-                f2.setCopyableState(fs.getStateToCopy(f, FakeBroker))
-                event["failure"] = f2
+            event["failure"] = flogfile.JSONableFailure(event["failure"])
 
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
@@ -465,6 +457,7 @@ class LogFileObserver:
         else:
             self._logFile = open(filename, "wb")
         self._level = level
+        self._logFile.write(flogfile.MAGIC)
         flogfile.serialize_header(self._logFile,
                                   "log-file-observer",
                                   versions=app_versions.versions,
