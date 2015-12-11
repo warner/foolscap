@@ -65,6 +65,7 @@ class IncidentReporter:
         self.logger = logger
         self.tubid_s = tubid_s
         self.active = True
+        self.timer = None
 
     def is_active(self):
         return self.active
@@ -146,7 +147,7 @@ class IncidentReporter:
     def stop_recording(self):
         self.still_recording = False
         self.active = False
-        if self.timer.active():
+        if self.timer and self.timer.active():
             self.timer.cancel()
 
         self.logger.removeObserver(self.trailing_event)
