@@ -1,6 +1,22 @@
 import pickle
 from contextlib import closing
 
+def serialize_with_header(type, trigger, versions, pid, *files):
+    header = {"header": {"type": type,
+                         "trigger": trigger,
+                         "versions": versions,
+                         "pid": pid,
+                         }}
+    for f in files:
+        pickle.dump(header, f)
+
+def serialize_with_wrapper(w_from, w_rx_time, ev, *files):
+    wrapper = {"from": w_from,
+               "rx_time": w_rx_time,
+               "d": ev}
+    for f in files:
+        pickle.dump(wrapper, f)
+
 class ThisIsActuallyAFurlFileError(Exception):
     pass
 

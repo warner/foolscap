@@ -1,5 +1,5 @@
 
-import sys, os.path, time, pickle, bz2
+import sys, os.path, time, bz2
 from pprint import pprint
 from zope.interface import implements
 from twisted.python import usage
@@ -36,22 +36,6 @@ class IncidentQualifier:
     def event(self, ev):
         if self.check_event(ev) and self.handler:
             self.handler.declare_incident(ev)
-
-def serialize_with_header(type, trigger, versions, pid, *files):
-    header = {"header": {"type": type,
-                         "trigger": trigger,
-                         "versions": versions,
-                         "pid": pid,
-                         }}
-    for f in files:
-        pickle.dump(header, f)
-
-def serialize_with_wrapper(w_from, w_rx_time, ev, *files):
-    wrapper = {"from": w_from,
-               "rx_time": w_rx_time,
-               "d": ev}
-    for f in files:
-        pickle.dump(wrapper, f)
 
 class IncidentReporter:
     """Once an Incident has been declared, I am responsible for making a
@@ -105,9 +89,9 @@ class IncidentReporter:
         self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
 
         # write header with triggering_event
-        serialize_with_header("incident", triggering_event,
-                              app_versions.versions, os.getpid(),
-                              self.f1, self.f2)
+        flogfile.serialize_with_header("incident", triggering_event,
+                                       app_versions.versions, os.getpid(),
+                                       self.f1, self.f2)
 
         if self.TRAILING_DELAY is not None:
             # subscribe to events that occur after this one
@@ -119,7 +103,8 @@ class IncidentReporter:
         events = list(self.logger.get_buffered_events())
         events.sort(lambda a,b: cmp(a['num'], b['num']))
         for e in events:
-            serialize_with_wrapper(self.tubid_s, now, e, self.f1, self.f2)
+            flogfile.serialize_with_wrapper(self.tubid_s, now, e,
+                                            self.f1, self.f2)
 
         self.f1.flush()
         # the BZ2File has no flush method
@@ -139,7 +124,8 @@ class IncidentReporter:
         self.remaining_events -= 1
         if self.remaining_events >= 0:
             now = time.time()
-            serialize_with_wrapper(self.tubid_s, now, ev, self.f1, self.f2)
+            flogfile.serialize_with_wrapper(self.tubid_s, now, ev,
+                                            self.f1, self.f2)
             return
 
         self.stop_recording()
