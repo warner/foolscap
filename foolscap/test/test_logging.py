@@ -1,5 +1,5 @@
 
-import os, sys, pickle, time, bz2, base64
+import os, sys, json, time, bz2, base64
 from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
@@ -111,13 +111,11 @@ class Advanced(unittest.TestCase):
             l.removeObserver(ob.msg)
             ob._logFile.close()
             f = open(fn, "rb")
+            expected_magic = f.read(len(flogfile.MAGIC))
+            self.failUnlessEqual(expected_magic, flogfile.MAGIC)
             events = []
-            while True:
-                try:
-                    e = pickle.load(f)
-                    events.append(e)
-                except EOFError:
-                    break
+            for line in f:
+                events.append(json.loads(line))
             self.failUnlessEqual(len(events), 3)
             self.failUnlessEqual(events[0]["header"]["type"],
                                  "log-file-observer")
@@ -341,7 +339,7 @@ class NoFollowUpReporter(incident.IncidentReporter):
 
 class LogfileReaderMixin:
     def _read_logfile(self, fn):
-        return list(flogfile.get_events(fn, ignore_value_error=True))
+        return list(flogfile.get_events(fn))
 
 class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
     def test_basic(self):
@@ -1724,9 +1722,11 @@ class Tail(unittest.TestCase):
         del outmsg
         lp.saver.disconnected() # cause the file to be closed
         f = open(saveto_filename, "rb")
-        data = pickle.load(f) # header
+        expected_magic = f.read(len(flogfile.MAGIC))
+        self.failUnlessEqual(expected_magic, flogfile.MAGIC)
+        data = json.loads(f.readline()) # header
         self.failUnlessEqual(data["header"]["type"], "tail")
-        data = pickle.load(f) # event
+        data = json.loads(f.readline()) # event
         self.failUnlessEqual(data["from"], "jiijpvbg")
         self.failUnlessEqual(data["d"]["message"], "howdy")
         self.failUnlessEqual(data["d"]["num"], 123)
@@ -2055,7 +2055,8 @@ class OldPickleDumper(unittest.TestCase):
 
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnlessEqual(err, "")
+        self.failUnlessEqual(out, "")
+        self.failUnlessIn("which cannot be loaded safely", err)
 
     def test_incident(self):
         self.basedir = "logging/OldPickleDumper/incident"
@@ -2068,7 +2069,8 @@ class OldPickleDumper(unittest.TestCase):
 
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnlessEqual(err, "")
+        self.failUnlessEqual(out, "")
+        self.failUnlessIn("which cannot be loaded safely", err)
 
 class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 

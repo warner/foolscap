@@ -40,10 +40,10 @@ class IncidentQualifier:
 class IncidentReporter:
     """Once an Incident has been declared, I am responsible for making a
     durable record all relevant log events. I do this by creating a logfile
-    (a pickle of log event dictionaries) and copying everything from the
-    history buffer into it. I can copy a small number of future events into
-    it as well, to record what happens as the application copes with the
-    situtation.
+    (a series of JSON lines, one per log event dictionary) and copying
+    everything from the history buffer into it. I can copy a small number of
+    future events into it as well, to record what happens as the application
+    copes with the situtation.
 
     I am responsible for just a single incident.
 
@@ -89,6 +89,8 @@ class IncidentReporter:
         self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
 
         # write header with triggering_event
+        self.f1.write(flogfile.MAGIC)
+        self.f2.write(flogfile.MAGIC)
         flogfile.serialize_header(self.f1, "incident",
                                   trigger=triggering_event,
                                   versions=app_versions.versions,
@@ -210,7 +212,7 @@ class IncidentClassifierBase:
 
     def load_incident(self, abs_fn):
         assert abs_fn.endswith(".bz2")
-        events = flogfile.get_events(abs_fn, ignore_value_error=True)
+        events = flogfile.get_events(abs_fn)
         header = next(events)["header"]
         wrapped_events = [event["d"] for event in events]
         return (header, wrapped_events)
