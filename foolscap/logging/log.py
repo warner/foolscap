@@ -1,5 +1,5 @@
 
-import os, sys, time, weakref
+import os, sys, time, weakref, binascii
 import traceback
 import collections
 from twisted.python import log as twisted_log
@@ -93,7 +93,7 @@ class FoolscapLogger:
         self.recent_recorded_incidents = []
 
     def get_incarnation(self):
-        unique = os.urandom(8)
+        unique = binascii.b2a_hex(os.urandom(8))
         sequential = None
         return (unique, sequential)
 
