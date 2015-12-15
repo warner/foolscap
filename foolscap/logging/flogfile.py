@@ -1,26 +1,42 @@
 import json
 from contextlib import closing
 
+class JSONableFailure:
+    def __init__(self, f):
+        self.f = f
+
+class ExtendedEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, JSONableFailure):
+            # pickled Failures get the following modified attributes: frames,
+            # tb=None, stack=, pickled=1
+            return {"@": "Failure",
+                    "repr": repr(o.f),
+                    "traceback": o.f.getTraceback(),
+                    # o.f.frames? .stack? .type?
+                    }
+        return json.JSONEncoder.default(self, o)
+
 def serialize_raw_header(f, header):
-    json.dump({"header": header}, f)
+    json.dump({"header": header}, f, cls=ExtendedEncoder)
     f.write("\n")
 
 def serialize_header(f, type, **kwargs):
     header = {"header": {"type": type} }
     for k,v in kwargs.items():
         header["header"][k] = v
-    json.dump(header, f)
+    json.dump(header, f, cls=ExtendedEncoder)
     f.write("\n")
 
 def serialize_raw_wrapper(f, wrapper):
-    json.dump(wrapper, f)
+    json.dump(wrapper, f, cls=ExtendedEncoder)
     f.write("\n")
 
 def serialize_wrapper(f, ev, from_, rx_time):
     wrapper = {"from": from_,
                "rx_time": rx_time,
                "d": ev}
-    json.dump(wrapper, f)
+    json.dump(wrapper, f, cls=ExtendedEncoder)
     f.write("\n")
 
 MAGIC = "# foolscap flogfile v1\n"
