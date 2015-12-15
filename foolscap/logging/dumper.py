@@ -104,7 +104,11 @@ class LogDumper:
         # let's mark the trigger event from incident reports with
         # [INCIDENT-TRIGGER] at the end of the line
         is_trigger = bool(self.trigger and (eid == self.trigger))
-        text = format_message(d)
+        try:
+            text = format_message(d)
+        except:
+            print "unformattable event", d
+            raise
 
         t = "%s#%d " % (short, d['num'])
         if options['rx-time']:

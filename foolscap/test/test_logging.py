@@ -1902,9 +1902,13 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             line0 = "local#%d %s: one" % (events[1]["d"]["num"],
                                           format_time(events[1]["d"]["time"],
                                                       tmode))
+            #print "----"
+            #for l in lines: print l
+            #print "----"
             self.failUnlessEqual(lines[0].strip(), line0)
             self.failUnless("FAILURE:" in lines[3])
-            self.failUnless("test_logging.SampleError: whoops1" in lines[-3])
+            self.failUnless("test_logging.SampleError: whoops1" in lines[-3],
+                            lines)
             self.failUnless(lines[-1].startswith("local#3 "))
 
             argv = ["flogtool", "dump", "--just-numbers", fn]
