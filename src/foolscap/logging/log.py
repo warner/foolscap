@@ -212,15 +212,6 @@ class FoolscapLogger:
         if "time" not in event:
             event['time'] = time.time()
 
-        if "failure" in event:
-            # we need to avoid pickling the exception class, since that will
-            # require the original application code to unpickle, and log
-            # viewers may not have it installed. A CopiedFailure works great
-            # for this purpose. TODO: I'd prefer to not use a local import
-            # here, but doing at the top level causes a circular import
-            # failure.
-            event["failure"] = flogfile.JSONableFailure(event["failure"])
-
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
         event['incarnation'] = self.incarnation

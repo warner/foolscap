@@ -1,5 +1,6 @@
 import json
 from contextlib import closing
+from twisted.python import failure
 
 class JSONableFailure:
     def __init__(self, f):
@@ -7,13 +8,16 @@ class JSONableFailure:
 
 class ExtendedEncoder(json.JSONEncoder):
     def default(self, o):
-        if isinstance(o, JSONableFailure):
+        if isinstance(o, failure.Failure):
+            # this includes CopyableFailure
+            #
             # pickled Failures get the following modified attributes: frames,
             # tb=None, stack=, pickled=1
             return {"@": "Failure",
-                    "repr": repr(o.f),
-                    "traceback": o.f.getTraceback(),
-                    # o.f.frames? .stack? .type?
+                    "str": str(o),
+                    "repr": repr(o),
+                    "traceback": o.getTraceback(),
+                    # o.frames? .stack? .type?
                     }
         return json.JSONEncoder.default(self, o)
 
