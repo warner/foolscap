@@ -33,14 +33,14 @@ _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 def format_message(e):
     try:
         if "format" in e:
-            assert isinstance(e['format'], str)
+            assert isinstance(e['format'], (str,unicode))
             return e['format'] % e
         elif "args" in e:
             assert "message" in e
-            assert isinstance(e['message'], str)
+            assert isinstance(e['message'], (str,unicode))
             return e['message'] % e['args']
         elif "message" in e:
-            assert isinstance(e['message'], str)
+            assert isinstance(e['message'], (str,unicode))
             return e['message']
         else:
             return ""
