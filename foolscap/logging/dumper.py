@@ -125,6 +125,6 @@ class LogDumper:
         print >>stdout, t
         if 'failure' in d:
             print >>stdout," FAILURE:"
-            lines = str(d['failure']).split("\n")
+            lines = str(d['failure'].get('str', d['failure'])).split("\n")
             for line in lines:
                 print >>stdout, " %s" % (line,)
