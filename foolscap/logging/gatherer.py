@@ -1,5 +1,5 @@
 
-import os, sys, time, pickle, bz2
+import os, sys, time, bz2
 signal = None
 try:
     import signal
@@ -12,6 +12,7 @@ from twisted.application import service, internet
 from foolscap.api import Tub, Referenceable
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.logging.incident import IncidentClassifierBase, TIME_FORMAT
+from foolscap.logging import flogfile
 from foolscap.util import get_local_ip_for, move_into_place
 
 class BadTubID(Exception):
@@ -114,7 +115,7 @@ class GathererService(GatheringBase):
     long-term FURL. You can then configure your applications to connect to
     this FURL when they start and pass it a reference to their LogPublisher.
     The gatherer will subscribe to the publisher and save all the resulting
-    messages in a logs.pickle file.
+    messages in a serialized flogfile.
 
     Applications can use code like the following to create a LogPublisher and
     pass it to the gatherer::
@@ -178,10 +179,8 @@ class GathererService(GatheringBase):
         self._savefile_name = os.path.join(self.basedir, new_filename)
         self._savefile = open(self._savefile_name, "ab", 0)
         self._starting_timestamp = now
-        header = {"header": {"type": "gatherer",
-                             "start": self._starting_timestamp,
-                             }}
-        pickle.dump(header, self._savefile)
+        flogfile.serialize_header(self._savefile, "gatherer",
+                                  start=self._starting_timestamp)
 
     def do_rotate(self):
         if not self._savefile:
@@ -222,14 +221,12 @@ class GathererService(GatheringBase):
         return d # mostly for testing
 
     def msg(self, nodeid_s, d):
-        e = {"from": nodeid_s,
-             "rx_time": time.time(),
-             "d": d,
-             }
         try:
-            pickle.dump(e, self._savefile)
+            flogfile.serialize_wrapper(self._savefile, d,
+                                       from_=nodeid_s,
+                                       rx_time=time.time())
         except Exception, ex:
-            print "GATHERER: unable to pickle %s: %s" % (e, ex)
+            print "GATHERER: unable to serialize %s: %s" % (d, ex)
 
 
 LOG_GATHERER_TACFILE = """\
@@ -376,13 +373,9 @@ class IncidentObserver(Referenceable):
         now = time.time()
         (header, events) = incident
         f = bz2.BZ2File(filename, "w")
-        h = {"header": header}
-        pickle.dump(h, f)
+        flogfile.serialize_raw_header(f, header)
         for e in events:
-            wrapper = {"from": self.tubid_s,
-                       "rx_time": now,
-                       "d": e}
-            pickle.dump(wrapper, f)
+            flogfile.serialize_wrapper(f, e, from_=self.tubid_s, rx_time=now)
         f.close()
 
     def update_latest(self, name):

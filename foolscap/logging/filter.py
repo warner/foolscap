@@ -1,13 +1,13 @@
 
 from twisted.python import usage
-import sys, os, pickle, bz2, time
+import sys, os, bz2, time
 from foolscap.logging import log, flogfile
 from foolscap.util import move_into_place
 
 class FilterOptions(usage.Options):
     stdout = sys.stdout
     stderr = sys.stderr
-    synopsis = "Usage: flogtool filter [options] OLDFILE.pickle NEWFILE.pickle"
+    synopsis = "Usage: flogtool filter [options] OLDFILE NEWFILE"
 
     optParameters = [
         ["after", None, None, "include events after timestamp (seconds since epoch)"],
@@ -98,7 +98,7 @@ class Filter:
                     and e['d'].get('facility', "").startswith(strip_facility)):
                     continue
             copied += 1
-            pickle.dump(e, newfile, 2)
+            flogfile.serialize_raw_wrapper(newfile, e)
         newfile.close()
         if options.newfile == options.oldfile:
             if sys.platform == "win32":

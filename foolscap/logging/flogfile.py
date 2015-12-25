@@ -1,6 +1,24 @@
 import pickle
 from contextlib import closing
 
+def serialize_raw_header(f, header):
+    pickle.dump({"header": header}, f)
+
+def serialize_header(f, type, **kwargs):
+    header = {"header": {"type": type} }
+    for k,v in kwargs.items():
+        header["header"][k] = v
+    pickle.dump(header, f)
+
+def serialize_raw_wrapper(f, wrapper):
+    pickle.dump(wrapper, f)
+
+def serialize_wrapper(f, ev, from_, rx_time):
+    wrapper = {"from": from_,
+               "rx_time": rx_time,
+               "d": ev}
+    pickle.dump(wrapper, f)
+
 class ThisIsActuallyAFurlFileError(Exception):
     pass
 

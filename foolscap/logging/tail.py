@@ -1,11 +1,11 @@
 
-import os, sys, time, pickle
+import os, sys, time
 from zope.interface import implements
 from twisted.internet import reactor
 from twisted.python import usage
 from foolscap import base32
 from foolscap.api import Tub, Referenceable, fireEventually
-from foolscap.logging import log
+from foolscap.logging import log, flogfile
 from foolscap.referenceable import SturdyRef
 from foolscap.util import format_time, FORMAT_TIME_MODES
 from interfaces import RILogObserver
@@ -20,21 +20,15 @@ class LogSaver(Referenceable):
         self.f = savefile # we own this, and may close it
 
     def emit_header(self, versions, pid):
-        header = {"header": {"type": "tail",
-                             "versions": versions}}
-        if pid is not None:
-            header["header"]["pid"] = pid
-        pickle.dump(header, self.f)
+        flogfile.serialize_header(self.f, "tail", versions=versions, pid=pid)
 
     def remote_msg(self, d):
-        e = {"from": self.nodeid_s,
-             "rx_time": time.time(),
-             "d": d,
-             }
         try:
-            pickle.dump(e, self.f)
+            flogfile.serialize_wrapper(self.f, d,
+                                       from_=self.nodeid_s,
+                                       rx_time=time.time())
         except Exception, ex:
-            print "GATHERER: unable to pickle %s: %s" % (e, ex)
+            print "GATHERER: unable to serialize %s: %s" % (d, ex)
 
     def disconnected(self):
         self.f.close()
