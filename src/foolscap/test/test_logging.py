@@ -1,5 +1,5 @@
 
-import os, sys, pickle, time, bz2
+import os, sys, pickle, time, bz2, base64
 from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
@@ -2006,6 +2006,85 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnlessEqual(err, "Error: %s appears to be a FURL file.\nPerhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?\n" % fn)
+
+PICKLE_DUMPFILE_B64 = """
+KGRwMApTJ2hlYWRlcicKcDEKKGRwMgpTJ3RocmVzaG9sZCcKcDMKSTAKc1MncGlkJwpwNA
+pJMTg3MjgKc1MndHlwZScKcDUKUydsb2ctZmlsZS1vYnNlcnZlcicKcDYKc1MndmVyc2lv
+bnMnCnA3CihkcDgKUydmb29sc2NhcCcKcDkKUycwLjkuMSsyMi5nNzhlNWEzZC5kaXJ0eS
+cKcDEwCnNTJ3R3aXN0ZWQnCnAxMQpTJzE1LjUuMCcKcDEyCnNzcy6AAn1xAChVBGZyb21x
+AVUFbG9jYWxxAlUHcnhfdGltZXEDR0HVmqGrUXpjVQFkcQR9cQUoVQVsZXZlbHEGSxRVC2
+luY2FybmF0aW9ucQdVCMZQLsaodzvDcQhOhnEJVQhmYWNpbGl0eXEKVQxiaWcuZmFjaWxp
+dHlxC1UDbnVtcQxLAFUEdGltZXENR0HVmqGrRFtbVQdtZXNzYWdlcQ5VA29uZXEPdXUugA
+J9cQAoVQRmcm9tcQFVBWxvY2FscQJVB3J4X3RpbWVxA0dB1Zqhq1F+s1UBZHEEfXEFKFUH
+bWVzc2FnZXEGVQN0d29xB1UDbnVtcQhLAVUEdGltZXEJR0HVmqGrUU6cVQtpbmNhcm5hdG
+lvbnEKVQjGUC7GqHc7w3ELToZxDFUFbGV2ZWxxDUsTdXUugAJ9cQAoVQRmcm9tcQFVBWxv
+Y2FscQJVB3J4X3RpbWVxA0dB1Zqhq1GAiFUBZHEEfXEFKFUFbGV2ZWxxBksUVQtpbmNhcm
+5hdGlvbnEHVQjGUC7GqHc7w3EIToZxCVUDd2h5cQpOVQdmYWlsdXJlcQsoY2Zvb2xzY2Fw
+LmNhbGwKQ29waWVkRmFpbHVyZQpxDG9xDX1xDyhVAnRicRBOVQl0cmFjZWJhY2txEVSBAw
+AAVHJhY2ViYWNrIChtb3N0IHJlY2VudCBjYWxsIGxhc3QpOgogIEZpbGUgIi9Vc2Vycy93
+YXJuZXIvc3R1ZmYvcHl0aG9uL2Zvb2xzY2FwL3ZlL2xpYi9weXRob24yLjcvc2l0ZS1wYW
+NrYWdlcy90d2lzdGVkL3RyaWFsL19hc3luY3Rlc3QucHkiLCBsaW5lIDExMiwgaW4gX3J1
+bgogICAgdXRpbHMucnVuV2l0aFdhcm5pbmdzU3VwcHJlc3NlZCwgc2VsZi5fZ2V0U3VwcH
+Jlc3MoKSwgbWV0aG9kKQogIEZpbGUgIi9Vc2Vycy93YXJuZXIvc3R1ZmYvcHl0aG9uL2Zv
+b2xzY2FwL3ZlL2xpYi9weXRob24yLjcvc2l0ZS1wYWNrYWdlcy90d2lzdGVkL2ludGVybm
+V0L2RlZmVyLnB5IiwgbGluZSAxNTAsIGluIG1heWJlRGVmZXJyZWQKICAgIHJlc3VsdCA9
+IGYoKmFyZ3MsICoqa3cpCiAgRmlsZSAiL1VzZXJzL3dhcm5lci9zdHVmZi9weXRob24vZm
+9vbHNjYXAvdmUvbGliL3B5dGhvbjIuNy9zaXRlLXBhY2thZ2VzL3R3aXN0ZWQvaW50ZXJu
+ZXQvdXRpbHMucHkiLCBsaW5lIDE5NywgaW4gcnVuV2l0aFdhcm5pbmdzU3VwcHJlc3NlZA
+ogICAgcmVzdWx0ID0gZigqYSwgKiprdykKICBGaWxlICIvVXNlcnMvd2FybmVyL3N0dWZm
+L3B5dGhvbi9mb29sc2NhcC9mb29sc2NhcC90ZXN0L3Rlc3RfbG9nZ2luZy5weSIsIGxpbm
+UgMTg4MywgaW4gdGVzdF9kdW1wCiAgICBkID0gc2VsZi5jcmVhdGVfbG9nZmlsZSgpCi0t
+LSA8ZXhjZXB0aW9uIGNhdWdodCBoZXJlPiAtLS0KICBGaWxlICIvVXNlcnMvd2FybmVyL3
+N0dWZmL3B5dGhvbi9mb29sc2NhcC9mb29sc2NhcC90ZXN0L3Rlc3RfbG9nZ2luZy5weSIs
+IGxpbmUgMTg0MiwgaW4gY3JlYXRlX2xvZ2ZpbGUKICAgIHJhaXNlIFNhbXBsZUVycm9yKC
+J3aG9vcHMxIikKZm9vbHNjYXAudGVzdC50ZXN0X2xvZ2dpbmcuU2FtcGxlRXJyb3I6IHdo
+b29wczEKcRJVBXZhbHVlcRNVB3dob29wczFxFFUHcGFyZW50c3EVXXEWKFUmZm9vbHNjYX
+AudGVzdC50ZXN0X2xvZ2dpbmcuU2FtcGxlRXJyb3JxF1UUZXhjZXB0aW9ucy5FeGNlcHRp
+b25xGFUYZXhjZXB0aW9ucy5CYXNlRXhjZXB0aW9ucRlVEl9fYnVpbHRpbl9fLm9iamVjdH
+EaZVUGZnJhbWVzcRtdcRxVBHR5cGVxHVUmZm9vbHNjYXAudGVzdC50ZXN0X2xvZ2dpbmcu
+U2FtcGxlRXJyb3JxHlUFc3RhY2txH11xIHViVQNudW1xIUsCVQR0aW1lcSJHQdWaoatRVt
+JVB21lc3NhZ2VxI1UFdGhyZWVxJFUHaXNFcnJvcnElSwF1dS6AAn1xAChVBGZyb21xAVUF
+bG9jYWxxAlUHcnhfdGltZXEDR0HVmqGrUYXkVQFkcQR9cQUoVQdtZXNzYWdlcQZVBGZvdX
+JxB1UDbnVtcQhLA1UEdGltZXEJR0HVmqGrUXU2VQtpbmNhcm5hdGlvbnEKVQjGUC7GqHc7
+w3ELToZxDFUFbGV2ZWxxDUsUdXUu
+"""
+
+PICKLE_INCIDENT_B64 = """
+QlpoOTFBWSZTWUOW3hEAAHjfgAAQAcl/4QkhCAS/59/iQAGdWS2BJRTNNQ2oB6gGgPU9T1
+BoEkintKGIABiAAaAwANGhowjJoNGmgMCpJDSaNGqbSMnqGhoaAP1S5rw5GxrNlUoxLXu2
+sZ5TYy2rVCVNHMKgeDE97TBiw1hXtCfdSCISDpSlL61KFiacqWj9apY80J2PIpO7mde+vd
+Jz18Myu4+djYU10JPMGU5vFAcUmmyk0kmcGUSMIDUJcKkog4W2EyyQStwwSYUEohGpr6Wm
+F4KU7qccsjPJf8dTIv3ydZM5hpkW41JjJ8j0PETxlRRVFSeZYsqFU+hufU3n5O3hmYASDC
+DhWMHFPJE7nXCYRsz5BGjktwUQCu6d4cixrgmGYLYA7JVCM7UqkMDVD9EMaclrFuayYGBR
+xMIwXxM9pjeUuZVv2ceR5E6FSWpVRKKD98ObK5wmGmU9vqNBKqjp0wwqZlZ3x3nA4n+LTS
+rmhbVjNyWeh/xdyRThQkEOW3hE
+"""
+
+class OldPickleDumper(unittest.TestCase):
+    def test_dump(self):
+        self.basedir = "logging/OldPickleDumper/dump"
+        if not os.path.exists(self.basedir):
+            os.makedirs(self.basedir)
+        fn = os.path.join(self.basedir, "dump.flog")
+        with open(fn, "wb") as f:
+            f.write(base64.b64decode(PICKLE_DUMPFILE_B64))
+
+        argv = ["flogtool", "dump", fn]
+        (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnlessEqual(err, "")
+
+    def test_incident(self):
+        self.basedir = "logging/OldPickleDumper/incident"
+        if not os.path.exists(self.basedir):
+            os.makedirs(self.basedir)
+        fn = os.path.join(self.basedir,
+                          "incident-2015-12-11--08-18-28Z-uqyuiea.flog.bz2")
+        with open(fn, "wb") as f:
+            f.write(base64.b64decode(PICKLE_INCIDENT_B64))
+
+        argv = ["flogtool", "dump", fn]
+        (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnlessEqual(err, "")
 
 class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
