@@ -292,6 +292,43 @@ class Serialization(unittest.TestCase):
         events = list(fl.get_buffered_events())
         self.failUnless(events[0]["arg"]["key"], "new")
 
+    def test_not_pickle(self):
+        # Older versions of Foolscap used pickle to store events into the
+        # Incident log. Newer ones use JSON. Test that pickleable (but not
+        # JSON-able) objects are *not* written to the file.
+        basedir = "logging/Serialization/not_pickle"
+        os.makedirs(basedir)
+        fl = log.FoolscapLogger()
+        ir = incident.IncidentReporter(basedir, fl, "tubid")
+        ir.TRAILING_DELAY = None
+        fl.msg("first")
+        unjsonable = [object()] # still picklable
+        unserializable = [lambda: "neither pickle nor JSON can capture me"]
+        # having unserializble data in the logfile should not break the rest
+        fl.msg("unjsonable", arg=unjsonable)
+        fl.msg("unserializable", arg=unserializable)
+        fl.msg("last")
+        events = list(fl.get_buffered_events())
+        # if unserializable data breaks incident reporting, this
+        # incident_declared() call will cause an exception
+        ir.incident_declared(events[0])
+        # that won't record any trailing events, but does
+        # eventually(finished_Recording), so wait for that to conclude
+        d = flushEventualQueue()
+        def _check(_):
+            files = os.listdir(basedir)
+            self.failUnlessEqual(len(files), 1)
+            fn = os.path.join(basedir, files[0])
+            events = list(flogfile.get_events(fn))
+            self.failUnlessEqual(events[0]["header"]["type"], "incident")
+            self.failUnlessEqual(events[1]["d"]["message"], "first")
+            self.failUnlessEqual(len(events), 3)
+            # actually this should record 5 events: both unrecordable events
+            # should be replaced with error messages that *are* recordable
+            self.failUnlessEqual(events[2]["d"]["message"], "last")
+        d.addCallback(_check)
+        return d
+
 class SuperstitiousQualifier(incident.IncidentQualifier):
     def check_event(self, ev):
         if "thirteen" in ev.get("message", ""):
