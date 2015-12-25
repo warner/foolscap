@@ -169,17 +169,34 @@ class FoolscapLogger:
 
         if "num" not in kwargs:
             num = self.seqnum.next()
+            kwargs['num'] = num
         else:
             num = kwargs['num']
+
+        try:
+            self._msg(*args, **kwargs)
+        except Exception as e:
+            try:
+                errormsg = ("internal error in log._msg,"
+                            " args=%r, kwargs=%r, exception=%r"
+                            % (args, kwargs, e))
+                self._msg(errormsg, num=num, level=WEIRD,
+                          facility="foolscap/internal-error")
+            except:
+                pass # bummer
+        return num
+
+    def _msg(self, *args, **kwargs):
         facility = kwargs.get('facility')
         if "level" not in kwargs:
             kwargs['level'] = OPERATIONAL
         level = kwargs["level"]
         threshold = self.get_generation_threshold(facility)
         if level < threshold:
-            return num # not worth logging
+            return # not worth logging
 
         event = kwargs
+        # kwargs always has 'num'
 
         if "format" in event:
             pass
@@ -212,18 +229,10 @@ class FoolscapLogger:
                 f2.setCopyableState(fs.getStateToCopy(f, FakeBroker))
                 event["failure"] = f2
 
-        # verify that we can stringify the event correctly
-        try:
-            format_message(event)
-        except Exception, e:
-            print "problem in log message %s: %r %s" % (event, e, e)
-            pass
         if event.get('stacktrace', False) is True:
             event['stacktrace'] = traceback.format_stack()
         event['incarnation'] = self.incarnation
-        event['num'] = num
         self.add_event(facility, level, event)
-        return num
 
     def err(self, _stuff=None, _why=None, **kw):
         """
@@ -275,11 +284,8 @@ class FoolscapLogger:
         # eventual-send.
 
         if self.active_incident_qualifier:
-            try:
-                # this might call declare_incident
-                self.active_incident_qualifier.event(event)
-            except:
-                print failure.Failure() # for debugging
+            # this might call declare_incident
+            self.active_incident_qualifier.event(event)
 
     def declare_incident(self, triggering_event):
         self.incidents_declared += 1
