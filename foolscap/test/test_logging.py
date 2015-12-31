@@ -5,6 +5,10 @@ from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer
+try:
+    from twisted import logger as twisted_logger
+except ImportError:
+    twisted_logger = None
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
@@ -2231,6 +2235,46 @@ class Bridge(unittest.TestCase):
         d.addCallback(_check)
         return d
 
+    def test_twisted_logger_to_foolscap(self):
+        if not twisted_logger:
+            raise unittest.SkipTest("needs twisted.logger from Twisted>=15.2.0")
+        new_pub = twisted_logger.LogPublisher()
+        old_pub = twisted_log.LogPublisher(observerPublisher=new_pub,
+                                           publishPublisher=new_pub)
+        fl = log.FoolscapLogger()
+        log.bridgeLogsFromTwisted(None, old_pub, fl)
+        tw_out = []
+        old_pub.addObserver(tw_out.append)
+        fl_out = []
+        fl.addObserver(fl_out.append)
+
+        tl = twisted_logger.Logger(observer=new_pub)
+        tl.info("one")
+        # note: new twisted logger wants PEP3101 format strings, {} not %
+        tl.info(format="two {two}", two=2)
+        # twisted's new Logger.info() takes arbitrary (unserializable) kwargs
+        # for string formatting, and passes them into the old LogPublisher(),
+        # so make sure we can tolerate that. The rule is that foolscap
+        # stringifies all events it gets from twisted, and doesn't store the
+        # additional arguments.
+        unserializable = lambda: "unserializable"
+        tl.info("three is {evil!s}", evil=unserializable)
+
+        d = flushEventualQueue()
+        def _check(res):
+            self.failUnlessEqual(len(fl_out), 3)
+            self.failUnlessEqual(fl_out[0]["message"], "one")
+            self.failUnless(fl_out[0]["from-twisted"])
+            self.failUnlessEqual(fl_out[1]["message"], "two 2")
+            self.failIf("two" in fl_out[1])
+            self.failUnless(fl_out[1]["from-twisted"])
+            # str(unserializable) is like "<function <lambda> at 0xblahblah>"
+            self.failUnlessEqual(fl_out[2]["message"],
+                                 "three is " + str(unserializable))
+            self.failUnless(fl_out[2]["from-twisted"])
+
+        d.addCallback(_check)
+        return d
 
     def test_no_loops(self):
         fl = log.FoolscapLogger()
