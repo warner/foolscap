@@ -175,7 +175,13 @@ class FoolscapLogger:
 
         try:
             self._msg(*args, **kwargs)
-        except Exception as e:
+        except Exception as e: # XXX remove this
+            # the only sensible exceptions that might happen (i.e. ones we
+            # ought to catch) would be in add_event() -> declare_incident()
+            # -> IncidentReporter.incident_declared(), when it tries (and
+            # fails) to open a logfile. Serialization errors should be caught
+            # and handled (re-logged with a stringified event) inside
+            # incident_declared(), rather than being caught up here.
             try:
                 errormsg = ("internal error in log._msg,"
                             " args=%r, kwargs=%r, exception=%r"
@@ -249,7 +255,11 @@ class FoolscapLogger:
             return self.msg(repr(_stuff), why=_why, isError=1, **kw)
 
     def add_event(self, facility, level, event):
-        # send to observers
+        # Send to observers. If an immediate observer throws an exception, it
+        # will not be caught, and the program will break. So immediate
+        # observers must be written with care. The only place Foolscap uses
+        # one is in logging.publish.Subscription.send, and that only queues
+        # an event (it does not attempt to serialize or send anything).
         for o in self._immediate_observers:
             o(event)
         for o in self._observers:
@@ -284,18 +294,21 @@ class FoolscapLogger:
         # eventual-send.
 
         if self.active_incident_qualifier:
-            # this might call declare_incident
+            # this might call declare_incident(), which might throw an
+            # exception
             self.active_incident_qualifier.event(event)
 
     def declare_incident(self, triggering_event):
         self.incidents_declared += 1
         ir = self.get_active_incident_reporter()
         if ir:
-            ir.new_trigger(triggering_event)
+            ir.new_trigger(triggering_event) # this might throw
             return
         if self.logdir: # just in case
             ir = self.incident_reporter_factory(self.logdir, self, "local")
             self.active_incident_reporter_weakref = weakref.ref(ir)
+            # incident_declared does a lot of work (opening files,
+            # serializing events), and might throw an exception
             ir.incident_declared(triggering_event) # this takes a few seconds
 
     def incident_recorded(self, filename, name, trigger):
