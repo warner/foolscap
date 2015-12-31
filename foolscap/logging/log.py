@@ -169,40 +169,17 @@ class FoolscapLogger:
 
         if "num" not in kwargs:
             num = self.seqnum.next()
-            kwargs['num'] = num
         else:
             num = kwargs['num']
-
-        try:
-            self._msg(*args, **kwargs)
-        except Exception as e: # XXX remove this
-            # the only sensible exceptions that might happen (i.e. ones we
-            # ought to catch) would be in add_event() -> declare_incident()
-            # -> IncidentReporter.incident_declared(), when it tries (and
-            # fails) to open a logfile. Serialization errors should be caught
-            # and handled (re-logged with a stringified event) inside
-            # incident_declared(), rather than being caught up here.
-            try:
-                errormsg = ("internal error in log._msg,"
-                            " args=%r, kwargs=%r, exception=%r"
-                            % (args, kwargs, e))
-                self._msg(errormsg, num=num, level=WEIRD,
-                          facility="foolscap/internal-error")
-            except:
-                pass # bummer
-        return num
-
-    def _msg(self, *args, **kwargs):
         facility = kwargs.get('facility')
         if "level" not in kwargs:
             kwargs['level'] = OPERATIONAL
         level = kwargs["level"]
         threshold = self.get_generation_threshold(facility)
         if level < threshold:
-            return # not worth logging
+            return num # not worth logging
 
         event = kwargs
-        # kwargs always has 'num'
 
         if "format" in event:
             pass
@@ -217,6 +194,13 @@ class FoolscapLogger:
 
         if "time" not in event:
             event['time'] = time.time()
+
+        # the only sensible exceptions that might happen (i.e. ones we ought
+        # to catch) would be in add_event() -> declare_incident() ->
+        # IncidentReporter.incident_declared(), when it tries (and fails) to
+        # open a logfile. Serialization errors should be caught and handled
+        # (re-logged with a stringified event) inside incident_declared(),
+        # rather than being caught up here.
 
         if "failure" in event:
             f = event["failure"]
@@ -239,6 +223,7 @@ class FoolscapLogger:
             event['stacktrace'] = traceback.format_stack()
         event['incarnation'] = self.incarnation
         self.add_event(facility, level, event)
+        return num
 
     def err(self, _stuff=None, _why=None, **kw):
         """
