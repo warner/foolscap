@@ -6,7 +6,8 @@ from twisted.python import log as twisted_log
 from twisted.python import failure
 from foolscap import eventual
 from foolscap.logging.interfaces import IIncidentReporter
-from foolscap.logging.incident import IncidentQualifier, IncidentReporter
+from foolscap.logging.incident import (IncidentQualifier, IncidentReporter,
+                                       IncidentDeclarationError)
 from foolscap.logging import app_versions, flogfile
 
 from foolscap.logging.levels import NOISY, OPERATIONAL, UNUSUAL, \
@@ -281,7 +282,17 @@ class FoolscapLogger:
         if self.active_incident_qualifier:
             # this might call declare_incident(), which might throw an
             # exception
-            self.active_incident_qualifier.event(event)
+            try:
+                self.active_incident_qualifier.event(event)
+            except IncidentDeclarationError as e:
+                # Despite this being weird, don't use level=WEIRD, because
+                # that's likely to cause an endless stream of Incidents. Also
+                # avoid loops.
+                INTERNAL = "foolscap/internal-error"
+                if facility == INTERNAL:
+                    return
+                self.msg("internal error while declaring an Incident: %r" % (e,),
+                         facility=INTERNAL)
 
     def declare_incident(self, triggering_event):
         self.incidents_declared += 1

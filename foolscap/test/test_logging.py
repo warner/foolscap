@@ -206,7 +206,7 @@ class ErrorfulQualifier(incident.IncidentQualifier):
     def check_event(self, ev):
         if self._first:
             self._first = False
-            raise ValueError("oops")
+            raise incident.IncidentDeclarationError("oops")
         return False
 
 class NoStdio(unittest.TestCase):
@@ -260,10 +260,11 @@ class NoStdio(unittest.TestCase):
         # called). So we look at the last event, and make sure it's the
         # metaevent.
         events = list(self.fl.get_buffered_events())
-        m = events[-1]["message"]
-        expected = "internal error in log._msg, args=('oops',)"
-        self.assert_(m.startswith(expected), m)
-        self.assertIn("ValueError('oops'", m)
+        e = events[-1]
+        self.assertEqual(e["message"],
+                         "internal error while declaring an Incident: "
+                         "IncidentDeclarationError('oops',)")
+        self.assertEqual(e["facility"], "foolscap/internal-error")
 
 
 class Serialization(unittest.TestCase):

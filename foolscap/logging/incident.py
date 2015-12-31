@@ -10,6 +10,10 @@ from foolscap.eventual import eventually
 from foolscap.util import move_into_place
 from foolscap import base32
 
+# an internal exception marker
+class IncidentDeclarationError(Exception):
+    pass
+
 TIME_FORMAT = "%Y-%m-%d--%H-%M-%S"
 
 class IncidentQualifier:
@@ -85,8 +89,11 @@ class IncidentReporter:
         self.abs_filename_bz2 = self.abs_filename + ".bz2"
         self.abs_filename_bz2_tmp = self.abs_filename + ".bz2.tmp"
         # open logfile. We use both an uncompressed one and a compressed one.
-        self.f1 = open(self.abs_filename, "wb")
-        self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
+        try:
+            self.f1 = open(self.abs_filename, "wb")
+            self.f2 = bz2.BZ2File(self.abs_filename_bz2_tmp, "wb")
+        except EnvironmentError as e:
+            raise IncidentDeclarationError(e)
 
         # write header with triggering_event
         flogfile.serialize_header(self.f1, "incident",
