@@ -1,5 +1,5 @@
 
-import os, pickle, time, bz2
+import os, sys, pickle, time, bz2
 from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
@@ -194,6 +194,73 @@ class Advanced(unittest.TestCase):
         n = l.msg("one")
         n2 = l.msg("two", parent=n)
         l.msg("three", parent=n2)
+
+class ErrorfulQualifier(incident.IncidentQualifier):
+    def __init__(self):
+        self._first = True
+
+    def check_event(self, ev):
+        if self._first:
+            self._first = False
+            raise ValueError("oops")
+        return False
+
+class NoStdio(unittest.TestCase):
+    # bug #244 is caused, in part, by Foolscap-side logging failures which
+    # write an error message ("unable to serialize X") to stderr, which then
+    # gets captured by twisted's logging (when run in a program under
+    # twistd), then fed back into foolscap logging. Check that unserializable
+    # objects don't cause anything to be written to a mock stdout/stderr
+    # object.
+    #
+    # FoolscapLogger used stdio in two places:
+    # * msg() when format_message() throws
+    # * add_event() when IncidentQualifier.event() throws
+
+    def setUp(self):
+        self.fl = log.FoolscapLogger()
+        self.mock_stdout = StringIO()
+        self.mock_stderr = StringIO()
+        self.orig_stdout = sys.stdout
+        self.orig_stderr = sys.stderr
+        sys.stdout = self.mock_stdout
+        sys.stderr = self.mock_stderr
+
+    def tearDown(self):
+        sys.stdout = self.orig_stdout
+        sys.stderr = self.orig_stderr
+
+    def check_stdio(self):
+        self.failUnlessEqual(self.mock_stdout.getvalue(), "")
+        self.failUnlessEqual(self.mock_stderr.getvalue(), "")
+
+    def test_unformattable(self):
+        self.fl.msg(format="one=%(unformattable)s") # missing format key
+        self.check_stdio()
+
+    def test_unserializable_incident(self):
+        # one #244 pathway involved an unserializable event that caused an
+        # exception during IncidentReporter.incident_declared(), as it tried
+        # to record all recent events. We can test the lack of stdio by using
+        # a qualifier that throws an error directly.
+        self.fl.setIncidentQualifier(ErrorfulQualifier())
+        self.fl.activate_incident_qualifier()
+        # make sure we set it up correctly
+        self.failUnless(self.fl.active_incident_qualifier)
+        self.fl.msg("oops", arg=lambda : "lambdas are unserializable",
+                    level=log.BAD)
+        self.check_stdio()
+        # The internal error will cause a new "metaevent" to be recorded. The
+        # original event may or may not get recorded first, depending upon
+        # the error (i.e. does it happen before or after buffer.append is
+        # called). So we look at the last event, and make sure it's the
+        # metaevent.
+        events = list(self.fl.get_buffered_events())
+        m = events[-1]["message"]
+        expected = "internal error in log._msg, args=('oops',)"
+        self.assert_(m.startswith(expected), m)
+        self.assertIn("ValueError('oops'", m)
+
 
 class SuperstitiousQualifier(incident.IncidentQualifier):
     def check_event(self, ev):
