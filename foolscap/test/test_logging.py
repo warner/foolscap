@@ -2198,18 +2198,35 @@ class Bridge(unittest.TestCase):
 
         tw.msg("one")
         tw.msg(format="two %(two)d", two=2)
+        # twisted now has places (e.g. Factory.doStart) where the new
+        # Logger.info() is called with arbitrary (unserializable) kwargs for
+        # string formatting, which are passed into the old LogPublisher(),
+        # from which they arrive in foolscap. Make sure we can tolerate that.
+        # The rule is that foolscap immediately stringifies all events it
+        # gets from twisted (with log.textFromEventDict), and doesn't store
+        # the additional arguments. So it's ok to put an *unserializable*
+        # argument into the log.msg() call, as long as it's still
+        # *stringifyable*.
+        unserializable = lambda: "unserializable"
+        tw.msg(format="three is %(evil)s", evil=unserializable)
+
         d = flushEventualQueue()
         def _check(res):
-            self.failUnlessEqual(len(tw_out), 2)
+            self.failUnlessEqual(len(tw_out), 3)
             self.failUnlessEqual(tw_out[0]["message"], ("one",))
             self.failUnlessEqual(tw_out[1]["format"], "two %(two)d")
             self.failUnlessEqual(tw_out[1]["two"], 2)
-
-            self.failUnlessEqual(len(fl_out), 2)
+            self.failUnlessEqual(tw_out[2]["format"], "three is %(evil)s")
+            self.failUnlessEqual(tw_out[2]["evil"], unserializable)
+            self.failUnlessEqual(len(fl_out), 3)
             self.failUnlessEqual(fl_out[0]["message"], "one")
             self.failUnless(fl_out[0]["from-twisted"])
             self.failUnlessEqual(fl_out[1]["message"], "two 2")
             self.failUnless(fl_out[1]["from-twisted"])
+            # str(unserializable) is like "<function <lambda> at 0xblahblah>"
+            self.failUnlessEqual(fl_out[2]["message"],
+                                 "three is " + str(unserializable))
+            self.failUnless(fl_out[2]["from-twisted"])
 
         d.addCallback(_check)
         return d
