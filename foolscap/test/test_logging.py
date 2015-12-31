@@ -262,6 +262,28 @@ class NoStdio(unittest.TestCase):
         self.assertIn("ValueError('oops'", m)
 
 
+class Serialization(unittest.TestCase):
+    def test_lazy_serialization(self):
+        # Both foolscap and twisted allow (somewhat) arbitrary kwargs in the
+        # log.msg() call. Twisted will either discard the event (if nobody is
+        # listening), or stringify it right away.
+        #
+        # Foolscap does neither. It records the event (kwargs and all) in a
+        # circular buffer, so a later observer can learn about them (either
+        # 'flogtool tail' or a stored Incident file). And it stores the
+        # arguments verbatim, leaving stringification to the future observer
+        # (if they want it), so tools can filter events without using regexps
+        # or parsing prematurely-flattened strings.
+        #
+        # Test this by logging a mutable object, modifying it, then checking
+        # the buffer. We expect to see the modification.
+        fl = log.FoolscapLogger()
+        mutable = {"key": "old"}
+        fl.msg("one", arg=mutable)
+        mutable["key"] = "new"
+        events = list(fl.get_buffered_events())
+        self.failUnless(events[0]["arg"]["key"], "new")
+
 class SuperstitiousQualifier(incident.IncidentQualifier):
     def check_event(self, ev):
         if "thirteen" in ev.get("message", ""):
