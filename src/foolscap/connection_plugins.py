@@ -12,7 +12,7 @@ OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
 NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
-SOCKS_HINT_RE=re.compile(r"^(tcp|tor):(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+SOCKS_HINT_RE=re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
@@ -76,5 +76,5 @@ class SocksPlugin:
         mo = SOCKS_HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("unrecognized TCP hint")
-        host, port = mo.group(2), int(mo.group(3))
+        host, port = mo.group(1), int(mo.group(2))
         return SOCKS5ClientEndpoint(host, port, proxy_endpoint), host
