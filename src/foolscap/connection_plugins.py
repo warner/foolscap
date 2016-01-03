@@ -56,16 +56,9 @@ class DefaultTCP:
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.HostnameEndpoint(reactor, host, port), host
 
-def default_tcp4_endpoint_generator(*args, **kw):
-    """
-    Default generator used to create client-side TCP4ClientEndpoint
-    instances.  We do this to make the unit tests work...
-    """
-    return endpoints.TCP4ClientEndpoint(*args, **kw)
-
 @implementer(IConnectionHintHandler)
 class SocksPlugin:
-    def __init__(self, socks_host, socks_port, proxy_endpoint_generator=default_tcp4_endpoint_generator):
+    def __init__(self, socks_host, socks_port, proxy_endpoint_generator=endpoints.TCP4ClientEndpoint):
         self.socks_host = socks_host
         self.socks_port = int(socks_port)
         self._proxy_endpoint_generator = proxy_endpoint_generator
