@@ -12,7 +12,7 @@ OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
 NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
-SOCKS_HINT_RE=re.compile(r"^(tcp|tor):(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+SOCKS_HINT_RE=re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
@@ -56,16 +56,9 @@ class DefaultTCP:
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.TCP4ClientEndpoint(reactor, host, port), host
 
-def default_tcp4_endpoint_generator(*args, **kw):
-    """
-    Default generator used to create client-side TCP4ClientEndpoint
-    instances.  We do this to make the unit tests work...
-    """
-    return endpoints.TCP4ClientEndpoint(*args, **kw)
-
 @implementer(IConnectionHintHandler)
 class SocksPlugin:
-    def __init__(self, socks_host, socks_port, proxy_endpoint_generator=default_tcp4_endpoint_generator):
+    def __init__(self, socks_host, socks_port, proxy_endpoint_generator=endpoints.TCP4ClientEndpoint):
         self.socks_host = socks_host
         self.socks_port = int(socks_port)
         self._proxy_endpoint_generator = proxy_endpoint_generator
@@ -76,5 +69,5 @@ class SocksPlugin:
         mo = SOCKS_HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("unrecognized TCP hint")
-        host, port = mo.group(2), int(mo.group(3))
+        host, port = mo.group(1), int(mo.group(2))
         return SOCKS5ClientEndpoint(host, port, proxy_endpoint), host
