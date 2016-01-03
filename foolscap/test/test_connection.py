@@ -16,7 +16,9 @@ from foolscap import ipb, util
 
 class SocksPluginTests(unittest.TestCase):
     def test_defaultFactory(self):
-        def SocksEndpointGenerator(*args, **kw):
+        def SocksEndpointGenerator(reactor, host, port):
+            self.failUnlessEqual(host, "127.0.0.1")
+            self.failUnlessEqual(port, 9050)
             return FakeEndpoint()
         plugin = SocksPlugin("127.0.0.1", "9050", proxy_endpoint_generator = SocksEndpointGenerator)
         hint = "tor:meowhost:80"
@@ -28,6 +30,13 @@ class SocksPluginTests(unittest.TestCase):
         endpoint.connect(None)
         # equivalent to the TestSOCKS5ClientEndpoint.test_defaultFactory test-case.
         self.assertEqual(endpoint.proxyEndpoint.transport.value(), '\x05\x01\x00')
+
+    def test_override(self):
+        SocksEndpointGenerator = lambda x, y, z: FakeEndpoint()
+        ep, host = get_endpoint("tcp:meowhost:80", {"tcp": SocksPlugin(
+            "127.0.0.1", "9050", proxy_endpoint_generator=SocksEndpointGenerator)})
+        self.failUnless(isinstance(ep, SOCKS5ClientEndpoint), ep)
+        self.failUnlessEqual(host, "meowhost")
 
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
