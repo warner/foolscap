@@ -1525,7 +1525,7 @@ class Tail(unittest.TestCase):
                        })
         outmsg = out.getvalue()
         # this contains a localtime string, so don't check the hour
-        self.failUnless(":25:06.527 L25 []#123 howdy" in outmsg)
+        self.failUnless(":06.527 L25 []#123 howdy" in outmsg)
 
         lp.remote_msg({"time": 1207005907.527782,
                        "level": 25,
@@ -1535,7 +1535,7 @@ class Tail(unittest.TestCase):
                        })
         outmsg = out.getvalue()
         # this contains a localtime string, so don't check the hour
-        self.failUnless(":25:07.527 L25 []#124 howdy pardner" in outmsg)
+        self.failUnless(":07.527 L25 []#124 howdy pardner" in outmsg)
 
         try:
             raise RuntimeError("fake error")
@@ -1550,7 +1550,7 @@ class Tail(unittest.TestCase):
                        })
         outmsg = out.getvalue()
 
-        self.failUnless(":25:50.002 L30 []#125 oops\n FAILURE:\n" in outmsg,
+        self.failUnless(":50.002 L30 []#125 oops\n FAILURE:\n" in outmsg,
                         outmsg)
         self.failUnless("exceptions.RuntimeError" in outmsg, outmsg)
         self.failUnless(": fake error" in outmsg, outmsg)
