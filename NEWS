@@ -1,5 +1,21 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.10.0 (15-Jan-2015)
+
+** Compatibility Fixes
+
+This release is compatible with Twisted-15.3.0 through 15.5.0. A change in
+15.3.0 triggered a bug in Foolscap which produced a somewhat-infinite series
+of log messages when run under `twistd`. This release fixes that bug, and
+slightly changes the semantics of calling `log.msg()` with additional
+parameters. (#244)
+
+Foolscap no longer claims compatibility with python-2.6.x . Twisted-15.5.0
+was the last release to offer 2.6 support, and subsequent releases actively
+throw errors when run against 2.6, so we've turned off Foolscap's automated
+testing for 2.6. It may remain compatible by accident for a while. (#245)
+
+
 * Release 0.9.1 (21-Sep-2015)
 
 Point release to deal with PyPI upload problems. No code changes.
