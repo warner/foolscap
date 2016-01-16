@@ -1,6 +1,39 @@
 import pickle
 from contextlib import closing
 
+def sanitize_event(event):
+    # We trial-serialize the event, and if that works we return it unchanged.
+    # But if it fails, we find the (one? two?) keys/values that are causing
+    # problems, and stringify those with an error message.
+
+    # The performance hit of serializing things twice is a drag, but the
+    # faster approach (try pickle.dump, catch an exception, then try again
+    # with a sanitized dictionary) is likely to write partially-serialized
+    # fragments to the file, corrupting it.
+
+    try:
+        pickle.dumps(event)
+        return event
+    except pickle.PickleError:
+        pass
+
+    new_event = {}
+    for key,value in event.items():
+        try:
+            pickle.dumps(key)
+            safe_key = key
+        except pickle.PickleError:
+            safe_key = "[unpickleable key: %s]" % str(key)
+
+        try:
+            pickle.dumps(value)
+            safe_value = value
+        except pickle.PickleError:
+            safe_value = "[unpickleable value: %s]" % str(value)
+
+        new_event[safe_key] = safe_value
+    return new_event
+
 def serialize_raw_header(f, header):
     pickle.dump({"header": header}, f)
 
@@ -16,7 +49,7 @@ def serialize_raw_wrapper(f, wrapper):
 def serialize_wrapper(f, ev, from_, rx_time):
     wrapper = {"from": from_,
                "rx_time": rx_time,
-               "d": ev}
+               "d": sanitize_event(ev)}
     serialize_raw_wrapper(f, wrapper)
 
 class ThisIsActuallyAFurlFileError(Exception):
