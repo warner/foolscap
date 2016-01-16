@@ -257,10 +257,12 @@ class NoStdio(unittest.TestCase):
         # The internal error will cause a new "metaevent" to be recorded. The
         # original event may or may not get recorded first, depending upon
         # the error (i.e. does it happen before or after buffer.append is
-        # called). So we look at the last event, and make sure it's the
-        # metaevent.
-        events = list(self.fl.get_buffered_events())
-        m = events[-1]["message"]
+        # called). Also, get_buffered_events() is unordered. So search for
+        # the right one.
+        events = [e for e in self.fl.get_buffered_events()
+                  if e.get("facility") == "foolscap/internal-error"]
+        self.assertEqual(len(events), 1)
+        m = events[0]["message"]
         expected = "internal error in log._msg, args=('oops',)"
         self.assert_(m.startswith(expected), m)
         self.assertIn("ValueError('oops'", m)
