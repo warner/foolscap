@@ -58,3 +58,6 @@ class Versions(unittest.TestCase):
         log.msg("pyopenssl-%s" % OpenSSL.__version__)
         log.msg("python-%s" % platform.python_version())
         log.msg("platform: %s" % platform.version())
+
+    def test_not_unicode(self):
+        self.failUnlessEqual(type(__version__), str)
