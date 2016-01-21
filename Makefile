@@ -1,11 +1,13 @@
 
+PYTHON=python
+TRIAL=trial
+TEST=foolscap
+
 .PHONY: build test
 
 build:
-	python setup.py build
+	$(PYTHON) setup.py build
 
-TRIAL=trial
-TEST=foolscap
 test:
 	$(TRIAL) $(TEST)
 
@@ -21,3 +23,13 @@ pyflakes:
 
 find-trailing-spaces:
 	find-trailing-spaces -r bin foolscap
+
+setup-test-from-tarball:
+	rm -rf sdist-test
+	$(PYTHON) setup.py sdist -d sdist-test
+	cd sdist-test && tar xf *.tar.gz
+	rm sdist-test/*.tar.gz
+	cd sdist-test && ln -s * srcdir
+
+test-from-tarball:
+	cd sdist-test/srcdir && trial foolscap
