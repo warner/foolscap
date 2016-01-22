@@ -5,6 +5,7 @@ import platform
 import twisted
 from twisted.internet import reactor
 from twisted.python import log
+import foolscap
 from foolscap.api import __version__
 import OpenSSL
 
@@ -60,4 +61,5 @@ class Versions(unittest.TestCase):
         log.msg("platform: %s" % platform.version())
 
     def test_not_unicode(self):
+        self.failUnlessEqual(type(foolscap.__version__), str)
         self.failUnlessEqual(type(__version__), str)
