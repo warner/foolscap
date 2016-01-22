@@ -9,7 +9,7 @@
 # in new releases.
 
 from foolscap._version import get_versions
-__version__ = get_versions()['version']
+__version__ = str(get_versions()['version'])
 del get_versions
 
 # here is the primary entry point
