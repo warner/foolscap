@@ -1,5 +1,16 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.10.1 (21-Jan-2015)
+
+** Packaging Fixes
+
+This release fixes a version-string management failure when the "log
+publisher" feature was used in a tree built from a release tarball (rather
+than from a git checkout). This caused a unit test failure, as well as
+operational failures when using `flogtool tail`. Thanks to Ramakrishnan
+Muthukrishnan (vu3rdd) for the catch and the patch. (#248)
+
+
 * Release 0.10.0 (15-Jan-2015)
 
 ** Compatibility Fixes
