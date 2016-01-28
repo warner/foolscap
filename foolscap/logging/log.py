@@ -471,9 +471,9 @@ class LogFileObserver:
                                   pid=os.getpid(),
                                   threshold=level)
 
-    def stop_on_shutdown(self):
+    def flush_on_shutdown(self):
         from twisted.internet import reactor
-        reactor.addSystemEventTrigger("after", "shutdown", self._stop)
+        reactor.addSystemEventTrigger("after", "shutdown", self._flush)
 
     def msg(self, event):
         threshold = self._level
@@ -483,9 +483,8 @@ class LogFileObserver:
             flogfile.serialize_wrapper(self._logFile, event,
                                        from_="local", rx_time=time.time())
 
-    def _stop(self):
-        self._logFile.close()
-        del self._logFile
+    def _flush(self):
+        self._logFile.flush()
 
 
 # remove the key, so any child processes won't try to log to (and thus
@@ -498,7 +497,7 @@ if _flogfile:
     try:
         _floglevel = int(os.environ.get("FLOGLEVEL", str(OPERATIONAL)))
         lfo = LogFileObserver(_flogfile, _floglevel)
-        lfo.stop_on_shutdown()
+        lfo.flush_on_shutdown()
         theLogger.addObserver(lfo.msg)
         #theLogger.set_generation_threshold(UNUSUAL, "foolscap.negotiation")
     except IOError:

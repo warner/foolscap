@@ -1809,7 +1809,7 @@ class LogfileWriterMixin:
         l.msg("four")
         d = fireEventually()
         def _done(res):
-            lfo._stop()
+            lfo._flush()
             #events = self._read_logfile(fn)
             #self.failUnlessEqual(len(events), 1+3)
             return fn
@@ -2109,7 +2109,7 @@ class Web(unittest.TestCase):
         d = fireEventually()
         def _created(res):
             l.removeObserver(ob.msg)
-            ob._stop()
+            ob._flush()
             argv = ["-p", "tcp:0:interface=127.0.0.1",
                     "--quiet",
                     fn]
