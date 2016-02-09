@@ -1,4 +1,5 @@
 import re
+from txsocksx.client import SOCKS5ClientEndpoint
 from zope.interface import implementer
 from twisted.internet import endpoints
 from foolscap.ipb import IConnectionHintHandler, InvalidHintError
@@ -10,6 +11,8 @@ DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
 OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
 NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+                                                            DNS_NAME_RESTR))
+SOCKS_HINT_RE=re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
@@ -52,3 +55,19 @@ class DefaultTCP:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.TCP4ClientEndpoint(reactor, host, port), host
+
+@implementer(IConnectionHintHandler)
+class SocksPlugin:
+    def __init__(self, socks_host, socks_port, proxy_endpoint_generator=endpoints.TCP4ClientEndpoint):
+        self.socks_host = socks_host
+        self.socks_port = int(socks_port)
+        self._proxy_endpoint_generator = proxy_endpoint_generator
+
+    def hint_to_endpoint(self, hint, reactor):
+        proxy_endpoint = self._proxy_endpoint_generator(reactor, self.socks_host, self.socks_port)
+
+        mo = SOCKS_HINT_RE.search(hint)
+        if not mo:
+            raise InvalidHintError("unrecognized TCP hint")
+        host, port = mo.group(1), int(mo.group(2))
+        return SOCKS5ClientEndpoint(host, port, proxy_endpoint), host
