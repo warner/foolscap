@@ -19,10 +19,10 @@ api-docs:
 	PYTHONPATH=. epydoc -v -o doc/api --html -n Foolscap -u http://foolscap.lothar.com --exclude foolscap.test foolscap
 
 pyflakes:
-	pyflakes foolscap |sort |uniq
+	pyflakes setup.py src |sort |uniq
 
 find-trailing-spaces:
-	find-trailing-spaces -r foolscap
+	find-trailing-spaces -r src
 
 setup-test-from-tarball:
 	rm -rf sdist-test

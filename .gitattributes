@@ -1,1 +1,1 @@
-foolscap/_version.py export-subst
+src/foolscap/_version.py export-subst

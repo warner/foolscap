@@ -50,6 +50,7 @@ object reference system, and a capability-based security model.
         ],
     "platforms": ["any"],
 
+    "package_dir": {"": "src"},
     "packages": ["foolscap", "foolscap.slicers", "foolscap.logging",
                  "foolscap.appserver", "foolscap.test"],
     "entry_points": {"console_scripts": [

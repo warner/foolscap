@@ -38,7 +38,7 @@ def get_config():
     cfg.style = ""
     cfg.tag_prefix = "foolscap-"
     cfg.parentdir_prefix = "foolscap-"
-    cfg.versionfile_source = "foolscap/_version.py"
+    cfg.versionfile_source = "src/foolscap/_version.py"
     cfg.verbose = False
     return cfg
 

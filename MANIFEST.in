@@ -5,4 +5,4 @@ include doc/specifications/*.rst
 include Makefile
 include misc/classify_foolscap.py
 include versioneer.py
-include foolscap/_version.py
+include src/foolscap/_version.py

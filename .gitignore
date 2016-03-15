@@ -3,7 +3,7 @@
 
 /build/
 /dist/
-/foolscap.egg-info/
+/src/foolscap.egg-info/
 /_trial_temp*/
 /_trial_temp.lock
 /.coverage
