@@ -4,10 +4,10 @@ python:
   - "2.7"
   - "pypy"
 install:
-  - pip install twisted pyOpenSSL service_identity pyflakes coverage python-coveralls
+  - pip install pyflakes coverage python-coveralls
+  - pip install .
 script:
   - make pyflakes
-  - python setup.py build
   - coverage run `which trial` foolscap
 after_success:
   - coveralls
