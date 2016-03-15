@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import platform
 from setuptools import setup, Command
 
 import versioneer
