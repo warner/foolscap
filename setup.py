@@ -52,19 +52,14 @@ object reference system, and a capability-based security model.
 
     "packages": ["foolscap", "foolscap.slicers", "foolscap.logging",
                  "foolscap.appserver", "foolscap.test"],
-    "scripts": ["bin/flogtool", "bin/flappserver", "bin/flappclient"],
-    "cmdclass": commands,
-    "install_requires": ["twisted[tls] >= 10.1.0", "pyOpenSSL"],
-}
-
-if platform.system() == "Windows":
-    # I prefer scripts over entry_points, but they don't work on windows
-    del setup_args["scripts"]
-    setup_args["entry_points"] = {"console_scripts": [
+    "entry_points": {"console_scripts": [
         "flogtool = foolscap.logging.cli.run_flogtool",
         "flappserver = foolscap.appserver.cli:run_flappserver",
         "flappclient = foolscap.appserver.client:run_flappclient",
-        ] }
+        ] },
+    "cmdclass": commands,
+    "install_requires": ["twisted[tls] >= 10.1.0", "pyOpenSSL"],
+}
 
 if __name__ == "__main__":
     setup(**setup_args)
