@@ -1,5 +1,37 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.11.0 (?)
+
+** Packaging Fixes
+
+Foolscap now declares a dependency on "twisted[tls]" instead of just
+"twisted": the "[tls]" extra means "we need Twisted and its TLS support".
+That's how we ask for Twisted to depend upon service_identity and other
+supporting packages. By using "[tls]", we no longer need to manually depend
+upon service_identity ourselves. If Twisted switches to some other scheme for
+TLS support, this will correctly ask for that to be included. (#249)
+
+Note that we still depend on pyOpenSSL ourselves, because we need its code to
+control certificate validation (if Twisted actually moved away from pyOpenSSL
+for TLS, Foolscap might break altogether).
+
+The "flogtool", "flappserver", and "flappclient" executables are now provided
+as "entry_points" on all platforms, not just windows. The old bin/* scripts
+have been removed. The "flogtool" entrypoint was fixed (a one-character typo
+in the setup.py specification): apparently it was always broken on windows
+and nobody noticed.
+
+We now use "tox" to run tests, instead of "trial foolscap", although the
+latter is still fine when run in a virtualenv into which Foolscap has been
+installed (and is what "tox" does under the hood).
+
+This release also moves all source code from "foolscap/" to "src/foolscap/",
+which should avoid some confusion as to which code is being tested.
+Developers who work from a git checkout should manually "rm -rf foolscap"
+after pulling this change, because otherwise the leftover .pyc files are
+likely to cause spurious test failures. (#250, #251)
+
+
 * Release 0.10.1 (21-Jan-2016)
 
 ** Packaging Fixes
