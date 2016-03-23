@@ -15,6 +15,9 @@ Note that we still depend on pyOpenSSL ourselves, because we need its code to
 control certificate validation (if Twisted actually moved away from pyOpenSSL
 for TLS, Foolscap might break altogether).
 
+The Twisted dependency was updated to >=16.0.0 (the current version), to get
+an important HostnameEndpoint fix (#155).
+
 The "flogtool", "flappserver", and "flappclient" executables are now provided
 as "entry_points" on all platforms, not just windows. The old bin/* scripts
 have been removed. The "flogtool" entrypoint was fixed (a one-character typo
@@ -30,6 +33,16 @@ which should avoid some confusion as to which code is being tested.
 Developers who work from a git checkout should manually "rm -rf foolscap"
 after pulling this change, because otherwise the leftover .pyc files are
 likely to cause spurious test failures. (#250, #251)
+
+** partial IPv6 support
+
+Foolscap's outbound connections now use HostnameEndpoint, which means that
+connection hints which contain DNS names which map to AAAA (and maybe A6)
+records should successfully connect to those IPv6 addresses. There is not yet
+any support to *listen* on IPv6 ports, so this probably does not enable IPv6
+completely. But a client running this release may be able to connect to
+server running some future IPv6-capable release and advertising v6-based
+hostnames. (#155)
 
 
 * Release 0.10.1 (21-Jan-2016)
