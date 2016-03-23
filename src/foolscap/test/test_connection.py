@@ -13,7 +13,7 @@ from foolscap import ipb, util
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
         ep, host = get_endpoint(hint, {"tcp": DefaultTCP()})
-        self.failUnless(isinstance(ep, endpoints.TCP4ClientEndpoint), ep)
+        self.failUnless(isinstance(ep, endpoints.HostnameEndpoint), ep)
         # note: this is fragile, and will break when Twisted changes the
         # internals of TCP4ClientEndpoint. Hopefully we'll switch to
         # HostnameEndpoint before then. Although that will break too.

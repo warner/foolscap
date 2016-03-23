@@ -51,4 +51,4 @@ class DefaultTCP:
         if not mo:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
-        return endpoints.TCP4ClientEndpoint(reactor, host, port), host
+        return endpoints.HostnameEndpoint(reactor, host, port), host
