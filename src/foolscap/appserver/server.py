@@ -109,9 +109,10 @@ class AppServer(service.MultiService):
         s = services.get(name)
         if not s:
             return None
-        service_basedir = os.path.join(self.basedir, s["relative_basedir"])
+        service_basedir = os.path.join(self.basedir,
+                                       s["relative_basedir"].encode("utf-8"))
         service_type = s["type"]
-        service_args = s["args"]
+        service_args = [arg.encode("utf-8") for arg in s["args"]]
         s = build_service(service_basedir, self.tub, service_type, service_args)
         s.setServiceParent(self)
         return s
