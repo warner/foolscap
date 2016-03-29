@@ -1,10 +1,13 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
 import os.path, weakref, binascii, re
+from warnings import warn
 from zope.interface import implements
 from twisted.internet import defer, protocol, error
 from twisted.application import service, internet
 from twisted.python.failure import Failure
+from twisted.python.deprecate import deprecated
+from twisted.python.versions import Version
 
 from foolscap import ipb, base32, negotiate, broker, eventual, storage
 from foolscap import connection, util
@@ -65,6 +68,9 @@ class Listener(protocol.ServerFactory, service.MultiService):
         self.s = internet.TCPServer(portnum, self, interface=interface)
         self.s.setServiceParent(self)
 
+    @deprecated(Version("Foolscap", 0, 12, 0),
+                # "please use .."
+                "pre-allocated port numbers")
     def getPortnum(self):
         """When this Listener was created with a port string of '0' or
         'tcp:0' (meaning 'please allocate me something'), and if the Listener
@@ -451,6 +457,9 @@ class Tub(service.MultiService):
         self._maybeCreateLogPortFURLFile()
         self._maybeConnectToGatherer()
 
+    @deprecated(Version("Foolscap", 0, 12, 0),
+                # "please use .."
+                "user-provided hostnames")
     def setLocationAutomatically(self, *extra_addresses):
         """Determine one of this host's publically-visible IP addresses and
         use it to set our location. This uses whatever source address would
@@ -506,6 +515,12 @@ class Tub(service.MultiService):
         @return: The Listener object that was created. This can be used to
         stop listening later on, and to figure out which port was allocated
         when you used a strports specification of 'tcp:0'."""
+
+        if what in ("0", "tcp:0"):
+            warningString = ("Tub.listenOn('tcp:0') was deprecated "
+                             "in Foolscap 0.12.0; please use pre-allocated "
+                             "port numbers instead")
+            warn(warningString, DeprecationWarning, stacklevel=2)
 
         if not isinstance(what, str):
             raise TypeError("listenOn only accepts str")
