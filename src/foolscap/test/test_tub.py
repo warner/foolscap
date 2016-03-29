@@ -90,7 +90,7 @@ class SetLocation(unittest.TestCase):
     def test_set_location(self):
         t = Tub()
         portnum = allocate_tcp_port()
-        t.listenOn("tcp:%d" % portnum)
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
         t.setServiceParent(self.s)
         t.setLocation("127.0.0.1:12345")
         # setLocation may only be called once

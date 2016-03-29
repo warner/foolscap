@@ -61,7 +61,7 @@ class TestPersist(UsefulMixin, unittest.TestCase):
         t1 = Target()
         s1,s2 = self.services
         port = allocate_tcp_port()
-        s1.listenOn("tcp:%d" % port)
+        s1.listenOn("tcp:%d:interface=127.0.0.1" % port)
         s1.setLocation("127.0.0.1:%d" % port)
         public_url = s1.registerReference(t1, "name")
         self.failUnless(public_url.startswith("pb:"))
@@ -76,7 +76,7 @@ class TestPersist(UsefulMixin, unittest.TestCase):
         self.services.append(s3)
         t2 = Target()
         newport = allocate_tcp_port()
-        s3.listenOn("tcp:%d" % newport)
+        s3.listenOn("tcp:%d:interface=127.0.0.1" % newport)
         s3.setLocation("127.0.0.1:%d" % newport)
         s3.registerReference(t2, "name")
         # now patch the URL to replace the port number
@@ -96,7 +96,7 @@ class TestListeners(UsefulMixin, unittest.TestCase):
 
     def testListenOn(self):
         s1 = self.services[0]
-        l = s1.listenOn("tcp:%d" % allocate_tcp_port())
+        l = s1.listenOn("tcp:%d:interface=127.0.0.1" % allocate_tcp_port())
         self.failUnless(isinstance(l, pb.Listener))
         self.failUnlessEqual(len(s1.getListeners()), 1)
         s1.stopListeningOn(l)
@@ -104,21 +104,16 @@ class TestListeners(UsefulMixin, unittest.TestCase):
 
     def testGetPort1(self):
         s1,s2,s3 = self.services
-        s1.listenOn("tcp:%d" % allocate_tcp_port())
+        s1.listenOn("tcp:%d:interface=127.0.0.1" % allocate_tcp_port())
         listeners = s1.getListeners()
         self.failUnlessEqual(len(listeners), 1)
-        portnum = listeners[0].getPortnum()
-        self.failUnless(portnum) # not 0, not None, must be *something*
 
     def testGetPort2(self):
         s1,s2,s3 = self.services
-        s1.listenOn("tcp:%d" % allocate_tcp_port())
+        s1.listenOn("tcp:%d:interface=127.0.0.1" % allocate_tcp_port())
         listeners = s1.getListeners()
         self.failUnlessEqual(len(listeners), 1)
-        portnum = listeners[0].getPortnum()
-        self.failUnless(portnum) # not 0, not None, must be *something*
         # listen on a second port too
-        s1.listenOn("tcp:%d" % allocate_tcp_port())
+        s1.listenOn("tcp:%d:interface=127.0.0.1" % allocate_tcp_port())
         l2 = s1.getListeners()
         self.failUnlessEqual(len(l2), 2)
-        self.failIfEqual(l2[0].getPortnum(), l2[1].getPortnum())
