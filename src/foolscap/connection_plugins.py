@@ -57,7 +57,7 @@ class DefaultTCP:
         return endpoints.HostnameEndpoint(reactor, host, port), host
 
 @implementer(IConnectionHintHandler)
-class SocksPlugin:
+class SOCKS5:
     def __init__(self, socks_host, socks_port, proxy_endpoint_generator=endpoints.TCP4ClientEndpoint):
         self.socks_host = socks_host
         self.socks_port = int(socks_port)

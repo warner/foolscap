@@ -8,7 +8,7 @@ from twisted.internet import endpoints, reactor
 from twisted.application import service
 from foolscap.api import Tub
 from foolscap.connection import get_endpoint
-from foolscap.connection_plugins import convert_legacy_hint, DefaultTCP, SocksPlugin
+from foolscap.connection_plugins import convert_legacy_hint, DefaultTCP, SOCKS5
 from foolscap.tokens import NoLocationHintsError
 from foolscap.test.common import (certData_low, certData_high, Target,
                                   ShouldFailMixin)
@@ -20,7 +20,7 @@ class SocksPluginTests(unittest.TestCase):
             self.failUnlessEqual(host, "127.0.0.1")
             self.failUnlessEqual(port, 9050)
             return FakeEndpoint()
-        plugin = SocksPlugin("127.0.0.1", "9050", proxy_endpoint_generator = SocksEndpointGenerator)
+        plugin = SOCKS5("127.0.0.1", "9050", proxy_endpoint_generator = SocksEndpointGenerator)
         hint = "tor:meowhost:80"
         endpoint, host = plugin.hint_to_endpoint(hint, reactor)
 
@@ -33,7 +33,7 @@ class SocksPluginTests(unittest.TestCase):
 
     def test_override(self):
         SocksEndpointGenerator = lambda x, y, z: FakeEndpoint()
-        ep, host = get_endpoint("tcp:meowhost:80", {"tcp": SocksPlugin(
+        ep, host = get_endpoint("tcp:meowhost:80", {"tcp": SOCKS5(
             "127.0.0.1", "9050", proxy_endpoint_generator=SocksEndpointGenerator)})
         self.failUnless(isinstance(ep, SOCKS5ClientEndpoint), ep)
         self.failUnlessEqual(host, "meowhost")
