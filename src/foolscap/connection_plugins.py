@@ -58,16 +58,15 @@ class DefaultTCP:
 
 @implementer(IConnectionHintHandler)
 class SOCKS5:
-    def __init__(self, socks_host, socks_port, proxy_endpoint_generator=endpoints.TCP4ClientEndpoint):
-        self.socks_host = socks_host
-        self.socks_port = int(socks_port)
-        self._proxy_endpoint_generator = proxy_endpoint_generator
+    def __init__(self, endpoint=None):
+        self.proxy_endpoint_desc = endpoint
+        self.proxy_endpoint = None
 
     def hint_to_endpoint(self, hint, reactor):
-        proxy_endpoint = self._proxy_endpoint_generator(reactor, self.socks_host, self.socks_port)
-
+        if self.proxy_endpoint is None:
+            self.proxy_endpoint = endpoints.clientFromString(reactor, self.proxy_endpoint_desc)
         mo = SOCKS_HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
-        return SOCKS5ClientEndpoint(host, port, proxy_endpoint), host
+        return SOCKS5ClientEndpoint(host, port, self.proxy_endpoint), host
