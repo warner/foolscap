@@ -30,7 +30,7 @@ class SocksPluginTests(unittest.TestCase):
         self.assertEqual(endpoint.proxyEndpoint.transport.value(), '\x05\x01\x00')
 
     def test_override(self):
-        SocksEndpointGenerator = lambda x, y, z: FakeEndpoint()
+        SocksEndpointGenerator = lambda: FakeEndpoint()
         ep, host = get_endpoint("tcp:meowhost:80", {"tcp": SOCKS5(
             endpoint = "tcp:127.0.0.1:9050", proxy_endpoint_factory=SocksEndpointGenerator)})
         self.failUnless(isinstance(ep, SOCKS5ClientEndpoint), ep)

@@ -64,7 +64,7 @@ class SOCKS5:
         self.proxy_endpoint = None
 
     def hint_to_endpoint(self, hint, reactor):
-        if self.proxy_endpoint_factory:
+        if self.proxy_endpoint_factory is not None:
             self.proxy_endpoint = self.proxy_endpoint_factory()
         else:
             if self.proxy_endpoint is None:
