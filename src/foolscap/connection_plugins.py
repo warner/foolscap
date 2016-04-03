@@ -88,4 +88,4 @@ class SOCKS5:
         if not mo:
             raise InvalidHintError("Invalid SOCKS5 client connection hint")
         host, port = mo.group(1), int(mo.group(2))
-        return SOCKS5ClientEndpoint(host, port, self.proxy_endpoint), host
+        return txsocksx.client.SOCKS5ClientEndpoint(host, port, self.proxy_endpoint), host
