@@ -1,7 +1,6 @@
 
 import gc
 import re
-import sets
 import sys
 
 if False:
@@ -214,7 +213,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def testMegaSchema(self):
         # try to exercise all our constraints at once
         rr, target = self.setupTarget(HelperTarget())
-        t = (sets.Set([1, 2, 3]),
+        t = (set([1, 2, 3]),
              "str", True, 12, 12L, 19.3, None,
              u"unicode",
              "bytestring",
@@ -224,7 +223,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
              "1234567890",
               )
         obj1 = {"key": [t]}
-        obj2 = (sets.Set([1,2,3]), [1,2,3], {1:"two"})
+        obj2 = (set([1,2,3]), [1,2,3], {1:"two"})
         d = rr.callRemote("megaschema", obj1, obj2)
         d.addCallback(lambda res: self.failUnlessEqual(res, None))
         return d
