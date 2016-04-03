@@ -1,0 +1,7 @@
+Foolscap tools no longer accept "tcp:0" as a listening port, nor do they
+automatically detect the host's IP addresses in an attempt to build
+externally-reachable FURLs. In particular:
+
+* 'flappserver create' now requires --location
+ * if '--port' is provided, it must not be tcp:0
+ * '--port' defaults to tcp:3116

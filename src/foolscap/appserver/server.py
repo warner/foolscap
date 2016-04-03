@@ -1,11 +1,8 @@
 
 import os, sys, json, ast
 from twisted.application import service
-from twisted.python import log
-from twisted.internet import defer
 from foolscap.api import Tub
 from foolscap.appserver.services import build_service
-from foolscap.observer import OneShotObserverList
 from foolscap.util import move_into_place
 
 class UnknownVersion(Exception):
@@ -72,36 +69,31 @@ class AppServer(service.MultiService):
             self.umask = int(umask, 8) # octal string like 0022
         except EnvironmentError:
             self.umask = None
-        port = open(os.path.join(basedir, "port")).read().strip()
+        self.port = open(os.path.join(basedir, "port")).read().strip()
         self.tub = Tub(certFile=os.path.join(basedir, "tub.pem"))
-        self.tub.listenOn(port)
+        self.tub.listenOn(self.port)
         self.tub.setServiceParent(self)
         self.tub.registerNameLookupHandler(self.lookup)
+        self.setMyLocation()
         print >>stdout, "Server Running"
-        self.ready_observers = OneShotObserverList()
-        # make sure we log any problems
-        self.when_ready().addErrback(log.err)
-
-    def when_ready(self):
-        # return a Deferred that fires (with this AppServer instance) when
-        # the service is running and the location is set.
-        return self.ready_observers.whenFired()
 
     def startService(self):
         if self.umask is not None:
             os.umask(self.umask)
         service.MultiService.startService(self)
-        d = self.setMyLocation()
-        d.addBoth(self.ready_observers.fire)
 
     def setMyLocation(self):
-        location = open(os.path.join(self.basedir, "location")).read().strip()
-        if location:
-            self.tub.setLocation(location)
-            return defer.succeed(self)
-        d = self.tub.setLocationAutomatically()
-        d.addCallback(lambda ign: self)
-        return d
+        location_fn = os.path.join(self.basedir, "location")
+        location = open(location_fn).read().strip()
+        if not location:
+            raise ValueError("This flappserver was created without "
+                             "'--location=', and Foolscap no longer uses "
+                             "IP-address autodetection. Please edit '%s' "
+                             "to contain e.g. 'example.org:12345', with a "
+                             "hostname and port number that match this "
+                             "server (we're listening on %s)"
+                             % (location_fn, self.port))
+        self.tub.setLocation(location)
 
     def lookup(self, name):
         # walk through our configured services, see if we know about this one

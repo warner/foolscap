@@ -8,7 +8,7 @@ from twisted.scripts import twistd
 # does "flappserver start" need us to refrain from importing the reactor here?
 # A: probably, to allow --reactor= to work
 import foolscap
-from foolscap.api import Tub, Referenceable, fireEventually
+from foolscap.api import Tub, Referenceable
 from foolscap.pb import generateSwissnumber
 from foolscap.appserver.services import build_service, BadServiceArguments
 from foolscap.appserver.server import AppServer, load_service_data, save_service_data
@@ -41,8 +41,8 @@ class CreateOptions(BaseOptions):
         ("quiet", "q", "Be silent upon success"),
         ]
     optParameters = [
-        ("port", "p", "tcp:0", "TCP port to listen on (strports string)"),
-        ("location", "l", "", "Tub location hints to use in generated FURLs. An empty location means to generate one automatically, by looking at the active network interfaces."),
+        ("port", "p", "tcp:3116", "TCP port to listen on (strports string)"),
+        ("location", "l", None, "(required) Tub location hints to use in generated FURLs. e.g. 'example.org:3116'"),
         ("umask", None, None, "(octal) file creation mask to use for the server. If not provided, the current umask (%04o) is copied." % get_umask()),
         ]
 
@@ -57,6 +57,8 @@ class CreateOptions(BaseOptions):
     def postOptions(self):
         if self["umask"] is None:
             self["umask"] = get_umask()
+        if not self["location"]:
+            raise usage.UsageError("--location= is mandatory")
 
 FLAPPSERVER_TACFILE = """\
 # -*- python -*-
@@ -89,13 +91,14 @@ class Create:
             print >>stderr, "Refusing to touch pre-existing directory %s" % basedir
             return 1
 
+        assert options["port"]
+        assert options["location"]
+
         os.makedirs(basedir)
         os.makedirs(os.path.join(basedir, "services"))
         os.chmod(basedir, 0700)
 
-        # start the server and let it run briefly. This lets the Tub spin up,
-        # create the key, decide upon a port, and auto-determine its location
-        # (if one was not provided with --location=). The base FURL will be
+        # Start the server and let it create the key. The base FURL will be
         # written to a file so that subsequent 'add' and 'list' can compute
         # FURLs without needing to run the Tub (which might already be
         # running).
@@ -115,45 +118,8 @@ class Create:
 
         save_service_data(basedir, {"version": 1, "services": {}})
 
-        self.server = None
-        d = fireEventually(basedir)
-        d.addCallback(AppServer, stdout)
-        d.addCallback(self.stash_and_start_appserver)
-        d.addCallback(self.appserver_ready, options)
-        d.addBoth(self.stop_appserver)
-        d.addCallback(lambda ign: 0)
-        return d
-
-    def stash_and_start_appserver(self, ap):
-        self.server = ap
-        self.server.startService()
-        return ap.when_ready()
-
-    def appserver_ready(self, _ignored, options):
-        basedir = options.basedir
-        stdout = options.stdout
-        quiet = options["quiet"]
-
-        tub = self.server.tub
-        # what port is it actually listening on?
-        l0 = tub.getListeners()[0]
-
-        port = options["port"]
-        got_port = port
-        pieces = port.split(":")
-        if "0" in pieces:
-            # If the --port argument didn't tightly specify the port to use,
-            # write down the one we actually got, so we'll keep using the
-            # same one later
-            pieces[pieces.index("0")] = str(l0.getPortnum())
-            if pieces[0] != "tcp":
-                pieces = ["tcp"] + pieces
-            got_port = ":".join(pieces)
-            f = open(os.path.join(basedir, "port"), "w")
-            f.write(got_port + "\n")
-            f.close()
-
-        tubid = tub.getTubID()
+        a = AppServer(basedir, stdout)
+        tub = a.tub
 
         sample_furl = tub.registerReference(Referenceable())
         furl_prefix = sample_furl[:sample_furl.rfind("/")+1]
@@ -168,17 +134,12 @@ class Create:
         f.write(FLAPPSERVER_TACFILE % { 'path': stashed_path })
         f.close()
 
-        if not quiet:
+        if not options["quiet"]:
             print >>stdout, "Foolscap Application Server created in %s" % basedir
-            print >>stdout, "TubID %s, listening on port %s" % (tubid, got_port)
+            print >>stdout, "TubID %s, listening on port %s" % (tub.getTubID(),
+                                                                options["port"])
             print >>stdout, "Now launch the daemon with 'flappserver start %s'" % basedir
-
-    def stop_appserver(self, res):
-        d = defer.succeed(None)
-        if self.server:
-            d.addCallback(lambda ign: self.server.stopService())
-        d.addCallback(lambda ign: res)
-        return d
+        return defer.succeed(0)
 
 class AddOptions(BaseOptions):
     synopsis = "Usage: flappserver add [--comment C] BASEDIR SERVICE-TYPE SERVICE-ARGS.."

@@ -8,6 +8,7 @@ from twisted.application import service
 from foolscap.api import Tub, eventually
 from foolscap.appserver import cli, server, client
 from foolscap.test.common import ShouldFailMixin, StallMixin
+from foolscap.util import allocate_tcp_port
 
 orig_service_data = {"version": 1,
                      "services": {
@@ -132,7 +133,7 @@ class CLI(unittest.TestCase):
         basedir = "appserver/CLI/create"
         os.makedirs(basedir)
         serverdir = os.path.join(basedir, "fl")
-        d = self.run_cli("create", serverdir)
+        d = self.run_cli("create", "--location", "localhost:1234", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -151,7 +152,7 @@ class CLI(unittest.TestCase):
         os.makedirs(basedir)
         serverdir = os.path.join(basedir, "fl")
         os.mkdir(serverdir)
-        d = self.run_cli("create", serverdir)
+        d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 1)
             self.failUnlessIn("Refusing to touch pre-existing directory", err)
@@ -164,13 +165,16 @@ class CLI(unittest.TestCase):
         basedir = "appserver/CLI/create2"
         os.makedirs(basedir)
         serverdir = os.path.join(basedir, "fl")
-        d = self.run_cli("create", "--port","tcp:0", "--umask","022", serverdir)
+        portnum = allocate_tcp_port()
+        d = self.run_cli("create",
+                         "--location", "localhost:%d" % portnum,
+                         "--port", "tcp:%d" % portnum,
+                         "--umask", "022", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
             got_port = open(os.path.join(serverdir, "port"), "r").read().strip()
-            self.failIfEqual(got_port, "tcp:0") # it should pick a real port
-            portnum = int(got_port[got_port.find(":")+1:])
+            self.failUnlessEqual(got_port, "tcp:%d" % portnum)
             prefix = open(os.path.join(serverdir, "furl_prefix"), "r").read().strip()
             self.failUnless(prefix.endswith(":%d/" % portnum), prefix)
             umask = open(os.path.join(serverdir, "umask")).read().strip()
@@ -193,29 +197,13 @@ class CLI(unittest.TestCase):
         d.addCallback(_check)
         return d
 
-    def test_create4(self):
-        basedir = "appserver/CLI/create4"
-        os.makedirs(basedir)
-        serverdir = os.path.join(basedir, "fl")
-        d = self.run_cli("create", "--port", "0", serverdir)
-        def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
-            got_port = open(os.path.join(serverdir, "port"), "r").read().strip()
-            self.failIfEqual(got_port, "tcp:0") # it should pick a real port
-            portnum = int(got_port[got_port.find(":")+1:])
-            prefix = open(os.path.join(serverdir, "furl_prefix"), "r").read().strip()
-            self.failUnless(prefix.endswith(":%d/" % portnum), prefix)
-        d.addCallback(_check)
-        return d
-
     def test_add(self):
         basedir = "appserver/CLI/add"
         os.makedirs(basedir)
         serverdir = os.path.join(basedir, "fl")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
-        d = self.run_cli("create", serverdir)
+        d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -245,7 +233,7 @@ class CLI(unittest.TestCase):
         serverdir = os.path.join(basedir, "fl")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
-        d = self.run_cli("create", serverdir)
+        d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -288,7 +276,7 @@ class CLI(unittest.TestCase):
         serverdir = os.path.join(basedir, "fl")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
-        d = self.run_cli("create", serverdir)
+        d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -322,7 +310,7 @@ class CLI(unittest.TestCase):
         servicesdir = os.path.join(serverdir, "services")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
-        d = self.run_cli("create", serverdir)
+        d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -359,7 +347,7 @@ class CLI(unittest.TestCase):
         serverdir = os.path.join(basedir, "fl")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
-        d = self.run_cli("create", serverdir)
+        d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -397,7 +385,7 @@ class CLI(unittest.TestCase):
         serverdir = os.path.join(basedir, "fl")
         incomingdir = os.path.join(basedir, "incoming")
         os.mkdir(incomingdir)
-        d = self.run_cli("create", serverdir)
+        d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -444,7 +432,10 @@ class Server(unittest.TestCase, ShouldFailMixin):
 
         self.tub = Tub()
         self.tub.setServiceParent(self.s)
-        d = self.run_cli("create", serverdir)
+        portnum = allocate_tcp_port()
+        d = self.run_cli("create", "--location", "localhost:%d" % portnum,
+                         "--port", "tcp:%d" % portnum,
+                         serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -461,7 +452,6 @@ class Server(unittest.TestCase, ShouldFailMixin):
         def _start_server(ign):
             ap = server.AppServer(serverdir, stdout)
             ap.setServiceParent(self.s)
-            return ap.when_ready()
         d.addCallback(_start_server)
         # make sure the server can actually instantiate a service
         d.addCallback(lambda _ign: self.tub.getReference(self.furl))
@@ -501,7 +491,10 @@ class Upload(unittest.TestCase, ShouldFailMixin):
         os.mkdir(incomingdir)
         furlfile = os.path.join(basedir, "furlfile")
 
-        d = self.run_cli("create", serverdir)
+        portnum = allocate_tcp_port()
+        d = self.run_cli("create", "--location", "localhost:%d" % portnum,
+                         "--port", "tcp:%d" % portnum,
+                         serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -525,7 +518,6 @@ class Upload(unittest.TestCase, ShouldFailMixin):
         def _start_server(ign):
             ap = server.AppServer(serverdir, stdout)
             ap.setServiceParent(self.s)
-            return ap.when_ready()
         d.addCallback(_start_server)
 
         sourcefile = os.path.join(basedir, "foo.txt")
@@ -712,7 +704,10 @@ class RunCommand(unittest.TestCase, StallMixin):
         os.mkdir(incomingdir)
         self.furls = {}
 
-        d = self.run_cli("create", serverdir)
+        portnum = allocate_tcp_port()
+        d = self.run_cli("create", "--location", "localhost:%d" % portnum,
+                         "--port", "tcp:%d" % portnum,
+                         serverdir)
         def _check((rc,out,err)):
             self.failUnlessEqual(rc, 0)
             self.failUnless(os.path.isdir(serverdir))
@@ -739,7 +734,6 @@ class RunCommand(unittest.TestCase, StallMixin):
         def _start_server(ign):
             ap = server.AppServer(serverdir, stdout)
             ap.setServiceParent(self.s)
-            return ap.when_ready()
         d.addCallback(_start_server)
 
         d.addCallback(lambda _ign:
