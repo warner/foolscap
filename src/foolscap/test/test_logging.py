@@ -502,6 +502,14 @@ class Observer(Referenceable):
 class MyGatherer(gatherer.GathererService):
     verbose = False
 
+    def __init__(self, rotate, use_bzip, basedir):
+        portnum = allocate_tcp_port()
+        with open(os.path.join(basedir, "port"), "w") as f:
+            f.write("tcp:%d\n" % portnum)
+        with open(os.path.join(basedir, "location"), "w") as f:
+            f.write("tcp:127.0.0.1:%d\n" % portnum)
+        gatherer.GathererService.__init__(self, rotate, use_bzip, basedir)
+
     def remote_logport(self, nodeid, publisher):
         d = gatherer.GathererService.remote_logport(self, nodeid, publisher)
         d.addBoth(lambda res: self.d.callback(publisher))
@@ -1068,6 +1076,13 @@ class IncidentGatherer(unittest.TestCase,
     def create_incident_gatherer(self, basedir, classifiers=[]):
         # create an incident gatherer, which will make its own Tub
         ig_basedir = os.path.join(basedir, "ig")
+        if not os.path.isdir(ig_basedir):
+            os.mkdir(ig_basedir)
+            portnum = allocate_tcp_port()
+            with open(os.path.join(ig_basedir, "port"), "w") as f:
+                f.write("tcp:%d\n" % portnum)
+            with open(os.path.join(ig_basedir, "location"), "w") as f:
+                f.write("tcp:127.0.0.1:%d\n" % portnum)
         null = StringIO()
         ig = MyIncidentGathererService(classifiers=classifiers,
                                        basedir=ig_basedir, stdout=null)
@@ -1341,7 +1356,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         # create a LogGatherer with an unspecified basedir: it should look
         # for a .tac file in the current directory, not see it, and complain
         e = self.failUnlessRaises(RuntimeError,
-                                  MyGatherer, None, True, None)
+                                  gatherer.GathererService, None, True, None)
         self.failUnless("running in the wrong directory" in str(e))
 
     def test_log_gatherer(self):
@@ -1760,18 +1775,23 @@ def run_wrapper(argv):
 class CLI(unittest.TestCase):
     def test_create_gatherer(self):
         basedir = "logging/CLI/create_gatherer"
-        argv = ["flogtool", "create-gatherer", "--quiet", basedir]
+        argv = ["flogtool", "create-gatherer",
+                "--port", "tcp:3117", "--location", "tcp:localhost:3117",
+                "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_gatherer2"
         argv = ["flogtool", "create-gatherer", "--rotate", "3600",
+                "--port", "tcp:3117", "--location", "tcp:localhost:3117",
                 "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_gatherer3"
-        argv = ["flogtool", "create-gatherer", basedir]
+        argv = ["flogtool", "create-gatherer",
+                "--port", "tcp:3117", "--location", "tcp:localhost:3117",
+                basedir]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
         self.failUnless(("Gatherer created in directory %s" % basedir)
@@ -1785,20 +1805,34 @@ class CLI(unittest.TestCase):
         self.failUnlessRaises(usage.UsageError,
                               cli.run_flogtool, argv[1:], run_by_human=False)
 
+    def test_create_gatherer_no_location(self):
+        basedir = "logging/CLI/create_gatherer_no_location"
+        argv = ["flogtool", "create-gatherer", basedir]
+        e = self.failUnlessRaises(usage.UsageError,
+                                  cli.run_flogtool, argv[1:],
+                                  run_by_human=False)
+        self.failUnlessIn("--location= is mandatory", str(e))
+
     def test_wrapper(self):
         basedir = "logging/CLI/wrapper"
-        argv = ["wrapper", "flogtool", "create-gatherer", "--quiet", basedir]
+        argv = ["wrapper", "flogtool", "create-gatherer",
+                "--port", "tcp:3117", "--location", "tcp:localhost:3117",
+                "--quiet", basedir]
         run_wrapper(argv[1:])
         self.failUnless(os.path.exists(basedir))
 
     def test_create_incident_gatherer(self):
         basedir = "logging/CLI/create_incident_gatherer"
-        argv = ["flogtool", "create-incident-gatherer", "--quiet", basedir]
+        argv = ["flogtool", "create-incident-gatherer",
+                "--port", "tcp:3118", "--location", "tcp:localhost:3118",
+                "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_incident_gatherer2"
-        argv = ["flogtool", "create-incident-gatherer", basedir]
+        argv = ["flogtool", "create-incident-gatherer",
+                "--port", "tcp:3118", "--location", "tcp:localhost:3118",
+                basedir]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
         self.failUnless(("Incident Gatherer created in directory %s" % basedir)
