@@ -1,8 +1,20 @@
+
 import re
-from txsocksx.client import SOCKS5ClientEndpoint
 from zope.interface import implementer
 from twisted.internet import endpoints
+
 from foolscap.ipb import IConnectionHintHandler, InvalidHintError
+
+try:
+    import txsocksx
+except ImportError:
+    txsocksx = None
+
+class PluginDependencyNotLoaded(Exception):
+    """
+    PluginDependencyNotLoaded is raised when a plugin is instantiated
+    and a dependency is missing.
+    """
 
 # This can match IPv4 IP addresses + port numbers *or* host names +
 # port numbers.
@@ -59,6 +71,8 @@ class DefaultTCP:
 @implementer(IConnectionHintHandler)
 class SOCKS5:
     def __init__(self, endpoint=None, proxy_endpoint_factory=None):
+        if txsocksx is None:
+            raise PluginDependencyNotLoaded("SOCKS5 foolscap client transport plugin requires txsocksx.")
         self.proxy_endpoint_factory = proxy_endpoint_factory
         self.proxy_endpoint_desc = endpoint
         self.proxy_endpoint = None
