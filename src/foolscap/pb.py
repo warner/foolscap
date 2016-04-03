@@ -36,17 +36,16 @@ def parse_strport(port):
     return (portnum, interface)
 
 class Listener(protocol.ServerFactory, service.MultiService):
-    """I am responsible for a single listening port., which may connect to a
-    single Tub (or none). I have a strports-based Service, which I will
-    attach as a child."""
+    """I am responsible for a single listening port, which connects to a
+    single Tub. I have a strports-based Service, which I will attach as a
+    child."""
 
     noisy = False
 
     # this also serves as the ServerFactory
 
-    def __init__(self, port, _test_options={},
-                 negotiationClass=negotiate.Negotiation,
-                 tub=None):
+    def __init__(self, tub, port, _test_options={},
+                 negotiationClass=negotiate.Negotiation):
         """
         @type port: string
         @param port: a L{twisted.application.strports} -style description,
@@ -58,13 +57,14 @@ class Listener(protocol.ServerFactory, service.MultiService):
         #  tcp:80:interface=127.0.0.1
         # we reject UNIX sockets.. I don't know if they ever worked.
 
+        assert isinstance(tub, Tub)
         service.MultiService.__init__(self)
-        portnum, interface = parse_strport(port)
+        self.tub = tub
         self.port = port
         self._test_options = _test_options
         self.negotiationClass = negotiationClass
-        self.tub = tub
         self.redirects = {}
+        portnum, interface = parse_strport(port)
         self.s = internet.TCPServer(portnum, self, interface=interface)
         self.s.setServiceParent(self)
 
@@ -87,11 +87,8 @@ class Listener(protocol.ServerFactory, service.MultiService):
         return self.s._port.getHost().port
 
     def __repr__(self):
-        if self.tub:
-            return "<Listener at 0x%x on %s with tub %s>" % \
-                   (abs(id(self)), self.port, str(self.tub.tubID))
-        return "<Listener at 0x%x on %s with no tubs>" % (abs(id(self)),
-                                                          self.port)
+        return ("<Listener at 0x%x on %s with tub %s>" %
+                (abs(id(self)), self.port, str(self.tub.tubID)))
 
     def getService(self):
         return self.s
@@ -524,7 +521,7 @@ class Tub(service.MultiService):
 
         if not isinstance(what, str):
             raise TypeError("listenOn only accepts str")
-        l = Listener(what, _test_options, self.negotiationClass, tub=self)
+        l = Listener(self, what, _test_options, self.negotiationClass)
         self.listeners.append(l)
         l.setServiceParent(self)
         return l
