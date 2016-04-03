@@ -36,6 +36,14 @@ class SocksPluginTests(unittest.TestCase):
         self.failUnless(isinstance(ep, SOCKS5ClientEndpoint), ep)
         self.failUnlessEqual(host, "meowhost")
 
+    def test_invalid(self):
+        SocksEndpointGenerator = lambda: FakeEndpoint()
+        hint = "tcp:meowhost80"
+        self.failUnlessRaises(ipb.InvalidHintError,
+                              get_endpoint, hint, {"tcp": SOCKS5(
+                                  endpoint = "tcp:127.0.0.1:9050", proxy_endpoint_factory=SocksEndpointGenerator
+                              )})
+
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
         ep, host = get_endpoint(hint, {"tcp": DefaultTCP()})
