@@ -24,7 +24,7 @@ OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
 NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
-SOCKS_HINT_RE=re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+ANY_HINT_RE=re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
@@ -84,7 +84,7 @@ class SOCKS5:
             if self.proxy_endpoint is None:
                 self.proxy_endpoint = endpoints.clientFromString(reactor, self.proxy_endpoint_desc)
 
-        mo = SOCKS_HINT_RE.search(hint)
+        mo = ANY_HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("Invalid SOCKS5 client connection hint")
         host, port = mo.group(1), int(mo.group(2))
