@@ -72,6 +72,6 @@ class SOCKS5:
 
         mo = SOCKS_HINT_RE.search(hint)
         if not mo:
-            raise InvalidHintError("unrecognized TCP hint")
+            raise InvalidHintError("Invalid SOCKS5 client connection hint")
         host, port = mo.group(1), int(mo.group(2))
         return SOCKS5ClientEndpoint(host, port, self.proxy_endpoint), host
