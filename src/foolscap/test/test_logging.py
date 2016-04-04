@@ -5,10 +5,12 @@ from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks
 try:
     from twisted import logger as twisted_logger
 except ImportError:
     twisted_logger = None
+from twisted.web import client
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
@@ -2144,8 +2146,8 @@ class Web(unittest.TestCase):
             d.addCallback(lambda res: self.viewer.serv.stopService())
         return d
 
+    @inlineCallbacks
     def test_basic(self):
-        from twisted.web import client
         basedir = "logging/Web/basic"
         os.makedirs(basedir)
         l = log.FoolscapLogger()
@@ -2156,63 +2158,60 @@ class Web(unittest.TestCase):
         lp = l.msg("two")
         l.msg("three", parent=lp, failure=failure.Failure(RuntimeError("yo")))
         l.msg("four", level=log.UNUSUAL)
-        portnum = allocate_tcp_port()
-        d = fireEventually()
-        def _created(res):
-            l.removeObserver(ob.msg)
-            ob._stop()
-            argv = ["-p", "tcp:%d:interface=127.0.0.1" % portnum,
-                    "--quiet",
-                    fn]
-            options = web.WebViewerOptions()
-            options.parseOptions(argv)
-            self.viewer = web.WebViewer()
-            self.url = self.viewer.start(options)
-            self.baseurl = self.url[:self.url.rfind("/")] + "/"
+        yield fireEventually()
+        l.removeObserver(ob.msg)
+        ob._stop()
 
-        d.addCallback(_created)
-        d.addCallback(lambda res: client.getPage(self.url))
-        def _check_welcome(page):
-            mypid = os.getpid()
-            self.failUnless("PID %s" % mypid in page,
-                            "didn't see 'PID %s' in '%s'" % (mypid, page))
-            self.failUnless("Application Versions:" in page, page)
-            self.failUnless("foolscap: %s" % foolscap.__version__ in page, page)
-            self.failUnless("4 events covering" in page)
-            self.failUnless('href="summary/0-20">3 events</a> at level 20'
-                            in page)
-        d.addCallback(_check_welcome)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "summary/0-20"))
-        def _check_summary(page):
-            self.failUnless("Events at level 20" in page)
-            self.failUnless(": two" in page)
-            self.failIf("four" in page)
-        d.addCallback(_check_summary)
-        d.addCallback(lambda res: client.getPage(self.baseurl + "all-events"))
-        def _check_all_events(page):
+        portnum = allocate_tcp_port()
+        argv = ["-p", "tcp:%d:interface=127.0.0.1" % portnum,
+                "--quiet",
+                fn]
+        options = web.WebViewerOptions()
+        options.parseOptions(argv)
+        self.viewer = web.WebViewer()
+        self.url = self.viewer.start(options)
+        self.baseurl = self.url[:self.url.rfind("/")] + "/"
+
+        page = yield client.getPage(self.url)
+        mypid = os.getpid()
+        self.failUnless("PID %s" % mypid in page,
+                        "didn't see 'PID %s' in '%s'" % (mypid, page))
+        self.failUnless("Application Versions:" in page, page)
+        self.failUnless("foolscap: %s" % foolscap.__version__ in page, page)
+        self.failUnless("4 events covering" in page)
+        self.failUnless('href="summary/0-20">3 events</a> at level 20'
+                        in page)
+
+        page = yield client.getPage(self.baseurl + "summary/0-20")
+        self.failUnless("Events at level 20" in page)
+        self.failUnless(": two" in page)
+        self.failIf("four" in page)
+
+        def check_all_events(page):
             self.failUnless("3 root events" in page)
             self.failUnless(": one</span>" in page)
             self.failUnless(": two</span>" in page)
             self.failUnless(": three FAILURE:" in page)
             self.failUnless(": UNUSUAL four</span>" in page)
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?sort=number"))
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?sort=time"))
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?sort=nested"))
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?timestamps=short-local"))
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?timestamps=utc"))
-        d.addCallback(_check_all_events)
-        return d
+
+        page = yield client.getPage(self.baseurl + "all-events")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?sort=number")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?sort=time")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?sort=nested")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?timestamps=short-local")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?timestamps=utc")
+        check_all_events(page)
+
 
 
 class Bridge(unittest.TestCase):
