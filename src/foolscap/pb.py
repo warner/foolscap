@@ -39,9 +39,6 @@ class Listener(protocol.ServerFactory, service.MultiService):
     """I am responsible for a single listening port, which connects to a
     single Tub. I have a strports-based Service, which I will attach as a
     child."""
-
-    noisy = False
-
     # this also serves as the ServerFactory
 
     def __init__(self, tub, port, _test_options={},
@@ -90,22 +87,11 @@ class Listener(protocol.ServerFactory, service.MultiService):
         return ("<Listener at 0x%x on %s with tub %s>" %
                 (abs(id(self)), self.port, str(self.tub.tubID)))
 
-    def getService(self):
-        return self.s
-
     def addRedirect(self, tubID, location):
         assert tubID is not None
         self.redirects[tubID] = location
     def removeRedirect(self, tubID):
         del self.redirects[tubID]
-
-    def startFactory(self):
-        log.msg("Starting factory %r" % self, facility="foolscap.listener")
-        return protocol.ServerFactory.startFactory(self)
-    def stopFactory(self):
-        log.msg("Stopping factory %r" % self, facility="foolscap.listener")
-        return protocol.ServerFactory.stopFactory(self)
-
 
     def buildProtocol(self, addr):
         """Return a Broker attached to me (as the service provider).
