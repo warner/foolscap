@@ -72,7 +72,9 @@ class DefaultTCP:
 class SOCKS5:
     def __init__(self, endpoint=None, proxy_endpoint_factory=None):
         if txsocksx is None:
-            raise PluginDependencyNotLoaded("SOCKS5 foolscap client transport plugin requires txsocksx.")
+            raise PluginDependencyNotLoaded("""SOCKS5 foolscap client transport plugin requires txsocksx.\n
+If you are using a Python virtual env you can simply: pip install txsocksx;\n
+Debian users can install via the APT repo: apt-get install txsocksx;\n""")
         self.proxy_endpoint_factory = proxy_endpoint_factory
         self.proxy_endpoint_desc = endpoint
         self.proxy_endpoint = None
