@@ -43,19 +43,8 @@ class Listener(protocol.ServerFactory, service.MultiService):
 
     def __init__(self, tub, port, _test_options={},
                  negotiationClass=negotiate.Negotiation):
-        """
-        @type port: string
-        @param port: a L{twisted.application.strports} -style description,
-        specifying a TCP server
-        """
-        # parse the following 'port' strings:
-        #  80
-        #  tcp:80
-        #  tcp:80:interface=127.0.0.1
-        # we reject UNIX sockets.. I don't know if they ever worked.
-
-        assert isinstance(tub, Tub)
         service.MultiService.__init__(self)
+        assert isinstance(tub, Tub)
         self._tub = tub
         self._port = port
         self._test_options = _test_options
