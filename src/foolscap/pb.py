@@ -56,14 +56,14 @@ class Listener(protocol.ServerFactory, service.MultiService):
 
         assert isinstance(tub, Tub)
         service.MultiService.__init__(self)
-        self.tub = tub
-        self.port = port
+        self._tub = tub
+        self._port = port
         self._test_options = _test_options
-        self.negotiationClass = negotiationClass
-        self.redirects = {}
+        self._negotiationClass = negotiationClass
+        self._redirects = {}
         portnum, interface = parse_strport(port)
-        self.s = internet.TCPServer(portnum, self, interface=interface)
-        self.s.setServiceParent(self)
+        self._s = internet.TCPServer(portnum, self, interface=interface)
+        self._s.setServiceParent(self)
 
     @deprecated(Version("Foolscap", 0, 12, 0),
                 # "please use .."
@@ -80,18 +80,18 @@ class Listener(protocol.ServerFactory, service.MultiService):
             t.setLocation('localhost:%d' % l.getPortnum())
         """
 
-        assert self.s.running
-        return self.s._port.getHost().port
+        assert self._s.running
+        return self._s._port.getHost().port
 
     def __repr__(self):
         return ("<Listener at 0x%x on %s with tub %s>" %
-                (abs(id(self)), self.port, str(self.tub.tubID)))
+                (abs(id(self)), self._port, str(self._tub.tubID)))
 
     def addRedirect(self, tubID, location):
         assert tubID is not None
-        self.redirects[tubID] = location
+        self._redirects[tubID] = location
     def removeRedirect(self, tubID):
-        del self.redirects[tubID]
+        del self._redirects[tubID]
 
     def buildProtocol(self, addr):
         """Return a Broker attached to me (as the service provider).
@@ -99,16 +99,16 @@ class Listener(protocol.ServerFactory, service.MultiService):
         lp = log.msg("%s accepting connection from %s" % (self, addr),
                      addr=(addr.host, addr.port),
                      facility="foolscap.listener")
-        proto = self.negotiationClass(logparent=lp)
+        proto = self._negotiationClass(logparent=lp)
         proto.initServer(self)
         proto.factory = self
         return proto
 
     def lookupTubID(self, tubID):
         tub = None
-        if tubID == self.tub.tubID:
-            tub = self.tub
-        return (tub, self.redirects.get(tubID))
+        if tubID == self._tub.tubID:
+            tub = self._tub
+        return (tub, self._redirects.get(tubID))
 
 def generateSwissnumber(bits):
     bytes = os.urandom(bits/8)
