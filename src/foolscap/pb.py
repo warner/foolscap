@@ -1,10 +1,11 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import os.path, weakref, binascii, re
+import os.path, weakref, binascii
 from warnings import warn
 from zope.interface import implements
-from twisted.internet import defer, protocol, error
-from twisted.application import service, internet
+from twisted.internet import (reactor, defer, protocol, error, interfaces,
+                              endpoints)
+from twisted.application import service
 from twisted.python.failure import Failure
 from twisted.python.deprecate import deprecated
 from twisted.python.versions import Version
@@ -23,36 +24,42 @@ from foolscap.logging.log import UNUSUAL
 
 from foolscap import crypto
 
-
-def parse_strport(port):
-    if port.startswith("unix:"):
-        raise ValueError("UNIX sockets are not supported for Listeners")
-    mo = re.search(r'^(tcp:)?(?P<port>\d+)(:interface=(?P<interface>[\d\.]+))?$', port)
-    if not mo:
-        raise ValueError("Unable to parse port string '%s'" % (port,))
-    portnum = int(mo.group('port'))
-    interface = mo.group('interface') or ""
-    # TODO: IPv6
-    return (portnum, interface)
-
-class Listener(protocol.ServerFactory, service.MultiService):
+class Listener(protocol.ServerFactory, service.Service):
     """I am responsible for a single listening port, which connects to a
-    single Tub. I have a strports-based Service, which I will attach as a
-    child."""
+    single Tub. I listen on an Endpoint, and can be constructed with either
+    the Endpoint, or a string (which I will pass to serverFromString())."""
     # this also serves as the ServerFactory
 
-    def __init__(self, tub, port, _test_options={},
+    def __init__(self, tub, endpoint_or_description, _test_options={},
                  negotiationClass=negotiate.Negotiation):
-        service.MultiService.__init__(self)
+        service.Service.__init__(self)
         assert isinstance(tub, Tub)
         self._tub = tub
-        self._port = port
+
+        if interfaces.IStreamServerEndpoint.providedBy(endpoint_or_description):
+            self._ep = endpoint_or_description
+        elif isinstance(endpoint_or_description, str):
+            self._ep = endpoints.serverFromString(reactor,
+                                                 endpoint_or_description)
+        else:
+            raise TypeError("I require an endpoint, or a string description that can be turned into one")
+        self._lp = None
+
         self._test_options = _test_options
         self._negotiationClass = negotiationClass
         self._redirects = {}
-        portnum, interface = parse_strport(port)
-        self._s = internet.TCPServer(portnum, self, interface=interface)
-        self._s.setServiceParent(self)
+
+    def startService(self):
+        service.Service.startService(self)
+        d = self._ep.listen(self)
+        def _listening(lp):
+            self._lp = lp
+        d.addCallback(_listening)
+
+    def stopService(self):
+        service.Service.stopService(self)
+        if self._lp:
+            return self._lp.stopListening()
 
     @deprecated(Version("Foolscap", 0, 12, 0),
                 # "please use .."
@@ -68,13 +75,12 @@ class Listener(protocol.ServerFactory, service.MultiService):
             l = t.listenOn('tcp:0')
             t.setLocation('localhost:%d' % l.getPortnum())
         """
-
-        assert self._s.running
-        return self._s._port.getHost().port
+        assert self._lp
+        return self._lp.getHost().port
 
     def __repr__(self):
         return ("<Listener at 0x%x on %s with tub %s>" %
-                (abs(id(self)), self._port, str(self._tub.tubID)))
+                (abs(id(self)), str(self._ep), str(self._tub.tubID)))
 
     def addRedirect(self, tubID, location):
         assert tubID is not None
@@ -494,8 +500,6 @@ class Tub(service.MultiService):
                              "port numbers instead")
             warn(warningString, DeprecationWarning, stacklevel=2)
 
-        if not isinstance(what, str):
-            raise TypeError("listenOn only accepts str")
         l = Listener(self, what, _test_options, self.negotiationClass)
         self.listeners.append(l)
         l.setServiceParent(self)
