@@ -2143,7 +2143,7 @@ class Web(unittest.TestCase):
     def tearDown(self):
         d = defer.maybeDeferred(unittest.TestCase.tearDown, self)
         if self.viewer:
-            d.addCallback(lambda res: self.viewer.serv.stopService())
+            d.addCallback(lambda res: self.viewer.stop())
         return d
 
     @inlineCallbacks
@@ -2169,7 +2169,7 @@ class Web(unittest.TestCase):
         options = web.WebViewerOptions()
         options.parseOptions(argv)
         self.viewer = web.WebViewer()
-        self.url = self.viewer.start(options)
+        self.url = yield self.viewer.start(options)
         self.baseurl = self.url[:self.url.rfind("/")] + "/"
 
         page = yield client.getPage(self.url)

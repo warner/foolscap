@@ -1,13 +1,12 @@
 
 import time, urllib
-from twisted.internet import reactor
-from twisted.application import internet
+from twisted.internet import reactor, endpoints
+from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.python import usage
 from foolscap import base32
 from foolscap.eventual import fireEventually
 from foolscap.logging import log, flogfile
-from foolscap.util import format_time, FORMAT_TIME_MODES
-from foolscap.pb import parse_strport
+from foolscap.util import format_time, FORMAT_TIME_MODES, allocate_tcp_port
 from twisted.web import server, static, html, resource
 
 class WebViewerOptions(usage.Options):
@@ -19,8 +18,8 @@ class WebViewerOptions(usage.Options):
         ]
 
     optParameters = [
-        ("port", "p", "tcp:0",
-         "strports specification of where the web server should listen."),
+        ("port", "p", None,
+         "endpoint specification of where the web server should listen."),
         ("timestamps", "t", "short-local",
          "Format for timestamps: " + " ".join(FORMAT_TIME_MODES)),
         ]
@@ -355,6 +354,7 @@ class WebViewer:
         print "ERROR", f
         reactor.stop()
 
+    @inlineCallbacks
     def start(self, options):
         root = static.Data("placeholder", "text/plain")
         welcome = Welcome(self, options["timestamps"])
@@ -365,10 +365,13 @@ class WebViewer:
         root.putChild("summary", Summary(self))
         root.putChild("flog.css", static.Data(FLOG_CSS, "text/css"))
         s = server.Site(root)
-        (portnum, interface) = parse_strport(options['port'])
-        self.serv = internet.TCPServer(portnum, s, interface=interface)
-        self.serv.startService()
-        portnum = self.serv._port.getHost().port
+
+        port = options["port"]
+        if not port:
+            port = "tcp:%d:interface=127.0.0.1" % allocate_tcp_port()
+        ep = endpoints.serverFromString(reactor, port)
+        self.lp = yield ep.listen(s)
+        portnum = self.lp.getHost().port
         # TODO: this makes all sort of assumptions: HTTP-vs-HTTPS, localhost.
         url = "http://localhost:%d/" % portnum
 
@@ -384,7 +387,10 @@ class WebViewer:
             import webbrowser
             webbrowser.open(url)
 
-        return url # for tests
+        returnValue(url) # for tests
+
+    def stop(self):
+        return self.lp.stopListening()
 
     def load_logfiles(self):
         #self.summary = {} # keyed by logfile name
