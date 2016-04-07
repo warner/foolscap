@@ -44,22 +44,26 @@ class Listener(protocol.ServerFactory, service.Service):
         else:
             raise TypeError("I require an endpoint, or a string description that can be turned into one")
         self._lp = None
+        self._lp_listening_d = None
 
         self._test_options = _test_options
         self._negotiationClass = negotiationClass
         self._redirects = {}
 
     def startService(self):
+        self._lp_listening_d = defer.Deferred()
         service.Service.startService(self)
         d = self._ep.listen(self)
         def _listening(lp):
             self._lp = lp
+            self._lp_listening_d.callback(None)
         d.addCallback(_listening)
 
     def stopService(self):
         service.Service.stopService(self)
-        if self._lp:
-            return self._lp.stopListening()
+        if self._lp_listening_d:
+            self._lp_listening_d.addCallback(lambda _: self._lp.stopListening())
+            return self._lp_listening_d
 
     @deprecated(Version("Foolscap", 0, 12, 0),
                 # "please use .."
