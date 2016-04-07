@@ -16,6 +16,7 @@ from foolscap.schema import Any, SetOf, DictOf, ListOf, TupleOf, \
      NumberConstraint, ByteStringConstraint, IntegerConstraint, \
      UnicodeConstraint, ChoiceOf
 from foolscap.referenceable import TubRef
+from foolscap.util import allocate_tcp_port
 
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
@@ -497,10 +498,12 @@ class BaseMixin(ShouldFailMixin):
         self.tub = tub = Tub(_test_options=options)
         tub.startService()
         self.services.append(tub)
-        l = tub.listenOn("tcp:0", _test_options=listenerOptions)
-        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        tub.listenOn("tcp:%d:interface=127.0.0.1" % portnum,
+                     _test_options=listenerOptions)
+        tub.setLocation("127.0.0.1:%d" % portnum)
         self.target = Target()
-        return tub.registerReference(self.target), l.getPortnum()
+        return tub.registerReference(self.target), portnum
 
     def makeSpecificServer(self, certData,
                            negotiationClass=negotiate.Negotiation):
@@ -508,10 +511,11 @@ class BaseMixin(ShouldFailMixin):
         tub.negotiationClass = negotiationClass
         tub.startService()
         self.services.append(tub)
-        l = tub.listenOn("tcp:0")
-        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        tub.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        tub.setLocation("127.0.0.1:%d" % portnum)
         self.target = Target()
-        return tub.registerReference(self.target), l.getPortnum()
+        return tub.registerReference(self.target), portnum
 
     def createSpecificServer(self, certData,
                              negotiationClass=negotiate.Negotiation):
@@ -519,10 +523,11 @@ class BaseMixin(ShouldFailMixin):
         tub.negotiationClass = negotiationClass
         tub.startService()
         self.services.append(tub)
-        l = tub.listenOn("tcp:0")
-        tub.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        tub.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        tub.setLocation("127.0.0.1:%d" % portnum)
         target = Target()
-        return tub, target, tub.registerReference(target), l.getPortnum()
+        return tub, target, tub.registerReference(target), portnum
 
     def makeNullServer(self):
         f = protocol.Factory()
@@ -555,3 +560,20 @@ class BaseMixin(ShouldFailMixin):
 
     def connectHTTPClient(self, portnum):
         return getPage("http://127.0.0.1:%d/foo" % portnum)
+
+class MakeTubsMixin:
+    def makeTubs(self, numTubs, mangleLocation=None):
+        self.services = []
+        self.tub_ports = []
+        for i in range(numTubs):
+            t = Tub()
+            t.startService()
+            self.services.append(t)
+            portnum = allocate_tcp_port()
+            self.tub_ports.append(portnum)
+            t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+            location = "127.0.0.1:%d" % portnum
+            if mangleLocation:
+                location = mangleLocation(portnum)
+            t.setLocation(location)
+        return self.services

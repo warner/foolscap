@@ -4,9 +4,9 @@ from twisted.trial import unittest
 from twisted.internet import reactor, defer
 from twisted.python.failure import Failure
 
-from foolscap.api import DeadReferenceError, flushEventualQueue, Tub
+from foolscap.api import DeadReferenceError, flushEventualQueue
 from foolscap.broker import Broker
-from foolscap.test.common import TargetWithoutInterfaces
+from foolscap.test.common import TargetWithoutInterfaces, MakeTubsMixin
 
 from twisted.python import log
 
@@ -22,15 +22,11 @@ class PingCountingBroker(Broker):
         log.msg("PONG: %d" % number)
         Broker.sendPONG(self, number)
 
-class Keepalives(unittest.TestCase):
+class Keepalives(MakeTubsMixin, unittest.TestCase):
     def setUp(self):
-        s0, s1 = self.services = [Tub(), Tub()]
+        s0, s1 = self.makeTubs(2)
         s0.brokerClass = PingCountingBroker
         s1.brokerClass = PingCountingBroker
-        s0.startService()
-        s1.startService()
-        l = s0.listenOn("tcp:0:interface=127.0.0.1")
-        s0.setLocation("127.0.0.1:%d" % l.getPortnum())
         self.target = TargetWithoutInterfaces()
         public_url = s0.registerReference(self.target, "target")
         self.public_url = public_url

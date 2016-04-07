@@ -2,7 +2,7 @@
 
 from twisted.trial import unittest
 from foolscap.api import Tub, eventually, flushEventualQueue
-from foolscap.test.common import HelperTarget
+from foolscap.test.common import HelperTarget, MakeTubsMixin
 from twisted.internet import defer, reactor, error
 from foolscap import negotiate
 
@@ -10,15 +10,9 @@ class AlwaysFailNegotiation(negotiate.Negotiation):
     def evaluateHello(self, offer):
         raise negotiate.NegotiationError("I always fail")
 
-class Reconnector(unittest.TestCase):
-
+class Reconnector(MakeTubsMixin, unittest.TestCase):
     def setUp(self):
-        self.services = [Tub(), Tub()]
-        self.tubA, self.tubB = self.services
-        for s in self.services:
-            s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
-            s.setLocation("127.0.0.1:%d" % l.getPortnum())
+        self.tubA, self.tubB = self.makeTubs(2)
 
     def tearDown(self):
         d = defer.DeferredList([s.stopService() for s in self.services])
@@ -71,7 +65,7 @@ class Reconnector(unittest.TestCase):
         connects = []
         target = HelperTarget("bob")
         url = self.tubB.registerReference(target, "target")
-        portb = self.tubB.getListeners()[0].getPortnum()
+        portb = self.tub_ports[1]
         d1 = defer.Deferred()
         notifiers = [d1]
         self.services.remove(self.tubB)
@@ -107,7 +101,7 @@ class Reconnector(unittest.TestCase):
         url = self.tubB.registerReference(target, "target")
         l = self.tubB.getListeners()[0]
         l.negotiationClass = AlwaysFailNegotiation
-        portb = l.getPortnum()
+        portb = self.tub_ports[1]
         d1 = defer.Deferred()
         notifiers = [d1]
         self.rc = self.tubA.connectTo(url, self._connected,
@@ -140,7 +134,7 @@ class Reconnector(unittest.TestCase):
         notifiers = [d1, d2]
         target = HelperTarget("bob")
         url = self.tubB.registerReference(target, "target")
-        portb = self.tubB.getListeners()[0].getPortnum()
+        portb = self.tub_ports[1]
         self.rc = self.tubA.connectTo(url, self._connected,
                                       notifiers, connects)
         def _connected_first(res):
