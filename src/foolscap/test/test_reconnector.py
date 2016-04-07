@@ -100,7 +100,7 @@ class Reconnector(MakeTubsMixin, unittest.TestCase):
         target = HelperTarget("bob")
         url = self.tubB.registerReference(target, "target")
         l = self.tubB.getListeners()[0]
-        l.negotiationClass = AlwaysFailNegotiation
+        l._negotiationClass = AlwaysFailNegotiation
         portb = self.tub_ports[1]
         d1 = defer.Deferred()
         notifiers = [d1]
