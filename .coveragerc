@@ -1,8 +1,21 @@
-# -*- conf -*-
-
 [run]
-include =
- foolscap/*
+# only record trace data for foolscap.*
+source = foolscap
+# and don't trace the test files themselves, or Versioneer's stuff
 omit =
- foolscap/_version.py
- foolscap/test/*.py
+   src/foolscap/test/*
+   src/foolscap/_version.py
+
+
+# This allows 'coverage combine' to correlate the tracing data built while
+# running tests in multiple tox virtualenvs. To take advantage of this
+# properly, use "coverage erase" before tox, "coverage run --parallel-mode"
+# inside tox to avoid overwriting the output data (by writing it into
+# .coverage-XYZ instead of just .coverage), and run "coverage combine"
+# afterwards.
+
+[paths]
+source =
+       src/
+       .tox/*/lib/python*/site-packages/
+       .tox/pypy*/site-packages/
