@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import os.path, weakref, binascii
+import os.path, weakref, binascii, re
 from warnings import warn
 from zope.interface import implements
 from twisted.internet import (reactor, defer, protocol, error, interfaces,
@@ -499,6 +499,13 @@ class Tub(service.MultiService):
                              "in Foolscap 0.12.0; please use pre-allocated "
                              "port numbers instead")
             warn(warningString, DeprecationWarning, stacklevel=2)
+
+        if isinstance(what, str) and re.search(r"^\d+$", what):
+            warn("Tub.listenOn('12345') was deprecated "
+                 "in Foolscap 0.12.0; please use qualified endpoint "
+                 "descriptions like 'tcp:12345'",
+                 DeprecationWarning, stacklevel=2)
+            what = "tcp:%s" % what
 
         l = Listener(self, what, _test_options, self.negotiationClass)
         self.listeners.append(l)
