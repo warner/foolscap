@@ -15,8 +15,7 @@ class Convert(unittest.TestCase):
         ep, host = get_endpoint(hint, {"tcp": DefaultTCP()})
         self.failUnless(isinstance(ep, endpoints.HostnameEndpoint), ep)
         # note: this is fragile, and will break when Twisted changes the
-        # internals of TCP4ClientEndpoint. Hopefully we'll switch to
-        # HostnameEndpoint before then. Although that will break too.
+        # internals of HostnameEndpoint.
         self.failUnlessEqual(ep._host, expected_host)
         self.failUnlessEqual(ep._port, expected_port)
 
@@ -40,12 +39,18 @@ class Convert(unittest.TestCase):
                              "unix:fd=1") # equals signs, key=value -style
 
     def testTCP(self):
-        self.checkTCPEndpoint("tcp:127.0.0.1:9900",
-                              "127.0.0.1", 9900)
+        self.checkTCPEndpoint("tcp:127.0.0.1:9900", "127.0.0.1", 9900)
+        self.checkTCPEndpoint("tcp:hostname:9900", "hostname", 9900)
+        self.assertRaises(ipb.InvalidHintError,
+                          self.checkTCPEndpoint, "tcp:hostname:NOTAPORT",
+                          None, None)
 
     def testLegacyTCP(self):
-        self.checkTCPEndpoint("127.0.0.1:9900",
-                              "127.0.0.1", 9900)
+        self.checkTCPEndpoint("127.0.0.1:9900", "127.0.0.1", 9900)
+        self.checkTCPEndpoint("hostname:9900", "hostname", 9900)
+        self.assertRaises(ipb.InvalidHintError,
+                          self.checkTCPEndpoint, "hostname:NOTAPORT",
+                          None, None)
 
     def testExtensionsFromFuture(self):
         self.checkUnknownEndpoint("udp:127.0.0.1:7700")
