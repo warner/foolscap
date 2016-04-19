@@ -15,7 +15,7 @@ from foolscap.constraint import IConstraint
 from foolscap.banana import int2b128, long_to_bytes
 
 import StringIO
-import sets, struct
+import struct
 from decimal import Decimal
 
 #log.startLogging(sys.stderr)
@@ -1706,11 +1706,6 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
     def test_set(self):
         d = self.looptest(set([1,2]))
         d.addCallback(lambda res: self.looptest(frozenset([1,2])))
-        # and verify that old sets turn into modern ones, which is
-        # unfortunate but at least consistent
-        d.addCallback(lambda res: self.looptest(sets.Set([1,2]), set([1,2])))
-        d.addCallback(lambda res: self.looptest(sets.ImmutableSet([1,2]),
-                                                frozenset([1,2])))
         return d
 
     def test_bool(self):

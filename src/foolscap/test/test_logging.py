@@ -5,17 +5,19 @@ from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer
+from twisted.internet.defer import inlineCallbacks
 try:
     from twisted import logger as twisted_logger
 except ImportError:
     twisted_logger = None
+from twisted.web import client
 from twisted.python import log as twisted_log
 from twisted.python import failure, runtime, usage
 import foolscap
 from foolscap.logging import gatherer, log, tail, incident, cli, web, \
      publish, dumper, flogfile
 from foolscap.logging.interfaces import RILogObserver
-from foolscap.util import format_time
+from foolscap.util import format_time, allocate_tcp_port
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.tokens import NoLocationError
 from foolscap.test.common import PollMixin, StallMixin
@@ -502,6 +504,14 @@ class Observer(Referenceable):
 class MyGatherer(gatherer.GathererService):
     verbose = False
 
+    def __init__(self, rotate, use_bzip, basedir):
+        portnum = allocate_tcp_port()
+        with open(os.path.join(basedir, "port"), "w") as f:
+            f.write("tcp:%d\n" % portnum)
+        with open(os.path.join(basedir, "location"), "w") as f:
+            f.write("tcp:127.0.0.1:%d\n" % portnum)
+        gatherer.GathererService.__init__(self, rotate, use_bzip, basedir)
+
     def remote_logport(self, nodeid, publisher):
         d = gatherer.GathererService.remote_logport(self, nodeid, publisher)
         d.addBoth(lambda res: self.d.callback(publisher))
@@ -537,9 +547,10 @@ class Publish(PollMixin, unittest.TestCase):
         t.setServiceParent(self.parent)
         self.failUnlessRaises(NoLocationError, t.getLogPort)
         self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
         self.failIf(os.path.exists(furlfile))
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setLocation("127.0.0.1:%d" % portnum)
         logport_furl = open(furlfile, "r").read().strip()
         self.failUnlessEqual(logport_furl, t.getLogPortFURL())
 
@@ -552,10 +563,11 @@ class Publish(PollMixin, unittest.TestCase):
         t.setServiceParent(self.parent)
         self.failUnlessRaises(NoLocationError, t.getLogPort)
         self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
         t.setOption("logport-furlfile", furlfile)
         self.failIf(os.path.exists(furlfile))
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setLocation("127.0.0.1:%d" % portnum)
         logport_furl = open(furlfile, "r").read().strip()
         self.failUnlessEqual(logport_furl, t.getLogPortFURL())
 
@@ -565,11 +577,12 @@ class Publish(PollMixin, unittest.TestCase):
         furlfile = os.path.join(basedir, "logport.furl")
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
         self.failUnlessRaises(NoLocationError, t.getLogPort)
         self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
 
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
         logport_furl2 = open(furlfile, "r").read().strip()
@@ -668,8 +681,9 @@ class Publish(PollMixin, unittest.TestCase):
         furlfile = os.path.join(basedir, "logport.furl")
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
 
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
@@ -726,8 +740,9 @@ class Publish(PollMixin, unittest.TestCase):
         furlfile = os.path.join(basedir, "logport.furl")
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
 
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
@@ -868,8 +883,9 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
 
         # now set up a Tub to connect to the logport
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
 
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
@@ -944,8 +960,9 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
 
         # now set up a Tub to connect to the logport
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
         logport_furl = t.getLogPortFURL()
 
         ob = Observer()
@@ -1061,6 +1078,13 @@ class IncidentGatherer(unittest.TestCase,
     def create_incident_gatherer(self, basedir, classifiers=[]):
         # create an incident gatherer, which will make its own Tub
         ig_basedir = os.path.join(basedir, "ig")
+        if not os.path.isdir(ig_basedir):
+            os.mkdir(ig_basedir)
+            portnum = allocate_tcp_port()
+            with open(os.path.join(ig_basedir, "port"), "w") as f:
+                f.write("tcp:%d\n" % portnum)
+            with open(os.path.join(ig_basedir, "location"), "w") as f:
+                f.write("tcp:127.0.0.1:%d\n" % portnum)
         null = StringIO()
         ig = MyIncidentGathererService(classifiers=classifiers,
                                        basedir=ig_basedir, stdout=null)
@@ -1071,8 +1095,9 @@ class IncidentGatherer(unittest.TestCase,
         t = Tub()
         t.logger = self.logger
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("log-gatherer-furl", ig.my_furl)
 
     def test_connect(self):
@@ -1333,7 +1358,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         # create a LogGatherer with an unspecified basedir: it should look
         # for a .tac file in the current directory, not see it, and complain
         e = self.failUnlessRaises(RuntimeError,
-                                  MyGatherer, None, True, None)
+                                  gatherer.GathererService, None, True, None)
         self.failUnless("running in the wrong directory" in str(e))
 
     def test_log_gatherer(self):
@@ -1354,8 +1379,9 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("log-gatherer-furl", gatherer_furl)
 
         # about now, the node will be contacting the Gatherer and
@@ -1400,8 +1426,9 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("log-gatherer-furl", (gatherer1_furl, gatherer2_furl))
 
         # about now, the node will be contacting the Gatherers and
@@ -1435,9 +1462,10 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
         t.setOption("log-gatherer-furl", gatherer_furl)
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        t.setLocation("127.0.0.1:%d" % portnum)
 
         d = gatherer.d
         d.addCallback(self._emit_messages_and_flush, t)
@@ -1463,8 +1491,9 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("log-gatherer-furlfile", gatherer_furlfile)
 
         d = gatherer.d
@@ -1491,13 +1520,14 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         expected_tubid = t.tubID
         assert t.tubID is not None
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
         t.setOption("log-gatherer-furlfile", gatherer_furlfile)
         # one bug we had was that the log-gatherer was contacted before
         # setLocation had occurred, so exercise that case
         d = self.stall(None, 1.0)
         def _start(res):
-            t.setLocation("127.0.0.1:%d" % l.getPortnum())
+            t.setLocation("127.0.0.1:%d" % portnum)
             return gatherer.d
         d.addCallback(_start)
         d.addCallback(self._emit_messages_and_flush, t)
@@ -1548,8 +1578,9 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         assert t.tubID is not None
         t.setOption("log-gatherer-furl", gatherer3_furl)
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("log-gatherer-furlfile", gatherer_furlfile)
         # now both log gatherer connections will be being established
 
@@ -1575,8 +1606,9 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("log-gatherer-furlfile", gatherer_fn)
 
         lp_furl = t.getLogPortFURL()
@@ -1594,8 +1626,9 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         t = Tub()
         t.setServiceParent(self.parent)
-        l = t.listenOn("tcp:0:interface=127.0.0.1")
-        t.setLocation("127.0.0.1:%d" % l.getPortnum())
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
+        t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("log-gatherer-furlfile", gatherer_fn)
 
         lp_furl = t.getLogPortFURL()
@@ -1744,18 +1777,23 @@ def run_wrapper(argv):
 class CLI(unittest.TestCase):
     def test_create_gatherer(self):
         basedir = "logging/CLI/create_gatherer"
-        argv = ["flogtool", "create-gatherer", "--quiet", basedir]
+        argv = ["flogtool", "create-gatherer",
+                "--port", "tcp:3117", "--location", "tcp:localhost:3117",
+                "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_gatherer2"
         argv = ["flogtool", "create-gatherer", "--rotate", "3600",
+                "--port", "tcp:3117", "--location", "tcp:localhost:3117",
                 "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_gatherer3"
-        argv = ["flogtool", "create-gatherer", basedir]
+        argv = ["flogtool", "create-gatherer",
+                "--port", "tcp:3117", "--location", "tcp:localhost:3117",
+                basedir]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
         self.failUnless(("Gatherer created in directory %s" % basedir)
@@ -1769,20 +1807,34 @@ class CLI(unittest.TestCase):
         self.failUnlessRaises(usage.UsageError,
                               cli.run_flogtool, argv[1:], run_by_human=False)
 
+    def test_create_gatherer_no_location(self):
+        basedir = "logging/CLI/create_gatherer_no_location"
+        argv = ["flogtool", "create-gatherer", basedir]
+        e = self.failUnlessRaises(usage.UsageError,
+                                  cli.run_flogtool, argv[1:],
+                                  run_by_human=False)
+        self.failUnlessIn("--location= is mandatory", str(e))
+
     def test_wrapper(self):
         basedir = "logging/CLI/wrapper"
-        argv = ["wrapper", "flogtool", "create-gatherer", "--quiet", basedir]
+        argv = ["wrapper", "flogtool", "create-gatherer",
+                "--port", "tcp:3117", "--location", "tcp:localhost:3117",
+                "--quiet", basedir]
         run_wrapper(argv[1:])
         self.failUnless(os.path.exists(basedir))
 
     def test_create_incident_gatherer(self):
         basedir = "logging/CLI/create_incident_gatherer"
-        argv = ["flogtool", "create-incident-gatherer", "--quiet", basedir]
+        argv = ["flogtool", "create-incident-gatherer",
+                "--port", "tcp:3118", "--location", "tcp:localhost:3118",
+                "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_incident_gatherer2"
-        argv = ["flogtool", "create-incident-gatherer", basedir]
+        argv = ["flogtool", "create-incident-gatherer",
+                "--port", "tcp:3118", "--location", "tcp:localhost:3118",
+                basedir]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnless(os.path.exists(basedir))
         self.failUnless(("Incident Gatherer created in directory %s" % basedir)
@@ -2091,11 +2143,11 @@ class Web(unittest.TestCase):
     def tearDown(self):
         d = defer.maybeDeferred(unittest.TestCase.tearDown, self)
         if self.viewer:
-            d.addCallback(lambda res: self.viewer.serv.stopService())
+            d.addCallback(lambda res: self.viewer.stop())
         return d
 
+    @inlineCallbacks
     def test_basic(self):
-        from twisted.web import client
         basedir = "logging/Web/basic"
         os.makedirs(basedir)
         l = log.FoolscapLogger()
@@ -2106,62 +2158,60 @@ class Web(unittest.TestCase):
         lp = l.msg("two")
         l.msg("three", parent=lp, failure=failure.Failure(RuntimeError("yo")))
         l.msg("four", level=log.UNUSUAL)
-        d = fireEventually()
-        def _created(res):
-            l.removeObserver(ob.msg)
-            ob._stop()
-            argv = ["-p", "tcp:0:interface=127.0.0.1",
-                    "--quiet",
-                    fn]
-            options = web.WebViewerOptions()
-            options.parseOptions(argv)
-            self.viewer = web.WebViewer()
-            self.url = self.viewer.start(options)
-            self.baseurl = self.url[:self.url.rfind("/")] + "/"
+        yield fireEventually()
+        l.removeObserver(ob.msg)
+        ob._stop()
 
-        d.addCallback(_created)
-        d.addCallback(lambda res: client.getPage(self.url))
-        def _check_welcome(page):
-            mypid = os.getpid()
-            self.failUnless("PID %s" % mypid in page,
-                            "didn't see 'PID %s' in '%s'" % (mypid, page))
-            self.failUnless("Application Versions:" in page, page)
-            self.failUnless("foolscap: %s" % foolscap.__version__ in page, page)
-            self.failUnless("4 events covering" in page)
-            self.failUnless('href="summary/0-20">3 events</a> at level 20'
-                            in page)
-        d.addCallback(_check_welcome)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "summary/0-20"))
-        def _check_summary(page):
-            self.failUnless("Events at level 20" in page)
-            self.failUnless(": two" in page)
-            self.failIf("four" in page)
-        d.addCallback(_check_summary)
-        d.addCallback(lambda res: client.getPage(self.baseurl + "all-events"))
-        def _check_all_events(page):
+        portnum = allocate_tcp_port()
+        argv = ["-p", "tcp:%d:interface=127.0.0.1" % portnum,
+                "--quiet",
+                fn]
+        options = web.WebViewerOptions()
+        options.parseOptions(argv)
+        self.viewer = web.WebViewer()
+        self.url = yield self.viewer.start(options)
+        self.baseurl = self.url[:self.url.rfind("/")] + "/"
+
+        page = yield client.getPage(self.url)
+        mypid = os.getpid()
+        self.failUnless("PID %s" % mypid in page,
+                        "didn't see 'PID %s' in '%s'" % (mypid, page))
+        self.failUnless("Application Versions:" in page, page)
+        self.failUnless("foolscap: %s" % foolscap.__version__ in page, page)
+        self.failUnless("4 events covering" in page)
+        self.failUnless('href="summary/0-20">3 events</a> at level 20'
+                        in page)
+
+        page = yield client.getPage(self.baseurl + "summary/0-20")
+        self.failUnless("Events at level 20" in page)
+        self.failUnless(": two" in page)
+        self.failIf("four" in page)
+
+        def check_all_events(page):
             self.failUnless("3 root events" in page)
             self.failUnless(": one</span>" in page)
             self.failUnless(": two</span>" in page)
             self.failUnless(": three FAILURE:" in page)
             self.failUnless(": UNUSUAL four</span>" in page)
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?sort=number"))
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?sort=time"))
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?sort=nested"))
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?timestamps=short-local"))
-        d.addCallback(_check_all_events)
-        d.addCallback(lambda res:
-                      client.getPage(self.baseurl + "all-events?timestamps=utc"))
-        d.addCallback(_check_all_events)
-        return d
+
+        page = yield client.getPage(self.baseurl + "all-events")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?sort=number")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?sort=time")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?sort=nested")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?timestamps=short-local")
+        check_all_events(page)
+
+        page = yield client.getPage(self.baseurl + "all-events?timestamps=utc")
+        check_all_events(page)
+
 
 
 class Bridge(unittest.TestCase):

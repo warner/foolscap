@@ -9,8 +9,9 @@ from twisted.python import log, failure
 from foolscap.api import Tub, SturdyRef, Referenceable
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
+from foolscap.util import allocate_tcp_port
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin, \
-     StallMixin
+     StallMixin, MakeTubsMixin
 from foolscap.tokens import WrongTubIdError, PBError, NoLocationHintsError, \
     NoLocationError
 
@@ -88,7 +89,8 @@ class SetLocation(unittest.TestCase):
 
     def test_set_location(self):
         t = Tub()
-        t.listenOn("tcp:0")
+        portnum = allocate_tcp_port()
+        t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
         t.setServiceParent(self.s)
         t.setLocation("127.0.0.1:12345")
         # setLocation may only be called once
@@ -101,21 +103,6 @@ class SetLocation(unittest.TestCase):
         self.failUnlessEqual(t.locationHints, [])
         self.failUnlessRaises(NoLocationError,
                               t.registerReference, Referenceable())
-
-    def test_set_location_automatically(self):
-        t = Tub()
-        l = t.listenOn("tcp:0")
-        t.setServiceParent(self.s)
-        d = t.setLocationAutomatically()
-        d.addCallback(lambda res: t.registerReference(Referenceable()))
-        def _check(furl):
-            sr = SturdyRef(furl)
-            portnum = l.getPortnum()
-            for lh in sr.locationHints:
-                self.failUnlessEqual(lh.split(":")[1], str(portnum), lh)
-            self.failUnless("127.0.0.1:%d" % portnum in sr.locationHints)
-        d.addCallback(_check)
-        return d
 
 
 
@@ -134,9 +121,10 @@ class FurlFile(unittest.TestCase):
         cfn = "test_tub.FurlFile.test_furlfile.certfile"
         t1 = Tub(certFile=cfn)
         t1.setServiceParent(self.s)
-        l = t1.listenOn("tcp:0:interface=127.0.0.1")
-        t1.setLocation("127.0.0.1:%d" % l.getPortnum())
-        port1 = "tcp:%d:interface=127.0.0.1" % l.getPortnum()
+        portnum = allocate_tcp_port()
+        port1 = "tcp:%d:interface=127.0.0.1" % portnum
+        t1.listenOn(port1)
+        t1.setLocation("127.0.0.1:%d" % portnum)
         r1 = Referenceable()
         ffn = "test_tub.FurlFile.test_furlfile.furlfile"
         furl1 = t1.registerReference(r1, furlFile=ffn)
@@ -148,8 +136,8 @@ class FurlFile(unittest.TestCase):
         def _take2(res):
             t2 = Tub(certFile=cfn)
             t2.setServiceParent(self.s)
-            l = t2.listenOn(port1)
-            t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+            t2.listenOn(port1)
+            t2.setLocation("127.0.0.1:%d" % portnum)
             r2 = Referenceable()
             furl2 = t2.registerReference(r2, furlFile=ffn)
             self.failUnlessEqual(furl1, furl2)
@@ -160,9 +148,10 @@ class FurlFile(unittest.TestCase):
     def test_tubid_check(self):
         t1 = Tub() # gets a new key
         t1.setServiceParent(self.s)
-        l = t1.listenOn("tcp:0:interface=127.0.0.1")
-        t1.setLocation("127.0.0.1:%d" % l.getPortnum())
-        port1 = "tcp:%d:interface=127.0.0.1" % l.getPortnum()
+        portnum = allocate_tcp_port()
+        port1 = "tcp:%d:interface=127.0.0.1" % portnum
+        t1.listenOn(port1)
+        t1.setLocation("127.0.0.1:%d" % portnum)
         r1 = Referenceable()
         ffn = "test_tub.FurlFile.test_tubid_check.furlfile"
         furl1 = t1.registerReference(r1, furlFile=ffn)
@@ -174,8 +163,8 @@ class FurlFile(unittest.TestCase):
         def _take2(res):
             t2 = Tub() # gets a different key
             t2.setServiceParent(self.s)
-            l = t2.listenOn(port1)
-            t2.setLocation("127.0.0.1:%d" % l.getPortnum())
+            t2.listenOn(port1)
+            t2.setLocation("127.0.0.1:%d" % portnum)
             r2 = Referenceable()
             self.failUnlessRaises(WrongTubIdError,
                                   t2.registerReference, r2, furlFile=ffn)
@@ -183,18 +172,13 @@ class FurlFile(unittest.TestCase):
         d.addCallback(_take2)
         return d
 
-class QueuedStartup(TargetMixin, unittest.TestCase):
+class QueuedStartup(TargetMixin, MakeTubsMixin, unittest.TestCase):
     # calling getReference and connectTo before the Tub has started should
     # put off network activity until the Tub is started.
 
     def setUp(self):
         TargetMixin.setUp(self)
-        self.tubB = Tub()
-        self.services = [self.tubB]
-        for s in self.services:
-            s.startService()
-            l = s.listenOn("tcp:0:interface=127.0.0.1")
-            s.setLocation("127.0.0.1:%d" % l.getPortnum())
+        (self.tubB,) = self.makeTubs(1)
 
         self.barry = HelperTarget("barry")
         self.barry_url = self.tubB.registerReference(self.barry)
@@ -252,18 +236,13 @@ class QueuedStartup(TargetMixin, unittest.TestCase):
         return d
 
 
-class NameLookup(TargetMixin, unittest.TestCase):
+class NameLookup(TargetMixin, MakeTubsMixin, unittest.TestCase):
 
     # test registerNameLookupHandler
 
     def setUp(self):
         TargetMixin.setUp(self)
-        self.tubA, self.tubB = [Tub(), Tub()]
-        self.services = [self.tubA, self.tubB]
-        self.tubA.startService()
-        self.tubB.startService()
-        l = self.tubB.listenOn("tcp:0:interface=127.0.0.1")
-        self.tubB.setLocation("127.0.0.1:%d" % l.getPortnum())
+        self.tubA, self.tubB = self.makeTubs(2)
         self.url_on_b = self.tubB.registerReference(Referenceable())
         self.lookups = []
         self.lookups2 = []
@@ -377,7 +356,10 @@ class Receiver(Referenceable):
         f = failure.Failure(ValueError(msg))
         log.err(f)
 
-class CancelPendingDeliveries(unittest.TestCase, StallMixin):
+class CancelPendingDeliveries(StallMixin, MakeTubsMixin, unittest.TestCase):
+    def setUp(self):
+        self.tubA, self.tubB = self.makeTubs(2)
+
     def tearDown(self):
         dl = [defer.succeed(None)]
         if self.tubA.running:
@@ -394,16 +376,10 @@ class CancelPendingDeliveries(unittest.TestCase, StallMixin):
         # arrive in the same chunk). TubB responds to remote_one by shutting
         # down. remote_two should be discarded. The bug was that remote_two
         # would cause an unhandled error on the TubB side.
-        self.tubA = Tub()
-        self.tubB = Tub()
-        self.tubA.startService()
-        self.tubB.startService()
 
-        self.tubB.listenOn("tcp:0")
-        d = self.tubB.setLocationAutomatically()
         r = Receiver(self.tubB)
-        d.addCallback(lambda res: self.tubB.registerReference(r))
-        d.addCallback(lambda furl: self.tubA.getReference(furl))
+        furl = self.tubB.registerReference(r)
+        d = self.tubA.getReference(furl)
         def _go(rref):
             # we want these two to get sent and received in the same hunk
             rref.callRemoteOnly("one")

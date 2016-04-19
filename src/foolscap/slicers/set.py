@@ -1,25 +1,5 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
-import warnings
-# python2.4 has a builtin 'set' type, which is mutable, and we require
-# python2.4 or newer. Code which was written to be compatible with python2.3,
-# however, may use the 'sets' module. We will serialize old sets.Set and
-# sets.ImmutableSet the same as we serialize new set and frozenset.
-# Unfortunately this means that these objects will be deserialized as modern
-# 'set' and 'frozenset' objects, which are not entirely compatible. Therefore
-# code that is compatible with python2.3 might not work with foolscap.
-
-try:
-    # from twisted-8.2.0's jelly.py: filter out deprecation warnings for
-    # Python >= 2.6 . If the application imports sets before we do, they'll
-    # get the correct warning.
-    warnings.filterwarnings("ignore", category=DeprecationWarning,
-                            message="the sets module is deprecated",
-                            append=True)
-    import sets
-finally:
-    warnings.filters.pop()
-
 from twisted.internet import defer
 from twisted.python import log
 from foolscap.slicers.list import ListSlicer
@@ -43,11 +23,6 @@ class FrozenSetSlicer(SetSlicer):
     trackReferences = False
     slices = frozenset
 
-
-class OldSetSlicer(SetSlicer):
-    slices = sets.Set
-class OldImmutableSetSlicer(FrozenSetSlicer):
-    slices = sets.ImmutableSet
 
 class _Placeholder:
     pass
@@ -178,23 +153,19 @@ class SetConstraint(OpenerConstraint):
     opentypes = [("set",), ("immutable-set",)]
     name = "SetConstraint"
 
-    mutable_set_types = (set, sets.Set)
-    immutable_set_types = (frozenset, sets.ImmutableSet)
-    all_set_types = mutable_set_types + immutable_set_types
-
     def __init__(self, constraint, maxLength=None, mutable=None):
         self.constraint = IConstraint(constraint)
         self.maxLength = maxLength
         self.mutable = mutable
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, self.all_set_types):
+        if not isinstance(obj, (set, frozenset)):
             raise Violation("not a set")
         if (self.mutable == True and
-            not isinstance(obj, self.mutable_set_types)):
+            not isinstance(obj, set)):
             raise Violation("obj is a set, but not a mutable one")
         if (self.mutable == False and
-            not isinstance(obj, self.immutable_set_types)):
+            not isinstance(obj, frozenset)):
             raise Violation("obj is a set, but not an immutable one")
         if self.maxLength is not None and len(obj) > self.maxLength:
             raise Violation("set is too large")

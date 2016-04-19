@@ -13,9 +13,12 @@ from foolscap.api import Tub, Referenceable
 from foolscap.logging.interfaces import RILogGatherer, RILogObserver
 from foolscap.logging.incident import IncidentClassifierBase, TIME_FORMAT
 from foolscap.logging import flogfile
-from foolscap.util import get_local_ip_for, move_into_place
+from foolscap.util import move_into_place
 
 class BadTubID(Exception):
+    pass
+
+class ObsoleteGatherer(Exception):
     pass
 
 class GatheringBase(service.MultiService, Referenceable):
@@ -24,6 +27,7 @@ class GatheringBase(service.MultiService, Referenceable):
     use_local_addresses = True
 
     def __init__(self, basedir):
+        service.MultiService.__init__(self)
         if basedir is None:
             # This instance was created by a gatherer.tac file. Confirm that
             # we're running from the right directory (the one with the .tac
@@ -33,45 +37,42 @@ class GatheringBase(service.MultiService, Referenceable):
             if not os.path.exists(tac):
                 raise RuntimeError("running in the wrong directory")
         self.basedir = basedir
-        service.MultiService.__init__(self)
-
-    def startService(self):
-        service.MultiService.startService(self)
         certFile = os.path.join(self.basedir, "gatherer.pem")
+        portfile = os.path.join(self.basedir, "port")
+        locationfile = os.path.join(self.basedir, "location")
+        furlFile = os.path.join(self.basedir, self.furlFile)
+
+        # Foolscap-0.11.0 was the last release that used
+        # automatically-determined listening addresses and ports. New ones
+        # (created with "flogtool create-gatherer" or
+        # "create-incident-gathererer" now require --location and --port
+        # arguments to provide these values. If you really don't want to
+        # create a new one, you can write "tcp:3117" (or some other port
+        # number of your choosing) to BASEDIR/port, and "tcp:$HOSTNAME:3117"
+        # (with your hostname or IP address) to BASEDIR/location
+
+        if (not os.path.exists(portfile) or
+            not os.path.exists(locationfile)):
+            raise ObsoleteGatherer("Please create a new gatherer, with both "
+                                   "--port and --location")
+        try:
+            with open(portfile, "r") as f:
+                port = f.read().strip()
+        except EnvironmentError:
+            raise ObsoleteGatherer("Please create a new gatherer, with both "
+                                   "--port and --location")
+        try:
+            with open(locationfile, "r") as f:
+                location = f.read().strip()
+        except EnvironmentError:
+            raise ObsoleteGatherer("Please create a new gatherer, with both "
+                                   "--port and --location")
+
         self._tub = Tub(certFile=certFile)
         self._tub.setServiceParent(self)
-        local_addresses = ["127.0.0.1"]
-        local_address = get_local_ip_for()
-        if self.use_local_addresses and local_address:
-            local_addresses.insert(0, local_address)
-
-        portnumfile = os.path.join(self.basedir, "portnum")
-        try:
-            desired_portnum = int(open(portnumfile, "r").read())
-        except (EnvironmentError, ValueError):
-            desired_portnum = 0
-        l = self._tub.listenOn("tcp:%d" % desired_portnum)
-
-        got_portnum = l.getPortnum()
-        f = open(portnumfile, "w")
-        f.write("%d\n" % got_portnum)
-        f.close()
-
-        # we can't do setLocation until we have two things:
-        #  portnum: this requires listenOn, if portnum=0 also startService
-        #  localip: this just requires a call to get_local_ip_for
-        # so it is safe to do everything in startService, after the upcall
-
-        local_addresses = [ "%s:%d" % (addr, got_portnum,)
-                            for addr in local_addresses ]
-        assert len(local_addresses) >= 1
-        location = ",".join(local_addresses)
+        self._tub.listenOn(port)
         self._tub.setLocation(location)
 
-        self.tub_ready()
-
-    def tub_ready(self):
-        furlFile = os.path.join(self.basedir, self.furlFile)
         self.my_furl = self._tub.registerReference(self, furlFile=furlFile)
         if self.verbose:
             print "Gatherer waiting at:", self.my_furl
@@ -86,12 +87,21 @@ class CreateGatherOptions(usage.Options):
         ("quiet", "q", "Don't print instructions to stdout"),
         ]
     optParameters = [
+        ("port", "p", "tcp:3117", "TCP port to listen on (strports string)"),
+        ("location", "l", None, "(required) Tub location hints to use in generated FURLs. e.g. 'tcp:example.org:3117'"),
         ("rotate", "r", None,
          "Rotate the output file every N seconds."),
         ]
 
+    def opt_port(self, port):
+        assert not port.startswith("ssl:")
+        assert port != "tcp:0"
+        self["port"] = port
     def parseArgs(self, gatherer_dir):
         self["basedir"] = gatherer_dir
+    def postOptions(self):
+        if not self["location"]:
+            raise usage.UsageError("--location= is mandatory")
 
 
 class Observer(Referenceable):
@@ -256,8 +266,21 @@ gs.setServiceParent(application)
 def create_log_gatherer(config):
     basedir = config["basedir"]
     stdout = config.stdout
+
+    assert config["port"]
+    assert config["location"]
+
     if not os.path.exists(basedir):
         os.makedirs(basedir)
+
+    f = open(os.path.join(basedir, "port"), "w")
+    f.write("%s\n" % config["port"])
+    f.close()
+
+    f = open(os.path.join(basedir, "location"), "w")
+    f.write("%s\n" % config["location"])
+    f.close()
+
     f = open(os.path.join(basedir, "gatherer.tac"), "w")
     stashed_path = ""
     for p in sys.path:
@@ -289,10 +312,19 @@ class CreateIncidentGatherOptions(usage.Options):
         ("quiet", "q", "Don't print instructions to stdout"),
         ]
     optParameters = [
+        ("port", "p", "tcp:3118", "TCP port to listen on (strports string)"),
+        ("location", "l", None, "(required) Tub location hints to use in generated FURLs. e.g. 'tcp:example.org:3118'"),
         ]
 
+    def opt_port(self, port):
+        assert not port.startswith("ssl:")
+        assert port != "tcp:0"
+        self["port"] = port
     def parseArgs(self, basedir):
         self["basedir"] = basedir
+    def postOptions(self):
+        if not self["location"]:
+            raise usage.UsageError("--location= is mandatory")
 
 
 class IncidentObserver(Referenceable):
@@ -527,8 +559,21 @@ gs.setServiceParent(application)
 def create_incident_gatherer(config):
     basedir = config["basedir"]
     stdout = config.stdout
+
+    assert config["port"]
+    assert config["location"]
+
     if not os.path.exists(basedir):
         os.makedirs(basedir)
+
+    f = open(os.path.join(basedir, "port"), "w")
+    f.write("%s\n" % config["port"])
+    f.close()
+
+    f = open(os.path.join(basedir, "location"), "w")
+    f.write("%s\n" % config["location"])
+    f.close()
+
     f = open(os.path.join(basedir, "gatherer.tac"), "w")
     stashed_path = ""
     for p in sys.path:

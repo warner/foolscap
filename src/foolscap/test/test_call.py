@@ -1,7 +1,6 @@
 
 import gc
 import re
-import sets
 import sys
 
 if False:
@@ -18,8 +17,8 @@ from foolscap.tokens import Violation
 from foolscap.eventual import flushEventualQueue
 from foolscap.test.common import HelperTarget, TargetMixin, ShouldFailMixin
 from foolscap.test.common import RIMyTarget, Target, TargetWithoutInterfaces, \
-     BrokenTarget
-from foolscap.api import RemoteException, Tub, DeadReferenceError
+     BrokenTarget, MakeTubsMixin
+from foolscap.api import RemoteException, DeadReferenceError
 from foolscap.call import CopiedFailure
 from foolscap.logging import log as flog
 
@@ -214,7 +213,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def testMegaSchema(self):
         # try to exercise all our constraints at once
         rr, target = self.setupTarget(HelperTarget())
-        t = (sets.Set([1, 2, 3]),
+        t = (set([1, 2, 3]),
              "str", True, 12, 12L, 19.3, None,
              u"unicode",
              "bytestring",
@@ -224,7 +223,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
              "1234567890",
               )
         obj1 = {"key": [t]}
-        obj2 = (sets.Set([1,2,3]), [1,2,3], {1:"two"})
+        obj2 = (set([1,2,3]), [1,2,3], {1:"two"})
         d = rr.callRemote("megaschema", obj1, obj2)
         d.addCallback(lambda res: self.failUnlessEqual(res, None))
         return d
@@ -751,15 +750,12 @@ class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
     # TODO: test Tub.setOption("expose-remote-exception-types")
     # TODO: A calls B. B calls C. C raises an exception. What does A get?
 
-class TubFailures(ExamineFailuresMixin, ShouldFailMixin, unittest.TestCase):
+class TubFailures(ExamineFailuresMixin, ShouldFailMixin, MakeTubsMixin,
+                  unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
-        self.s.startService()
-        self.target_tub = Tub()
+        self.target_tub, self.source_tub = self.makeTubs(2)
         self.target_tub.setServiceParent(self.s)
-        l = self.target_tub.listenOn("tcp:0:interface=127.0.0.1")
-        self.target_tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        self.source_tub = Tub()
         self.source_tub.setServiceParent(self.s)
 
     def tearDown(self):
@@ -799,15 +795,11 @@ class TubFailures(ExamineFailuresMixin, ShouldFailMixin, unittest.TestCase):
         d.addCallback(self._examine_raise, False)
         return d
 
-class ReferenceCounting(ShouldFailMixin, unittest.TestCase):
+class ReferenceCounting(ShouldFailMixin, MakeTubsMixin, unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
-        self.s.startService()
-        self.target_tub = Tub()
+        self.target_tub, self.source_tub = self.makeTubs(2)
         self.target_tub.setServiceParent(self.s)
-        l = self.target_tub.listenOn("tcp:0:interface=127.0.0.1")
-        self.target_tub.setLocation("127.0.0.1:%d" % l.getPortnum())
-        self.source_tub = Tub()
         self.source_tub.setServiceParent(self.s)
 
     def tearDown(self):
