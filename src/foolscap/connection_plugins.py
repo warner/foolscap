@@ -2,8 +2,10 @@
 import re
 from zope.interface import implementer
 from twisted.internet import endpoints
+from twisted.plugin import IPlugin
 
 from foolscap.ipb import IConnectionHintHandler, InvalidHintError
+
 
 try:
     import txsocksx
@@ -57,8 +59,8 @@ def convert_legacy_hint(location):
         return "tcp:%s:%d" % (host, port)
     return location
 
-@implementer(IConnectionHintHandler)
-class DefaultTCP:
+@implementer(IConnectionHintHandler, IPlugin)
+class DefaultTCP(object):
     def hint_to_endpoint(self, hint, reactor):
         # Return (endpoint, hostname), where "hostname" is what we pass to the
         # HTTP "Host:" header so a dumb HTTP server can be used to redirect us.
@@ -68,8 +70,8 @@ class DefaultTCP:
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.HostnameEndpoint(reactor, host, port), host
 
-@implementer(IConnectionHintHandler)
-class SOCKS5:
+@implementer(IConnectionHintHandler, IPlugin)
+class SOCKS5(object):
     def __init__(self, endpoint=None, proxy_endpoint_factory=None):
         if txsocksx is None:
             raise PluginDependencyNotLoaded("""SOCKS5 foolscap client transport plugin requires txsocksx.\n
