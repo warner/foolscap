@@ -1,3 +1,3 @@
-import foolscap
-tcpTransportPlugin = foolscap.DefaultTCP()
-socksTransportPlugin = foolscap.SOCKS5()
+from foolscap.connection_plugins import DefaultTCP, SOCKS5
+tcpTransportPlugin = DefaultTCP()
+socksTransportPlugin = SOCKS5()
