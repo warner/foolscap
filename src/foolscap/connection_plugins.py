@@ -1,7 +1,22 @@
+
 import re
 from zope.interface import implementer
 from twisted.internet import endpoints
+from twisted.plugin import IPlugin
+
 from foolscap.ipb import IConnectionHintHandler, InvalidHintError
+
+
+try:
+    import txsocksx
+except ImportError:
+    txsocksx = None
+
+class PluginDependencyNotLoaded(Exception):
+    """
+    PluginDependencyNotLoaded is raised when a plugin is instantiated
+    and a dependency is missing.
+    """
 
 # This can match IPv4 IP addresses + port numbers *or* host names +
 # port numbers.
@@ -10,6 +25,8 @@ DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
 OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
 NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+                                                            DNS_NAME_RESTR))
+ANY_HINT_RE=re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                             DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
@@ -42,8 +59,9 @@ def convert_legacy_hint(location):
         return "tcp:%s:%d" % (host, port)
     return location
 
-@implementer(IConnectionHintHandler)
-class DefaultTCP:
+@implementer(IConnectionHintHandler, IPlugin)
+class DefaultTCP(object):
+    name = "TCP"
     def hint_to_endpoint(self, hint, reactor):
         # Return (endpoint, hostname), where "hostname" is what we pass to the
         # HTTP "Host:" header so a dumb HTTP server can be used to redirect us.
@@ -52,3 +70,28 @@ class DefaultTCP:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.HostnameEndpoint(reactor, host, port), host
+
+@implementer(IConnectionHintHandler, IPlugin)
+class SOCKS5(object):
+    name = "SOCKS5"
+    def __init__(self, endpoint=None, proxy_endpoint_factory=None):
+        if txsocksx is None:
+            raise PluginDependencyNotLoaded("""SOCKS5 foolscap client transport plugin requires txsocksx.\n
+If you are using a Python virtual env you can simply: pip install txsocksx;\n
+Debian users can install via the APT repo: apt-get install txsocksx;\n""")
+        self.proxy_endpoint_factory = proxy_endpoint_factory
+        self.proxy_endpoint_desc = endpoint
+        self.proxy_endpoint = None
+
+    def hint_to_endpoint(self, hint, reactor):
+        if self.proxy_endpoint_factory is not None:
+            self.proxy_endpoint = self.proxy_endpoint_factory()
+        else:
+            if self.proxy_endpoint is None:
+                self.proxy_endpoint = endpoints.clientFromString(reactor, self.proxy_endpoint_desc)
+
+        mo = ANY_HINT_RE.search(hint)
+        if not mo:
+            raise InvalidHintError("Invalid SOCKS5 client connection hint")
+        host, port = mo.group(1), int(mo.group(2))
+        return txsocksx.client.SOCKS5ClientEndpoint(host, port, self.proxy_endpoint), host

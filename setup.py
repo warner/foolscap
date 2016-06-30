@@ -50,7 +50,7 @@ object reference system, and a capability-based security model.
     "platforms": ["any"],
 
     "package_dir": {"": "src"},
-    "packages": ["foolscap", "foolscap.slicers", "foolscap.logging",
+    "packages": ["twisted.plugins", "foolscap", "foolscap.slicers", "foolscap.logging",
                  "foolscap.appserver", "foolscap.test"],
     "entry_points": {"console_scripts": [
         "flogtool = foolscap.logging.cli:run_flogtool",
@@ -58,7 +58,10 @@ object reference system, and a capability-based security model.
         "flappclient = foolscap.appserver.client:run_flappclient",
         ] },
     "cmdclass": commands,
-    "install_requires": ["twisted[tls] >= 16.0.0", "pyOpenSSL"],
+    "install_requires": ["twisted[tls] >= 16.0.0", "pyOpenSSL", "txsocksx"],
+    "extras_require": {
+        'socks':  ['txsocksx',],
+    }
 }
 
 if __name__ == "__main__":
