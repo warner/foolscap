@@ -40,7 +40,7 @@ class Listener(protocol.ServerFactory, service.Service):
             self._ep = endpoint_or_description
         elif isinstance(endpoint_or_description, str):
             self._ep = endpoints.serverFromString(reactor,
-                                                 endpoint_or_description)
+                                                  endpoint_or_description)
         else:
             raise TypeError("I require an endpoint, or a string description that can be turned into one")
         self._lp = None
