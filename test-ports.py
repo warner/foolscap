@@ -14,7 +14,7 @@ def _make_socket():
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     return s
 
-def allocate_tcp_port():
+def notallocate_tcp_port():
     """Return an (integer) available TCP port on localhost. This briefly
     listens on the port in question, then closes it right away."""
     while True:
@@ -29,6 +29,28 @@ def allocate_tcp_port():
         s = _make_socket()
         try:
             s.bind(("0.0.0.0", port))
+            s.listen(5)
+            s.close()
+            return port
+        except socket.error:
+            listen_failed.add(port)
+            s.close()
+            # try again
+    return port
+
+def allocate_tcp_port():
+    """Return an (integer) available TCP port on localhost. This briefly
+    listens on the port in question, then closes it right away."""
+    while True:
+        s = _make_socket()
+        #s.bind(("127.0.0.1", 0))
+        s.bind(("0.0.0.0", 0))
+        port = s.getsockname()[1]
+        if port in tried:
+            s.close()
+            return None
+        tried.add(port)
+        try:
             s.listen(5)
             s.close()
             return port
