@@ -50,7 +50,9 @@ def allocate_tcp_port():
             s.close()
             return None
         tried.add(port)
+        s = _make_socket()
         try:
+            s.bind(("0.0.0.0", port))
             s.listen(5)
             s.close()
             return port
