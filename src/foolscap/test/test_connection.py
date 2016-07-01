@@ -1,14 +1,48 @@
+
+from txsocksx.client import SOCKS5ClientEndpoint
+from txsocksx.test.util import FakeEndpoint
+
 from zope.interface import implementer
 from twisted.trial import unittest
-from twisted.internet import endpoints
+from twisted.internet import endpoints, reactor
 from twisted.application import service
 from foolscap.api import Tub
 from foolscap.connection import get_endpoint
-from foolscap.connection_plugins import convert_legacy_hint, DefaultTCP
+from foolscap.connection_plugins import convert_legacy_hint, DefaultTCP, SOCKS5
 from foolscap.tokens import NoLocationHintsError
 from foolscap.test.common import (certData_low, certData_high, Target,
                                   ShouldFailMixin)
 from foolscap import ipb, util
+
+class SocksPluginTests(unittest.TestCase):
+    def test_defaultFactory(self):
+        def SocksEndpointGenerator():
+            return FakeEndpoint()
+        plugin = SOCKS5(endpoint = "tcp:127.0.0.1:9050", proxy_endpoint_factory = SocksEndpointGenerator)
+        hint = "tor:meowhost:80"
+        endpoint, host = plugin.hint_to_endpoint(hint, reactor)
+
+        self.failUnlessEqual("meowhost", host)
+        self.failUnless(isinstance(endpoint, SOCKS5ClientEndpoint))
+
+        endpoint.connect(None)
+        # equivalent to the TestSOCKS5ClientEndpoint.test_defaultFactory test-case.
+        self.assertEqual(endpoint.proxyEndpoint.transport.value(), '\x05\x01\x00')
+
+    def test_override(self):
+        SocksEndpointGenerator = lambda: FakeEndpoint()
+        ep, host = get_endpoint("tcp:meowhost:80", {"tcp": SOCKS5(
+            endpoint = "tcp:127.0.0.1:9050", proxy_endpoint_factory=SocksEndpointGenerator)})
+        self.failUnless(isinstance(ep, SOCKS5ClientEndpoint), ep)
+        self.failUnlessEqual(host, "meowhost")
+
+    def test_invalid(self):
+        SocksEndpointGenerator = lambda: FakeEndpoint()
+        hint = "tcp:meowhost80"
+        self.failUnlessRaises(ipb.InvalidHintError,
+                              get_endpoint, hint, {"tcp": SOCKS5(
+                                  endpoint = "tcp:127.0.0.1:9050", proxy_endpoint_factory=SocksEndpointGenerator
+                              )})
 
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
