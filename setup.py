@@ -51,6 +51,7 @@ object reference system, and a capability-based security model.
 
     "package_dir": {"": "src"},
     "packages": ["foolscap", "foolscap.slicers", "foolscap.logging",
+                 "foolscap.connections",
                  "foolscap.appserver", "foolscap.test"],
     "entry_points": {"console_scripts": [
         "flogtool = foolscap.logging.cli:run_flogtool",

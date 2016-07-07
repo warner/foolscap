@@ -12,7 +12,7 @@ from twisted.python.versions import Version
 
 from foolscap import ipb, base32, negotiate, broker, eventual, storage
 from foolscap import connection, util
-from foolscap.connection_plugins import DefaultTCP
+from foolscap.connections.tcp import DefaultTCP
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
      WrongNameError, NoLocationError

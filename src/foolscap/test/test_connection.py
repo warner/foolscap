@@ -4,7 +4,7 @@ from twisted.internet import endpoints
 from twisted.application import service
 from foolscap.api import Tub
 from foolscap.connection import get_endpoint
-from foolscap.connection_plugins import convert_legacy_hint, DefaultTCP
+from foolscap.connections.tcp import convert_legacy_hint, DefaultTCP
 from foolscap.tokens import NoLocationHintsError
 from foolscap.test.common import (certData_low, certData_high, Target,
                                   ShouldFailMixin)

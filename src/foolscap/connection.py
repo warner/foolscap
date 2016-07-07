@@ -6,7 +6,7 @@ from foolscap.logging import log
 from foolscap.logging.log import CURIOUS, UNUSUAL, OPERATIONAL
 from foolscap.util import isSubstring
 from foolscap.ipb import InvalidHintError
-from foolscap.connection_plugins import convert_legacy_hint
+from foolscap.connections.tcp import convert_legacy_hint
 
 class TubConnectorFactory(protocol.Factory, object):
     # this is for internal use only. Application code should use
