@@ -1,0 +1,89 @@
+
+def allocate_tcp_port():
+    """Return an (integer) available TCP port on localhost. This briefly
+    listens on the port in question, then closes it right away."""
+    # We want to bind() the socket but not listen(). Twisted (in
+    # tcp.Port.createInternetSocket) would do several other things:
+    # non-blocking, close-on-exec, and SO_REUSEADDR. We don't need
+    # non-blocking because we never listen on it, and we don't need
+    # close-on-exec because we close it right away. So just add SO_REUSEADDR.
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if platformType == "posix" and sys.platform != "cygwin":
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("127.0.0.1", 0))
+    # TODO: maybe use 0.0.0.0, not 127.0.0.1 . Note that we never actually
+    # call s.listen(), so hopefully the bind() call shouldn't trigger
+    # security alerts (for things like LittleSnitch or seLinux), and it
+    # shouldn't show up on "netstat" either.
+
+    # By asking for a specific interface, a BSD kernel is allowed to give us
+    # a port that is already in use (for listening), as long as that other
+    # listener bound it to a different interface, or to 0.0.0.0 themselves
+    # (in which case our bind carves out a subset of theirs). Later, if we
+    # try to actually listen on this port with 0.0.0.0, the bind() will fail
+    # with EADDRINUSE.
+    #
+    # On linux, according to
+    # http://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t/14388707#14388707
+    # the linux SO_REUSEADDR behavior is different:
+    # * if another process has a 0.0.0.0 socket open, we cannot carve out a
+    #   more specific binding, even with SO_REUSEADDR
+    # * but the first socket has a narrow binding, we can bind the second
+    #   socket to 0.0.0.0 without problems
+    # So if the linux kernel port-allocation function follows the same rules,
+    # I don't think our use of 127.0.0.1 would give us ports that we could
+    # not then bind to all interfaces.
+    #
+    # Also note that the kernel will give us a port from the "ephemeral
+    # range" (/proc/sys/net/ipv4/ip_local_port_range), which is typically
+    # 32768-60999. So you'll get high-numbered ports.
+    #
+    # https://idea.popcount.org/2014-04-03-bind-before-connect/
+    #
+    # binding to 127.0.0.1 also means the kernel is allowed to give us a port
+    # that is in use for an outbound connection that is bound to a different
+    # interface (and all external connections will bind to something other
+    # than 127.0.0.1). So I think this would give us conflicts with connected
+    # sockets.
+    #
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+# on OS-X, allcoate gives us something in the range 49152-65535, sequential
+# binding to 0.0.0.0:
+#  doesn't return LISTEN ports bound to 0.0.0.0
+#  *does* return LISTEN ports bound to 127.0.0.1
+#  *does* return ESTABLISHED ports bound to anything
+#    when the process is owned by me, the listen() succeeds
+#    when owned by root, listen() fails
+# binding to 127.0.0.1:
+#  doesn't return LISTEN ports bound to 127.0.0.1
+#  *does* return LISTEN ports bound to 0.0.0.0
+#   these fail upon a subsequent listen(), even if owned by me
+#  *does* return ESTABLISHED ports bound to anything
+#   these fail upon listen() when owned by root
+
+# on linux, we get ports in 32768-46881(?), random
+#  /proc/sys/net/ipv4/ip_local_port_range has 32768-60999, dunno what
+#  happened to the other 12k ports
+# oh, when net/ipv4_inet_connection_sock.c is asked to allocate a
+# SO_REUSEADDR socket, it starts in the bottom half of the range, and only
+# switches to the top half if it runs out of ports. Non-SO_REUSEADDR use the
+# whole range.
+# binding to 0.0.0.0
+#  doesn't return LISTEN ports bound to 0.0.0.0
+#  doesn't return LISTEN ports bound to 127.0.0.1
+#  doesn't return ESTABLISHED ports bound to anything
+# binding to 127.0.0.1
+#  doesn't return LISTEN ports bound to 0.0.0.0
+#  doesn't return LISTEN ports bound to 127.0.0.1
+#  *does* return ESTABLISHED ports bound to anything
+#   when the process is owned by me, the listen() fails
+#   when the process is owned by root, the listen() fails
+
+# so:
+#  bind to 0.0.0.0
+#  attempt to listen
+#  if it fails, try again
