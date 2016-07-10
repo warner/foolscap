@@ -14,30 +14,11 @@ LOCALPORT = 7006
 # Then run 'check-connections-client.py tcp', then with 'socks', then with
 # 'tor'.
 
-import sys
+import os, sys, time
 from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.endpoints import HostnameEndpoint, clientFromString
 from foolscap.api import Referenceable, Tub
-
-class Observer(Referenceable):
-    def remote_event(self, msg):
-        print "event:", msg
-
-def printResult(number):
-    print "the result is", number
-def gotError(err):
-    print "got an error:", err
-def gotRemote(remote):
-    o = Observer()
-    d = remote.callRemote("addObserver", observer=o)
-    d.addCallback(lambda res: remote.callRemote("push", num=2))
-    d.addCallback(lambda res: remote.callRemote("push", num=3))
-    d.addCallback(lambda res: remote.callRemote("add"))
-    d.addCallback(lambda res: remote.callRemote("pop"))
-    d.addCallback(printResult)
-    d.addCallback(lambda res: remote.callRemote("removeObserver", observer=o))
-    d.addErrback(gotError)
-    d.addCallback(lambda res: reactor.stop())
-    return d
 
 
 tub = Tub()
@@ -50,31 +31,78 @@ elif which == "socks":
     # which connections will emerge from the other end. Check the server logs
     # to see the peer address of each addObserver call to verify that it is
     # coming from 127.0.0.1 rather than the client host.
-    from twisted.internet import endpoints
     from foolscap.connections import socks
-    h = socks.SOCKS(endpoints.HostnameEndpoint(reactor, "localhost", 8013))
+    h = socks.SOCKS(HostnameEndpoint(reactor, "localhost", 8013))
     tub.removeAllConnectionHintHandlers()
     tub.addConnectionHintHandler("tcp", h)
     furl = "pb://%s@tcp:localhost:%d/calculator" % (TUBID, LOCALPORT)
-elif which == "tor":
-    from twisted.internet import endpoints
+elif which in ("default-socks", "socks-port", "launch-tor", "control-tor"):
     from foolscap.connections import tor
-    h = tor.Tor()
+    if which == "default-socks":
+        h = tor.default_socks()
+    elif which == "socks-port":
+        h = tor.socks_on_port(int(sys.argv[2]))
+    elif which == "launch-tor":
+        data_directory = None
+        if len(sys.argv) > 2:
+            data_directory = os.path.abspath(sys.argv[2])
+        h = tor.launch_tor(reactor, data_directory)
+    elif which == "control-tor":
+        control_ep = clientFromString(reactor, sys.argv[2])
+        h = tor.with_control_port(reactor, control_ep)
     tub.removeAllConnectionHintHandlers()
     tub.addConnectionHintHandler("tor", h)
     furl = "pb://%s@tor:%s:%d/calculator" % (TUBID, ONION, ONIONPORT)
-    print "using tor:", furl
 else:
     print "run as 'check-connections-client.py [tcp|socks|tor]'"
     sys.exit(1)
 print "using %s: %s" % (which, furl)
 
-tub.startService()
-d = tub.getReference(furl)
-d.addCallback(gotRemote)
+class Observer(Referenceable):
+    def remote_event(self, msg):
+        pass
+
+@inlineCallbacks
+def go():
+    tub.startService()
+    start = time.time()
+    rtts = []
+    remote = yield tub.getReference(furl)
+    t_connect = time.time() - start
+
+    o = Observer()
+    start = time.time()
+    yield remote.callRemote("addObserver", observer=o)
+    rtts.append(time.time() - start)
+
+    start = time.time()
+    yield remote.callRemote("removeObserver", observer=o)
+    rtts.append(time.time() - start)
+
+    start = time.time()
+    yield remote.callRemote("push", num=2)
+    rtts.append(time.time() - start)
+
+    start = time.time()
+    yield remote.callRemote("push", num=3)
+    rtts.append(time.time() - start)
+
+    start = time.time()
+    yield remote.callRemote("add")
+    rtts.append(time.time() - start)
+
+    start = time.time()
+    number = yield remote.callRemote("pop")
+    rtts.append(time.time() - start)
+    print "the result is", number
+
+    print "t_connect:", t_connect
+    print "avg rtt:", sum(rtts) / len(rtts)
+
+d = go()
 def _oops(f):
     print "error", f
-    reactor.stop()
 d.addErrback(_oops)
+d.addCallback(lambda res: reactor.stop())
 
 reactor.run()
