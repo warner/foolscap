@@ -1,5 +1,5 @@
 from twisted.python.failure import Failure
-from twisted.internet import protocol, reactor, error
+from twisted.internet import protocol, reactor, error, defer
 from foolscap.tokens import (NoLocationHintsError, NegotiationError,
                              RemoteNegotiationError)
 from foolscap.logging import log
@@ -41,15 +41,16 @@ class TubConnectorFactory(protocol.Factory, object):
         return proto
 
 def get_endpoint(location, connectionPlugins):
-    hint = convert_legacy_hint(location)
-    if ":" not in hint:
-        raise InvalidHintError("no colon in hint")
-    hint_type = hint.split(":", 1)[0]
-    plugin = connectionPlugins.get(hint_type)
-    if not plugin:
-        raise InvalidHintError("no handler registered for hint")
-    ep, host = plugin.hint_to_endpoint(hint, reactor)
-    return ep, host
+    def _try():
+        hint = convert_legacy_hint(location)
+        if ":" not in hint:
+            raise InvalidHintError("no colon in hint")
+        hint_type = hint.split(":", 1)[0]
+        plugin = connectionPlugins.get(hint_type)
+        if not plugin:
+            raise InvalidHintError("no handler registered for hint")
+        return plugin.hint_to_endpoint(hint, reactor)
+    return defer.maybeDeferred(_try)
 
 class TubConnector(object):
     """I am used to make an outbound connection. I am given a target TubID
@@ -90,6 +91,12 @@ class TubConnector(object):
         # the same hint will fool it, but it should be enough to avoid
         # infinite redirection loops.
         self.attemptedLocations = []
+
+        # validHints tracks which hints were successfully turned into
+        # endpoints. If we don't recognize any hint type in a FURL,
+        # validHints will be empty when we're done, and we'll signal
+        # NoLocationHintsError
+        self.validHints = []
 
         # pendingConnections contains a Deferred for each endpoint.connect()
         # that has started (but not yet established) a connection. We keep
@@ -147,22 +154,20 @@ class TubConnector(object):
             # triggers n.connectionLost(), then self.negotiationFailed()
 
     def connectToAll(self):
-        triedAnything = False
         while self.remainingLocations:
             location = self.remainingLocations.pop()
             if location in self.attemptedLocations:
                 continue
             self.attemptedLocations.append(location)
-            try:
-                ep, host = get_endpoint(location, self.connectionPlugins)
-            except InvalidHintError as e:
-                self.log(e, format="unable to use hint: '%(hint)s'",
-                         hint=location, level=UNUSUAL, umid="z62ctA")
-                continue
-            triedAnything = True
-            lp = self.log("connectTCP to %s" % (location,))
-            f = TubConnectorFactory(self, host, lp)
-            d = ep.connect(f)
+            lp = self.log("considering hint: %s" % (location,))
+            d = get_endpoint(location, self.connectionPlugins)
+            # no handler for this hint?: InvalidHintError thrown here
+            def _good_hint(res):
+                self.validHints.append(location)
+                (ep, host) = res
+                self.log("connecting to hint", parent=lp, umid="9iX0eg")
+                return ep.connect(TubConnectorFactory(self, host, lp))
+            d.addCallback(_good_hint)
             self.pendingConnections.add(d)
             def _remove(res, d=d):
                 self.pendingConnections.remove(d)
@@ -176,8 +181,6 @@ class TubConnector(object):
                 # known state.
                 reactor.callLater(0.1, self.connectToAll)
                 return
-        if not triedAnything:
-            self.failureReason = Failure(NoLocationHintsError())
         self.checkForFailure()
 
     def connectionTimedOut(self):
@@ -198,6 +201,9 @@ class TubConnector(object):
         elif reason.check(error.ConnectingCancelledError):
             self.log("abandoned attempt to %s" % hint, level=OPERATIONAL,
                      parent=lp, umid="CC8vwg")
+        elif reason.check(InvalidHintError):
+            self.log("unable to use hint: %s: %s" % (hint, reason.value),
+                     level=UNUSUAL, parent=lp, umid="z62ctA")
         else:
             log.err(reason, "failed to connect to %s" % hint, level=CURIOUS,
                     parent=lp, facility="foolscap.connection",
@@ -256,6 +262,8 @@ class TubConnector(object):
         if (self.remainingLocations or
             self.pendingConnections or self.pendingNegotiations):
             return
+        if not self.validHints:
+            self.failureReason = Failure(NoLocationHintsError())
         # we have no more options, so the connection attempt will fail. The
         # getBrokerForTubRef may have succeeded, however, if the other side
         # tried to connect to us at exactly the same time, they were the

@@ -1,6 +1,6 @@
 from zope.interface import implementer
 from twisted.trial import unittest
-from twisted.internet import endpoints
+from twisted.internet import endpoints, defer
 from twisted.application import service
 from foolscap.api import Tub
 from foolscap.connection import get_endpoint
@@ -12,16 +12,21 @@ from foolscap import ipb, util
 
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
-        ep, host = get_endpoint(hint, {"tcp": DefaultTCP()})
+        d = get_endpoint(hint, {"tcp": DefaultTCP()})
+        (ep, host) = self.successResultOf(d)
         self.failUnless(isinstance(ep, endpoints.HostnameEndpoint), ep)
         # note: this is fragile, and will break when Twisted changes the
         # internals of HostnameEndpoint.
         self.failUnlessEqual(ep._host, expected_host)
         self.failUnlessEqual(ep._port, expected_port)
 
+    def checkBadTCPEndpoint(self, hint):
+        d = get_endpoint(hint, {"tcp": DefaultTCP()})
+        self.failureResultOf(d, ipb.InvalidHintError)
+
     def checkUnknownEndpoint(self, hint):
-        self.failUnlessRaises(ipb.InvalidHintError,
-                              get_endpoint, hint, {"tcp": DefaultTCP()})
+        d = get_endpoint(hint, {"tcp": DefaultTCP()})
+        self.failureResultOf(d, ipb.InvalidHintError)
 
     def testConvertLegacyHint(self):
         self.failUnlessEqual(convert_legacy_hint("127.0.0.1:9900"),
@@ -41,16 +46,15 @@ class Convert(unittest.TestCase):
     def testTCP(self):
         self.checkTCPEndpoint("tcp:127.0.0.1:9900", "127.0.0.1", 9900)
         self.checkTCPEndpoint("tcp:hostname:9900", "hostname", 9900)
-        self.assertRaises(ipb.InvalidHintError,
-                          self.checkTCPEndpoint, "tcp:hostname:NOTAPORT",
-                          None, None)
+        self.checkBadTCPEndpoint("tcp:hostname:NOTAPORT")
 
     def testLegacyTCP(self):
         self.checkTCPEndpoint("127.0.0.1:9900", "127.0.0.1", 9900)
         self.checkTCPEndpoint("hostname:9900", "hostname", 9900)
-        self.assertRaises(ipb.InvalidHintError,
-                          self.checkTCPEndpoint, "hostname:NOTAPORT",
-                          None, None)
+        self.checkBadTCPEndpoint("hostname:NOTAPORT")
+
+    def testNoColon(self):
+        self.checkBadTCPEndpoint("hostname")
 
     def testExtensionsFromFuture(self):
         self.checkUnknownEndpoint("udp:127.0.0.1:7700")
@@ -68,7 +72,12 @@ class NewHandler:
         self.accepted += 1
         pieces = hint.split(":")
         new_hint = "tcp:%s:%d" % (pieces[1], int(pieces[2])+0)
-        return DefaultTCP().hint_to_endpoint(new_hint, reactor)
+        ep = DefaultTCP().hint_to_endpoint(new_hint, reactor)
+        if pieces[0] == "slow":
+            d = defer.Deferred()
+            reactor.callLater(0.01, d.callback, ep)
+            return d
+        return ep
 
 class Handlers(ShouldFailMixin, unittest.TestCase):
     def setUp(self):
@@ -154,5 +163,17 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
             self.failUnlessEqual(h1.accepted, 0)
             self.failUnlessEqual(h2.asked, 1)
             self.failUnlessEqual(h2.accepted, 1)
+        d.addCallback(_got)
+        return d
+
+    def testDeferredHandler(self):
+        furl, tubB = self.makeTub("slow")
+        h = NewHandler()
+        tubB.removeAllConnectionHintHandlers()
+        tubB.addConnectionHintHandler("slow", h)
+        d = tubB.getReference(furl)
+        def _got(rref):
+            self.failUnlessEqual(h.asked, 1)
+            self.failUnlessEqual(h.accepted, 1)
         d.addCallback(_got)
         return d

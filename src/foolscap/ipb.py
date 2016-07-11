@@ -12,14 +12,15 @@ class InvalidHintError(Exception):
 
 class IConnectionHintHandler(Interface):
     def hint_to_endpoint(hint, reactor):
-        """Return (endpoint, hostname), where endpoint is an
-        IStreamClientEndpoint object, and hostname is a string (for use in
-        the HTTP headers during negotiation). The endpoint, once connected,
-        must be capable of handling .startTLS(). Hints are strings which
-        always start with 'TYPE:', and handlers are registered for specific
-        types (and will not be called with hints of other types). Raise
-        InvalidHintError if the hint could not be parsed or otherwise turned
-        into an Endpoint."""
+        """Return (endpoint, hostname), or a Deferred that fires with the
+        same, where endpoint is an IStreamClientEndpoint object, and hostname
+        is a string (for use in the HTTP headers during negotiation). The
+        endpoint, once connected, must be capable of handling .startTLS().
+        Hints are strings which always start with 'TYPE:', and handlers are
+        registered for specific types (and will not be called with hints of
+        other types). Raise InvalidHintError (or return a Deferred that
+        errbacks with one) if the hint could not be parsed or otherwise
+        turned into an Endpoint."""
 
 class DeadReferenceError(Exception):
     """The RemoteReference is dead, Jim."""
