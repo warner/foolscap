@@ -1,5 +1,86 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.12.0 (??)
+
+** API changes: no more automatic configuration
+
+Foolscap has moved from automatic listener configuration (randomly-allocated
+TCP ports, automatically-determined IP address) to using more predictable
+manual configuration. In our experience, the automatic configuration only
+worked on hosts which had external IP addresses, which (sadly) is not the
+case for most computers attached to the modern internet. #252
+
+Applications must now explicitly provide Foolscap with port numbers (for
+Tub.listenOn) and hostnames (for Tub.setLocation). Applications are
+encouraged to give users configuration controls to teach Foolscap what
+hostname and port number it should advertise to external hosts in the FURLs
+it creates. See https://tahoe-lafs.org/trac/tahoe-lafs/ticket/2773 for ideas.
+
+The specific API changes were:
+
+- Tub.setLocationAutomatically() has been deprecated
+- Listener.getPortnum() has been deprecated
+- calling Tub.listenOn("tcp:0") is also deprecated: callers
+should allocate a port themselves (the foolscap.util.allocate_tcp_port
+utility function, which does not block, has been added for this purpose).
+- Listener() always takes a Tub (this was a somewhat private interface)
+
+Foolscap tools like "flappserver create" and "flogtool create-gatherer" will
+no longer try to deduce their external IP address in an attempt to build
+externally-reachable FURLs, and will no longer accept "tcp:0" as a listening
+port (they now default to specific port numbers). Instead, they have
+--location= and --port arguments. The user must provide '--location' with a
+connection-hint string like 'tcp:hostname.example.org:3117' (which is put
+into the server's FURLs). This must match the corresponding '--port'
+argument.
+
+- for all tools, if '--port' is provided, it must not be tcp:0
+- 'flappserver create' now requires --location, and '--port' defaults to
+  tcp:3116
+- 'flogtool create-gatherer' requires --location, default port is tcp:3117
+- 'flogtool create-incident-gatherer' does too, default is tcp:3118
+
+For backwards-compatibility, old flappservers will have "tcp:0" written into
+their "BASEDIR/port" file, and an empty string in "BASEDIR/location": these
+must then be edited to allow the flappserver to start. For example, write
+"tcp:12345" into "BASEDIR/port" to assign a portnumber, and
+"tcp:HOSTNAME:12345" into "BASEDIR/location" to expose it in the generated
+FURL.
+
+** Other API changes
+
+Tub.listenOn() now takes a string or an Endpoint (something that implements
+twisted.internet.interfaces.IStreamServerEndpoint). This makes it possible to
+listen on non-IPv4 sockets (e.g. IPv6-only sockets, or unix-domain sockets,
+or more exotic endpoints), as long as Tub.setLocation() is set to something
+which the other end's connection handlers can deal with. #203 #243
+
+The "DefaultTCP" handler (which manages normal "tcp:HOST:PORT" connection
+hints) has been moved to foolscap.connections.tcp . This makes room for new
+Tor/I2P/SOCKS handlers to live in e.g. foolscap.connections.tor . #260
+
+Connection handlers are now allowed to return a Deferred from
+hint_to_endpoint(), which should make some handlers easier to write. #262
+
+Note that RemoteReference.notifyOnDisconnect() will be deprecated in the next
+release (once all internal uses have been removed from Foolscap).
+Applications should stop using it as soon as possible. #42 #140 #207
+
+** Compatibility Changes
+
+This release removes support for the old (py2.4) "sets" module. This was
+retained to support applications which were trying to retain py2.4
+compatibility, but it's been so long since this was necessary, it's time to
+remove it.
+
+** Other Changes
+
+The internal `allocate_tcp_port()` function was fixed: unexpected kernel
+behavior meant that sometimes it would return a port that was actually in
+use. This caused unit tests to fail randomly in perhaps 5% of trials. #258
+
+
+
 * Release 0.11.0 (23-Mar-2016)
 
 ** Packaging Fixes
