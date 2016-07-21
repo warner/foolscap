@@ -33,3 +33,18 @@ setup-test-from-tarball:
 
 test-from-tarball:
 	cd sdist-test/srcdir && trial foolscap
+
+.PHONY: release _release
+release:
+	@if [ "X${VERSION}" = "X" ]; then echo "must pass VERSION="; else $(MAKE) _release; fi
+
+_release:
+	git tag -s -u AF1B4A2A -m "release foolscap-${VERSION}" foolscap-${VERSION}
+	python setup.py sdist bdist_wheel
+	cd dist && gpg -u AF1B4A2A -ba foolscap-${VERSION}.tar.gz
+	cd dist && gpg -u AF1B4A2A -ba foolscap-${VERSION}-py2-none-any.whl
+	echo "manual steps:"
+	@echo "git push warner master foolscap-${VERSION}"
+	@echo "update 'latest-release' tag, push -f"
+	@echo "twine register dist/foolscap-${VERSION}-py2-none-any.whl"
+	@echo "twine upload dist/foolscap-${VERSION}*"
