@@ -80,6 +80,9 @@ it is unable to parse the hint, it should raise `ipb.InvalidHintError`. Also
 note that the handler will be given the whole hint, including the type prefix
 that was used to locate the handler.
 
+`hint_to_endpoint()` is allowed to return a Deferred that fires with the
+(endpoint, hostname) tuple, instead of returning an immediate value.
+
 The endpoint returned should implement
 `twisted.internet.interfaces.IStreamClientEndpoint`, and the endpoint's final
 connection object must implement `ITLSTransport` and offer the `startTLS`
