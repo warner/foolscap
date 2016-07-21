@@ -1,6 +1,6 @@
 User visible changes in Foolscap                    -*- outline -*-
 
-* Release 0.12.0 (??)
+* Release 0.12.0 (20-Jul-2016)
 
 ** API changes: no more automatic configuration
 
@@ -20,10 +20,9 @@ The specific API changes were:
 
 - Tub.setLocationAutomatically() has been deprecated
 - Listener.getPortnum() has been deprecated
-- calling Tub.listenOn("tcp:0") is also deprecated: callers
-should allocate a port themselves (the foolscap.util.allocate_tcp_port
-utility function, which does not block, has been added for this purpose).
-- Listener() always takes a Tub (this was a somewhat private interface)
+- calling Tub.listenOn("tcp:0") is also deprecated: callers should allocate a
+  port themselves (the foolscap.util.allocate_tcp_port utility function,
+  which does not block, has been added for this purpose).
 
 Foolscap tools like "flappserver create" and "flogtool create-gatherer" will
 no longer try to deduce their external IP address in an attempt to build
@@ -32,7 +31,7 @@ port (they now default to specific port numbers). Instead, they have
 --location= and --port arguments. The user must provide '--location' with a
 connection-hint string like 'tcp:hostname.example.org:3117' (which is put
 into the server's FURLs). This must match the corresponding '--port'
-argument.
+argument, if provided.
 
 - for all tools, if '--port' is provided, it must not be tcp:0
 - 'flappserver create' now requires --location, and '--port' defaults to
@@ -69,7 +68,7 @@ Applications should stop using it as soon as possible. #42 #140 #207
 ** Compatibility Changes
 
 This release removes support for the old (py2.4) "sets" module. This was
-retained to support applications which were trying to retain py2.4
+retained to support applications which were trying to maintain py2.4
 compatibility, but it's been so long since this was necessary, it's time to
 remove it.
 
@@ -77,8 +76,16 @@ remove it.
 
 The internal `allocate_tcp_port()` function was fixed: unexpected kernel
 behavior meant that sometimes it would return a port that was actually in
-use. This caused unit tests to fail randomly in perhaps 5% of trials. #258
+use. This caused unit tests to fail randomly about 5% of the time. #258
 
+IPv6 support is nearly complete: listening on a plain TCP port will typically
+accept connections via both IPv4 and IPv6, and the DefaultTCP handler will do
+a hostname lookup that can use both A and AAAA records. So as long as your
+server has a DNS entry that points at its IPv6 address, and you provide the
+hostname to Tub.setLocation(), Foolscap will connect over IPv6. There is one
+piece missing for complete support: the DefaultTCP connection handler must be
+modified to accept square-bracketed numeric IPv6 addresses, for rare
+situations where the host has a known (stable) IPv6 address, but no DNS name.
 
 
 * Release 0.11.0 (23-Mar-2016)
