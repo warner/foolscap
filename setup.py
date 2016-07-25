@@ -60,6 +60,9 @@ object reference system, and a capability-based security model.
         ] },
     "cmdclass": commands,
     "install_requires": ["twisted[tls] >= 16.0.0", "pyOpenSSL"],
+    "extras_require": {
+        "dev": [],
+        },
 }
 
 if __name__ == "__main__":
