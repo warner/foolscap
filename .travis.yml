@@ -3,14 +3,9 @@ language: python
 python:
   - "2.7"
   - "pypy"
-install:
-  - pip install pyflakes coverage python-coveralls
-  - pip install .
-script:
-  - make pyflakes
-  - coverage run --branch `which trial` foolscap
-after_success:
-  - coveralls
+install: pip install coverage python-coveralls tox
+script: tox -e coverage
+after_success: coveralls
 matrix:
   allow_failures:
     - python: "pypy"
