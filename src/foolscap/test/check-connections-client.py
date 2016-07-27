@@ -9,6 +9,8 @@ HOSTNAME = "foolscap.lothar.com"
 TUBID = "qy4aezcyd3mppt7arodl4mzaguls6m2o"
 ONION = "kwmjlhmn5runa4bv.onion"
 ONIONPORT = 16545
+I2P = "???"
+I2PPORT = 0
 LOCALPORT = 7006
 
 # Then run 'check-connections-client.py tcp', then with 'socks', then with
@@ -53,8 +55,18 @@ elif which in ("tor-default", "tor-socks", "tor-control", "tor-launch"):
     tub.removeAllConnectionHintHandlers()
     tub.addConnectionHintHandler("tor", h)
     furl = "pb://%s@tor:%s:%d/calculator" % (TUBID, ONION, ONIONPORT)
+elif which in ("i2p-default", "i2p-sam"):
+    from foolscap.connections import i2p
+    if which == "i2p-default":
+        h = i2p.default(reactor)
+    else:
+        sam_ep = clientFromString(reactor, sys.argv[2])
+        h = i2p.sam_endpoint(sam_ep)
+    tub.removeAllConnectionHintHandlers()
+    tub.addConnectionHintHandler("i2p", h)
+    furl = "pb://%s@i2p:%s:%d/calculator" % (TUBID, I2P, I2PPORT)
 else:
-    print "run as 'check-connections-client.py [tcp|socks|tor-default|tor-socks|tor-control|tor-launch]'"
+    print "run as 'check-connections-client.py [tcp|socks|tor-default|tor-socks|tor-control|tor-launch|i2p-default|i2p-sam]'"
     sys.exit(1)
 print "using %s: %s" % (which, furl)
 
