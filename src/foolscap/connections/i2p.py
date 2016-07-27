@@ -24,21 +24,21 @@ class _RunningI2P:
         ep = SAMI2PStreamClientEndpoint.new(self._sam_endpoint, host, portnum)
         return ep, host
 
-def default_sam_port(reactor):
+def default(reactor):
     """Return a handler which connects to a pre-existing I2P process on the
     default SAM port.
     """
     return _RunningI2P(clientFromString(reactor, 'tcp:127.0.0.1:7656'))
 
-def with_sam_port(sam_endpoint):
+def sam_endpoint(sam_port_endpoint):
     """Return a handler which connects to a pre-existing I2P process on the
     given SAM port.
     - sam_endpoint: a ClientEndpoint which points at the SAM API
     """
-    return _RunningI2P(sam_endpoint)
+    return _RunningI2P(sam_port_endpoint)
 
-def with_local_i2p(reactor, i2p_configdir=None):
+def local_i2p(i2p_configdir=None):
     raise NotImplementedError
 
-def launch_local_i2p(reactor, i2p_binary=None, i2p_configdir=None):
+def launch(i2p_configdir=None, i2p_binary=None):
     raise NotImplementedError
