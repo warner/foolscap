@@ -20,8 +20,9 @@ class _RunningI2P:
         mo = HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("unrecognized I2P hint")
-        host, port = mo.group(1), int(mo.group(2)) if mo.group(2) else None
-        return SAMI2PStreamClientEndpoint.new(self._sam_endpoint, host, port), host
+        host, portnum = mo.group(1), int(mo.group(3)) if mo.group(3) else None
+        ep = SAMI2PStreamClientEndpoint.new(self._sam_endpoint, host, portnum)
+        return ep, host
 
 def default_sam_port(reactor):
     """Return a handler which connects to a pre-existing I2P process on the
