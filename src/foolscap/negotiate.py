@@ -152,7 +152,11 @@ class Negotiation(protocol.Protocol):
 
     initialVocabTableRange = vocab.getVocabRange()
 
-    SERVER_TIMEOUT = 60 # you have 60 seconds to complete negotiation, or else
+    SERVER_TIMEOUT = 120 # You have 2 minutes to complete negotiation, or
+                         # else. The only reason this isn't closer to 10s is
+                         # that Tor/I2P connection establishment might
+                         # include spinning up a local Tor/I2P daemon, which
+                         # can take 30-50 seconds from a cold start.
     negotiationTimer = None
 
     def __init__(self, logparent=None):
