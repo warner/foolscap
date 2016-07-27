@@ -31,7 +31,7 @@ HINT_RE = re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
 class _Common:
     # subclasses must:
     #  define _connect()
-    #  set self._socks_hostname, self._socks_port
+    #  set self._socks_hostname, self._socks_portnum
 
     def __init__(self):
         self._connected = False
@@ -52,7 +52,7 @@ class _Common:
         mo = HINT_RE.search(hint)
         if not mo:
             raise InvalidHintError("unrecognized TCP/Tor hint")
-        host, port = mo.group(1), int(mo.group(2))
+        host, portnum = mo.group(1), int(mo.group(2))
         if is_non_public_numeric_address(host):
             raise InvalidHintError("ignoring non-Tor-able ipaddr %s" % host)
         yield self._maybe_connect(reactor)
@@ -60,20 +60,21 @@ class _Common:
         # bytes with the hostname when talking to the SOCKS server, so the
         # py2 automatic unicode promotion blows up
         host = host.encode("ascii")
-        ep = txtorcon.TorClientEndpoint(host, port,
+        ep = txtorcon.TorClientEndpoint(host, portnum,
                                         socks_hostname=self._socks_hostname,
-                                        socks_port=self._socks_port)
+                                        socks_port=self._socks_portnum)
         returnValue( (ep, host) )
 
 
 # note: TorClientEndpoint imports 'reactor' itself, doesn't provide override
 
 class _SocksTor(_Common):
-    def __init__(self, hostname=None, port=None):
+    def __init__(self, hostname=None, portnum=None):
         _Common.__init__(self)
         self._connnected = True # no need to call _connect()
         self._socks_hostname = hostname
-        self._socks_port = port # None means to use defaults: 9050, then 9150
+        self._socks_portnum = portnum
+        # portnum=None means to use defaults: 9050, then 9150
     def _connect(self):
         return succeed(None)
 
@@ -82,8 +83,9 @@ def default_socks():
     # ports, but it doesn't know to set the hostname to localhost
     return _SocksTor("127.0.0.1")
 
-def socks_port(port):
-    return _SocksTor("127.0.0.1", port)
+def socks_port(portnum):
+    assert isinstance(portnum, int)
+    return _SocksTor("127.0.0.1", portnum)
 
 
 class _LaunchedTor(_Common):
@@ -114,7 +116,7 @@ class _LaunchedTor(_Common):
         #config.ControlPort = allocate_tcp_port() # defaults to 9052
         config.SocksPort = allocate_tcp_port()
         self._socks_hostname = "127.0.0.1"
-        self._socks_port = config.SocksPort
+        self._socks_portnum = config.SocksPort
 
         #print "launching tor"
         tpp = yield txtorcon.launch_tor(config, self._reactor,
@@ -154,9 +156,9 @@ class _ConnectedTor(_Common):
         port = ports[0]
         if port == "DEFAULT":
             port = "9050"
-        port = int(port)
+        portnum = int(port)
         self._socks_hostname = "127.0.0.1"
-        self._socks_port = port
+        self._socks_portnum = portnum
 
 
 def control_endpoint(reactor, tor_control_endpoint):
