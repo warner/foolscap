@@ -36,16 +36,16 @@ elif which == "socks":
     tub.removeAllConnectionHintHandlers()
     tub.addConnectionHintHandler("tcp", h)
     furl = "pb://%s@tcp:localhost:%d/calculator" % (TUBID, LOCALPORT)
-elif which in ("default-socks", "socks-port", "control-tor", "launch-tor"):
+elif which in ("tor-default", "tor-socks", "tor-control", "tor-launch"):
     from foolscap.connections import tor
-    if which == "default-socks":
+    if which == "tor-default":
         h = tor.default_socks()
-    elif which == "socks-port":
+    elif which == "tor-socks":
         h = tor.socks_port(int(sys.argv[2]))
-    elif which == "control-tor":
+    elif which == "tor-control":
         control_ep = clientFromString(reactor, sys.argv[2])
         h = tor.control_endpoint(control_ep)
-    elif which == "launch-tor":
+    elif which == "tor-launch":
         data_directory = None
         if len(sys.argv) > 2:
             data_directory = os.path.abspath(sys.argv[2])
@@ -54,7 +54,7 @@ elif which in ("default-socks", "socks-port", "control-tor", "launch-tor"):
     tub.addConnectionHintHandler("tor", h)
     furl = "pb://%s@tor:%s:%d/calculator" % (TUBID, ONION, ONIONPORT)
 else:
-    print "run as 'check-connections-client.py [tcp|socks|tor]'"
+    print "run as 'check-connections-client.py [tcp|socks|tor-default|tor-socks|tor-control|tor-launch]'"
     sys.exit(1)
 print "using %s: %s" % (which, furl)
 
