@@ -66,7 +66,8 @@ class _Common:
         returnValue( (ep, host) )
 
 
-# note: TorClientEndpoint imports 'reactor' itself, doesn't provide override
+# note: TorClientEndpoint imports 'reactor' itself, doesn't provide override.
+# This will be fixed in txtorcon 1.0
 
 class _SocksTor(_Common):
     def __init__(self, hostname=None, portnum=None):
@@ -151,7 +152,7 @@ class _ConnectedTor(_Common):
         config = yield txtorcon.TorConfig.from_protocol(tproto)
         ports = list(config.SocksPort)
         port = ports[0]
-        if port == "DEFAULT":
+        if port == txtorcon.DEFAULT_VALUE:
             port = "9050"
         portnum = int(port)
         self._socks_hostname = "127.0.0.1"
