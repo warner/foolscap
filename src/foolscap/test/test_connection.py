@@ -7,8 +7,7 @@ from twisted.application import service
 from txsocksx.client import SOCKS5ClientEndpoint
 from foolscap.api import Tub
 from foolscap.connection import get_endpoint
-from foolscap.connections import socks, tor
-from foolscap.connections.tcp import convert_legacy_hint, DefaultTCP
+from foolscap.connections import tcp, socks, tor
 from foolscap.tokens import NoLocationHintsError
 from foolscap.ipb import InvalidHintError
 from foolscap.test.common import (certData_low, certData_high, Target,
@@ -17,7 +16,7 @@ from foolscap import ipb, util
 
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
-        d = get_endpoint(hint, {"tcp": DefaultTCP()})
+        d = get_endpoint(hint, {"tcp": tcp.default()})
         (ep, host) = self.successResultOf(d)
         self.failUnless(isinstance(ep, endpoints.HostnameEndpoint), ep)
         # note: this is fragile, and will break when Twisted changes the
@@ -26,26 +25,26 @@ class Convert(unittest.TestCase):
         self.failUnlessEqual(ep._port, expected_port)
 
     def checkBadTCPEndpoint(self, hint):
-        d = get_endpoint(hint, {"tcp": DefaultTCP()})
+        d = get_endpoint(hint, {"tcp": tcp.default()})
         self.failureResultOf(d, ipb.InvalidHintError)
 
     def checkUnknownEndpoint(self, hint):
-        d = get_endpoint(hint, {"tcp": DefaultTCP()})
+        d = get_endpoint(hint, {"tcp": tcp.default()})
         self.failureResultOf(d, ipb.InvalidHintError)
 
     def testConvertLegacyHint(self):
-        self.failUnlessEqual(convert_legacy_hint("127.0.0.1:9900"),
+        self.failUnlessEqual(tcp.convert_legacy_hint("127.0.0.1:9900"),
                              "tcp:127.0.0.1:9900")
-        self.failUnlessEqual(convert_legacy_hint("tcp:127.0.0.1:9900"),
+        self.failUnlessEqual(tcp.convert_legacy_hint("tcp:127.0.0.1:9900"),
                              "tcp:127.0.0.1:9900")
-        self.failUnlessEqual(convert_legacy_hint("other:127.0.0.1:9900"),
+        self.failUnlessEqual(tcp.convert_legacy_hint("other:127.0.0.1:9900"),
                              "other:127.0.0.1:9900")
         # this is unfortunate
-        self.failUnlessEqual(convert_legacy_hint("unix:1"), "tcp:unix:1")
+        self.failUnlessEqual(tcp.convert_legacy_hint("unix:1"), "tcp:unix:1")
         # so new hints should do one of these:
-        self.failUnlessEqual(convert_legacy_hint("tor:host:1234"),
+        self.failUnlessEqual(tcp.convert_legacy_hint("tor:host:1234"),
                              "tor:host:1234") # multiple colons
-        self.failUnlessEqual(convert_legacy_hint("unix:fd=1"),
+        self.failUnlessEqual(tcp.convert_legacy_hint("unix:fd=1"),
                              "unix:fd=1") # equals signs, key=value -style
 
     def testTCP(self):
@@ -77,7 +76,7 @@ class NewHandler:
         self.accepted += 1
         pieces = hint.split(":")
         new_hint = "tcp:%s:%d" % (pieces[1], int(pieces[2])+0)
-        ep = DefaultTCP().hint_to_endpoint(new_hint, reactor)
+        ep = tcp.default().hint_to_endpoint(new_hint, reactor)
         if pieces[0] == "slow":
             d = defer.Deferred()
             reactor.callLater(0.01, d.callback, ep)
@@ -187,7 +186,7 @@ class Socks(unittest.TestCase):
     @mock.patch("foolscap.connections.socks.SOCKS5ClientEndpoint")
     def test_ep(self, scep):
         proxy_ep = endpoints.HostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.SOCKS(proxy_ep)
+        h = socks.socks_endpoint(proxy_ep)
 
         rv = scep.return_value = mock.Mock()
         ep, host = h.hint_to_endpoint("tor:example.com:1234", reactor)
@@ -198,7 +197,7 @@ class Socks(unittest.TestCase):
 
     def test_real_ep(self):
         proxy_ep = endpoints.HostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.SOCKS(proxy_ep)
+        h = socks.socks_endpoint(proxy_ep)
         ep, host = h.hint_to_endpoint("tcp:example.com:1234", reactor)
         self.assertIsInstance(ep, SOCKS5ClientEndpoint)
         self.assertEqual(host, "example.com")
@@ -206,7 +205,7 @@ class Socks(unittest.TestCase):
 
     def test_bad_hint(self):
         proxy_ep = endpoints.HostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.SOCKS(proxy_ep)
+        h = socks.socks_endpoint(proxy_ep)
         # legacy hints will be upgraded before the connection handler is
         # invoked, so the handler should not handle them
         self.assertRaises(ipb.InvalidHintError,

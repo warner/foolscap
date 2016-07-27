@@ -52,3 +52,6 @@ class DefaultTCP:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
         return endpoints.HostnameEndpoint(reactor, host, port), host
+
+def default():
+    return DefaultTCP()

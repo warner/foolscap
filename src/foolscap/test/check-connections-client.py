@@ -32,24 +32,24 @@ elif which == "socks":
     # to see the peer address of each addObserver call to verify that it is
     # coming from 127.0.0.1 rather than the client host.
     from foolscap.connections import socks
-    h = socks.SOCKS(HostnameEndpoint(reactor, "localhost", 8013))
+    h = socks.socks_endpoint(HostnameEndpoint(reactor, "localhost", 8013))
     tub.removeAllConnectionHintHandlers()
     tub.addConnectionHintHandler("tcp", h)
     furl = "pb://%s@tcp:localhost:%d/calculator" % (TUBID, LOCALPORT)
-elif which in ("default-socks", "socks-port", "launch-tor", "control-tor"):
+elif which in ("default-socks", "socks-port", "control-tor", "launch-tor"):
     from foolscap.connections import tor
     if which == "default-socks":
         h = tor.default_socks()
     elif which == "socks-port":
-        h = tor.socks_on_port(int(sys.argv[2]))
+        h = tor.socks_port(int(sys.argv[2]))
+    elif which == "control-tor":
+        control_ep = clientFromString(reactor, sys.argv[2])
+        h = tor.control_endpoint(reactor, control_ep)
     elif which == "launch-tor":
         data_directory = None
         if len(sys.argv) > 2:
             data_directory = os.path.abspath(sys.argv[2])
-        h = tor.launch_tor(reactor, data_directory)
-    elif which == "control-tor":
-        control_ep = clientFromString(reactor, sys.argv[2])
-        h = tor.with_control_port(reactor, control_ep)
+        h = tor.launch(reactor, data_directory)
     tub.removeAllConnectionHintHandlers()
     tub.addConnectionHintHandler("tor", h)
     furl = "pb://%s@tor:%s:%d/calculator" % (TUBID, ONION, ONIONPORT)

@@ -12,7 +12,7 @@ from twisted.python.versions import Version
 
 from foolscap import ipb, base32, negotiate, broker, eventual, storage
 from foolscap import connection, util
-from foolscap.connections.tcp import DefaultTCP
+from foolscap.connections import tcp
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
      WrongNameError, NoLocationError
@@ -248,7 +248,7 @@ class Tub(service.MultiService):
         self.brokers = {} # maps TubRef to a Broker that connects to them
         self.reconnectors = []
 
-        self._connectionHandlers = {"tcp": DefaultTCP()}
+        self._connectionHandlers = {"tcp": tcp.default()}
         self._activeConnectors = []
 
         self._pending_getReferences = [] # list of (d, furl) pairs

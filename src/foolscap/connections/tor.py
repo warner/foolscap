@@ -82,7 +82,7 @@ def default_socks():
     # ports, but it doesn't know to set the hostname to localhost
     return _SocksTor("127.0.0.1")
 
-def socks_on_port(port):
+def socks_port(port):
     return _SocksTor("127.0.0.1", port)
 
 
@@ -125,7 +125,7 @@ class _LaunchedTor(_Common):
         self._tor_protocol = tpp.tor_protocol
         returnValue(True)
 
-def launch_tor(reactor, data_directory=None, tor_binary=None):
+def launch(reactor, data_directory=None, tor_binary=None):
     """Return a handler which launches a new Tor process (once).
     - data_directory: a persistent directory where Tor can cache its
       descriptors. This allows subsequent invocations to start faster. If
@@ -147,8 +147,8 @@ class _ConnectedTor(_Common):
 
     @inlineCallbacks
     def _connect(self):
-        ep = self._tor_control_endpoint
-        tproto = yield txtorcon.build_tor_connection(ep, build_state=False)
+        tproto = yield txtorcon.build_tor_connection(self._tor_control_endpoint,
+                                                     build_state=False)
         config = yield txtorcon.TorConfig.from_protocol(tproto)
         ports = list(config.SocksPort)
         port = ports[0]
@@ -159,7 +159,7 @@ class _ConnectedTor(_Common):
         self._socks_port = port
 
 
-def with_control_port(reactor, tor_control_endpoint):
+def control_endpoint(reactor, tor_control_endpoint):
     """Return a handler which connects to a pre-existing Tor process on the
     given control port.
     - control_port: a ClientEndpoint which points at the Tor control port
