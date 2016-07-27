@@ -2,13 +2,15 @@ import mock
 from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.internet import endpoints, defer, reactor
+from twisted.internet.defer import inlineCallbacks
 from twisted.application import service
 from txsocksx.client import SOCKS5ClientEndpoint
 from foolscap.api import Tub
 from foolscap.connection import get_endpoint
-from foolscap.connections import socks
+from foolscap.connections import socks, tor
 from foolscap.connections.tcp import convert_legacy_hint, DefaultTCP
 from foolscap.tokens import NoLocationHintsError
+from foolscap.ipb import InvalidHintError
 from foolscap.test.common import (certData_low, certData_high, Target,
                                   ShouldFailMixin)
 from foolscap import ipb, util
@@ -213,3 +215,41 @@ class Socks(unittest.TestCase):
                           h.hint_to_endpoint, "tcp:example.com:noport", reactor)
         self.assertRaises(ipb.InvalidHintError,
                           h.hint_to_endpoint, "tcp:@:1234", reactor)
+
+class Tor(unittest.TestCase):
+    @inlineCallbacks
+    def test_default_socks(self):
+        with mock.patch("foolscap.connections.tor.txtorcon") as ttc:
+            ttc.TorClientEndpoint = tce = mock.Mock()
+            tce.return_value = expected_ep = object()
+            h = tor.default_socks()
+            res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor)
+            self.assertEqual(tce.mock_calls,
+                             [mock.call("example.com", 1234,
+                                        socks_hostname="127.0.0.1",
+                                        socks_port=None)])
+            ep, host = res
+            self.assertIdentical(ep, expected_ep)
+            self.assertEqual(host, "example.com")
+
+    def test_badaddr(self):
+        isnon = tor.is_non_public_numeric_address
+        self.assertTrue(isnon("10.0.0.1"))
+        self.assertTrue(isnon("127.0.0.1"))
+        self.assertTrue(isnon("192.168.78.254"))
+        self.assertFalse(isnon("8.8.8.8"))
+        self.assertFalse(isnon("example.org"))
+
+    @inlineCallbacks
+    def test_default_socks_badaddr(self):
+        h = tor.default_socks()
+        d = h.hint_to_endpoint("tcp:10.0.0.1:1234", reactor)
+        f = yield self.assertFailure(d, InvalidHintError)
+        self.assertEqual(str(f), "ignoring non-Tor-able ipaddr 10.0.0.1")
+
+        d = h.hint_to_endpoint("tcp:127.0.0.1:1234", reactor)
+        f = yield self.assertFailure(d, InvalidHintError)
+        self.assertEqual(str(f), "ignoring non-Tor-able ipaddr 127.0.0.1")
+
+    # TODO: exercise launch_tor and with_control_port somehow
+
