@@ -30,7 +30,7 @@ HINT_RE = re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
 @implementer(IConnectionHintHandler)
 class _Common:
     # subclasses must:
-    #  define _connect()
+    #  define _connect(reactor)
     #  set self._socks_hostname, self._socks_portnum
 
     def __init__(self):
@@ -41,7 +41,7 @@ class _Common:
         if not self._connected:
             self._connected = True
             # connect
-            d = self._connect()
+            d = self._connect(reactor)
             d.addBoth(self._when_connected.fire)
         return self._when_connected.whenFired()
 
@@ -75,7 +75,7 @@ class _SocksTor(_Common):
         self._socks_hostname = hostname
         self._socks_portnum = portnum
         # portnum=None means to use defaults: 9050, then 9150
-    def _connect(self):
+    def _connect(self, reactor):
         return succeed(None)
 
 def default_socks():
@@ -89,14 +89,13 @@ def socks_port(portnum):
 
 
 class _LaunchedTor(_Common):
-    def __init__(self, reactor, data_directory=None, tor_binary=None):
+    def __init__(self, data_directory=None, tor_binary=None):
         _Common.__init__(self)
-        self._reactor = reactor
         self._data_directory = data_directory
         self._tor_binary = tor_binary
 
     @inlineCallbacks
-    def _connect(self):
+    def _connect(self, reactor):
         # create a new Tor
         config = self.config = txtorcon.TorConfig()
         if self._data_directory:
@@ -119,15 +118,14 @@ class _LaunchedTor(_Common):
         self._socks_portnum = config.SocksPort
 
         #print "launching tor"
-        tpp = yield txtorcon.launch_tor(config, self._reactor,
-                                        tor_binary=self._tor_binary,
-                                        )
+        tpp = yield txtorcon.launch_tor(config, reactor,
+                                        tor_binary=self._tor_binary)
         #print "launched"
         # gives a TorProcessProtocol with .tor_protocol
         self._tor_protocol = tpp.tor_protocol
         returnValue(True)
 
-def launch(reactor, data_directory=None, tor_binary=None):
+def launch(data_directory=None, tor_binary=None):
     """Return a handler which launches a new Tor process (once).
     - data_directory: a persistent directory where Tor can cache its
       descriptors. This allows subsequent invocations to start faster. If
@@ -136,19 +134,18 @@ def launch(reactor, data_directory=None, tor_binary=None):
     - tor_binary: the path to the Tor executable we should use. If None,
       search $PATH.
     """
-    return _LaunchedTor(reactor, data_directory, tor_binary)
+    return _LaunchedTor(data_directory, tor_binary)
 
 
 @implementer(IConnectionHintHandler)
 class _ConnectedTor(_Common):
-    def __init__(self, reactor, tor_control_endpoint):
+    def __init__(self, tor_control_endpoint):
         _Common.__init__(self)
-        self._reactor = reactor
         assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
         self._tor_control_endpoint = tor_control_endpoint
 
     @inlineCallbacks
-    def _connect(self):
+    def _connect(self, reactor):
         tproto = yield txtorcon.build_tor_connection(self._tor_control_endpoint,
                                                      build_state=False)
         config = yield txtorcon.TorConfig.from_protocol(tproto)
@@ -161,9 +158,11 @@ class _ConnectedTor(_Common):
         self._socks_portnum = portnum
 
 
-def control_endpoint(reactor, tor_control_endpoint):
+def control_endpoint(tor_control_endpoint):
     """Return a handler which connects to a pre-existing Tor process on the
     given control port.
-    - control_port: a ClientEndpoint which points at the Tor control port
+    - tor_control_endpoint: a ClientEndpoint which points at the Tor control
+      port
     """
-    return _ConnectedTor(reactor, tor_control_endpoint)
+    assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
+    return _ConnectedTor(tor_control_endpoint)

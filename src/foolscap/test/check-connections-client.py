@@ -44,12 +44,12 @@ elif which in ("default-socks", "socks-port", "control-tor", "launch-tor"):
         h = tor.socks_port(int(sys.argv[2]))
     elif which == "control-tor":
         control_ep = clientFromString(reactor, sys.argv[2])
-        h = tor.control_endpoint(reactor, control_ep)
+        h = tor.control_endpoint(control_ep)
     elif which == "launch-tor":
         data_directory = None
         if len(sys.argv) > 2:
             data_directory = os.path.abspath(sys.argv[2])
-        h = tor.launch(reactor, data_directory)
+        h = tor.launch(data_directory)
     tub.removeAllConnectionHintHandlers()
     tub.addConnectionHintHandler("tor", h)
     furl = "pb://%s@tor:%s:%d/calculator" % (TUBID, ONION, ONIONPORT)
