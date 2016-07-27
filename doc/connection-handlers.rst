@@ -31,46 +31,158 @@ Connection handlers can be added to the Tub with `addConnectionHintHandler`:
 .. code-block:: python
 
     tub = Tub()
-    tub.addConnectionHintHandler("tor", OnionThroughTor(proxyaddr))
+    tub.addConnectionHintHandler("tor", tor.socks_port(tor_socks_port))
 
 Note that each Tub has a separate list of handlers, so if your application
 uses multiple Tubs, you must add the handler to all of them. Handlers are
 stored in a dictionary, with "tcp:" hints handled by the built-in
-`DefaultTCP` handler.
+`tcp.default` handler.
+
+
+Recommended Connection-Hint Types
+---------------------------------
+
+Connection handlers allow for arbitrary hint types, and applications can put
+whatever they want into `Tub.setLocation()`, so this list is not exhaustive.
+But to improve interoperability, applications are encouraged to converge on
+at least the following hint types:
+
+* `tcp:HOSTNAME:PORT` : This is the standard hint type. It indicates that
+  clients should perform DNS resolution on `HOSTNAME` (if it isn't already a
+  dotted-quad IPv4 address), make a simple TCP connection to the IPv4 or IPv6
+  addresses that result, and perform negotiation with anything that answers.
+  (in the future, this will accept `tcp:[IPv6:COLON:HEX]:PORT`, see ticket
+  #155)
+* (legacy) `HOSTNAME:PORT` : Older applications used this form to indicate
+  standard TCP hints. If `HOSTNAME` and `PORT` are of the expected form, this
+  is converted (by prepending `tcp:`) before being delivered to the `tcp:`
+  handler. New applications should not emit this form.
+* `tor:HOSTNAME:PORT` : This indicates the client should connect to
+  `HOSTNAME:PORT` via a Tor proxy. The only meaningful reason for putting a
+  `tor:` hint in your FURL is if `HOSTNAME` ends in `.onion`, indicating that
+  the Tub is listening on a Tor "onion service" (aka "hidden service").
+* `i2p:ADDR:PORT` : Like `tor:`, but use an I2P proxy.
+
+Built-In Connection Handlers
+----------------------------
+
+Foolscap includes connection handlers that know how to use SOCKS5 and Tor
+proxies. They live in their own modules, which must be imported separately.
+These functions are not in `foolscap.api`, because they depend upon
+additional libraries (`txsocksx` and `txtorcon`) which Foolscap does not
+automatically depend upon. Your application can declare a dependency upon
+Foolscap with "extras" to include these additional libraries, e.g. your
+`setup.py` would contain `install_requires=["foolscap[tor]"]` to enable `from
+foolscap.connections import tor`.
+
+All handlers live in modules under in the `foolscap.connections` package, so
+e.g.:
+
+.. code-block:: python
+
+    from foolscap.connections import tcp
+    handler = tcp.default()
+    tub.addConnectionHintHandler("tcp", handler)
+
+Foolscap's built-in connection handlers are:
+
+* `tcp.default()` : This is the basic TCP handler which all Tubs use for
+  `tcp:` hints by default.
+* `socks.socks_endpoint(proxy_endpoint)` : This routes connections to a
+  SOCKS5 server at the given endpoint.
+* `tor.default_socks()` : This attempts a SOCKS connection to `localhost`
+  port 9050, which is the Tor default SOCKS port. If that fails, it tries
+  port 9150, which is where the Tor Browser Bundle runs a SOCKS port. This
+  should work if either Tor or the TBB are running on the current host.
+* `tor.socks_port(portnum)` : This makes a SOCKS connection to an alternate
+  port number on localhost.
+* `tor.control_endpoint(tor_control_endpoint)` : This connects to a
+  pre-existing Tor daemon via it's "Control Port", which allows the handler
+  to query Tor for its current SOCKS port (as well as control Tor entirely).
+  On debian systems, the control port lives at `unix:/var/run/tor/control`,
+  but the user must be a member of the `debian-tor` unix group to access it.
+  The handler only makes one attempt to connect to the control port (when the
+  first hint is processed), and uses that connection for all subsequent
+  hints.
+* `tor.launch(data_directory=None, tor_binary=None)` : This launches a new
+  copy of Tor (once, when the first hint is processed). `tor_binary=` points
+  to the exact executable to be run, otherwise it will search $PATH for the
+  `tor` executable. If `data_directory=` is provided, it will be used for
+  Tor's persistent state: this allows Tor to cache the "microdescriptor list"
+  and can speed up the second invocation of the program considerably. If not
+  provided, a ephemeral temporary directory is used (and deleted at
+  shutdown).
+
+Applications which want to enable as many connection-hint types as possible
+should simply install the `tor.default_socks()` handler if it can be
+imported. This will Just Work(tm) if the most common deployments of Tor are
+installed/running on the local machine, and `tor:` hints will be ignored if
+not.
+
+.. code-block:: python
+
+    try:
+        from foolscap.connections import tor
+        tub.addConnectionHintHandler("tor", tor.default_socks())
+    except ImportError:
+        pass # we're missing txtorcon, oh well
+
+
+Configuring Endpoints for Connection Handlers
+---------------------------------------------
+
+Some of these handlers require an Endpoint to reference a proxy server. The
+easiest way to obtain a Client Endpoint that reaches a TCP service is like
+this:
+
+.. code-block:: python
+
+    from twisted.internet imports endpoints
+    proxy_endpoint = endpoints.HostnameEndpoint(reactor, "localhost", 8080)
+
+Applications can use a string from their config file to specify the Endpoint
+to use. This gives end users a lot of flexibility to control the
+application's behavior. Twisted's `clientFromString` function parses a string
+and returns an endpoint:
+
+.. code-block:: python
+
+    from twisted.internet import reactor, endpoints
+    config = "tcp:localhost:8080"
+    proxy_endpoint = endpoints.clientFromString(reactor, config)
 
 
 Disabling Built-In TCP Processing
 ---------------------------------
 
 Normal "tcp" hints are handled by a built-in connection handler named
-DefaultTCP. This handles "tcp:example.org:12345". It also handles the
+`tcp.default`. This handles "tcp:example.org:12345". It also handles the
 backwards-compatible "example.org:12345" format (still in common use),
 because all such hints are translated into the modern "tcp:example.org:12345"
 format before the handler lookup takes place.
 
-You might want to disable the DefaultTCP handler, for example to run a client
-behind Tor. In this configuration, all outbound connections must be made
-through the Tor SOCKS proxy (any direct TCP connections would expose the
-client's IP address). Any "tcp:" hints must be routed through a Tor-capable
-connection handler.
+You might want to disable the `tcp.default` handler, for example to run a
+client strictly behind Tor. In this configuration, *all* outbound connections
+must be made through the Tor SOCKS proxy (since any direct TCP connections
+would expose the client's IP address). Any "tcp:" hints must be routed
+through a Tor-capable connection handler.
 
 To accomplish this, you would use `Tub.removeAllConnectionHintHandlers()` to
-remove the DefaultTCP handler, then you would add a Tor-aware "tcp:" handler.
-You might also add a "tor:" handler, to handle hints that point at hidden
-services.
+remove the `tcp.default` handler, then you would add a Tor-aware "tcp:"
+handler. You might also add a "tor:" handler, to handle hints that point at
+hidden services.
 
 .. code-block:: python
 
+    from foolscap.connections import tor
     tub.removeAllConnectionHintHandlers()
-    tub.addConnectionHintHandler("tcp", TCPThroughTor(proxyaddr))
-    tub.addConnectionHintHandler("tor", OnionThroughTor(proxyaddr))
-
-(note that neither of these handlers are included with Foolscap: they are
-left as an exercise for the reader)
+    handler = tor.default_socks()
+    tub.addConnectionHintHandler("tcp", handler)
+    tub.addConnectionHintHandler("tor", handler)
 
 
-IConnectionHintHandler
-----------------------
+Writing Handlers (IConnectionHintHandler)
+-----------------------------------------
 
 The handler is required to implement `foolscap.ipb.IConnectionHintHandler`,
 and to provide a method named `hint_to_endpoint()`. This method takes two
@@ -86,7 +198,7 @@ that was used to locate the handler.
 The endpoint returned should implement
 `twisted.internet.interfaces.IStreamClientEndpoint`, and the endpoint's final
 connection object must implement `ITLSTransport` and offer the `startTLS`
-method. Normal TCP sockets (TCP4ClientEndpoint objects) do exactly this.
+method. Normal TCP sockets (`TCP4ClientEndpoint` objects) do exactly this.
 
 The `hostname` value is used to construct an HTTP `Host:` header during
 negotiation. This is currently underused, but if the connection hint has
