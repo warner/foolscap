@@ -1,4 +1,4 @@
-import os, re
+import re
 from twisted.internet.interfaces import IStreamClientEndpoint
 from twisted.internet.defer import inlineCallbacks, returnValue, succeed
 import ipaddress
@@ -105,12 +105,6 @@ class _LaunchedTor(_Common):
             # want it to be persistent. This saves some startup time, because
             # we cache the descriptors from last time. On one of my hosts,
             # this reduces connect from 20s to 15s.
-            if not os.path.exists(self._data_directory):
-                # tor will mkdir this, but txtorcon wants to chdir to it
-                # before spawning the tor process, so (for now) we need to
-                # mkdir it ourselves. TODO: txtorcon should take
-                # responsibility for this.
-                os.mkdir(self._data_directory)
             config.DataDirectory = self._data_directory
 
         #config.ControlPort = allocate_tcp_port() # defaults to 9052
