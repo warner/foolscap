@@ -1,5 +1,31 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.12.1 (19-Aug-2016)
+
+** Connection Handlers for SOCKS, Tor, I2P
+
+Foolscap now includes importable connection handlers for SOCKS(5a), Tor, and
+I2P. #242, #246, #261
+
+These handlers require additional supporting libraries, so they must be
+imported separately, and a setuptools "extra feature" declaration must be
+used to ask for the supporting libs. For example, applications which want to
+use `tor:` hints (on a host with a Tor daemon running) should have a setup.py
+with:
+
+  install_requires=["foolscap[tor]"],
+
+and the Tub setup code should do:
+
+  from foolscap.connections import tor
+  tub.addConnectionHintHandler("tor", tor.default_socks())
+
+Full examples and docs are available in docs/connection-handlers.rst.
+
+The default connection-negotiation timeout was increased from 60s to 120s, to
+accomodate tor/i2p daemon startup times.
+
+
 * Release 0.12.0 (20-Jul-2016)
 
 ** API changes: no more automatic configuration
