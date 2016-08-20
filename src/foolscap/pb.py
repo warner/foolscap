@@ -32,7 +32,6 @@ class Listener(protocol.ServerFactory, service.Service):
 
     def __init__(self, tub, endpoint_or_description, _test_options={},
                  negotiationClass=negotiate.Negotiation):
-        service.Service.__init__(self)
         assert isinstance(tub, Tub)
         self._tub = tub
 
