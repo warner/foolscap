@@ -24,7 +24,7 @@ DEPENDENCIES:
 
  * Python 2.7
  * Twisted 16.0.0 or later
- * PyOpenSSL (tested against 0.6)
+ * PyOpenSSL (tested against 16.0.0)
 
 
 INSTALLATION:
