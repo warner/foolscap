@@ -151,12 +151,20 @@ class _ConnectedTor(_Common):
                                                      build_state=False)
         config = yield txtorcon.TorConfig.from_protocol(tproto)
         ports = list(config.SocksPort)
-        port = ports[0]
-        if port == txtorcon.DEFAULT_VALUE:
-            port = "9050"
-        portnum = int(port)
-        self._socks_hostname = "127.0.0.1"
-        self._socks_portnum = portnum
+        # I've seen "9050", and "unix:/var/run/tor/socks WorldWritable"
+        for port in ports:
+            pieces = port.split()
+            p = pieces[0]
+            if p == txtorcon.DEFAULT_VALUE:
+                p = "9050"
+            try:
+                portnum = int(p)
+                self._socks_hostname = "127.0.0.1"
+                self._socks_portnum = portnum
+                return
+            except ValueError:
+                pass
+        raise ValueError("could not use config.SocksPort: %r" % (ports,))
 
 
 def control_endpoint(tor_control_endpoint):
