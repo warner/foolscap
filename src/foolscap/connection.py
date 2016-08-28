@@ -165,7 +165,8 @@ class TubConnector(object):
             def _good_hint(res):
                 self.validHints.append(location)
                 (ep, host) = res
-                self.log("connecting to hint", parent=lp, umid="9iX0eg")
+                self.log("connecting to hint: %s" % (location,),
+                         parent=lp, umid="9iX0eg")
                 return ep.connect(TubConnectorFactory(self, host, lp))
             d.addCallback(_good_hint)
             self.pendingConnections.add(d)
