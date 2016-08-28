@@ -262,12 +262,12 @@ class Tor(unittest.TestCase):
 
     @inlineCallbacks
     def test_socks_port(self):
-        h = tor.socks_port(100)
+        h = tor.socks_port("socks_host", 100)
         res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor)
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "example.com")
-        self.assertEqual(ep.socks_hostname, "127.0.0.1")
+        self.assertEqual(ep.socks_hostname, "socks_host")
         self.assertEqual(ep.socks_port, 100)
 
     @inlineCallbacks

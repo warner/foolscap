@@ -84,9 +84,9 @@ def default_socks():
     # ports, but it doesn't know to set the hostname to localhost
     return _SocksTor("127.0.0.1")
 
-def socks_port(portnum):
+def socks_port(host, portnum):
     assert isinstance(portnum, int)
-    return _SocksTor("127.0.0.1", portnum)
+    return _SocksTor(host, portnum)
 
 
 class _LaunchedTor(_Common):
