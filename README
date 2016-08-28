@@ -57,21 +57,6 @@ COMPATIBILITY:
  version of Twisted earlier than 16.0.0.
 
 
-HEARTBLEED:
-
- Foolscap currently depends upon SSL for its transport security
- (confidentiality and authentication), using the PyOpenSSL bindings to the
- OpenSSL library for this purpose. Certain recent versions of OpenSSL were
- vulnerable to the devastating "Heartbleed" attack, which allowed a casual
- attacker to obtain memory fragments of the target process, revealing secret
- data (even occasionally the SSL private key).
-
- Do not use Foolscap with a version of OpenSSL that contains the Heartbleed
- vulnerability (or any other vulnerability, for that matter). This was fixed
- in OpenSSL 1.0.1g . More information about known OpenSSL vulnerabilities can
- be found here: http://www.openssl.org/news/vulnerabilities.html .
-
-
 HISTORY:
 
  Foolscap is a rewrite of the Perspective Broker protocol provided by Twisted
