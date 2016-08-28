@@ -1,5 +1,22 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.12.2 (28-Aug-2016)
+
+** Improved Tor Connection Handler
+
+The `tor.control_endpoint` connection handler now properly handles the
+config.SocksPort response provided by the debian Tor daemon (and possibly
+others), which included a confusing unix-domain socket in its response.
+
+The `tor.socks_port` handler was changed to accept both hostname and port
+number. Using anything but "localhost" or "127.0.0.1" is highly discouraged,
+as it would reveal your IP address to (possibly hostile) external hosts. This
+change was made to support applications (e.g. Tahoe-LAFS) which accept
+endpoint strings to configure socks_port, but then parse them and reject
+anything but TCP endpoints (to match Foolscap's current limitations). Such
+applications ought to warn their users to use only localhost.
+
+
 * Release 0.12.1 (20-Aug-2016)
 
 ** Connection Handlers for SOCKS, Tor, I2P
