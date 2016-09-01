@@ -3,6 +3,8 @@ import mock
 from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.internet import endpoints, defer, reactor
+from twisted.internet.endpoints import clientFromString
+from twisted.internet.interfaces import IStreamClientEndpoint
 from twisted.internet.defer import inlineCallbacks
 from twisted.application import service
 import txtorcon
@@ -230,8 +232,7 @@ class Tor(unittest.TestCase):
             res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor)
             self.assertEqual(tce.mock_calls,
                              [mock.call("example.com", 1234,
-                                        socks_hostname="127.0.0.1",
-                                        socks_port=None)])
+                                        socks_endpoint=None)])
             ep, host = res
             self.assertIdentical(ep, expected_ep)
             self.assertEqual(host, "example.com")
@@ -261,14 +262,14 @@ class Tor(unittest.TestCase):
         self.assertEqual(str(f), "unrecognized TCP/Tor hint")
 
     @inlineCallbacks
-    def test_socks_port(self):
-        h = tor.socks_port("socks_host", 100)
+    def test_socks_endpoint(self):
+        tor_socks_endpoint = clientFromString(reactor, "tcp:socks_host:100")
+        h = tor.socks_endpoint(tor_socks_endpoint)
         res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor)
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "example.com")
-        self.assertEqual(ep.socks_hostname, "socks_host")
-        self.assertEqual(ep.socks_port, 100)
+        assert IStreamClientEndpoint.providedBy(h._socks_endpoint)
 
     @inlineCallbacks
     def test_launch(self):
@@ -284,9 +285,7 @@ class Tor(unittest.TestCase):
             self.assertIdentical(args[0], h.config)
             self.assertIdentical(args[1], fake_reactor)
             self.assertEqual(kwargs, {"tor_binary": None})
-        self.assertEqual(h._socks_hostname, "127.0.0.1")
-        # the socks port will be allocated by launch_tor, so it should match
-        self.assertEqual(h._socks_portnum, h.config.SocksPort)
+        assert IStreamClientEndpoint.providedBy(h._socks_endpoint)
 
     @inlineCallbacks
     def test_launch_tor_binary(self):
@@ -302,9 +301,7 @@ class Tor(unittest.TestCase):
             self.assertIdentical(args[0], h.config)
             self.assertIdentical(args[1], fake_reactor)
             self.assertEqual(kwargs, {"tor_binary": "/bin/tor"})
-        self.assertEqual(h._socks_hostname, "127.0.0.1")
-        # the socks port will be allocated by launch_tor, so it should match
-        self.assertEqual(h._socks_portnum, h.config.SocksPort)
+        assert IStreamClientEndpoint.providedBy(h._socks_endpoint)
 
     @inlineCallbacks
     def test_launch_data_directory(self):
@@ -322,9 +319,7 @@ class Tor(unittest.TestCase):
             self.assertIdentical(args[1], fake_reactor)
             self.assertEqual(kwargs, {"tor_binary": None})
             self.assertEqual(h.config.DataDirectory, datadir)
-        self.assertEqual(h._socks_hostname, "127.0.0.1")
-        # the socks port will be allocated by launch_tor, so it should match
-        self.assertEqual(h._socks_portnum, h.config.SocksPort)
+        assert IStreamClientEndpoint.providedBy(h._socks_endpoint)
 
     @inlineCallbacks
     def test_launch_data_directory_exists(self):
@@ -343,9 +338,7 @@ class Tor(unittest.TestCase):
             self.assertIdentical(args[1], fake_reactor)
             self.assertEqual(kwargs, {"tor_binary": None})
             self.assertEqual(h.config.DataDirectory, datadir)
-        self.assertEqual(h._socks_hostname, "127.0.0.1")
-        # the socks port will be allocated by launch_tor, so it should match
-        self.assertEqual(h._socks_portnum, h.config.SocksPort)
+        assert IStreamClientEndpoint.providedBy(h._socks_endpoint)
 
     @inlineCallbacks
     def test_control_endpoint(self):
@@ -364,8 +357,7 @@ class Tor(unittest.TestCase):
                             return_value=config):
                 # we ignore the return value of hint_to_endpoint()
                 yield h.hint_to_endpoint("tor:foo.onion:29212", reactor)
-        self.assertEqual(h._socks_hostname, "127.0.0.1")
-        self.assertEqual(h._socks_portnum, 9050)
+        assert IStreamClientEndpoint.providedBy(h._socks_endpoint)
 
     @inlineCallbacks
     def test_control_endpoint_default(self):
@@ -379,8 +371,7 @@ class Tor(unittest.TestCase):
                             return_value=config):
                 # we ignore the return value of hint_to_endpoint()
                 yield h.hint_to_endpoint("tor:foo.onion:29212", reactor)
-        self.assertEqual(h._socks_hostname, "127.0.0.1")
-        self.assertEqual(h._socks_portnum, 9050)
+        assert IStreamClientEndpoint.providedBy(h._socks_endpoint)
 
     @inlineCallbacks
     def test_control_endpoint_non_numeric(self):
@@ -394,8 +385,7 @@ class Tor(unittest.TestCase):
                             return_value=config):
                 # we ignore the return value of hint_to_endpoint()
                 yield h.hint_to_endpoint("tor:foo.onion:29212", reactor)
-        self.assertEqual(h._socks_hostname, "127.0.0.1")
-        self.assertEqual(h._socks_portnum, 9050)
+        assert IStreamClientEndpoint.providedBy(h._socks_endpoint)
 
     @inlineCallbacks
     def test_control_endpoint_no_port(self):
