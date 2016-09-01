@@ -1,5 +1,21 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.12.3 (01-Sep-2016)
+
+** Improvements
+
+The `tor.socks_port()` handler was replaced by `tor.socks_endpoint()`, which
+takes an Endpoint object (just like `tor.control_endpoint()` does). This
+enables applications to speak SOCKS to the Tor daemon over e.g. a Unix-domain
+socket. The `tor.socks_port()` API was removed, so applications using it must
+upgrade. #265
+
+The `allocate_tcp_port()` utility function would occasionally return ports
+that were in use by other applications, when those applications bound their
+own port to the loopback interface (127.0.0.1). allocate_tcp_port should no
+longer do this.
+
+
 * Release 0.12.2 (28-Aug-2016)
 
 ** Improved Tor Connection Handler
