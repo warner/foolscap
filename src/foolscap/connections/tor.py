@@ -157,7 +157,7 @@ class _ConnectedTor(_Common):
                 p = "9050"
             try:
                 portnum = int(p)
-                socks_desc = "tcp:127.0.0.1:" + p
+                socks_desc = "tcp:127.0.0.1:%d" % portnum
                 self._socks_endpoint = clientFromString(reactor, socks_desc)
                 return
             except ValueError:
