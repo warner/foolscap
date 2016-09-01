@@ -95,9 +95,10 @@ Foolscap's built-in connection handlers are:
   port 9050, which is the Tor default SOCKS port. If that fails, it tries
   port 9150, which is where the Tor Browser Bundle runs a SOCKS port. This
   should work if either Tor or the TBB are running on the current host.
-* `tor.socks_port(host, portnum)` : This makes a SOCKS connection to an
-  alternate port number on the given host. Callers are strongly encouraged to
-  use `host="localhost"`, rather than allowing traffic to travel off-box.
+* `tor.socks_endpoint(tor_socks_endpoint)` : This makes a SOCKS connection to
+  an arbitrary endpoint. When using TCP endpoints, callers are strongly
+  encouraged to use `host="localhost"`, rather than allowing traffic to
+  travel off-box.
 * `tor.control_endpoint(tor_control_endpoint)` : This connects to a
   pre-existing Tor daemon via it's "Control Port", which allows the handler
   to query Tor for its current SOCKS port (as well as control Tor entirely).
