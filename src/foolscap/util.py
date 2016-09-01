@@ -143,11 +143,23 @@ def allocate_tcp_port():
     #     owns that socket. (note that we are using SO_REUSEADDR but not
     #     SO_REUSEPORT, which would probably affect things).
     #
+
+    #
     # So to make this work properly everywhere, allocate_tcp_port() needs two
     # phases: first we allocate a port (with 0.0.0.0), then we close that
     # socket, then we open a second socket, bind the second socket to the
     # same port, then try to listen. If the listen() fails, we loop back and
     # try again.
+
+    # In addition, on at least OS-X, the kernel will give us a port that's in
+    # use by some other process, when that process has bound it to 127.0.0.1,
+    # and our bind/listen (to 0.0.0.0) will succeed, but a subsequent caller
+    # who tries to bind it to 127.0.0.1 will get an error in listen(). So we
+    # must actually test the proposed socket twice: once bound to 0.0.0.0,
+    # and again bound to 127.0.0.1. This probably isn't complete for
+    # applications which bind to a specific outward-facing interface, but I'm
+    # ok with that; anything other than 0.0.0.0 or 127.0.0.1 is likely to use
+    # manually-selected ports, assigned by the user or sysadmin.
 
     # Ideally we'd refrain from doing listen(), to minimize impact on the
     # system, and we'd bind the port to 127.0.0.1, to avoid making it look
@@ -169,6 +181,10 @@ def allocate_tcp_port():
         try:
             s.bind(("0.0.0.0", port))
             s.listen(5) # this is what sometimes fails
+            s.close()
+            s = _make_socket()
+            s.bind(("127.0.0.1", port))
+            s.listen(5)
             s.close()
             return port
         except socket.error:
