@@ -6,10 +6,12 @@ from foolscap.ipb import IConnectionHintHandler, InvalidHintError
 # This can match IPv4 IP addresses + port numbers *or* host names +
 # port numbers.
 DOTTED_QUAD_RESTR=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+COLIN_HEX_RESTR=r"\[[A-Fa-f.0-9:]+\]"
 DNS_NAME_RESTR=r"[A-Za-z.0-9\-]+"
 OLD_STYLE_HINT_RE=re.compile(r"^(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                         DNS_NAME_RESTR))
-NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+NEW_STYLE_HINT_RE=re.compile(r"^tcp:(%s|%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
+                                                               COLIN_HEX_RESTR,
                                                             DNS_NAME_RESTR))
 
 # Each location hint must start with "TYPE:" (where TYPE is alphanumeric) and
@@ -51,6 +53,7 @@ class DefaultTCP:
         if not mo:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
+        host = host.lstrip("[").rstrip("]")
         return endpoints.HostnameEndpoint(reactor, host, port), host
 
 def default():

@@ -60,6 +60,13 @@ class Convert(unittest.TestCase):
         self.checkTCPEndpoint("hostname:9900", "hostname", 9900)
         self.checkBadTCPEndpoint("hostname:NOTAPORT")
 
+    def testTCP6(self):
+        self.checkTCPEndpoint("tcp:[2001:0DB8:f00e:eb00::1]:9900", "2001:0DB8:f00e:eb00::1", 9900)
+        self.checkBadTCPEndpoint("tcp:[2001:0DB8:f00e:eb00::1]:NOTAPORT")
+        self.checkBadTCPEndpoint("tcp:2001:0DB8:f00e:eb00::1]:9900")
+        self.checkBadTCPEndpoint("tcp:[2001:0DB8:f00e:eb00::1:9900")
+        self.checkBadTCPEndpoint("tcp:2001:0DB8:f00e:eb00::1:9900")
+
     def testNoColon(self):
         self.checkBadTCPEndpoint("hostname")
 
