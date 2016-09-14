@@ -61,11 +61,28 @@ class Convert(unittest.TestCase):
         self.checkBadTCPEndpoint("hostname:NOTAPORT")
 
     def testTCP6(self):
-        self.checkTCPEndpoint("tcp:[2001:0DB8:f00e:eb00::1]:9900", "2001:0DB8:f00e:eb00::1", 9900)
+        self.checkTCPEndpoint("tcp:[2001:0DB8:f00e:eb00::1]:9900",
+                              "2001:0DB8:f00e:eb00::1", 9900)
         self.checkBadTCPEndpoint("tcp:[2001:0DB8:f00e:eb00::1]:NOTAPORT")
         self.checkBadTCPEndpoint("tcp:2001:0DB8:f00e:eb00::1]:9900")
         self.checkBadTCPEndpoint("tcp:[2001:0DB8:f00e:eb00::1:9900")
         self.checkBadTCPEndpoint("tcp:2001:0DB8:f00e:eb00::1:9900")
+
+        # IPv4-mapped addresses
+        self.checkTCPEndpoint("tcp:[::FFFF:1.2.3.4]:99", "::FFFF:1.2.3.4", 99)
+        self.checkBadTCPEndpoint("tcp:[::FFFF:1.2.3]:99")
+        self.checkBadTCPEndpoint("tcp:[::FFFF:1.2.3.4567]:99")
+
+        # local-scoped address with good/bad zone-ids (like "123" or "en0")
+        self.checkTCPEndpoint("tcp:[FE8::1%123]:9900", "FE8::1%123", 9900)
+        self.checkTCPEndpoint("tcp:[FE8::1%en1.2]:9900", "FE8::1%en1.2", 9900)
+        self.checkBadTCPEndpoint("tcp:[FE8::1%%]:9900")
+        self.checkBadTCPEndpoint("tcp:[FE8::1%$]:9900")
+        self.checkBadTCPEndpoint("tcp:[FE8::1%]:9900")
+        self.checkBadTCPEndpoint("tcp:[FE8::1%en0%nomultiple]:9900")
+
+        # not both IPv4-mapped and zone-id
+        self.checkBadTCPEndpoint("tcp:[::FFFF:1.2.3.4%en0]:9900")
 
     def testNoColon(self):
         self.checkBadTCPEndpoint("hostname")
