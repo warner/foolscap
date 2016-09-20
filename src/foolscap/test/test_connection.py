@@ -461,6 +461,49 @@ class Tor(unittest.TestCase):
                 f = yield self.assertFailure(d, ValueError)
         self.assertIn("could not use config.SocksPort", str(f))
 
+    def test_control_endpoint_maker_immediate(self):
+        return self.do_test_control_endpoint_maker(False)
+    def test_control_endpoint_maker_deferred(self):
+        return self.do_test_control_endpoint_maker(True)
+
+    @inlineCallbacks
+    def do_test_control_endpoint_maker(self, use_deferred):
+        control_ep = endpoints.HostnameEndpoint(reactor, "localhost", 9051)
+        results = []
+        def make(arg):
+            results.append(arg)
+            if use_deferred:
+                return defer.succeed(control_ep)
+            else:
+                return control_ep # immediate
+        h = tor.control_endpoint_maker(make)
+        self.assertEqual(results, []) # not called yet
+        # We don't actually care about the generated endpoint, just the state
+        # that the handler builds up internally. But we need to provoke a
+        # connection to build that state, and we need to prevent the handler
+        # from actually talking to a Tor daemon (which probably doesn't exist
+        # on this host).
+        config = Empty()
+        config.SocksPort = ["1234"]
+        with mock.patch("txtorcon.build_tor_connection",
+                        return_value=None):
+            with mock.patch("txtorcon.TorConfig.from_protocol",
+                            return_value=config):
+                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor)
+                self.assertEqual(results, [reactor]) # called once
+                ep, host = res
+                self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
+                self.assertEqual(host, "foo.onion")
+                self.assertEqual(h._socks_desc, "tcp:127.0.0.1:1234")
+
+                res = yield h.hint_to_endpoint("tor:foo.onion:29213", reactor)
+                self.assertEqual(results, [reactor]) # still only called once
+                ep, host = res
+                self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
+                self.assertEqual(host, "foo.onion")
+                self.assertEqual(h._socks_desc, "tcp:127.0.0.1:1234")
+
+
 
 class I2P(unittest.TestCase):
     @inlineCallbacks

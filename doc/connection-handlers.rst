@@ -107,6 +107,18 @@ Foolscap's built-in connection handlers are:
   The handler only makes one attempt to connect to the control port (when the
   first hint is processed), and uses that connection for all subsequent
   hints.
+* `tor.control_endpoint_maker(tor_control_endpoint_maker)` : This is like
+  `tor_control_endpoint()`, but instead of providing the endpoint directly,
+  you provide a function which will return the endpoint on-demand. The
+  function won't be called until a `tor:` hint is encountered, so you can
+  avoid doing work until needed, and it can return a Deferred, so the handler
+  won't try to connect to Tor until your function says it's ready. The
+  function is given one argument: the reactor to use. This handler exists to
+  support a use case where the application wants to launch Tor on it's own,
+  so it can set up an onion-service listener, but wants to use the same Tor
+  for outbound connections too (`tor.launch()` doesn't expose enough txtorcon
+  internals to support this, and `tor.control_endpoint()` needs to know the
+  endpoint too early, and also connects to Tor too early).
 * `tor.launch(data_directory=None, tor_binary=None)` : This launches a new
   copy of Tor (once, when the first hint is processed). `tor_binary=` points
   to the exact executable to be run, otherwise it will search $PATH for the

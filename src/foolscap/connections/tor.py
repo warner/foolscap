@@ -136,14 +136,16 @@ def launch(data_directory=None, tor_binary=None):
 
 @implementer(IConnectionHintHandler)
 class _ConnectedTor(_Common):
-    def __init__(self, tor_control_endpoint):
+    def __init__(self, tor_control_endpoint_maker):
         _Common.__init__(self)
-        assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
-        self._tor_control_endpoint = tor_control_endpoint
+        assert callable(tor_control_endpoint_maker), tor_control_endpoint_maker
+        self._tor_control_endpoint_maker = tor_control_endpoint_maker
 
     @inlineCallbacks
     def _connect(self, reactor):
-        tproto = yield txtorcon.build_tor_connection(self._tor_control_endpoint,
+        tor_control_endpoint = yield self._tor_control_endpoint_maker(reactor)
+        assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
+        tproto = yield txtorcon.build_tor_connection(tor_control_endpoint,
                                                      build_state=False)
         config = yield txtorcon.TorConfig.from_protocol(tproto)
         ports = list(config.SocksPort)
@@ -164,6 +166,18 @@ class _ConnectedTor(_Common):
         raise ValueError("could not use config.SocksPort: %r" % (ports,))
 
 
+def control_endpoint_maker(tor_control_endpoint_maker):
+    """Return a handler which connects to a pre-existing Tor process on a
+    control port provided by the maker function.
+
+    - tor_control_endpoint_maker: a callable, which will be invoked once
+      (with 'reactor' as the only argument). It can return immediately or
+      return a Deferred, returning/yielding a ClientEndpoint which points at
+      the Tor control port
+    """
+    assert callable(tor_control_endpoint_maker), tor_control_endpoint_maker
+    return _ConnectedTor(tor_control_endpoint_maker)
+
 def control_endpoint(tor_control_endpoint):
     """Return a handler which connects to a pre-existing Tor process on the
     given control port.
@@ -171,4 +185,4 @@ def control_endpoint(tor_control_endpoint):
       port
     """
     assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
-    return _ConnectedTor(tor_control_endpoint)
+    return _ConnectedTor(lambda reactor: tor_control_endpoint)
