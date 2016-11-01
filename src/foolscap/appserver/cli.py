@@ -468,7 +468,8 @@ def run_flappserver(argv=None, run_by_human=True):
                 stash_rc.append(-1)
                 reactor.stop()
             r.addCallbacks(good, oops)
-            reactor.run()
+            if 0 == len(stash_rc):
+                reactor.run()
             sys.exit(stash_rc[0])
         else:
             sys.exit(r)
