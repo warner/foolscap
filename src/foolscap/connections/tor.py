@@ -28,6 +28,18 @@ def is_non_public_numeric_address(host):
 HINT_RE = re.compile(r"^[^:]*:(%s|%s):(\d+){1,5}$" % (DOTTED_QUAD_RESTR,
                                                       DNS_NAME_RESTR))
 
+class add_context(object):
+    def __init__(self, update_status, context):
+        self.update_status = update_status
+        self.context = context
+        self.suffix = " (while %s)" % context
+    def __enter__(self):
+        self.update_status(self.context)
+    def __exit__(self, type, value, traceback):
+        if value is not None:
+            if not hasattr(value, "foolscap_connection_handler_error_suffix"):
+                value.foolscap_connection_handler_error_suffix = self.suffix
+
 @implementer(IConnectionHintHandler)
 class _Common:
     # subclasses must define self._connect(reactor), which fires with the
@@ -37,15 +49,15 @@ class _Common:
         self._connected = False
         self._when_connected = observer.OneShotObserverList()
 
-    def _maybe_connect(self, reactor):
+    def _maybe_connect(self, reactor, update_status):
         if not self._connected:
             self._connected = True
-            d = self._connect(reactor)
+            d = self._connect(reactor, update_status)
             d.addBoth(self._when_connected.fire)
         return self._when_connected.whenFired()
 
     @inlineCallbacks
-    def hint_to_endpoint(self, hint, reactor):
+    def hint_to_endpoint(self, hint, reactor, update_status):
         # Return (endpoint, hostname), where "hostname" is what we pass to the
         # HTTP "Host:" header so a dumb HTTP server can be used to redirect us.
         mo = HINT_RE.search(hint)
@@ -54,7 +66,8 @@ class _Common:
         host, portnum = mo.group(1), int(mo.group(2))
         if is_non_public_numeric_address(host):
             raise InvalidHintError("ignoring non-Tor-able ipaddr %s" % host)
-        socks_endpoint = yield self._maybe_connect(reactor)
+        with add_context(update_status, "connecting to a Tor"):
+            socks_endpoint = yield self._maybe_connect(reactor, update_status)
         # txsocksx doesn't like unicode: it concatenates some binary protocol
         # bytes with the hostname when talking to the SOCKS server, so the
         # py2 automatic unicode promotion blows up
@@ -62,6 +75,9 @@ class _Common:
         ep = txtorcon.TorClientEndpoint(host, portnum,
                                         socks_endpoint=socks_endpoint)
         returnValue( (ep, host) )
+
+    def describe(self):
+        return "tor"
 
 
 # note: TorClientEndpoint imports 'reactor' itself, doesn't provide override.
@@ -73,7 +89,7 @@ class _SocksTor(_Common):
         self._socks_endpoint = socks_endpoint
         # socks_endpoint=None means to use defaults: TCP to 127.0.0.1 with
         # 9050, then 9150
-    def _connect(self, reactor):
+    def _connect(self, reactor, update_status):
         return succeed(self._socks_endpoint)
 
 def default_socks():
@@ -91,7 +107,7 @@ class _LaunchedTor(_Common):
         self._tor_binary = tor_binary
 
     @inlineCallbacks
-    def _connect(self, reactor):
+    def _connect(self, reactor, update_status):
         # create a new Tor
         config = self.config = txtorcon.TorConfig()
         if self._data_directory:
@@ -114,9 +130,9 @@ class _LaunchedTor(_Common):
         self._socks_desc = socks_desc # stash for tests
         socks_endpoint = clientFromString(reactor, socks_desc)
 
-        #print "launching tor"
-        tpp = yield txtorcon.launch_tor(config, reactor,
-                                        tor_binary=self._tor_binary)
+        with add_context(update_status, "launching Tor"):
+            tpp = yield txtorcon.launch_tor(config, reactor,
+                                            tor_binary=self._tor_binary)
         #print "launched"
         # gives a TorProcessProtocol with .tor_protocol
         self._tor_protocol = tpp.tor_protocol
@@ -142,12 +158,16 @@ class _ConnectedTor(_Common):
         self._tor_control_endpoint_maker = tor_control_endpoint_maker
 
     @inlineCallbacks
-    def _connect(self, reactor):
-        tor_control_endpoint = yield self._tor_control_endpoint_maker(reactor)
+    def _connect(self, reactor, update_status):
+        maker = self._tor_control_endpoint_maker
+        with add_context(update_status, "making Tor control endpoint"):
+            tor_control_endpoint = yield maker(reactor, update_status)
         assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
-        tproto = yield txtorcon.build_tor_connection(tor_control_endpoint,
-                                                     build_state=False)
-        config = yield txtorcon.TorConfig.from_protocol(tproto)
+        with add_context(update_status, "connecting to Tor"):
+            tproto = yield txtorcon.build_tor_connection(tor_control_endpoint,
+                                                         build_state=False)
+        with add_context(update_status, "waiting for Tor bootstrap"):
+            config = yield txtorcon.TorConfig.from_protocol(tproto)
         ports = list(config.SocksPort)
         # I've seen "9050", and "unix:/var/run/tor/socks WorldWritable"
         for port in ports:
@@ -171,9 +191,9 @@ def control_endpoint_maker(tor_control_endpoint_maker):
     control port provided by the maker function.
 
     - tor_control_endpoint_maker: a callable, which will be invoked once
-      (with 'reactor' as the only argument). It can return immediately or
-      return a Deferred, returning/yielding a ClientEndpoint which points at
-      the Tor control port
+      (with two arguments: 'reactor' and 'update_status'). It can return
+      immediately or return a Deferred, returning/yielding a ClientEndpoint
+      which points at the Tor control port
     """
     assert callable(tor_control_endpoint_maker), tor_control_endpoint_maker
     return _ConnectedTor(tor_control_endpoint_maker)
@@ -185,4 +205,4 @@ def control_endpoint(tor_control_endpoint):
       port
     """
     assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
-    return _ConnectedTor(lambda reactor: tor_control_endpoint)
+    return _ConnectedTor(lambda reactor, update_status: tor_control_endpoint)

@@ -153,7 +153,8 @@ class Broker(banana.Banana, referenceable.Referenceable):
     use_remote_broker = True
 
     def __init__(self, remote_tubref, params={},
-                 keepaliveTimeout=None, disconnectTimeout=None):
+                 keepaliveTimeout=None, disconnectTimeout=None,
+                 connectionInfo=None):
         banana.Banana.__init__(self, params)
         self._expose_remote_exception_types = True
         self.remote_tubref = remote_tubref
@@ -168,6 +169,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.current_slave_IR = params.get('current-slave-IR')
         self.current_seqnum = params.get('current-seqnum')
         self.creation_timestamp = time.time()
+        self._connectionInfo = connectionInfo
 
     def initBroker(self):
 
@@ -296,6 +298,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
         # remove something that was stil in the list.
         if marker in self.disconnectWatchers:
             self.disconnectWatchers.remove(marker)
+
+    def getConnectionInfo(self):
+        return self._connectionInfo
 
     # methods to send my Referenceables to the other side
 

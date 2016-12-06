@@ -215,12 +215,12 @@ Writing Handlers (IConnectionHintHandler)
 -----------------------------------------
 
 The handler is required to implement `foolscap.ipb.IConnectionHintHandler`,
-and to provide a method named `hint_to_endpoint()`. This method takes two
-arguments (hint and reactor), and must return a (endpoint, hostname) tuple.
-The handler will not be given hints for which it was not registered, but if
-it is unable to parse the hint, it should raise `ipb.InvalidHintError`. Also
-note that the handler will be given the whole hint, including the type prefix
-that was used to locate the handler.
+and to provide a method named `hint_to_endpoint()`. This method takes three
+arguments (hint, reactor, and `update_status` callable), and must return a
+(endpoint, hostname) tuple. The handler will not be given hints for which it
+was not registered, but if it is unable to parse the hint, it should raise
+`ipb.InvalidHintError`. Also note that the handler will be given the whole
+hint, including the type prefix that was used to locate the handler.
 
 `hint_to_endpoint()` is allowed to return a Deferred that fires with the
 (endpoint, hostname) tuple, instead of returning an immediate value.
@@ -242,3 +242,23 @@ frameworks to discover objects that implement `IConnectionHintHandler` and
 install them into each Tub, however most handlers probably need some local
 configuration (e.g. which SOCKS port to use), and all need a hint_type for
 the registration, so this may not be as productive as it first appears.
+
+Status delivery: the third argument to ``hint_to_endpoint()`` will be a
+one-argument callable named ``update_status()``. While the handler is trying
+to produce an endpoint, it may call ``update_status(status)`` with a (native)
+string argument each time the connection process has achieved some new state
+(e.g. ``launching tor``, ``connecting to i2p``). This will be used by the
+``ConnectionInfo`` object to provide connection status to the application.
+Note that once the handler returns an endpoint (or the handler's Deferred
+finally fires), the status will be replaced by ``connecting``, and the
+handler should stop calling the status function.
+
+If the handler raises an error (or yields a Deferred that errbacks), and the
+exception object has a (native) string attribute named
+``foolscap_connection_handler_error_suffix``, this string will be appended to
+the usual connection status (a value in the
+``ConnectionInfo.connectorStatuses()`` dict), which is normally just the
+stringified exception value. By setting this to something like ``(while
+connecting to Tor)``, this can be used to distinguish between a failure to
+connect to the Tor daemon, versus Tor failing to connect to the target onion
+service.

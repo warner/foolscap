@@ -2,7 +2,7 @@
 
 import time
 from twisted.python.failure import Failure
-from twisted.internet import protocol, reactor
+from twisted.internet import protocol, reactor, defer
 from twisted.internet.error import ConnectionDone
 
 from foolscap import broker, referenceable, vocab
@@ -142,7 +142,6 @@ class Negotiation(protocol.Protocol):
     send_phase = PLAINTEXT # the other end is expecting this
 
     doNegotiation = True
-    debugNegotiation = False
     forceNegotiation = None
 
     minVersion = 3
@@ -195,6 +194,8 @@ class Negotiation(protocol.Protocol):
         # timers will be canceled.
         self.debugTimers = {}
 
+        self.debugPauses = {} # similar, but holds a Deferred
+
         # if anything goes wrong during negotiation (version mismatch,
         # malformed headers, assertion checks), we stash the Failure in this
         # attribute and then drop the connection. For client-side
@@ -213,7 +214,7 @@ class Negotiation(protocol.Protocol):
             kwargs['level'] = log.NOISY
         return log.msg(*args, **kwargs)
 
-    def initClient(self, connector, targetHost):
+    def initClient(self, connector, targetHost, connectionInfo):
         # clients do connectTCP and speak first with a GET
         self.log("initClient: to target %s" % connector.target,
                  target=connector.target.getTubID())
@@ -224,17 +225,19 @@ class Negotiation(protocol.Protocol):
         self.connector = connector
         self.target = connector.target
         self.targetHost = targetHost
+        self._connectionInfo = connectionInfo
         self._test_options = self.tub._test_options.copy()
         tubID = self.target.getTubID()
         slave_record = self.tub.slave_table.get(tubID, ("none",0))
         assert isinstance(slave_record, tuple), slave_record
         self.negotiationOffer['last-connection'] = "%s %s" % slave_record
 
-    def initServer(self, listener):
+    def initServer(self, listener, connectionInfo):
         # servers do listenTCP and respond to the GET
         self.log("initServer", listener=repr(listener))
         self.isClient = False
         self.listener = listener
+        self._connectionInfo = connectionInfo
         self._test_options = self.listener._test_options.copy()
         # the broker class is set when we find out which Tub we should use
 
@@ -266,6 +269,22 @@ class Negotiation(protocol.Protocol):
                 cb()
             return True
         return False
+
+    def debug_doPause(self, name, call, *args):
+        cb = self._test_options.get("debug_pause_%s" % name, None)
+        if not cb:
+            return False
+        if self.debugPauses.has_key(name):
+            return False
+        self.log("debug_doPause(%s)" % name)
+        self.debugPauses[name] = d = defer.Deferred()
+        d.addCallback(lambda _: call(*args))
+        try:
+            cb(d)
+        except Exception, e:
+            print e # otherwise failures are hard to track down
+            raise
+        return True
 
     def debug_addTimerCallback(self, name, call, *args):
         if self.debugTimers.get(name):
@@ -543,6 +562,8 @@ class Negotiation(protocol.Protocol):
         is established. This causes a negotiation block to be sent to the
         other side as an offer."""
         if self.debug_doTimer("sendHello", 1, self.sendHello):
+            return
+        if self.debug_doPause("sendHello", self.sendHello):
             return
 
         hello = self.negotiationOffer.copy()
@@ -1087,6 +1108,7 @@ class Negotiation(protocol.Protocol):
         b = self.brokerClass(theirTubRef, params,
                              self.tub.keepaliveTimeout,
                              self.tub.disconnectTimeout,
+                             self._connectionInfo,
                              )
         b.factory = self.factory # not used for PB code
         b.setTub(self.tub)
@@ -1100,11 +1122,14 @@ class Negotiation(protocol.Protocol):
         buf, self.buffer = self.buffer, "" # empty our buffer, just in case
         b.dataReceived(buf) # and hand it to the new protocol
 
+        self._connectionInfo._set_connected(True)
         # if we were created as a client, we'll have a TubConnector. Let them
         # know that this connection has succeeded, so they can stop any other
         # connection attempts still in progress.
         if self.isClient:
-            self.connector.negotiationComplete(self)
+            self.connector.connectorNegotiationComplete(self, self.factory.location)
+        else:
+            self._connectionInfo._set_listener_status("successful")
 
         # finally let our Tub know that they can start using the new Broker.
         # This will wake up anyone who initiated an outbound connection.
@@ -1114,8 +1139,12 @@ class Negotiation(protocol.Protocol):
         reason = self.failureReason
         self.stopNegotiationTimer()
         if self.receive_phase != ABANDONED and self.isClient:
-            eventually(self.connector.negotiationFailed, self, reason)
+            eventually(self.connector.connectorNegotiationFailed, self,
+                       self.factory.location, reason)
         self.receive_phase = ABANDONED
+        if not self.isClient:
+            description = "negotiation failed: %s" % str(reason.value)
+            self._connectionInfo._set_listener_status(description)
         cb = self._test_options.get("debug_negotiationFailed_cb")
         if cb:
             # note that this gets called with a NegotiationError, not a

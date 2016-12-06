@@ -11,7 +11,7 @@ from twisted.python.deprecate import deprecated
 from twisted.python.versions import Version
 
 from foolscap import ipb, base32, negotiate, broker, eventual, storage
-from foolscap import connection, util
+from foolscap import connection, util, info
 from foolscap.connections import tcp
 from foolscap.referenceable import SturdyRef
 from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
@@ -94,7 +94,10 @@ class Listener(protocol.ServerFactory, service.Service):
                      addr=(addr.host, addr.port),
                      facility="foolscap.listener")
         proto = self._negotiationClass(logparent=lp)
-        proto.initServer(self)
+        ci = info.ConnectionInfo()
+        ci._set_listener_description(self._describe())
+        ci._set_listener_status("negotiating")
+        proto.initServer(self, ci)
         proto.factory = self
         return proto
 
@@ -103,6 +106,12 @@ class Listener(protocol.ServerFactory, service.Service):
         if tubID == self._tub.tubID:
             tub = self._tub
         return (tub, self._redirects.get(tubID))
+
+    def _describe(self):
+        desc = "Listener"
+        if self._lp:
+            desc += " on %s" % str(self._lp.getHost())
+        return desc
 
 def generateSwissnumber(bits):
     bytes = os.urandom(bits/8)
@@ -526,8 +535,20 @@ class Tub(service.MultiService):
     def getShortTubID(self):
         return self.tubID[:4]
 
+    def getConnectionInfoForFURL(self, furl):
+        tubref = SturdyRef(furl).getTubRef()
+        return self._getConnectionInfoForTubRef(tubref)
+
+    def _getConnectionInfoForTubRef(self, tubref):
+        if tubref in self.brokers:
+            return self.brokers[tubref].getConnectionInfo()
+        if tubref in self.tubConnectors:
+            return self.tubConnectors[tubref].getConnectionInfo()
+        return None # currently have no established or in-progress connection
+
     def connectorStarted(self, c):
         assert self.running
+        # TODO: why a list? shouldn't there only ever be one TubConnector?
         self._activeConnectors.append(c)
     def connectorFinished(self, c):
         if c in self._activeConnectors:
@@ -883,8 +904,9 @@ class Tub(service.MultiService):
         t1.setPeer(t2); t2.setPeer(t1)
         n = negotiate.Negotiation()
         params = n.loopbackDecision()
-        b1,b2 = (self.brokerClass(tubref, params),
-                 self.brokerClass(tubref, params))
+        ci = info.ConnectionInfo()
+        b1 = self.brokerClass(tubref, params, connectionInfo=ci)
+        b2 = self.brokerClass(tubref, params)
         # we treat b1 as "our" broker, and b2 as "theirs", and we pretend
         # that b2 has just connected to us. We keep track of b1, and b2 keeps
         # track of us.
@@ -892,6 +914,10 @@ class Tub(service.MultiService):
         b2.setTub(self)
         t1.protocol = b1; t2.protocol = b2
         b1.makeConnection(t1); b2.makeConnection(t2)
+        ci._set_connected(True)
+        ci._set_winning_hint("loopback")
+        ci._set_connection_status("loopback", "connected")
+        ci._set_established_at(b1.creation_timestamp)
         self.brokerAttached(tubref, b1, False)
         return b1
 

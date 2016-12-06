@@ -365,6 +365,8 @@ class RemoteReferenceOnly(object):
         return not self.tracker.broker.disconnected
     def getLocationHints(self):
         return SturdyRef(self.tracker.url).locationHints
+    def getConnectionInfo(self):
+        return self.tracker.broker.getConnectionInfo()
 
     def getDataLastReceivedAt(self):
         """If keepalives are enabled, this returns seconds-since-epoch when

@@ -14,7 +14,7 @@ class _RunningI2P:
         assert IStreamClientEndpoint.providedBy(sam_endpoint)
         self._sam_endpoint = sam_endpoint
 
-    def hint_to_endpoint(self, hint, reactor):
+    def hint_to_endpoint(self, hint, reactor, update_status):
         # Return (endpoint, hostname), where "hostname" is what we pass to the
         # HTTP "Host:" header so a dumb HTTP server can be used to redirect us.
         mo = HINT_RE.search(hint)
@@ -23,6 +23,9 @@ class _RunningI2P:
         host, portnum = mo.group(1), int(mo.group(3)) if mo.group(3) else None
         ep = SAMI2PStreamClientEndpoint.new(self._sam_endpoint, host, portnum)
         return ep, host
+
+    def describe(self):
+        return "i2p"
 
 def default(reactor):
     """Return a handler which connects to a pre-existing I2P process on the

@@ -1017,6 +1017,172 @@ connect to any other Tub. Doing this before `tub.startService()` is one
 approach.
 
 
+Connection Progress/Status
+--------------------------
+
+Several steps must take place between the time your application calls
+``Tub.getReference()`` and when the Deferred finally fires with the
+``RemoteReference``:
+
+* the FURL must be parsed for connection hints
+* each hint is mapped to a connection handler
+* the handler yields an endpoint
+* Foolscap establishes a connection to that endpoint
+* protocol negotiation takes place
+* finally, the first connection that passes negotiation wins, and the others
+  are abandoned
+
+In addition, a reference might be satisfied by an inbound connection (where
+the Tub is listening on some port, and the target Tub happens to make a
+connection to us, in response to some ``getReference()`` call made on the far
+side that referenced our own TubID).
+
+Many of these steps can take a long amount of time. The most obviously slow
+step is connection establishment, but negotiation requires a few roundtrips,
+and handlers can defer yielding an endpoint if they need to spin up something
+like Tor first.
+
+Connections can also fail: the hint might not map to any connection handler,
+the handler might not be able to parse the hint, the endpoint might not
+respond to the connection attempt, the server might fail negotiation, or the
+connection might be abandoned in favor of a faster one.
+
+Note, of course, that "connections" are an illusion: in a distributed system,
+reality consists solely of messages, which are either successfully delivered
+or possibly lost. The only way to know that a message has been delivered is
+to receive a second message which proves knowledge of the first. The "Two
+Generals Problem" is persistently relevant, as are the information-flow
+consequences of Relativity (causality among partially-overlapping
+light-cones, and the fact that "simultaneous" lacks meaning in a global
+setting).
+
+However, references in Foolscap (and its E/CapTP/VatTP ancestors) are defined
+in terms of connection establishment and loss. They have a monotonic
+lifetime: a reference starts out as pending, then becomes established, then
+is "live" for some period of time, then is lost. Once lost, the
+RemoteReference is "dead", and all attempts to send messages on it yield a
+DeadReferenceError. When a Foolscap Tub says a reference is "connected", it
+means "at some point in the past, I received acknowledgment from the far end,
+and I have not yet seen any evidence that a new message would be rejected or
+ignored". When it says a reference is "dead", it means "I have seen a message
+be rejected or ignored, so I have decided that I will send no further
+messages to this target".
+
+With those caveats, Foolscap provides a few ways to obtain information about
+the status of connection attempts, and to describe how any established
+connection was made.
+
+``Tub.getConnectionInfoForFURL(furl)`` will give you a ``ConnectionInfo``
+object for the TubID referenced by ``furl`` if our Tub is connected to the
+Tub that hosts the given FURL, or if it has a connection in progress to that
+Tub. It will return None if our Tub has never heard of the target, or if it
+used to have a connection in the past, but that connection was lost. It is
+most useful to call this just after calling ``Tub.getReference(furl)`` (e.g.
+when an application status display is refreshed, and you want to display
+information about all pending or established connections).
+
+You can also get a ``ConnectionInfo`` for an established reference by calling
+``rref.getConnectionInfo()`` on the RemoteReference.
+
+Finally, if your call to ``Tub.getReference()`` fails, the Failure object
+will probably have a ``._connectionInfo`` attribute. Some failure pathways do
+not populate this attribute, so applications should use ``getattr()``, guard
+access with a ``hasattr()`` check, or catch-and-tolerate ``AttributeError``.
+
+
+The ``ConnectionInfo`` object has methods to tell you the following:
+
+* ``ci.connected()``: returns False until the target is "connected" (meaning
+  that a ``.callRemote()`` might succeed), then returns True until the
+  connection is lost, then returns False again. If the connection has been
+  lost, ``callRemote()`` is sure to fail (until a new connection is
+  established).
+
+These methods can help track progress of outbound connections:
+
+* ``ci.connectorStatuses()``: returns a dictionary, where the keys are
+  connection hints, one for each hint in the FURL that provoked the outbound
+  connection attempt. Each value is a string that describes the current
+  status of this hint: "no handler", "resolving hint", "connecting",
+  "ConnectionRefusedError", "cancelled", "InvalidHintError", "negotiation",
+  "negotiation failed:" (and an exception string), "successful", or some
+  other error string.
+* ``ci.connectionHandlers()``: a dictionary, where the keys are connection
+  hints (like ``connectorStatuses()``, and each value is a string description
+  of the connection handler that is managing that hint (e.g. "tcp" or "tor").
+  If not connection handler could be found for the hint, the value will be
+  None.
+
+Once connected, the following methods become useful to tell you when and how
+the connection was established:
+
+* ``ci.connectionEstablishedAt()``: Returns None until the connection is
+  established, then returns a unix timestamp (seconds since epoch) of the
+  connection time. That timestamp will continue to be returned, even after
+  the connection is subsequently lost.
+* ``ci.winningHint()``: Returns None until an outbound connection is
+  successfully negotiated, then returns a string with the connection hint
+  that succeeded. If the connection was created by an inbound socket, this
+  will remain None (in which case ``ci.listenerStatus()`` will help).
+* ``ci.listenerStatus()``: Returns (None, None) until an inbound connection
+  is accepted, then returns a tuple of (listener, status), both strings. This
+  provides a description of the listener and its status ("negotiating",
+  "successful", or "negotiation failed:" and an exception string, except that
+  the only observable value is "successful"). If the connection was
+  established by an *outbound* connection, this will remain (None, None).
+
+Finally, when the connection is lost, this method becomes useful:
+
+* ``ci.connectionLostAt()``: Returns None until the connection is established
+  and then lost, then returns a unix timestamp (seconds since epoch) of the
+  connection-loss time.
+
+Note that the ``ConnectionInfo`` object is not "live": connection
+establishment or loss may cause the object to be replaced with a new copy. So
+applications should re-obtain a new object each time they want to display the
+current status. However ``ConnectionInfo`` objects are also not static: the
+Tub may keep mutating a given object (and returning the same object to
+``getConnectionInfo() calls``) until it needs to replace it.
+
+
+Reconnector Status
+------------------
+
+The Reconnector (e.g. ``reconnector = Tub.connectTo(furl, callback)``) has a
+separate object, known as the ``ReconnectionInfo``, which describes the state
+of the reconnection process. Reconnectors react to a connection loss by
+waiting a random delay, then attempting to re-establish the connection. The
+delay increases with each failure, to avoid overwhelming the target with
+useless traffic. This results in a repeating cycle of states:
+
+* "connecting" (while a connection attempt is underway)
+* "connected" (once a connection is established)
+* "waiting" (after connection loss, during the delay before a new attempt is
+  started)
+
+After the delay has passed, the Reconnector moves to "connecting". If the
+attempt succeeds, it moves to "connected". If not, it moves to "waiting".
+
+A fourth state, "unstarted", is present before the Reconnector's Tub has been
+started.
+
+The ``ReconnectionInfo`` object can be obtained by calling
+``reconnector.getReconnectionInfo()``. It provides the following API:
+
+* ``ri.getState()``: returns a string: "unstarted", "connecting",
+  "connected", or "waiting"
+* ``ri.getConnectionInfo()``: return an updated ``ConnectionInfo`` object,
+  which describes the most recent connection attempt or establishment.
+  Returns None if the Reconnector is unstarted
+* ``ri.lastAttempt()``: returns the time (as seconds since epoch) of the
+  start of the most recent connection attempt, specifically the timestamp of
+  the last transition to "connecting".
+* ``ri.nextAttempt()``: returns the time of the next scheduled connection
+  establishment attempt (as seconds since epoch). Returns None if the
+  Reconnector is not in the "waiting" state.
+
+
+
 
 .. rubric:: Footnotes
 

@@ -55,7 +55,7 @@ def convert_legacy_hint(location):
 
 @implementer(IConnectionHintHandler)
 class DefaultTCP:
-    def hint_to_endpoint(self, hint, reactor):
+    def hint_to_endpoint(self, hint, reactor, update_status):
         # Return (endpoint, hostname), where "hostname" is what we pass to the
         # HTTP "Host:" header so a dumb HTTP server can be used to redirect us.
         mo = NEW_STYLE_HINT_RE.search(hint)
@@ -64,6 +64,9 @@ class DefaultTCP:
         host, port = mo.group(1), int(mo.group(2))
         host = host.lstrip("[").rstrip("]")
         return endpoints.HostnameEndpoint(reactor, host, port), host
+
+    def describe(self):
+        return "tcp"
 
 def default():
     return DefaultTCP()

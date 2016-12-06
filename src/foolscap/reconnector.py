@@ -6,6 +6,32 @@ from twisted.internet import reactor
 from twisted.python import log
 from foolscap.tokens import NegotiationError, RemoteNegotiationError
 
+class ReconnectionInfo:
+    def __init__(self):
+        self._state = "unstarted"
+        self._connectionInfo = None
+        self._last_attempt = None
+        self._next_attempt = None
+
+    def _set_state(self, state):
+        self._state = state # unstarted, connecting, connected, waiting
+    def _set_connection_info(self, connectionInfo):
+        self._connectionInfo = connectionInfo
+    def _set_last_attempt(self, when):
+        self._last_attempt = when
+    def _set_next_attempt(self, when):
+        self._next_attempt = when
+
+    def getState(self):
+        return self._state
+    def getConnectionInfo(self):
+        return self._connectionInfo
+    def lastAttempt(self):
+        return self._last_attempt
+    def nextAttempt(self):
+        return self._next_attempt
+
+
 class Reconnector(object):
     """Establish (and maintain) a connection to a given PBURL.
 
@@ -51,6 +77,7 @@ class Reconnector(object):
         self._timer = None
         self._tub = None
         self._last_failure = None
+        self._reconnectionInfo = ReconnectionInfo()
 
     def startConnecting(self, tub):
         self._tub = tub
@@ -83,13 +110,23 @@ class Reconnector(object):
     def getLastFailure(self):
         return self._last_failure
 
+    def getReconnectionInfo(self):
+        return self._reconnectionInfo
+
     def _connect(self):
+        self._reconnectionInfo._set_state("connecting")
+        self._reconnectionInfo._set_last_attempt(time.time())
         d = self._tub.getReference(self._url)
+        ci = self._tub.getConnectionInfoForFURL(self._url)
+        self._reconnectionInfo._set_connection_info(ci)
         d.addCallbacks(self._connected, self._failed)
 
     def _connected(self, rref):
         if not self._active:
             return
+        self._reconnectionInfo._set_state("connected")
+        ci = self._tub.getConnectionInfoForFURL(self._url)
+        self._reconnectionInfo._set_connection_info(ci)
         self._last_failure = None
         rref.notifyOnDisconnect(self._disconnected)
         cb, args, kwargs = self._observer
@@ -97,6 +134,9 @@ class Reconnector(object):
 
     def _failed(self, f):
         self._last_failure = f
+        ci = getattr(f, "_connectionInfo", None)
+        if ci:
+            self._reconnectionInfo._set_connection_info(ci)
 
         # I'd like to quietly handle "normal" problems (basically TCP
         # failures and NegotiationErrors that result from the target either
@@ -133,6 +173,8 @@ class Reconnector(object):
         if self.verbose:
             log.msg("Reconnector scheduling retry in %ds for %s" %
                     (self._delay, self._url))
+        self._reconnectionInfo._set_state("waiting")
+        self._reconnectionInfo._set_next_attempt(time.time() + self._delay)
         self._timer = reactor.callLater(self._delay, self._timer_expired)
 
     def _timer_expired(self):
