@@ -151,7 +151,7 @@ class TubConnector(object):
             # with a ConnectingCancelledError
         for n in self.pendingNegotiations.keys():
             n.transport.loseConnection()
-            # triggers n.connectionLost(), then self.negotiationFailed()
+            # triggers n.connectionLost(), then self.connectorNegotiationFailed()
 
     def connectToAll(self):
         while self.remainingLocations:
@@ -224,11 +224,11 @@ class TubConnector(object):
 
     def redirectReceived(self, newLocation):
         # the redirected connection will disconnect soon, which will trigger
-        # negotiationFailed(), so we don't have to do a
+        # connectorNegotiationFailed(), so we don't have to do a
         self.remainingLocations.append(newLocation)
         self.connectToAll()
 
-    def negotiationFailed(self, n, reason):
+    def connectorNegotiationFailed(self, n, reason):
         assert isinstance(n, self.tub.negotiationClass)
         # this is called if protocol negotiation cannot be established, or if
         # the connection is closed for any reason prior to switching to the
@@ -244,11 +244,11 @@ class TubConnector(object):
         self.checkForFailure()
         self.checkForIdle()
 
-    def negotiationComplete(self, n):
+    def connectorNegotiationComplete(self, n):
         assert isinstance(n, self.tub.negotiationClass)
         # 'factory' has just completed negotiation, so abandon all the other
         # connection attempts
-        self.log("negotiationComplete, %s won" % n)
+        self.log("connectorNegotiationComplete, %s won" % n)
         self.pendingNegotiations.pop(n) # this one succeeded
         self.active = False
         if self.timer:
