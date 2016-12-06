@@ -142,7 +142,6 @@ class Negotiation(protocol.Protocol):
     send_phase = PLAINTEXT # the other end is expecting this
 
     doNegotiation = True
-    debugNegotiation = False
     forceNegotiation = None
 
     minVersion = 3
