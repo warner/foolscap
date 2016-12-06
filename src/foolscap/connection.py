@@ -2,6 +2,7 @@ from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor, error, defer
 from foolscap.tokens import (NoLocationHintsError, NegotiationError,
                              RemoteNegotiationError)
+from foolscap.info import ConnectionInfo
 from foolscap.logging import log
 from foolscap.logging.log import CURIOUS, UNUSUAL, OPERATIONAL
 from foolscap.util import isSubstring
@@ -37,7 +38,7 @@ class TubConnectorFactory(protocol.Factory, object):
     def buildProtocol(self, addr):
         nc = self.tc.tub.negotiationClass # this is usually Negotiation
         proto = nc(self._logparent)
-        proto.initClient(self.tc, self.host)
+        proto.initClient(self.tc, self.host, self.tc._connectionInfo)
         proto.factory = self
         return proto
 
@@ -85,6 +86,7 @@ class TubConnector(object):
         self.tub = parent
         self.target = tubref
         self.connectionPlugins = connectionPlugins
+        self._connectionInfo = ConnectionInfo()
         self.remainingLocations = list(self.target.getLocations())
         # attemptedLocations keeps track of where we've already tried to
         # connect, so we don't try them twice, even if they appear in the
@@ -121,6 +123,9 @@ class TubConnector(object):
         kwargs['parent'] = kwargs.get('parent') or self._logparent
         kwargs['facility'] = kwargs.get('facility') or "foolscap.connection"
         return log.msg(*args, **kwargs)
+
+    def getConnectionInfo(self):
+        return self._connectionInfo
 
     def connect(self):
         """Begin the connection process. This should only be called once.

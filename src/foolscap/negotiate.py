@@ -214,7 +214,7 @@ class Negotiation(protocol.Protocol):
             kwargs['level'] = log.NOISY
         return log.msg(*args, **kwargs)
 
-    def initClient(self, connector, targetHost):
+    def initClient(self, connector, targetHost, connectionInfo):
         # clients do connectTCP and speak first with a GET
         self.log("initClient: to target %s" % connector.target,
                  target=connector.target.getTubID())
@@ -225,17 +225,19 @@ class Negotiation(protocol.Protocol):
         self.connector = connector
         self.target = connector.target
         self.targetHost = targetHost
+        self._connectionInfo = connectionInfo
         self._test_options = self.tub._test_options.copy()
         tubID = self.target.getTubID()
         slave_record = self.tub.slave_table.get(tubID, ("none",0))
         assert isinstance(slave_record, tuple), slave_record
         self.negotiationOffer['last-connection'] = "%s %s" % slave_record
 
-    def initServer(self, listener):
+    def initServer(self, listener, connectionInfo):
         # servers do listenTCP and respond to the GET
         self.log("initServer", listener=repr(listener))
         self.isClient = False
         self.listener = listener
+        self._connectionInfo = connectionInfo
         self._test_options = self.listener._test_options.copy()
         # the broker class is set when we find out which Tub we should use
 
@@ -1106,6 +1108,7 @@ class Negotiation(protocol.Protocol):
         b = self.brokerClass(theirTubRef, params,
                              self.tub.keepaliveTimeout,
                              self.tub.disconnectTimeout,
+                             self._connectionInfo,
                              )
         b.factory = self.factory # not used for PB code
         b.setTub(self.tub)
