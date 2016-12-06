@@ -562,17 +562,18 @@ class BaseMixin(ShouldFailMixin):
         return getPage("http://127.0.0.1:%d/foo" % portnum)
 
 class MakeTubsMixin:
-    def makeTubs(self, numTubs, mangleLocation=None):
+    def makeTubs(self, numTubs, mangleLocation=None, start=True):
         self.services = []
         self.tub_ports = []
         for i in range(numTubs):
             t = Tub()
-            t.startService()
+            if start:
+                t.startService()
             self.services.append(t)
             portnum = allocate_tcp_port()
             self.tub_ports.append(portnum)
             t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
-            location = "127.0.0.1:%d" % portnum
+            location = "tcp:127.0.0.1:%d" % portnum
             if mangleLocation:
                 location = mangleLocation(portnum)
             t.setLocation(location)

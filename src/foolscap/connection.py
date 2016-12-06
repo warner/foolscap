@@ -328,6 +328,8 @@ class TubConnector(object):
     def failed(self):
         self.stopConnectionTimer()
         self.active = False
+        if self.failureReason:
+            self.failureReason._connectionInfo = self._connectionInfo
         self.tub.connectionFailed(self.target, self.failureReason)
         self.tub.connectorFinished(self)
 

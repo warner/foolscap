@@ -2,7 +2,7 @@ from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.internet import defer, reactor
 from twisted.application import service
-from foolscap import info, ipb, util
+from foolscap import info, reconnector, ipb, util
 from foolscap.api import Tub
 from foolscap.connections import tcp
 from foolscap.test.common import (certData_low, certData_high, Target)
@@ -157,3 +157,36 @@ class Connect(unittest.TestCase):
         ci = rref1.getConnectionInfo()
         self.assertEqual(ci.connectorStatuses(), {"loopback": "connected"})
         self.assertEqual(ci.listenerStatus(), (None, None))
+
+
+class Reconnection(unittest.TestCase):
+    def test_stages(self):
+        ri = reconnector.ReconnectionInfo()
+
+        self.assertEqual(ri.getState(), "unstarted")
+        self.assertEqual(ri.getConnectionInfo(), None)
+        self.assertEqual(ri.lastAttempt(), None)
+        self.assertEqual(ri.nextAttempt(), None)
+
+        ci = object()
+        ri._set_state("connecting")
+        ri._set_connection_info(ci)
+        ri._set_last_attempt(10.0)
+
+        self.assertEqual(ri.getState(), "connecting")
+        self.assertEqual(ri.getConnectionInfo(), ci)
+        self.assertEqual(ri.lastAttempt(), 10.0)
+        self.assertEqual(ri.nextAttempt(), None)
+
+        ri._set_state("connected")
+
+        self.assertEqual(ri.getState(), "connected")
+
+        ri._set_state("waiting")
+        ri._set_connection_info(None)
+        ri._set_next_attempt(20.0)
+
+        self.assertEqual(ri.getState(), "waiting")
+        self.assertEqual(ri.getConnectionInfo(), None)
+        self.assertEqual(ri.lastAttempt(), 10.0)
+        self.assertEqual(ri.nextAttempt(), 20.0)
