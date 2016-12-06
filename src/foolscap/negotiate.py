@@ -1123,7 +1123,7 @@ class Negotiation(protocol.Protocol):
         # know that this connection has succeeded, so they can stop any other
         # connection attempts still in progress.
         if self.isClient:
-            self.connector.connectorNegotiationComplete(self)
+            self.connector.connectorNegotiationComplete(self, self.factory.location)
 
         # finally let our Tub know that they can start using the new Broker.
         # This will wake up anyone who initiated an outbound connection.
@@ -1133,7 +1133,8 @@ class Negotiation(protocol.Protocol):
         reason = self.failureReason
         self.stopNegotiationTimer()
         if self.receive_phase != ABANDONED and self.isClient:
-            eventually(self.connector.connectorNegotiationFailed, self, reason)
+            eventually(self.connector.connectorNegotiationFailed, self,
+                       self.factory.location, reason)
         self.receive_phase = ABANDONED
         cb = self._test_options.get("debug_negotiationFailed_cb")
         if cb:

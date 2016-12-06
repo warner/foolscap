@@ -14,9 +14,10 @@ class TubConnectorFactory(protocol.Factory, object):
 
     noisy = False
 
-    def __init__(self, tc, host, logparent):
+    def __init__(self, tc, host, location, logparent):
         self.tc = tc # the TubConnector
         self.host = host
+        self.location = location
         self._logparent = logparent
 
     def __repr__(self):
@@ -167,7 +168,7 @@ class TubConnector(object):
                 (ep, host) = res
                 self.log("connecting to hint: %s" % (location,),
                          parent=lp, umid="9iX0eg")
-                return ep.connect(TubConnectorFactory(self, host, lp))
+                return ep.connect(TubConnectorFactory(self, host, location, lp))
             d.addCallback(_good_hint)
             self.pendingConnections.add(d)
             def _remove(res, d=d):
@@ -228,7 +229,7 @@ class TubConnector(object):
         self.remainingLocations.append(newLocation)
         self.connectToAll()
 
-    def connectorNegotiationFailed(self, n, reason):
+    def connectorNegotiationFailed(self, n, location, reason):
         assert isinstance(n, self.tub.negotiationClass)
         # this is called if protocol negotiation cannot be established, or if
         # the connection is closed for any reason prior to switching to the
@@ -244,7 +245,7 @@ class TubConnector(object):
         self.checkForFailure()
         self.checkForIdle()
 
-    def connectorNegotiationComplete(self, n):
+    def connectorNegotiationComplete(self, n, location):
         assert isinstance(n, self.tub.negotiationClass)
         # 'factory' has just completed negotiation, so abandon all the other
         # connection attempts
