@@ -234,7 +234,11 @@ class TubConnector(object):
         # this is called if protocol negotiation cannot be established, or if
         # the connection is closed for any reason prior to switching to the
         # Banana protocol
-        self.pendingNegotiations.pop(n)
+
+        # abandoned connections will not have hit _connectionSuccess, so they
+        # won't have been added to pendingNegotiations
+        self.pendingNegotiations.pop(n, None)
+
         assert isinstance(reason, Failure), \
                "Hey, %s isn't a Failure" % (reason,)
         if (not self.failureReason or
