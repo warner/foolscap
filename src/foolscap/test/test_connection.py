@@ -510,7 +510,7 @@ class Tor(unittest.TestCase):
     def do_test_control_endpoint_maker(self, use_deferred):
         control_ep = endpoints.HostnameEndpoint(reactor, "localhost", 9051)
         results = []
-        def make(arg):
+        def make(arg, update_status):
             results.append(arg)
             if use_deferred:
                 return defer.succeed(control_ep)

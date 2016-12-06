@@ -161,7 +161,7 @@ class _ConnectedTor(_Common):
     def _connect(self, reactor, update_status):
         maker = self._tor_control_endpoint_maker
         with add_context(update_status, "making Tor control endpoint"):
-            tor_control_endpoint = yield maker(reactor)
+            tor_control_endpoint = yield maker(reactor, update_status)
         assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
         with add_context(update_status, "connecting to Tor"):
             tproto = yield txtorcon.build_tor_connection(tor_control_endpoint,
@@ -191,9 +191,9 @@ def control_endpoint_maker(tor_control_endpoint_maker):
     control port provided by the maker function.
 
     - tor_control_endpoint_maker: a callable, which will be invoked once
-      (with 'reactor' as the only argument). It can return immediately or
-      return a Deferred, returning/yielding a ClientEndpoint which points at
-      the Tor control port
+      (with two arguments: 'reactor' and 'update_status'). It can return
+      immediately or return a Deferred, returning/yielding a ClientEndpoint
+      which points at the Tor control port
     """
     assert callable(tor_control_endpoint_maker), tor_control_endpoint_maker
     return _ConnectedTor(tor_control_endpoint_maker)
@@ -205,4 +205,4 @@ def control_endpoint(tor_control_endpoint):
       port
     """
     assert IStreamClientEndpoint.providedBy(tor_control_endpoint)
-    return _ConnectedTor(lambda reactor: tor_control_endpoint)
+    return _ConnectedTor(lambda reactor, update_status: tor_control_endpoint)
