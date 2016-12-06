@@ -1,3 +1,4 @@
+import time
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor, error, defer
 from foolscap.tokens import (NoLocationHintsError, NegotiationError,
@@ -42,7 +43,9 @@ class TubConnectorFactory(protocol.Factory, object):
         proto.factory = self
         return proto
 
-def get_endpoint(location, connectionPlugins):
+def get_endpoint(location, connectionPlugins, connectionInfo):
+    def _update_status(status):
+        connectionInfo._set_connection_status(location, status)
     def _try():
         hint = convert_legacy_hint(location)
         if ":" not in hint:
@@ -50,7 +53,10 @@ def get_endpoint(location, connectionPlugins):
         hint_type = hint.split(":", 1)[0]
         plugin = connectionPlugins.get(hint_type)
         if not plugin:
+            connectionInfo._describe_connection_handler(location, None)
             raise InvalidHintError("no handler registered for hint")
+        connectionInfo._describe_connection_handler(location, None)
+        _update_status("resolving hint")
         return plugin.hint_to_endpoint(hint, reactor)
     return defer.maybeDeferred(_try)
 
@@ -166,9 +172,12 @@ class TubConnector(object):
                 continue
             self.attemptedLocations.append(location)
             lp = self.log("considering hint: %s" % (location,))
-            d = get_endpoint(location, self.connectionPlugins)
+            d = get_endpoint(location, self.connectionPlugins,
+                             self._connectionInfo)
             # no handler for this hint?: InvalidHintError thrown here
-            def _good_hint(res):
+            def _good_hint(res, location=location):
+                self._connectionInfo._set_connection_status(location,
+                                                            "connecting")
                 self.validHints.append(location)
                 (ep, host) = res
                 self.log("connecting to hint: %s" % (location,),
@@ -203,18 +212,23 @@ class TubConnector(object):
         # this is called if some individual TCP connection cannot be
         # established
         if reason.check(error.ConnectionRefusedError):
+            description = "connection refused"
             self.log("connection refused for %s" % hint, level=OPERATIONAL,
                      parent=lp, umid="rSrUxQ")
-        elif reason.check(error.ConnectingCancelledError):
+        elif reason.check(error.ConnectingCancelledError, defer.CancelledError):
+            description = "abandoned"
             self.log("abandoned attempt to %s" % hint, level=OPERATIONAL,
                      parent=lp, umid="CC8vwg")
         elif reason.check(InvalidHintError):
+            description = "bad hint: %s" % str(reason.value)
             self.log("unable to use hint: %s: %s" % (hint, reason.value),
                      level=UNUSUAL, parent=lp, umid="z62ctA")
         else:
+            description = "failed to connect: %s" % str(reason)
             log.err(reason, "failed to connect to %s" % hint, level=CURIOUS,
                     parent=lp, facility="foolscap.connection",
                     umid="2PEowg")
+        self._connectionInfo._set_connection_status(hint, description)
         if not self.failureReason:
             self.failureReason = reason
         self.checkForFailure()
@@ -227,6 +241,7 @@ class TubConnector(object):
         self.log("connected to %s, beginning negotiation" % hint,
                  level=OPERATIONAL, parent=lp, umid="VN0XGQ")
         self.pendingNegotiations[p] = hint
+        self._connectionInfo._set_connection_status(hint, "negotiating")
 
     def redirectReceived(self, newLocation):
         # the redirected connection will disconnect soon, which will trigger
@@ -243,7 +258,8 @@ class TubConnector(object):
         # abandoned connections will not have hit _connectionSuccess, so they
         # won't have been added to pendingNegotiations
         self.pendingNegotiations.pop(n, None)
-
+        description = "negotiation failed: %s" % str(reason.value)
+        self._connectionInfo._set_connection_status(location, description)
         assert isinstance(reason, Failure), \
                "Hey, %s isn't a Failure" % (reason,)
         if (not self.failureReason or
@@ -260,6 +276,9 @@ class TubConnector(object):
         # connection attempts
         self.log("connectorNegotiationComplete, %s won" % n)
         self.pendingNegotiations.pop(n) # this one succeeded
+        self._connectionInfo._set_connection_status(location, "successful")
+        self._connectionInfo._set_winning_hint(location)
+        self._connectionInfo._set_established_at(time.time())
         self.active = False
         if self.timer:
             self.timer.cancel()

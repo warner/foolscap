@@ -95,6 +95,8 @@ class Listener(protocol.ServerFactory, service.Service):
                      facility="foolscap.listener")
         proto = self._negotiationClass(logparent=lp)
         ci = info.ConnectionInfo()
+        ci._set_listener_description(self._describe())
+        ci._set_listener_status("negotiating")
         proto.initServer(self, ci)
         proto.factory = self
         return proto
@@ -104,6 +106,12 @@ class Listener(protocol.ServerFactory, service.Service):
         if tubID == self._tub.tubID:
             tub = self._tub
         return (tub, self._redirects.get(tubID))
+
+    def _describe(self):
+        desc = "Listener"
+        if self._lp:
+            desc += " on %s" % str(self._lp.getHost())
+        return desc
 
 def generateSwissnumber(bits):
     bytes = os.urandom(bits/8)

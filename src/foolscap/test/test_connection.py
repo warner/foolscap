@@ -9,6 +9,7 @@ from twisted.application import service
 import txtorcon
 from txsocksx.client import SOCKS5ClientEndpoint
 from foolscap.api import Tub
+from foolscap.info import ConnectionInfo
 from foolscap.connection import get_endpoint
 from foolscap.connections import tcp, socks, tor, i2p
 from foolscap.tokens import NoLocationHintsError
@@ -19,7 +20,7 @@ from foolscap import ipb, util
 
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
-        d = get_endpoint(hint, {"tcp": tcp.default()})
+        d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
         (ep, host) = self.successResultOf(d)
         self.failUnless(isinstance(ep, endpoints.HostnameEndpoint), ep)
         # note: this is fragile, and will break when Twisted changes the
@@ -28,11 +29,11 @@ class Convert(unittest.TestCase):
         self.failUnlessEqual(ep._port, expected_port)
 
     def checkBadTCPEndpoint(self, hint):
-        d = get_endpoint(hint, {"tcp": tcp.default()})
+        d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
         self.failureResultOf(d, ipb.InvalidHintError)
 
     def checkUnknownEndpoint(self, hint):
-        d = get_endpoint(hint, {"tcp": tcp.default()})
+        d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
         self.failureResultOf(d, ipb.InvalidHintError)
 
     def testConvertLegacyHint(self):
@@ -105,9 +106,9 @@ class NewHandler:
         new_hint = "tcp:%s:%d" % (pieces[1], int(pieces[2])+0)
         ep = tcp.default().hint_to_endpoint(new_hint, reactor)
         if pieces[0] == "slow":
-            d = defer.Deferred()
-            reactor.callLater(0.01, d.callback, ep)
-            return d
+            self._d = defer.Deferred()
+            self._d.addCallback(lambda _: ep)
+            return self._d
         return ep
 
 class Handlers(ShouldFailMixin, unittest.TestCase):
@@ -132,9 +133,8 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
     def testNoHandlers(self):
         furl, tubB = self.makeTub("type2")
         tubB.removeAllConnectionHintHandlers()
-        d = self.shouldFail(NoLocationHintsError, "no handlers", None,
-                            tubB.getReference, furl)
-        return d
+        d = tubB.getReference(furl)
+        self.failureResultOf(d, NoLocationHintsError)
 
     def testNoSuccessfulHandlers(self):
         furl, tubB = self.makeTub("type2")
@@ -203,6 +203,8 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
         tubB.removeAllConnectionHintHandlers()
         tubB.addConnectionHintHandler("slow", h)
         d = tubB.getReference(furl)
+        self.assertNoResult(d)
+        h._d.callback(None)
         def _got(rref):
             self.failUnlessEqual(h.asked, 1)
             self.failUnlessEqual(h.accepted, 1)

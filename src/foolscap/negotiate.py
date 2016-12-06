@@ -1122,11 +1122,14 @@ class Negotiation(protocol.Protocol):
         buf, self.buffer = self.buffer, "" # empty our buffer, just in case
         b.dataReceived(buf) # and hand it to the new protocol
 
+        self._connectionInfo._set_connected(True)
         # if we were created as a client, we'll have a TubConnector. Let them
         # know that this connection has succeeded, so they can stop any other
         # connection attempts still in progress.
         if self.isClient:
             self.connector.connectorNegotiationComplete(self, self.factory.location)
+        else:
+            self._connectionInfo._set_listener_status("successful")
 
         # finally let our Tub know that they can start using the new Broker.
         # This will wake up anyone who initiated an outbound connection.
@@ -1139,6 +1142,9 @@ class Negotiation(protocol.Protocol):
             eventually(self.connector.connectorNegotiationFailed, self,
                        self.factory.location, reason)
         self.receive_phase = ABANDONED
+        if not self.isClient:
+            description = "negotiation failed: %s" % str(reason.value)
+            self._connectionInfo._set_listener_status(description)
         cb = self._test_options.get("debug_negotiationFailed_cb")
         if cb:
             # note that this gets called with a NegotiationError, not a
