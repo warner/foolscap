@@ -18,6 +18,9 @@ from foolscap.test.common import (certData_low, certData_high, Target,
                                   ShouldFailMixin)
 from foolscap import ipb, util
 
+def discard_status(status):
+    pass
+
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
         d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
@@ -97,19 +100,36 @@ class NewHandler:
     def __init__(self):
         self.asked = 0
         self.accepted = 0
-    def hint_to_endpoint(self, hint, reactor):
+    def hint_to_endpoint(self, hint, reactor, update_status):
         self.asked += 1
         if "bad" in hint:
             raise ipb.InvalidHintError
         self.accepted += 1
         pieces = hint.split(":")
         new_hint = "tcp:%s:%d" % (pieces[1], int(pieces[2])+0)
-        ep = tcp.default().hint_to_endpoint(new_hint, reactor)
+        ep = tcp.default().hint_to_endpoint(new_hint, reactor, update_status)
         if pieces[0] == "slow":
+            update_status("being slow")
             self._d = defer.Deferred()
             self._d.addCallback(lambda _: ep)
             return self._d
         return ep
+
+class ErrorSuffix(unittest.TestCase):
+    def test_context(self):
+        statuses = []
+        with tor.add_context(statuses.append, "context"):
+            pass
+        self.assertEqual(statuses, ["context"])
+        statuses = []
+        def _try():
+            with tor.add_context(statuses.append, "context"):
+                raise ValueError("foo")
+        e = self.assertRaises(ValueError, _try)
+        self.assertEqual(statuses, ["context"])
+        self.assert_(hasattr(e, "foolscap_connection_handler_error_suffix"))
+        self.assertEqual(e.foolscap_connection_handler_error_suffix,
+                         " (while context)")
 
 class Handlers(ShouldFailMixin, unittest.TestCase):
     def setUp(self):
@@ -218,7 +238,8 @@ class Socks(unittest.TestCase):
         h = socks.socks_endpoint(proxy_ep)
 
         rv = scep.return_value = mock.Mock()
-        ep, host = h.hint_to_endpoint("tor:example.com:1234", reactor)
+        ep, host = h.hint_to_endpoint("tor:example.com:1234", reactor,
+                                      discard_status)
         self.assertEqual(scep.mock_calls,
                          [mock.call("example.com", 1234, proxy_ep)])
         self.assertIdentical(ep, rv)
@@ -227,7 +248,8 @@ class Socks(unittest.TestCase):
     def test_real_ep(self):
         proxy_ep = endpoints.HostnameEndpoint(reactor, "localhost", 8080)
         h = socks.socks_endpoint(proxy_ep)
-        ep, host = h.hint_to_endpoint("tcp:example.com:1234", reactor)
+        ep, host = h.hint_to_endpoint("tcp:example.com:1234", reactor,
+                                      discard_status)
         self.assertIsInstance(ep, SOCKS5ClientEndpoint)
         self.assertEqual(host, "example.com")
 
@@ -238,11 +260,14 @@ class Socks(unittest.TestCase):
         # legacy hints will be upgraded before the connection handler is
         # invoked, so the handler should not handle them
         self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "example.com:1234", reactor)
+                          h.hint_to_endpoint, "example.com:1234", reactor,
+                          discard_status)
         self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "tcp:example.com:noport", reactor)
+                          h.hint_to_endpoint, "tcp:example.com:noport", reactor,
+                          discard_status)
         self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "tcp:@:1234", reactor)
+                          h.hint_to_endpoint, "tcp:@:1234", reactor,
+                          discard_status)
 
 class Empty:
     pass
@@ -254,7 +279,8 @@ class Tor(unittest.TestCase):
                         ) as tce:
             tce.return_value = expected_ep = object()
             h = tor.default_socks()
-            res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor)
+            res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor,
+                                           discard_status)
             self.assertEqual(tce.mock_calls,
                              [mock.call("example.com", 1234,
                                         socks_endpoint=None)])
@@ -265,10 +291,12 @@ class Tor(unittest.TestCase):
     @inlineCallbacks
     def test_default_socks_real(self):
         h = tor.default_socks()
-        res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor)
+        res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor,
+                                       discard_status)
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "example.com")
+        self.assertEqual(h.describe(), "tor")
 
     def test_badaddr(self):
         isnon = tor.is_non_public_numeric_address
@@ -282,15 +310,15 @@ class Tor(unittest.TestCase):
     @inlineCallbacks
     def test_default_socks_badaddr(self):
         h = tor.default_socks()
-        d = h.hint_to_endpoint("tcp:10.0.0.1:1234", reactor)
+        d = h.hint_to_endpoint("tcp:10.0.0.1:1234", reactor, discard_status)
         f = yield self.assertFailure(d, InvalidHintError)
         self.assertEqual(str(f), "ignoring non-Tor-able ipaddr 10.0.0.1")
 
-        d = h.hint_to_endpoint("tcp:127.0.0.1:1234", reactor)
+        d = h.hint_to_endpoint("tcp:127.0.0.1:1234", reactor, discard_status)
         f = yield self.assertFailure(d, InvalidHintError)
         self.assertEqual(str(f), "ignoring non-Tor-able ipaddr 127.0.0.1")
 
-        d = h.hint_to_endpoint("tcp:not@a@hint:123", reactor)
+        d = h.hint_to_endpoint("tcp:not@a@hint:123", reactor, discard_status)
         f = yield self.assertFailure(d, InvalidHintError)
         self.assertEqual(str(f), "unrecognized TCP/Tor hint")
 
@@ -301,7 +329,8 @@ class Tor(unittest.TestCase):
                         ) as tce:
             tce.return_value = expected_ep = object()
             h = tor.socks_endpoint(tor_socks_endpoint)
-            res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor)
+            res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor,
+                                           discard_status)
             self.assertEqual(tce.mock_calls,
                              [mock.call("example.com", 1234,
                                         socks_endpoint=tor_socks_endpoint)])
@@ -313,7 +342,8 @@ class Tor(unittest.TestCase):
     def test_socks_endpoint_real(self):
         tor_socks_endpoint = clientFromString(reactor, "tcp:socks_host:100")
         h = tor.socks_endpoint(tor_socks_endpoint)
-        res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor)
+        res = yield h.hint_to_endpoint("tcp:example.com:1234", reactor,
+                                       discard_status)
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "example.com")
@@ -325,7 +355,8 @@ class Tor(unittest.TestCase):
         h = tor.launch()
         fake_reactor = object()
         with mock.patch("txtorcon.launch_tor", return_value=tpp) as lt:
-            res = yield h.hint_to_endpoint("tor:foo.onion:29212", fake_reactor)
+            res = yield h.hint_to_endpoint("tor:foo.onion:29212", fake_reactor,
+                                           discard_status)
             self.assertEqual(len(lt.mock_calls), 1)
             args,kwargs = lt.mock_calls[0][1:]
             self.assertIdentical(args[0], h.config)
@@ -344,7 +375,8 @@ class Tor(unittest.TestCase):
         h = tor.launch(tor_binary="/bin/tor")
         fake_reactor = object()
         with mock.patch("txtorcon.launch_tor", return_value=tpp) as lt:
-            res = yield h.hint_to_endpoint("tor:foo.onion:29212", fake_reactor)
+            res = yield h.hint_to_endpoint("tor:foo.onion:29212", fake_reactor,
+                                           discard_status)
             self.assertEqual(len(lt.mock_calls), 1)
             args,kwargs = lt.mock_calls[0][1:]
             self.assertIdentical(args[0], h.config)
@@ -363,7 +395,8 @@ class Tor(unittest.TestCase):
         h = tor.launch(data_directory=datadir)
         fake_reactor = object()
         with mock.patch("txtorcon.launch_tor", return_value=tpp) as lt:
-            res = yield h.hint_to_endpoint("tor:foo.onion:29212", fake_reactor)
+            res = yield h.hint_to_endpoint("tor:foo.onion:29212", fake_reactor,
+                                           discard_status)
             self.assertEqual(len(lt.mock_calls), 1)
             args,kwargs = lt.mock_calls[0][1:]
             self.assertIdentical(args[0], h.config)
@@ -384,7 +417,8 @@ class Tor(unittest.TestCase):
         h = tor.launch(data_directory=datadir)
         fake_reactor = object()
         with mock.patch("txtorcon.launch_tor", return_value=tpp) as lt:
-            res = yield h.hint_to_endpoint("tor:foo.onion:29212", fake_reactor)
+            res = yield h.hint_to_endpoint("tor:foo.onion:29212", fake_reactor,
+                                           discard_status)
             self.assertEqual(len(lt.mock_calls), 1)
             args,kwargs = lt.mock_calls[0][1:]
             self.assertIdentical(args[0], h.config)
@@ -411,7 +445,8 @@ class Tor(unittest.TestCase):
                         return_value=None):
             with mock.patch("txtorcon.TorConfig.from_protocol",
                             return_value=config):
-                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor)
+                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor,
+                                               discard_status)
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "foo.onion")
@@ -427,7 +462,8 @@ class Tor(unittest.TestCase):
                         return_value=None):
             with mock.patch("txtorcon.TorConfig.from_protocol",
                             return_value=config):
-                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor)
+                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor,
+                                               discard_status)
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "foo.onion")
@@ -443,7 +479,8 @@ class Tor(unittest.TestCase):
                         return_value=None):
             with mock.patch("txtorcon.TorConfig.from_protocol",
                             return_value=config):
-                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor)
+                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor,
+                                               discard_status)
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "foo.onion")
@@ -459,7 +496,8 @@ class Tor(unittest.TestCase):
                         return_value=None):
             with mock.patch("txtorcon.TorConfig.from_protocol",
                             return_value=config):
-                d = h.hint_to_endpoint("tor:foo.onion:29212", reactor)
+                d = h.hint_to_endpoint("tor:foo.onion:29212", reactor,
+                                       discard_status)
                 f = yield self.assertFailure(d, ValueError)
         self.assertIn("could not use config.SocksPort", str(f))
 
@@ -491,14 +529,16 @@ class Tor(unittest.TestCase):
                         return_value=None):
             with mock.patch("txtorcon.TorConfig.from_protocol",
                             return_value=config):
-                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor)
+                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor,
+                                               discard_status)
                 self.assertEqual(results, [reactor]) # called once
                 ep, host = res
                 self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
                 self.assertEqual(host, "foo.onion")
                 self.assertEqual(h._socks_desc, "tcp:127.0.0.1:1234")
 
-                res = yield h.hint_to_endpoint("tor:foo.onion:29213", reactor)
+                res = yield h.hint_to_endpoint("tor:foo.onion:29213", reactor,
+                                               discard_status)
                 self.assertEqual(results, [reactor]) # still only called once
                 ep, host = res
                 self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
@@ -514,7 +554,8 @@ class I2P(unittest.TestCase):
             sep.new = n = mock.Mock()
             n.return_value = expected_ep = object()
             h = i2p.default(reactor)
-            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor)
+            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
+                                           discard_status)
         self.assertEqual(len(n.mock_calls), 1)
         args = n.mock_calls[0][1]
         got_sep, got_host, got_portnum = args
@@ -526,6 +567,7 @@ class I2P(unittest.TestCase):
         ep, host = res
         self.assertIdentical(ep, expected_ep)
         self.assertEqual(host, "fppym.b32.i2p")
+        self.assertEqual(h.describe(), "i2p")
 
     @inlineCallbacks
     def test_default_with_portnum(self):
@@ -535,7 +577,8 @@ class I2P(unittest.TestCase):
             sep.new = n = mock.Mock()
             n.return_value = expected_ep = object()
             h = i2p.default(reactor)
-            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p:1234", reactor)
+            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p:1234", reactor,
+                                           discard_status)
         self.assertEqual(len(n.mock_calls), 1)
         args = n.mock_calls[0][1]
         got_sep, got_host, got_portnum = args
@@ -550,7 +593,8 @@ class I2P(unittest.TestCase):
 
     def test_default_badhint(self):
         h = i2p.default(reactor)
-        d = defer.maybeDeferred(h.hint_to_endpoint, "i2p:not@a@hint", reactor)
+        d = defer.maybeDeferred(h.hint_to_endpoint, "i2p:not@a@hint", reactor,
+                                discard_status)
         f = self.failureResultOf(d, InvalidHintError)
         self.assertEqual(str(f.value), "unrecognized I2P hint")
 
@@ -561,7 +605,8 @@ class I2P(unittest.TestCase):
             n.return_value = expected_ep = object()
             my_ep = endpoints.HostnameEndpoint(reactor, "localhost", 1234)
             h = i2p.sam_endpoint(my_ep)
-            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor)
+            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
+                                           discard_status)
         self.assertEqual(len(n.mock_calls), 1)
         args = n.mock_calls[0][1]
         got_sep, got_host, got_portnum = args

@@ -43,6 +43,12 @@ class TubConnectorFactory(protocol.Factory, object):
         proto.factory = self
         return proto
 
+def describe_handler(h):
+    try:
+        return h.describe()
+    except AttributeError:
+        return repr(h)
+
 def get_endpoint(location, connectionPlugins, connectionInfo):
     def _update_status(status):
         connectionInfo._set_connection_status(location, status)
@@ -55,9 +61,10 @@ def get_endpoint(location, connectionPlugins, connectionInfo):
         if not plugin:
             connectionInfo._describe_connection_handler(location, None)
             raise InvalidHintError("no handler registered for hint")
-        connectionInfo._describe_connection_handler(location, None)
+        connectionInfo._describe_connection_handler(location,
+                                                    describe_handler(plugin))
         _update_status("resolving hint")
-        return plugin.hint_to_endpoint(hint, reactor)
+        return plugin.hint_to_endpoint(hint, reactor, _update_status)
     return defer.maybeDeferred(_try)
 
 class TubConnector(object):
@@ -228,6 +235,11 @@ class TubConnector(object):
             log.err(reason, "failed to connect to %s" % hint, level=CURIOUS,
                     parent=lp, facility="foolscap.connection",
                     umid="2PEowg")
+        suffix = getattr(reason.value,
+                         "foolscap_connection_handler_error_suffix",
+                         None)
+        if suffix:
+            description += suffix
         self._connectionInfo._set_connection_status(hint, description)
         if not self.failureReason:
             self.failureReason = reason
