@@ -55,12 +55,12 @@ def get_endpoint(location, connectionPlugins, connectionInfo):
     def _try():
         hint = convert_legacy_hint(location)
         if ":" not in hint:
-            raise InvalidHintError("no colon in hint")
+            raise InvalidHintError("no colon")
         hint_type = hint.split(":", 1)[0]
         plugin = connectionPlugins.get(hint_type)
         if not plugin:
             connectionInfo._describe_connection_handler(location, None)
-            raise InvalidHintError("no handler registered for hint")
+            raise InvalidHintError("no handler registered")
         connectionInfo._describe_connection_handler(location,
                                                     describe_handler(plugin))
         _update_status("resolving hint")

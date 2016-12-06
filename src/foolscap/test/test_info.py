@@ -130,7 +130,7 @@ class Connect(unittest.TestCase):
         ci = tubB.getConnectionInfoForFURL(furl)
         cs = ci.connectorStatuses()
         self.assertEqual(cs["slow:foo"], "resolving hint")
-        self.assertEqual(cs[missing_hint], "bad hint: no handler registered for hint")
+        self.assertEqual(cs[missing_hint], "bad hint: no handler registered")
         h._update_status("phase2")
         ci = tubB.getConnectionInfoForFURL(furl)
         cs = ci.connectorStatuses()
