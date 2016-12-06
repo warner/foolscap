@@ -2,7 +2,7 @@
 
 import time
 from twisted.python.failure import Failure
-from twisted.internet import protocol, reactor
+from twisted.internet import protocol, reactor, defer
 from twisted.internet.error import ConnectionDone
 
 from foolscap import broker, referenceable, vocab
@@ -194,6 +194,8 @@ class Negotiation(protocol.Protocol):
         # timers will be canceled.
         self.debugTimers = {}
 
+        self.debugPauses = {} # similar, but holds a Deferred
+
         # if anything goes wrong during negotiation (version mismatch,
         # malformed headers, assertion checks), we stash the Failure in this
         # attribute and then drop the connection. For client-side
@@ -265,6 +267,22 @@ class Negotiation(protocol.Protocol):
                 cb()
             return True
         return False
+
+    def debug_doPause(self, name, call, *args):
+        cb = self._test_options.get("debug_pause_%s" % name, None)
+        if not cb:
+            return False
+        if self.debugPauses.has_key(name):
+            return False
+        self.log("debug_doPause(%s)" % name)
+        self.debugPauses[name] = d = defer.Deferred()
+        d.addCallback(lambda _: call(*args))
+        try:
+            cb(d)
+        except Exception, e:
+            print e # otherwise failures are hard to track down
+            raise
+        return True
 
     def debug_addTimerCallback(self, name, call, *args):
         if self.debugTimers.get(name):
@@ -542,6 +560,8 @@ class Negotiation(protocol.Protocol):
         is established. This causes a negotiation block to be sent to the
         other side as an offer."""
         if self.debug_doTimer("sendHello", 1, self.sendHello):
+            return
+        if self.debug_doPause("sendHello", self.sendHello):
             return
 
         hello = self.negotiationOffer.copy()
