@@ -505,18 +505,25 @@ class Tor(unittest.TestCase):
         return self.do_test_control_endpoint_maker(False)
     def test_control_endpoint_maker_deferred(self):
         return self.do_test_control_endpoint_maker(True)
+    def test_control_endpoint_maker_nostatus(self):
+        return self.do_test_control_endpoint_maker(True, takes_status=False)
 
     @inlineCallbacks
-    def do_test_control_endpoint_maker(self, use_deferred):
+    def do_test_control_endpoint_maker(self, use_deferred, takes_status=True):
         control_ep = endpoints.HostnameEndpoint(reactor, "localhost", 9051)
         results = []
-        def make(arg, update_status):
+        def make(arg):
             results.append(arg)
             if use_deferred:
                 return defer.succeed(control_ep)
             else:
                 return control_ep # immediate
-        h = tor.control_endpoint_maker(make)
+        def make_takes_status(arg, update_status):
+            return make(arg)
+        if takes_status:
+            h = tor.control_endpoint_maker(make_takes_status, takes_status=True)
+        else:
+            h = tor.control_endpoint_maker(make, takes_status=False)
         self.assertEqual(results, []) # not called yet
         # We don't actually care about the generated endpoint, just the state
         # that the handler builds up internally. But we need to provoke a

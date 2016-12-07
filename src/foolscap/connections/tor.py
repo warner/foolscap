@@ -186,17 +186,26 @@ class _ConnectedTor(_Common):
         raise ValueError("could not use config.SocksPort: %r" % (ports,))
 
 
-def control_endpoint_maker(tor_control_endpoint_maker):
+def control_endpoint_maker(tor_control_endpoint_maker, takes_status=False):
     """Return a handler which connects to a pre-existing Tor process on a
     control port provided by the maker function.
 
     - tor_control_endpoint_maker: a callable, which will be invoked once
-      (with two arguments: 'reactor' and 'update_status'). It can return
-      immediately or return a Deferred, returning/yielding a ClientEndpoint
-      which points at the Tor control port
+      (with a single argument: 'reactor'). It can return immediately or
+      return a Deferred, returning/yielding a ClientEndpoint which points at
+      the Tor control port.
+    - If takes_status=True, the callable will be invoked with two arguments:
+      'reactor' and 'update_status'. This is the preferred API, and allows
+      the maker function to make status updates as it launches or locates the
+      Tor control port.
     """
     assert callable(tor_control_endpoint_maker), tor_control_endpoint_maker
-    return _ConnectedTor(tor_control_endpoint_maker)
+    if takes_status:
+        return _ConnectedTor(tor_control_endpoint_maker)
+    else:
+        def does_not_take_status(reactor, update_status):
+            return tor_control_endpoint_maker(reactor)
+        return _ConnectedTor(does_not_take_status)
 
 def control_endpoint(tor_control_endpoint):
     """Return a handler which connects to a pre-existing Tor process on the
