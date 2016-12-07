@@ -8,28 +8,19 @@ from foolscap.tokens import NegotiationError, RemoteNegotiationError
 
 class ReconnectionInfo:
     def __init__(self):
-        self._state = "unstarted"
-        self._connectionInfo = None
-        self._last_attempt = None
-        self._next_attempt = None
+        self.state = "unstarted"
+        self.connectionInfo = None
+        self.lastAttempt = None
+        self.nextAttempt = None
 
     def _set_state(self, state):
-        self._state = state # unstarted, connecting, connected, waiting
+        self.state = state # unstarted, connecting, connected, waiting
     def _set_connection_info(self, connectionInfo):
-        self._connectionInfo = connectionInfo
+        self.connectionInfo = connectionInfo
     def _set_last_attempt(self, when):
-        self._last_attempt = when
+        self.lastAttempt = when
     def _set_next_attempt(self, when):
-        self._next_attempt = when
-
-    def getState(self):
-        return self._state
-    def getConnectionInfo(self):
-        return self._connectionInfo
-    def lastAttempt(self):
-        return self._last_attempt
-    def nextAttempt(self):
-        return self._next_attempt
+        self.nextAttempt = when
 
 
 class Reconnector(object):

@@ -35,7 +35,7 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         self._time1 = time.time()
         self.rc = self.tubA.connectTo(self.url, self._got_ref, "arg", kw="kwarg")
         ri = self.rc.getReconnectionInfo()
-        self.assertEqual(ri.getState(), "connecting")
+        self.assertEqual(ri.state, "connecting")
         # at least make sure the stopConnecting method is present, even if we
         # don't have a real test for it yet
         self.failUnless(self.rc.stopConnecting)
@@ -47,18 +47,18 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         self.failUnlessEqual(arg, "arg")
         self.failUnlessEqual(kw, "kwarg")
         ri = self.rc.getReconnectionInfo()
-        self.assertEqual(ri.getState(), "connected")
+        self.assertEqual(ri.state, "connected")
         time2 = time.time()
-        last = ri.lastAttempt()
+        last = ri.lastAttempt
         self.assert_(self._time1 <= last <= time2, (self._time1, last, time2))
-        ci = ri.getConnectionInfo()
-        self.assertEqual(ci.connected(), True)
+        ci = ri.connectionInfo
+        self.assertEqual(ci.connected, True)
         hints = referenceable.SturdyRef(self.url).getTubRef().getLocations()
         expected_hint = hints[0]
-        self.assertEqual(ci.winningHint(), expected_hint)
-        self.assertEqual(ci.listenerStatus(), (None, None))
-        self.assertEqual(ci.connectorStatuses(), {expected_hint: "successful"})
-        self.assertEqual(ci.connectionHandlers(), {expected_hint: "tcp"})
+        self.assertEqual(ci.winningHint, expected_hint)
+        self.assertEqual(ci.listenerStatus, (None, None))
+        self.assertEqual(ci.connectorStatuses, {expected_hint: "successful"})
+        self.assertEqual(ci.connectionHandlers, {expected_hint: "tcp"})
         self.count += 1
         rref.notifyOnDisconnect(self._disconnected, self.count)
         if self.count < 2:
@@ -72,12 +72,12 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         self.failUnlessEqual(count, self.count)
         self.attached = False
         ri = self.rc.getReconnectionInfo()
-        self.assertEqual(ri.getState(), "waiting")
+        self.assertEqual(ri.state, "waiting")
         # The next connection attempt will be about 1.0s after disconnect.
         # We'll assert that this is in the future, although on very slow
         # systems, this may not be true.
         now = time.time()
-        next_attempt = ri.nextAttempt()
+        next_attempt = ri.nextAttempt
         self.assert_(now <= next_attempt, (now, next_attempt))
 
     def _connected(self, ref, notifiers, accumulate):
@@ -139,14 +139,14 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         notifiers = [d1]
         self.rc = self.tubA.connectTo(url, self._connected, notifiers, connects)
         def _ready():
-            return self.rc.getReconnectionInfo().getState() == "waiting"
+            return self.rc.getReconnectionInfo().state == "waiting"
         yield self.poll(_ready)
 
         # the reconnector should have failed once or twice, since the
         # negotiation would always fail.
         self.failUnlessEqual(len(connects), 0)
-        ci = self.rc.getReconnectionInfo().getConnectionInfo()
-        cs = ci.connectorStatuses()
+        ci = self.rc.getReconnectionInfo().connectionInfo
+        cs = ci.connectorStatuses
         self.assertEqual(cs, {hint: "negotiation failed: I always fail"})
 
         # Now we fix tubB. We only touched the Listener, so re-doing the
@@ -243,7 +243,7 @@ class Unstarted(MakeTubsMixin, unittest.TestCase):
         url = self.tubB.registerReference(target)
         rc = self.tubA.connectTo(url, None)
         ri = rc.getReconnectionInfo()
-        self.assertEqual(ri.getState(), "unstarted")
+        self.assertEqual(ri.state, "unstarted")
 
 # TODO: look at connections that succeed because of a listener, and also
 # loopback
@@ -274,7 +274,7 @@ class Failed(unittest.TestCase):
         url = self.tubB.registerReference(target)
         rc = self.tubA.connectTo(url, None)
         ri = rc.getReconnectionInfo()
-        self.assertEqual(ri.getState(), "connecting")
+        self.assertEqual(ri.state, "connecting")
 
         d = defer.Deferred()
         reactor.callLater(1.0, d.callback, None)
@@ -282,16 +282,16 @@ class Failed(unittest.TestCase):
 
         # now look at the details
         ri = rc.getReconnectionInfo()
-        self.assertEqual(ri.getState(), "waiting")
-        ci = ri.getConnectionInfo()
-        self.assertEqual(ci.connected(), False)
-        self.assertEqual(ci.winningHint(), None)
-        s = ci.connectorStatuses()
+        self.assertEqual(ri.state, "waiting")
+        ci = ri.connectionInfo
+        self.assertEqual(ci.connected, False)
+        self.assertEqual(ci.winningHint, None)
+        s = ci.connectorStatuses
         self.assertEqual(set(s.keys()), set([bad1, bad2, bad3]))
         self.assertEqual(s[bad1], "bad hint: no colon")
         self.assertEqual(s[bad2], "bad hint: no handler registered")
         self.assertIn("DNS lookup failed", s[bad3])
-        ch = ci.connectionHandlers()
+        ch = ci.connectionHandlers
         self.assertEqual(ch, {bad2: None, bad3: "tcp"})
 
 # another test: determine the target url early, but don't actually register

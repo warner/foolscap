@@ -1090,51 +1090,50 @@ not populate this attribute, so applications should use ``getattr()``, guard
 access with a ``hasattr()`` check, or catch-and-tolerate ``AttributeError``.
 
 
-The ``ConnectionInfo`` object has methods to tell you the following:
+The ``ConnectionInfo`` object has attributes to tell you the following:
 
-* ``ci.connected()``: returns False until the target is "connected" (meaning
-  that a ``.callRemote()`` might succeed), then returns True until the
-  connection is lost, then returns False again. If the connection has been
-  lost, ``callRemote()`` is sure to fail (until a new connection is
-  established).
+* ``ci.connected``: is False until the target is "connected" (meaning that a
+  ``.callRemote()`` might succeed), then is True until the connection is
+  lost, then is False again. If the connection has been lost,
+  ``callRemote()`` is sure to fail (until a new connection is established).
 
 These methods can help track progress of outbound connections:
 
-* ``ci.connectorStatuses()``: returns a dictionary, where the keys are
-  connection hints, one for each hint in the FURL that provoked the outbound
-  connection attempt. Each value is a string that describes the current
-  status of this hint: "no handler", "resolving hint", "connecting",
+* ``ci.connectorStatuses``: is a dictionary, where the keys are connection
+  hints, one for each hint in the FURL that provoked the outbound connection
+  attempt. Each value is a string that describes the current status of this
+  hint: "no handler", "resolving hint", "connecting",
   "ConnectionRefusedError", "cancelled", "InvalidHintError", "negotiation",
   "negotiation failed:" (and an exception string), "successful", or some
   other error string.
-* ``ci.connectionHandlers()``: a dictionary, where the keys are connection
+* ``ci.connectionHandlers``: a dictionary, where the keys are connection
   hints (like ``connectorStatuses()``, and each value is a string description
   of the connection handler that is managing that hint (e.g. "tcp" or "tor").
   If not connection handler could be found for the hint, the value will be
   None.
 
-Once connected, the following methods become useful to tell you when and how
-the connection was established:
+Once connected, the following attributes become useful to tell you when and
+how the connection was established:
 
-* ``ci.connectionEstablishedAt()``: Returns None until the connection is
-  established, then returns a unix timestamp (seconds since epoch) of the
-  connection time. That timestamp will continue to be returned, even after
-  the connection is subsequently lost.
-* ``ci.winningHint()``: Returns None until an outbound connection is
-  successfully negotiated, then returns a string with the connection hint
-  that succeeded. If the connection was created by an inbound socket, this
-  will remain None (in which case ``ci.listenerStatus()`` will help).
-* ``ci.listenerStatus()``: Returns (None, None) until an inbound connection
-  is accepted, then returns a tuple of (listener, status), both strings. This
+* ``ci.establishedAt``: is None until the connection is
+  established, then is a unix timestamp (seconds since epoch) of the
+  connection time. That timestamp will remain set (non-None) even after the
+  connection is subsequently lost.
+* ``ci.winningHint``: is None until an outbound connection is successfully
+  negotiated, then is a string with the connection hint that succeeded. If
+  the connection was created by an inbound socket, this will remain None (in
+  which case ``ci.listenerStatus`` will help).
+* ``ci.listenerStatus``: is (None, None) until an inbound connection is
+  accepted, then is a tuple of (listener, status), both strings. This
   provides a description of the listener and its status ("negotiating",
   "successful", or "negotiation failed:" and an exception string, except that
   the only observable value is "successful"). If the connection was
   established by an *outbound* connection, this will remain (None, None).
 
-Finally, when the connection is lost, this method becomes useful:
+Finally, when the connection is lost, this attribute becomes useful:
 
-* ``ci.connectionLostAt()``: Returns None until the connection is established
-  and then lost, then returns a unix timestamp (seconds since epoch) of the
+* ``ci.lostAt``: is None until the connection is established and
+  then lost, then is a unix timestamp (seconds since epoch) of the
   connection-loss time.
 
 Note that the ``ConnectionInfo`` object is not "live": connection
@@ -1142,7 +1141,9 @@ establishment or loss may cause the object to be replaced with a new copy. So
 applications should re-obtain a new object each time they want to display the
 current status. However ``ConnectionInfo`` objects are also not static: the
 Tub may keep mutating a given object (and returning the same object to
-``getConnectionInfo() calls``) until it needs to replace it.
+``getConnectionInfo() calls``) until it needs to replace it. Application code
+should obtain the ``ConnectionInfo`` object, read the necessary attributes,
+render them to a status display, then drop the object reference.
 
 
 Reconnector Status
@@ -1169,16 +1170,17 @@ started.
 The ``ReconnectionInfo`` object can be obtained by calling
 ``reconnector.getReconnectionInfo()``. It provides the following API:
 
-* ``ri.getState()``: returns a string: "unstarted", "connecting",
-  "connected", or "waiting"
-* ``ri.getConnectionInfo()``: return an updated ``ConnectionInfo`` object,
-  which describes the most recent connection attempt or establishment.
-  Returns None if the Reconnector is unstarted
-* ``ri.lastAttempt()``: returns the time (as seconds since epoch) of the
-  start of the most recent connection attempt, specifically the timestamp of
-  the last transition to "connecting".
-* ``ri.nextAttempt()``: returns the time of the next scheduled connection
-  establishment attempt (as seconds since epoch). Returns None if the
+* ``ri.state``: a string: "unstarted", "connecting", "connected", or
+  "waiting"
+* ``ri.connectionInfo``: provides the current ``ConnectionInfo`` object,
+  which describes the most recent connection attempt or establishment. This
+  will be None if the Reconnector is unstarted.
+* ``ri.lastAttempt``: provides the time (as seconds since epoch) of the start
+  of the most recent connection attempt, specifically the timestamp of the
+  last transition to "connecting". This will be None if the Reconnector is in
+  the "unstarted" state.
+* ``ri.nextAttempt``: provides the time of the next scheduled connection
+  establishment attempt (as seconds since epoch). This will be None if the
   Reconnector is not in the "waiting" state.
 
 
