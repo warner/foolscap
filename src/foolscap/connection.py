@@ -231,7 +231,7 @@ class TubConnector(object):
             self.log("unable to use hint: %s: %s" % (hint, reason.value),
                      level=UNUSUAL, parent=lp, umid="z62ctA")
         else:
-            description = "failed to connect: %s" % str(reason)
+            description = "failed to connect: %s" % str(reason.value)
             log.err(reason, "failed to connect to %s" % hint, level=CURIOUS,
                     parent=lp, facility="foolscap.connection",
                     umid="2PEowg")
