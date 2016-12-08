@@ -14,6 +14,7 @@ from foolscap import ipb, base32, negotiate, broker, eventual, storage
 from foolscap import connection, util, info
 from foolscap.connections import tcp
 from foolscap.referenceable import SturdyRef
+from .furl import BadFURLError
 from foolscap.tokens import PBError, BananaError, WrongTubIdError, \
      WrongNameError, NoLocationError
 from foolscap.reconnector import Reconnector
@@ -536,7 +537,10 @@ class Tub(service.MultiService):
         return self.tubID[:4]
 
     def getConnectionInfoForFURL(self, furl):
-        tubref = SturdyRef(furl).getTubRef()
+        try:
+            tubref = SturdyRef(furl).getTubRef()
+        except (ValueError, BadFURLError):
+            return None # unparseable FURL
         return self._getConnectionInfoForTubRef(tubref)
 
     def _getConnectionInfoForTubRef(self, tubref):
