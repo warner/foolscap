@@ -257,7 +257,7 @@ If the handler raises an error (or yields a Deferred that errbacks), and the
 exception object has a (native) string attribute named
 ``foolscap_connection_handler_error_suffix``, this string will be appended to
 the usual connection status (a value in the
-``ConnectionInfo.connectorStatuses()`` dict), which is normally just the
+``ConnectionInfo.connectorStatuses`` dict), which is normally just the
 stringified exception value. By setting this to something like ``(while
 connecting to Tor)``, this can be used to distinguish between a failure to
 connect to the Tor daemon, versus Tor failing to connect to the target onion
