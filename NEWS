@@ -1,5 +1,56 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.12.5 (07-Dec-2016)
+
+** Connection Status Reporting
+
+This release adds an object named `ConnectionInfo`, which encapsulates
+information about a connection (both progress while being established, and
+the outcome once connected). This includes which connection hint was
+successful, what happened with the other hints, which handlers were used for
+each, and when the connection was made or lost. To get one of these, use
+`tub.getConnectionInfoForFURL(furl)` any time after `getReference()` is
+called, or `rref.getConnectionInfo()` after it resolves.  #267
+
+It also adds `ReconnectionInfo`, a similar object for Reconnectors. These
+capture the state of reconnection process (trying, established, waiting), and
+will provide a `ConnectionInfo` for the most recent (possibly successful)
+connection attempt. The API is `reconnector.getReconnectionInfo()`.  #268
+
+For details, see "Connection Progress/Status" and "Reconnector Status" in
+`doc/using-foolscap.rst`.
+
+** Connection Handler API Changes
+
+To support `ConnectionInfo`, the Connection Handler API was changed.
+
+The one backwards-incompatible change was that the `hint_to_endpoint()`
+method now takes a third argument, to update the status as the handler makes
+progress. External handler functions will need to be modified to accept this
+new argument, and applications which use them should declare a dependency
+upon the latest Foolscap version, to avoid runtime breakage.
+
+Several backwards-compatible changes were made too: handlers can provide a
+`describe()` method (which feeds `ConnectionInfo.connectionHandlers`), and
+they can now set a special attribute on any exception they raise, to further
+influence the status string.
+
+In addition, the `tor.control_endpoint_maker()` handler now accepts an
+optional second argument, which causes the maker function to be called with a
+additional `update_status` argument. This backwards-compatible change allows
+the maker function to influence the `ConnectionInfo` status too.
+
+The Tor connection handler was enhanced to report distinct statuses for the
+different phases of connection: launching a new copy of Tor, connecting to an
+existing Tor daemon, etc.
+
+** Minor Fixes
+
+Foolscap-0.12.0 broke `flappserver create`, causing the command to hang
+rather than exiting cleanly (although the flappserver directory itself was
+probably created properly). This release finally fixes it.  #271
+
+
 * Release 0.12.4 (27-Sep-2016)
 
 ** Improvements
