@@ -231,7 +231,15 @@ class TubConnector(object):
             self.log("unable to use hint: %s: %s" % (hint, reason.value),
                      level=UNUSUAL, parent=lp, umid="z62ctA")
         else:
-            description = "failed to connect: %s" % str(reason.value)
+            # some errors, like txsocksx.errors.ServerFailure, extend
+            # Exception without defining a __str__, so when one is
+            # constructed without arguments, their str() is empty, which is
+            # not very useful. Their repr() at least includes the exception
+            # name. In general, str() is better than repr(), since it lets
+            # the exception designer build a human-meaningful string, so
+            # we'll prefer str() unless it's empty.
+            why = str(reason.value) or repr(reason.value)
+            description = "failed to connect: %s" % why
             log.err(reason, "failed to connect to %s" % hint, level=CURIOUS,
                     parent=lp, facility="foolscap.connection",
                     umid="2PEowg")
