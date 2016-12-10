@@ -287,7 +287,7 @@ class TubConnector(object):
         # 'factory' has just completed negotiation, so abandon all the other
         # connection attempts
         self.log("connectorNegotiationComplete, %s won" % n)
-        self.pendingNegotiations.pop(n) # this one succeeded
+        self.pendingNegotiations.pop(n, None) # this one succeeded
         self._connectionInfo._set_connection_status(location, "successful")
         self._connectionInfo._set_winning_hint(location)
         self._connectionInfo._set_established_at(time.time())
