@@ -22,7 +22,7 @@ class _RunningI2P:
         if not mo:
             raise InvalidHintError("unrecognized I2P hint")
         host, portnum = mo.group(1), int(mo.group(3)) if mo.group(3) else None
-        kwargs = self._kwargs
+        kwargs = self._kwargs.copy()
         if not portnum and 'port' in kwargs:
             portnum = kwargs.pop('port')
         ep = SAMI2PStreamClientEndpoint.new(self._sam_endpoint, host, portnum, **kwargs)
