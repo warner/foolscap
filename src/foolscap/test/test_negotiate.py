@@ -2,11 +2,12 @@
 from twisted.trial import unittest
 
 from twisted.internet import protocol, defer
+from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.application import internet
 from foolscap import negotiate, tokens
 from foolscap.api import Referenceable, Tub, BananaError
 from foolscap.util import allocate_tcp_port
-from foolscap.test.common import (BaseMixin,
+from foolscap.test.common import (BaseMixin, PollMixin,
                                   tubid_low, certData_low,
                                   certData_high)
 
@@ -311,7 +312,7 @@ class SharedConnections(BaseMixin, unittest.TestCase):
         d.addCallback(_check)
         return d
 
-class CrossfireMixin(BaseMixin):
+class CrossfireMixin(BaseMixin, PollMixin):
     # testSimultaneous*: similar to Parallel, but connection[0] is initiated
     # in the opposite direction. This is the case when two Tubs initiate
     # connections to each other at the same time.
@@ -374,6 +375,22 @@ class CrossfireMixin(BaseMixin):
         d2 = self.tub1.getReference(self.url2)
         return d2
 
+    @inlineCallbacks
+    def connect2(self):
+        # start both connections at the same time
+        d1 = self.tub1.getReference(self.url2)
+        # tub2->tub1 will pause because listener1 is blocked somehow
+        d2 = self.tub2.getReference(self.url1)
+        # so the tub1->tub2 connection will win, firing both rrefs
+        rref1 = yield d1
+        rref2 = yield d2
+        del rref2
+        # We never unblock listener1, but we need to wait for the tub2->tub1
+        # connection to be dropped, which will happen shortly after the
+        # forward direction is established (but after some network traffic).
+        yield self.poll(lambda: self.tub2phases)
+        returnValue(rref1)
+
     def checkConnectedViaReverse(self, rref, targetPhases):
         # assert that connection[0] (from tub1 to tub2) is actually in use.
         # This connection uses a per-client allocated port number for the
@@ -433,13 +450,12 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
         return d
     test3.timeout = 10
 
+    @inlineCallbacks
     def test4(self):
-        self.makeServers(lo1={'debug_slow_sendHello': True})
-        d,d1 = self.connect()
-        d.addCallback(self.insert_turns, 4)
-        d.addCallback(self.checkConnectedViaReverse, [negotiate.ENCRYPTED])
-        d.addCallback(lambda res: d1) # other getReference should work too
-        return d
+        # prevent listener1 from doing sendHello by dropping the Deferred
+        self.makeServers(lo1={'debug_pause_sendHello': lambda d: None})
+        rref1 = yield self.connect2()
+        self.checkConnectedViaReverse(rref1, [negotiate.ENCRYPTED])
     test4.timeout = 10
 
 class Crossfire(CrossfireReverse):
