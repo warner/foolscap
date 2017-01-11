@@ -560,7 +560,7 @@ class I2P(unittest.TestCase):
         with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
             sep.new = n = mock.Mock()
             n.return_value = expected_ep = object()
-            h = i2p.default(reactor)
+            h = i2p.default(reactor, misc_kwarg="foo")
             res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
                                            discard_status)
         self.assertEqual(len(n.mock_calls), 1)
@@ -571,6 +571,9 @@ class I2P(unittest.TestCase):
         self.failUnlessEqual(got_sep._port, 7656)
         self.failUnlessEqual(got_host, "fppym.b32.i2p")
         self.failUnlessEqual(got_portnum, None)
+        kwargs = n.mock_calls[0][2]
+        self.failUnlessEqual(kwargs, {"misc_kwarg": "foo"})
+
         ep, host = res
         self.assertIdentical(ep, expected_ep)
         self.assertEqual(host, "fppym.b32.i2p")
@@ -598,6 +601,34 @@ class I2P(unittest.TestCase):
         self.assertIdentical(ep, expected_ep)
         self.assertEqual(host, "fppym.b32.i2p")
 
+    @inlineCallbacks
+    def test_default_with_portnum_kwarg(self):
+        # setting extra kwargs on the handler should provide a default for
+        # the portnum. sequential calls with/without portnums in the hints
+        # should get the right values.
+        h = i2p.default(reactor, port=1234)
+
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
+                                     discard_status)
+        got_portnum = n.mock_calls[0][1][2]
+        self.failUnlessEqual(got_portnum, 1234)
+
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            yield h.hint_to_endpoint("i2p:fppym.b32.i2p:3456", reactor,
+                                     discard_status)
+        got_portnum = n.mock_calls[0][1][2]
+        self.failUnlessEqual(got_portnum, 3456)
+
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
+                                     discard_status)
+        got_portnum = n.mock_calls[0][1][2]
+        self.failUnlessEqual(got_portnum, 1234)
+
     def test_default_badhint(self):
         h = i2p.default(reactor)
         d = defer.maybeDeferred(h.hint_to_endpoint, "i2p:not@a@hint", reactor,
@@ -611,7 +642,7 @@ class I2P(unittest.TestCase):
             sep.new = n = mock.Mock()
             n.return_value = expected_ep = object()
             my_ep = endpoints.HostnameEndpoint(reactor, "localhost", 1234)
-            h = i2p.sam_endpoint(my_ep)
+            h = i2p.sam_endpoint(my_ep, misc_kwarg="foo")
             res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
                                            discard_status)
         self.assertEqual(len(n.mock_calls), 1)
@@ -620,6 +651,8 @@ class I2P(unittest.TestCase):
         self.assertIdentical(got_sep, my_ep)
         self.failUnlessEqual(got_host, "fppym.b32.i2p")
         self.failUnlessEqual(got_portnum, None)
+        kwargs = n.mock_calls[0][2]
+        self.failUnlessEqual(kwargs, {"misc_kwarg": "foo"})
         ep, host = res
         self.assertIdentical(ep, expected_ep)
         self.assertEqual(host, "fppym.b32.i2p")
