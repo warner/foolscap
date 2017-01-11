@@ -1,6 +1,6 @@
 import re
 from zope.interface import implementer
-from twisted.internet import endpoints
+from twisted.internet.endpoints import HostnameEndpoint
 from foolscap.ipb import IConnectionHintHandler, InvalidHintError
 
 DOTTED_QUAD_RESTR=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
@@ -63,7 +63,7 @@ class DefaultTCP:
             raise InvalidHintError("unrecognized TCP hint")
         host, port = mo.group(1), int(mo.group(2))
         host = host.lstrip("[").rstrip("]")
-        return endpoints.HostnameEndpoint(reactor, host, port), host
+        return HostnameEndpoint(reactor, host, port), host
 
     def describe(self):
         return "tcp"

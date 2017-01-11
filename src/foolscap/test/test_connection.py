@@ -5,6 +5,7 @@ from twisted.trial import unittest
 from twisted.internet import endpoints, defer, reactor
 from twisted.internet.endpoints import clientFromString
 from twisted.internet.defer import inlineCallbacks
+from twisted.internet.interfaces import IStreamClientEndpoint
 from twisted.application import service
 import txtorcon
 from txsocksx.client import SOCKS5ClientEndpoint
@@ -21,15 +22,23 @@ from foolscap import ipb, util
 def discard_status(status):
     pass
 
+@implementer(IStreamClientEndpoint)
+class FakeHostnameEndpoint:
+    def __init__(self, reactor, host, port):
+        self.reactor = reactor
+        self.host = host
+        self.port = port
+
 class Convert(unittest.TestCase):
     def checkTCPEndpoint(self, hint, expected_host, expected_port):
-        d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
+        with mock.patch("foolscap.connections.tcp.HostnameEndpoint",
+                        side_effect=FakeHostnameEndpoint):
+            d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
         (ep, host) = self.successResultOf(d)
-        self.failUnless(isinstance(ep, endpoints.HostnameEndpoint), ep)
-        # note: this is fragile, and will break when Twisted changes the
-        # internals of HostnameEndpoint.
-        self.failUnlessEqual(ep._host, expected_host)
-        self.failUnlessEqual(ep._port, expected_port)
+        self.failUnless(isinstance(ep, FakeHostnameEndpoint), ep)
+        self.failUnlessIdentical(ep.reactor, reactor)
+        self.failUnlessEqual(ep.host, expected_host)
+        self.failUnlessEqual(ep.port, expected_port)
 
     def checkBadTCPEndpoint(self, hint):
         d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
@@ -234,7 +243,7 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
 class Socks(unittest.TestCase):
     @mock.patch("foolscap.connections.socks.SOCKS5ClientEndpoint")
     def test_ep(self, scep):
-        proxy_ep = endpoints.HostnameEndpoint(reactor, "localhost", 8080)
+        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
         h = socks.socks_endpoint(proxy_ep)
 
         rv = scep.return_value = mock.Mock()
@@ -246,7 +255,7 @@ class Socks(unittest.TestCase):
         self.assertEqual(host, "example.com")
 
     def test_real_ep(self):
-        proxy_ep = endpoints.HostnameEndpoint(reactor, "localhost", 8080)
+        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
         h = socks.socks_endpoint(proxy_ep)
         ep, host = h.hint_to_endpoint("tcp:example.com:1234", reactor,
                                       discard_status)
@@ -255,7 +264,7 @@ class Socks(unittest.TestCase):
 
 
     def test_bad_hint(self):
-        proxy_ep = endpoints.HostnameEndpoint(reactor, "localhost", 8080)
+        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
         h = socks.socks_endpoint(proxy_ep)
         # legacy hints will be upgraded before the connection handler is
         # invoked, so the handler should not handle them
@@ -432,7 +441,7 @@ class Tor(unittest.TestCase):
 
     @inlineCallbacks
     def test_control_endpoint(self):
-        control_ep = endpoints.HostnameEndpoint(reactor, "localhost", 9051)
+        control_ep = FakeHostnameEndpoint(reactor, "localhost", 9051)
         h = tor.control_endpoint(control_ep)
         # We don't actually care about the generated endpoint, just the state
         # that the handler builds up internally. But we need to provoke a
@@ -454,7 +463,7 @@ class Tor(unittest.TestCase):
 
     @inlineCallbacks
     def test_control_endpoint_default(self):
-        control_ep = endpoints.HostnameEndpoint(reactor, "localhost", 9051)
+        control_ep = FakeHostnameEndpoint(reactor, "localhost", 9051)
         h = tor.control_endpoint(control_ep)
         config = Empty()
         config.SocksPort = [txtorcon.DEFAULT_VALUE]
@@ -471,7 +480,7 @@ class Tor(unittest.TestCase):
 
     @inlineCallbacks
     def test_control_endpoint_non_numeric(self):
-        control_ep = endpoints.HostnameEndpoint(reactor, "localhost", 9051)
+        control_ep = FakeHostnameEndpoint(reactor, "localhost", 9051)
         h = tor.control_endpoint(control_ep)
         config = Empty()
         config.SocksPort = ["unix:var/run/tor/socks WorldWritable", "1234"]
@@ -488,7 +497,7 @@ class Tor(unittest.TestCase):
 
     @inlineCallbacks
     def test_control_endpoint_no_port(self):
-        control_ep = endpoints.HostnameEndpoint(reactor, "localhost", 9051)
+        control_ep = FakeHostnameEndpoint(reactor, "localhost", 9051)
         h = tor.control_endpoint(control_ep)
         config = Empty()
         config.SocksPort = ["unparseable"]
@@ -510,7 +519,7 @@ class Tor(unittest.TestCase):
 
     @inlineCallbacks
     def do_test_control_endpoint_maker(self, use_deferred, takes_status=True):
-        control_ep = endpoints.HostnameEndpoint(reactor, "localhost", 9051)
+        control_ep = FakeHostnameEndpoint(reactor, "localhost", 9051)
         results = []
         def make(arg):
             results.append(arg)
@@ -641,7 +650,7 @@ class I2P(unittest.TestCase):
         with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
             sep.new = n = mock.Mock()
             n.return_value = expected_ep = object()
-            my_ep = endpoints.HostnameEndpoint(reactor, "localhost", 1234)
+            my_ep = FakeHostnameEndpoint(reactor, "localhost", 1234)
             h = i2p.sam_endpoint(my_ep, misc_kwarg="foo")
             res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
                                            discard_status)
