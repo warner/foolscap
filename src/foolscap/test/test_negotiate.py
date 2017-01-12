@@ -1,8 +1,8 @@
 
 from twisted.trial import unittest
 
-from twisted.internet import protocol, defer
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet import protocol, defer, error
+from twisted.internet.defer import inlineCallbacks
 from twisted.application import internet
 from foolscap import negotiate, tokens
 from foolscap.api import Referenceable, Tub, BananaError
@@ -85,7 +85,6 @@ class Versus(BaseMixin, unittest.TestCase):
                        self._testNoConnection_fail)
         return d
     def _testNoConnection_fail(self, why):
-        from twisted.internet import error
         self.failUnless(why.check(error.ConnectionRefusedError))
 
     def testClientTimeout(self):
@@ -375,32 +374,22 @@ class CrossfireMixin(BaseMixin, PollMixin):
         d2 = self.tub1.getReference(self.url2)
         return d2
 
-    @inlineCallbacks
-    def connect2(self):
-        # start both connections at the same time
-        d1 = self.tub1.getReference(self.url2)
-        # tub2->tub1 will pause because listener1 is blocked somehow
-        d2 = self.tub2.getReference(self.url1)
-        # so the tub1->tub2 connection will win, firing both rrefs
-        rref1 = yield d1
-        rref2 = yield d2
-        del rref2
-        # We never unblock listener1, but we need to wait for the tub2->tub1
-        # connection to be dropped, which will happen shortly after the
-        # forward direction is established (but after some network traffic).
-        yield self.poll(lambda: self.tub2phases)
-        returnValue(rref1)
-
-    def checkConnectedViaReverse(self, rref, targetPhases):
-        # assert that connection[0] (from tub1 to tub2) is actually in use.
-        # This connection uses a per-client allocated port number for the
-        # tub1 side, and the tub2 Listener's port for the tub2 side.
-        # Therefore tub1's Broker (as used by its RemoteReference) will have
-        # a far-end port number that should match tub2's Listener.
-        self.failUnlessEqual(rref.tracker.broker.transport.getPeer().port,
+    def checkConnectedViaReverse(self, rref1, rref2, targetPhases):
+        # assert that both requests (1->2 and 2->1) were satisfied with the
+        # 1->2 connection. That connection uses a per-client allocated port
+        # number for the tub1 side, and the tub2 Listener's port for the tub2
+        # side. Therefore tub1's Broker (as used by the tub1-side
+        # RemoteReference for the 1->2 request) will have a far-end port
+        # number that should match tub2's Listener.
+        self.failUnlessEqual(rref1.tracker.broker.transport.getPeer().port,
                              self.portnum2)
-        # in addition, connection[1] should have been abandoned during a
-        # specific phase.
+        # and the 2->1 rref will have a tub2-side Broker whose near end uses
+        # the tub2 listener (rather than some ephemeral client port)
+        self.failUnlessEqual(rref2.tracker.broker.transport.getHost().port,
+                             self.portnum2)
+
+        # in addition, the 2->1 connection should have been abandoned during
+        # a specific phase.
         self.failUnlessEqual(self.tub2phases, targetPhases)
 
 
@@ -409,53 +398,73 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
     # in case it makes a difference somewhere
     tub1IsMaster = False
 
+    @inlineCallbacks
     def test1(self):
         # in this test, tub2 isn't listening at all. So not only will
         # connection[1] fail, the tub2.getReference that uses it will fail
         # too (whereas in all other tests, connection[1] is abandoned but
         # tub2.getReference succeeds)
-        self.makeServers(lo1={'debug_slow_connectionMade': True})
-        d = self.tub2.stopListeningOn(self.tub2.getListeners()[0])
-        d.addCallback(self._test1_1)
-        return d
-
-    def _test1_1(self, res):
-        d,d1 = self.connect()
-        d.addCallback(self.insert_turns, 4)
-        d.addCallbacks(lambda res: self.fail("hey! this is supposed to fail"),
-                       self._test1_2, errbackArgs=(d1,))
-        return d
-    def _test1_2(self, why, d1):
-        from twisted.internet import error
-        self.failUnless(why.check(error.ConnectionRefusedError))
-        # but now the other getReference should succeed
-        return d1
+        c21_started_d = defer.Deferred()
+        def _pause():
+            self._pause_d = defer.Deferred()
+            c21_started_d.callback(None)
+            return self._pause_d
+        self.makeServers(lo1={'debug_pause_connectionMade': _pause})
+        yield self.tub2.stopListeningOn(self.tub2.getListeners()[0])
+        # start 2->1 connection, pause it before it can complete
+        d2 = self.tub2.getReference(self.url1)
+        yield c21_started_d # wait for 2->1 to get started
+        # start the doomed 1->2 connection, which will fail because tub2 is
+        # not listening, and the 2->1 connection hasn't proceeded far enough
+        # to reveal tubid2 to tub1 (so tub1 doesn't know that this inbound
+        # connection would satisfy the request)
+        d1 = self.tub1.getReference(self.url2) # this will fail
+        yield self.assertFailure(d1, error.ConnectionRefusedError)
+        self._pause_d.callback(None) # unblock 2->1
+        yield d2
     test1.timeout = 10
 
+    @inlineCallbacks
+    def _do_test(self, pause_at, phase):
+        # catch the tub2->tub1 connection by stopping listener1
+        c21_started_d = defer.Deferred()
+        def _pause():
+            self._pause_d = defer.Deferred()
+            c21_started_d.callback(None)
+            return self._pause_d
+        self.makeServers(lo1={pause_at: _pause})
+        # start tub2->tub1, which will be paused
+        d2 = self.tub2.getReference(self.url1)
+        yield c21_started_d # give it a chance to get paused
+        # now start tub1->tub2
+        d1 = self.tub1.getReference(self.url2)
+        # so the tub1->tub2 connection will win, firing both rrefs
+        rref1 = yield d1
+        rref2 = yield d2
+        self._pause_d.callback(None)
+        # we need to wait for the tub2->tub1 connection to be dropped, which
+        # will happen shortly after the forward direction is established (but
+        # after some network traffic).
+        yield self.poll(lambda: self.tub2phases)
+        self.checkConnectedViaReverse(rref1, rref2, [phase])
+
     def test2(self):
-        self.makeServers(lo1={'debug_slow_connectionMade': True})
-        d,d1 = self.connect()
-        d.addCallback(self.insert_turns, 4)
-        d.addCallback(self.checkConnectedViaReverse, [negotiate.PLAINTEXT])
-        d.addCallback(lambda res: d1) # other getReference should work too
-        return d
+        # the 1->2 connection goes through while 2->1 is waiting for
+        # the initial connection to be established
+        self._do_test("debug_pause_connectionMade", negotiate.PLAINTEXT)
     test2.timeout = 10
 
     def test3(self):
-        self.makeServers(lo1={'debug_slow_sendPlaintextServer': True})
-        d,d1 = self.connect()
-        d.addCallback(self.insert_turns, 4)
-        d.addCallback(self.checkConnectedViaReverse, [negotiate.PLAINTEXT])
-        d.addCallback(lambda res: d1) # other getReference should work too
-        return d
+        # the 1->2 connection goes through while 2->1 is waiting for
+        # plaintext
+        return self._do_test("debug_pause_PLAINTEXT", negotiate.PLAINTEXT)
     test3.timeout = 10
 
-    @inlineCallbacks
     def test4(self):
-        # prevent listener1 from doing sendHello by dropping the Deferred
-        self.makeServers(lo1={'debug_pause_sendHello': lambda d: None})
-        rref1 = yield self.connect2()
-        self.checkConnectedViaReverse(rref1, [negotiate.ENCRYPTED])
+        # the 1->2 connection goes through after 2->1 has sent the plaintext
+        # response (and started the switch to TLS, and queued up the HELLO on
+        # the TLS channel), but before it has received the encrypted HELLO.
+        return self._do_test("debug_pause_ENCRYPTED", negotiate.ENCRYPTED)
     test4.timeout = 10
 
 class Crossfire(CrossfireReverse):
@@ -466,22 +475,15 @@ class Crossfire(CrossfireReverse):
         # makeServers() always puts the higher-numbered Tub (which will be
         # the master) in self.tub1
 
-        # connection[1] (the abandoned connection) is started from tub2 to
-        # tub1. It connects, begins negotiation (tub1 is the master), but
-        # then is stalled because we've added the debug_slow_sendDecision
-        # flag to tub1's Listener. That allows connection[0] to begin from
-        # tub1 to tub2, which is *not* stalled (because we added the slowdown
-        # flag to the Listener's options, not tub1.options), so it completes
-        # normally. When connection[1] is unpaused and hits switchToBanana,
-        # it discovers that it already has a Broker in place, and the
-        # connection is abandoned.
+        # 2-x1 (the abandoned connection) is started from tub2 to tub1. It
+        # connects, begins negotiation (tub1 is the master), but then is
+        # paused at sendDecision on tub1's Listener. That allows connection
+        # 1-x2 to begin (from tub1 to tub2), which is *not* stalled, and
+        # completes normally. 2-x1 is unpaused and hits switchToBanana, it
+        # discovers that it already has a Broker in place, and the connection
+        # is abandoned.
 
-        self.makeServers(lo1={'debug_slow_sendDecision': True})
-        d,d1 = self.connect()
-        d.addCallback(self.insert_turns, 4)
-        d.addCallback(self.checkConnectedViaReverse, [negotiate.DECIDING])
-        d.addCallback(lambda res: d1) # other getReference should work too
-        return d
+        return self._do_test("debug_pause_sendDecision", negotiate.DECIDING)
     test5.timeout = 10
 
 # TODO: some of these tests cause the TLS connection to be abandoned, and it

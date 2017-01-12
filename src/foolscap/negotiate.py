@@ -33,7 +33,8 @@ def check_inrange(my_min, my_max, decision, name):
         raise NegotiationError("I can't handle %s %d" % (name, decision))
 
 # negotiation phases
-PLAINTEXT, ENCRYPTED, DECIDING, BANANA, ABANDONED = range(5)
+PLAINTEXT, ENCRYPTED, DECIDING, BANANA, ABANDONED = \
+           ("PLAINTEXT", "ENCRYPTED", "DECIDING", "BANANA", "ABANDONED")
 
 
 # version number history:
@@ -182,19 +183,13 @@ class Negotiation(protocol.Protocol):
         # to trigger specific race conditions during unit tests, it is useful
         # to allow certain operations to be stalled for a moment.
         # self._test_options will contain a key like
-        # debug_slow_connectionMade to indicate that there should be a 1
-        # second delay between the real connectionMade and the time our
-        # self.connectionMade() method is invoked. To support this, the first
-        # time connectionMade() is invoked,
-        # self.debugTimers['connectionMade'] is set to a 1s DelayedCall,
-        # which fires self.debug_fireTimer('connectionMade', callable,
-        # *args). That will set self.debugTimers['connectionMade'] to None,
-        # so the condition is not fired again, then invoke the actual
-        # connectionMade method. When the connection is lost, all remaining
-        # timers will be canceled.
-        self.debugTimers = {}
-
-        self.debugPauses = {} # similar, but holds a Deferred
+        # debug_pause_connectionMade to indicate that the test harness should
+        # get control when connectionMade() happens via a callback. The
+        # callback returns a Deferred, and when the harness fires that
+        # Deferred, connectionMade() will be allowed to go through.
+        self._debug_paused = False
+        self._debug_resumed = False
+        self._debug_resume_calls = []
 
         # if anything goes wrong during negotiation (version mismatch,
         # malformed headers, assertion checks), we stash the Failure in this
@@ -258,68 +253,47 @@ class Negotiation(protocol.Protocol):
             self.transport.write("%s: %s\r\n" % (k.lower(), block[k]))
         self.transport.write("\r\n") # end block
 
-    def debug_doTimer(self, name, timeout, call, *args):
-        if (self._test_options.has_key("debug_slow_%s" % name) and
-            not self.debugTimers.has_key(name)):
-            self.log("debug_doTimer(%s)" % name)
-            t = reactor.callLater(timeout, self.debug_fireTimer, name)
-            self.debugTimers[name] = (t, [(call, args)])
-            cb = self._test_options["debug_slow_%s" % name]
-            if cb is not None and cb is not True:
-                cb()
+    def _debug_maybe_pause(self, stage):
+        if self._debug_paused:
+            self.log("debug_maybe_pause(%s) is already paused" % stage)
+            return
+        if self._debug_resumed:
+            self.log("debug_maybe_pause(%s) is already resumed" % stage)
+            return
+        k = self._test_options.get("debug_pause_%s" % stage, None)
+        if not k:
+            return
+        self.log("debug_maybe_pause(%s) is pausing" % stage)
+        self._debug_paused = True
+        d = defer.maybeDeferred(k)
+        d.addCallback(self._debug_unpause)
+        def _err(f):
+            print f # else test-harness errors are hard to track down
+            return f
+        d.addErrback(_err)
+
+    def _debug_check_pause(self, cb):
+        if self._debug_paused:
+            if cb not in self._debug_resume_calls:
+                self._debug_resume_calls.append(cb)
             return True
         return False
 
-    def debug_doPause(self, name, call, *args):
-        cb = self._test_options.get("debug_pause_%s" % name, None)
-        if not cb:
-            return False
-        if self.debugPauses.has_key(name):
-            return False
-        self.log("debug_doPause(%s)" % name)
-        self.debugPauses[name] = d = defer.Deferred()
-        d.addCallback(lambda _: call(*args))
-        try:
-            cb(d)
-        except Exception, e:
-            print e # otherwise failures are hard to track down
-            raise
-        return True
-
-    def debug_addTimerCallback(self, name, call, *args):
-        if self.debugTimers.get(name):
-            self.debugTimers[name][1].append((call, args))
-            return True
-        return False
-
-    def debug_forceTimer(self, name):
-        if self.debugTimers.get(name):
-            self.debugTimers[name][0].cancel()
-            self.debug_fireTimer(name)
-
-    def debug_forceAllTimers(self):
-        for name in self.debugTimers:
-            if self.debugTimers.get(name):
-                self.debugTimers[name][0].cancel()
-                self.debug_fireTimer(name)
-
-    def debug_cancelAllTimers(self):
-        for name in self.debugTimers:
-            if self.debugTimers.get(name):
-                self.debugTimers[name][0].cancel()
-                self.debugTimers[name] = None
-
-    def debug_fireTimer(self, name):
-        calls = self.debugTimers[name][1]
-        self.debugTimers[name] = None
-        for call,args in calls:
-            call(*args)
+    def _debug_unpause(self, _):
+        self.log("_debug_unpause")
+        self._debug_paused = False
+        self._debug_resumed = True
+        for cb in self._debug_resume_calls:
+            cb()
 
     def connectionMade(self):
         # once connected, this Negotiation instance must either invoke
         # self.switchToBanana or self.negotiationFailed, to insure that the
         # TubConnector (if any) gets told about the results of the connection
         # attempt.
+        self._debug_maybe_pause("connectionMade")
+        if self._debug_check_pause(self.connectionMade):
+            return
 
         if self.doNegotiation:
             if self.isClient:
@@ -353,8 +327,6 @@ class Negotiation(protocol.Protocol):
     def connectionMadeServer(self):
         # the server just waits for the GET message to arrive, but set up the
         # server timeout first
-        if self.debug_doTimer("connectionMade", 1, self.connectionMade):
-            return
         timeout = self._test_options.get('server_timeout', self.SERVER_TIMEOUT)
         if timeout:
             # oldpb clients will hit this case.
@@ -385,9 +357,10 @@ class Negotiation(protocol.Protocol):
             return
 
         self.buffer += chunk
+        self._processDataReceived()
 
-        if self.debug_addTimerCallback("connectionMade",
-                                       self.dataReceived, ''):
+    def _processDataReceived(self):
+        if self._debug_check_pause(self._processDataReceived):
             return
 
         try:
@@ -399,13 +372,25 @@ class Negotiation(protocol.Protocol):
                 return
             header, self.buffer = self.buffer[:eoh], self.buffer[eoh+4:]
             if self.receive_phase == PLAINTEXT:
+                self._debug_maybe_pause("PLAINTEXT")
+                if self._debug_check_pause(self._processDataReceived):
+                    self.buffer = header + self.buffer
+                    return
                 if self.isClient:
                     self.handlePLAINTEXTClient(header)
                 else:
                     self.handlePLAINTEXTServer(header)
             elif self.receive_phase == ENCRYPTED:
+                self._debug_maybe_pause("ENCRYPTED")
+                if self._debug_check_pause(self._processDataReceived):
+                    self.buffer = header + self.buffer
+                    return
                 self.handleENCRYPTED(header)
             elif self.receive_phase == DECIDING:
+                self._debug_maybe_pause("DECIDING")
+                if self._debug_check_pause(self._processDataReceived):
+                    self.buffer = header + self.buffer
+                    return
                 self.handleDECIDING(header)
             else:
                 assert 0, "should not get here"
@@ -456,14 +441,7 @@ class Negotiation(protocol.Protocol):
     def connectionLost(self, reason):
         # force connectionMade to happen, so connectionLost can occur
         # normally
-        self.debug_forceTimer("connectionMade")
-        # cancel the other slowdown timers, since they all involve sending
-        # data, and the connection is no longer available
-        self.debug_cancelAllTimers()
-        for k,t in self.debugTimers.items():
-            if t:
-                t[0].cancel()
-                self.debugTimers[k] = None
+        #self.debug_forceTimer("connectionMade")
         if self.isClient:
             l = self.tub._test_options.get("debug_gatherPhases")
             if l is not None:
@@ -512,9 +490,6 @@ class Negotiation(protocol.Protocol):
 
     def sendPlaintextServerAndStartENCRYPTED(self):
         # this is invoked on the server side
-        if self.debug_doTimer("sendPlaintextServer", 1,
-                              self.sendPlaintextServerAndStartENCRYPTED):
-            return
         resp = "\r\n".join(["HTTP/1.1 101 Switching Protocols",
                             "Upgrade: TLS/1.0, PB/1.0",
                             "Connection: Upgrade",
@@ -561,10 +536,6 @@ class Negotiation(protocol.Protocol):
         """This is called on both sides as soon as the encrypted connection
         is established. This causes a negotiation block to be sent to the
         other side as an offer."""
-        if self.debug_doTimer("sendHello", 1, self.sendHello):
-            return
-        if self.debug_doPause("sendHello", self.sendHello):
-            return
 
         hello = self.negotiationOffer.copy()
 
@@ -584,9 +555,6 @@ class Negotiation(protocol.Protocol):
 
     def handleENCRYPTED(self, header):
         # both ends have sent a Hello message
-        if self.debug_addTimerCallback("sendHello",
-                                       self.handleENCRYPTED, header):
-            return
         self.theirCertificate = None
         # We should be encrypted now. Get the peer's certificate.
         them = crypto.peerFromTransport(self.transport)
@@ -961,12 +929,6 @@ class Negotiation(protocol.Protocol):
         return True # accept the offer
 
     def sendDecision(self, decision, params):
-        if self.debug_doTimer("sendDecision", 1,
-                              self.sendDecision, decision, params):
-            return
-        if self.debug_addTimerCallback("sendHello",
-                                       self.sendDecision, decision, params):
-            return
         self.sendBlock(decision)
         self.send_phase = BANANA
         self.switchToBanana(params)
@@ -975,8 +937,8 @@ class Negotiation(protocol.Protocol):
         # this gets called on the non-master side
         self.log("handleDECIDING(isClient=%s): %s" % (self.isClient, header),
                  level=NOISY)
-        if self.debug_doTimer("handleDECIDING", 1,
-                              self.handleDECIDING, header):
+        if False:# self.debug_doTimer("handleDECIDING", 1,
+                 #             self.handleDECIDING, header):
             # for testing purposes, wait a moment before accepting the
             # decision. This insures that we trigger the "Duplicate
             # Broker" condition. NOTE: This will interact badly with the
