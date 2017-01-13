@@ -5,7 +5,6 @@ from zope.interface import implements, implementsOnly, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer, reactor, task, protocol
 from twisted.application import internet
-from twisted.web.client import getPage
 from twisted.trial import unittest
 from foolscap import broker, eventual, negotiate
 from foolscap.api import Tub, Referenceable, RemoteInterface, \
@@ -557,9 +556,6 @@ class BaseMixin(ShouldFailMixin):
         self.services.append(tub)
         d = tub.getReference("pb://127.0.0.1:%d/hello" % portnum)
         return d
-
-    def connectHTTPClient(self, portnum):
-        return getPage("http://127.0.0.1:%d/foo" % portnum)
 
 class MakeTubsMixin:
     def makeTubs(self, numTubs, mangleLocation=None, start=True):

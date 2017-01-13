@@ -1,9 +1,10 @@
 
 from twisted.trial import unittest
 
-from twisted.internet import protocol, defer
+from twisted.internet import protocol, defer, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.application import internet
+from twisted.web.client import Agent
 from foolscap import negotiate, tokens
 from foolscap.api import Referenceable, Tub, BananaError
 from foolscap.util import allocate_tcp_port
@@ -57,16 +58,12 @@ class Versus(BaseMixin, unittest.TestCase):
         return d
     testVersusHTTPServerAuthenticated.timeout = 10
 
+    @inlineCallbacks
     def testVersusHTTPClientAuthenticated(self):
-        try:
-            from twisted.web import error
-        except ImportError:
-            raise unittest.SkipTest('this test needs twisted.web')
         url, portnum = self.makeServer()
-        d = self.connectHTTPClient(portnum)
-        d.addCallbacks(lambda res: self.fail("this is supposed to fail"),
-                       lambda f: f.trap(error.Error))
-        return d
+        a = Agent(reactor)
+        response = yield a.request("GET", "http://127.0.0.1:%d/foo" % portnum)
+        self.assertEqual(response.code, 500)
     testVersusHTTPClientAuthenticated.timeout = 10
 
     def testNoConnection(self):
