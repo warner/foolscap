@@ -1,5 +1,20 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.12.6 (12-Jan-2017)
+
+This is a minor release to improve compatibility with Twisted and I2P.
+
+In this release, the Foolscap test suite no longer uses several deprecated
+and/or internal Twisted attributes, so it should pass cleanly on the next
+release of Twisted (which will probably be named Twisted-17.0.0).
+
+In addition, the I2P connection handler was enhanced to let applications pass
+arbitrary kwargs through to the underlying "SAM" API.
+
+Finally connection-status error messages should be slightly cleaner and
+provide more useful information in the face of unrecogized exceptions.
+
+
 * Release 0.12.5 (07-Dec-2016)
 
 ** Connection Status Reporting
