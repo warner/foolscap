@@ -57,7 +57,10 @@ class Listeners(ShouldFailMixin, unittest.TestCase):
     def test_nonqualified_port(self):
         tubA, tubB = self.makeTubs()
         portnum = util.allocate_tcp_port()
-        tubA.listenOn("%d" % portnum) # this is deprecated
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            tubA.listenOn("%d" % portnum) # this is deprecated
         tubA.setLocation("tcp:127.0.0.1:%d" % portnum)
         furl = tubA.registerReference(Target())
         yield tubB.getReference(furl)
