@@ -161,8 +161,6 @@ class Tub(service.MultiService):
 
     @ivar brokers: maps TubIDs to L{Broker} instances
 
-    @ivar listeners: maps strport to TCPServer service
-
     @ivar referenceToName: maps Referenceable to a name
     @ivar nameToReference: maps name to Referenceable
 
@@ -494,14 +492,14 @@ class Tub(service.MultiService):
         """Start listening for connections.
 
         @type  what: string
-        @param what: a L{twisted.application.strports} -style description
+        @param what: a L{twisted.internet.endpoints.serverFromString} -style
+                     description
         @param _test_options: a dictionary of options that can influence
                               connection negotiation before the target Tub
                               has been determined
 
         @return: The Listener object that was created. This can be used to
-        stop listening later on, and to figure out which port was allocated
-        when you used a strports specification of 'tcp:0'."""
+        stop listening later on."""
 
         if what in ("0", "tcp:0"):
             warningString = ("Tub.listenOn('tcp:0') was deprecated "
