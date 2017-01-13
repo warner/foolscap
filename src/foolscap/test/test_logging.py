@@ -4,8 +4,8 @@ from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
 from twisted.application import service
-from twisted.internet import defer
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet import defer, reactor
+from twisted.internet.defer import inlineCallbacks, returnValue
 try:
     from twisted import logger as twisted_logger
 except ImportError:
@@ -2136,6 +2136,18 @@ class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
         return d
 
 
+@inlineCallbacks
+def getPage(url):
+    a = client.Agent(reactor)
+    response = yield a.request("GET", url)
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        # Twisted can emit a spurious internal warning here ("Using readBody
+        # with a transport that does not have an abortConnection method")
+        # which seems to be https://twistedmatrix.com/trac/ticket/8227
+        page = yield client.readBody(response)
+    returnValue(page)
 
 class Web(unittest.TestCase):
     def setUp(self):
@@ -2172,7 +2184,7 @@ class Web(unittest.TestCase):
         self.url = yield self.viewer.start(options)
         self.baseurl = self.url[:self.url.rfind("/")] + "/"
 
-        page = yield client.getPage(self.url)
+        page = yield getPage(self.url)
         mypid = os.getpid()
         self.failUnless("PID %s" % mypid in page,
                         "didn't see 'PID %s' in '%s'" % (mypid, page))
@@ -2182,7 +2194,7 @@ class Web(unittest.TestCase):
         self.failUnless('href="summary/0-20">3 events</a> at level 20'
                         in page)
 
-        page = yield client.getPage(self.baseurl + "summary/0-20")
+        page = yield getPage(self.baseurl + "summary/0-20")
         self.failUnless("Events at level 20" in page)
         self.failUnless(": two" in page)
         self.failIf("four" in page)
@@ -2194,22 +2206,22 @@ class Web(unittest.TestCase):
             self.failUnless(": three FAILURE:" in page)
             self.failUnless(": UNUSUAL four</span>" in page)
 
-        page = yield client.getPage(self.baseurl + "all-events")
+        page = yield getPage(self.baseurl + "all-events")
         check_all_events(page)
 
-        page = yield client.getPage(self.baseurl + "all-events?sort=number")
+        page = yield getPage(self.baseurl + "all-events?sort=number")
         check_all_events(page)
 
-        page = yield client.getPage(self.baseurl + "all-events?sort=time")
+        page = yield getPage(self.baseurl + "all-events?sort=time")
         check_all_events(page)
 
-        page = yield client.getPage(self.baseurl + "all-events?sort=nested")
+        page = yield getPage(self.baseurl + "all-events?sort=nested")
         check_all_events(page)
 
-        page = yield client.getPage(self.baseurl + "all-events?timestamps=short-local")
+        page = yield getPage(self.baseurl + "all-events?timestamps=short-local")
         check_all_events(page)
 
-        page = yield client.getPage(self.baseurl + "all-events?timestamps=utc")
+        page = yield getPage(self.baseurl + "all-events?timestamps=utc")
         check_all_events(page)
 
 
