@@ -7,4 +7,5 @@
 /_trial_temp*/
 /_trial_temp.lock
 /.coverage
+/coverage.xml
 /.tox/
