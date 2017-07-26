@@ -192,6 +192,10 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.nextReqID = count(1).next # 0 means "we don't want a response"
         self.waitingForAnswers = {} # we wait for the other side to answer
         self.disconnectWatchers = []
+
+        # Callables waiting to hear about connectionLost.
+        self._connectionLostWatchers = []
+
         # receiving side uses these
         self.inboundDeliveryQueue = []
         self._waiting_for_call_to_be_ready = False
@@ -251,6 +255,18 @@ class Broker(banana.Banana, referenceable.Referenceable):
         log.msg("connection to %s lost" % tubid, facility="foolscap.connection")
         banana.Banana.connectionLost(self, why)
         self.finish(why)
+        self._notifyConnectionLostWatchers()
+
+    def _notifyConnectionLostWatchers(self):
+        """
+        Call all functions waiting to learn about the loss of the connection of
+        this broker.
+        """
+        watchers = self._connectionLostWatchers
+        self._connectionLostWatchers = None
+
+        for w in watchers:
+            eventually(w)
 
     def finish(self, why):
         if self.disconnected:
@@ -275,6 +291,12 @@ class Broker(banana.Banana, referenceable.Referenceable):
             # TODO: remove the conditional. It is only here to accomodate
             # some tests: test_pb.TestCall.testDisconnect[123]
             self.tub.brokerDetached(self, why)
+
+    def _notifyOnConnectionLost(self, callback):
+        """
+        Arrange to have C{callback} called when this broker loses its connection.
+        """
+        self._connectionLostWatchers.append(callback)
 
     def notifyOnDisconnect(self, callback, *args, **kwargs):
         marker = (callback, args, kwargs)
@@ -765,4 +787,3 @@ class LoopbackTransport(object):
     def _pollProducer(self):
         if self.producer is not None and not self.streamingProducer:
             self.producer.resumeProducing()
-
