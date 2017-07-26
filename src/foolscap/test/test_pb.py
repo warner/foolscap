@@ -545,6 +545,32 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
         return d
 
 
+
+class TestNotifyOnConnectionLost(unittest.TestCase):
+    """
+    Tests for L{Broker._notifyOnConnectionLost}.
+    """
+    def testCalled(self):
+        """
+        The object passed to L{Broker._notifyOnConnectionLost} is called when the
+        L{Broker} is notify that its connection has been lost.
+        """
+        transport = NullTransport()
+        protocol = broker.Broker(None)
+        protocol.makeConnection(transport)
+        disconnected = []
+        protocol._notifyOnConnectionLost(lambda: disconnected.append(1))
+        protocol._notifyOnConnectionLost(lambda: disconnected.append(2))
+        protocol.connectionLost(failure.Failure(Exception("Connection lost")))
+
+        d = flushEventualQueue()
+        def flushed(ignored):
+            self.assertEqual([1, 2], disconnected)
+        d.addCallback(flushed)
+        return d
+
+
+
 class TestService(unittest.TestCase):
     def setUp(self):
         self.services = [Tub()]

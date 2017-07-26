@@ -592,6 +592,11 @@ class Tub(service.MultiService):
             c.shutdown()
         why = Failure(error.ConnectionDone("Tub.stopService was called"))
         for b in self.brokers.values():
+            broker_disconnected = defer.Deferred()
+            dl.append(broker_disconnected)
+            b._notifyOnConnectionLost(
+                lambda d=broker_disconnected: d.callback(None)
+            )
             b.shutdown(why, fireDisconnectWatchers=False)
 
         d = defer.DeferredList(dl)
