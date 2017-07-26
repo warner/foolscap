@@ -5,8 +5,10 @@ from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.application import service
 from twisted.python import log, failure
+from twisted.test.proto_helpers import StringTransport
 
 from foolscap.api import Tub, SturdyRef, Referenceable
+from foolscap.furl import encode_furl
 from foolscap.referenceable import RemoteReference
 from foolscap.eventual import eventually, fireEventually, flushEventualQueue
 from foolscap.util import allocate_tcp_port
@@ -341,6 +343,41 @@ class Shutdown(unittest.TestCase, ShouldFailMixin):
                                       "Sorry, but this Tub has been shut down",
                                       tub.connectTo, "furl", None))
         return d
+
+
+    def test_wait_for_brokers(self):
+        """
+        The L{Deferred} returned by L{Tub.stopService} fires only after the
+        L{Broker} connections belonging to the L{Tub} have disconnected.
+        """
+        tub = Tub()
+        tub.startService()
+
+        another_tub = Tub()
+        another_tub.startService()
+
+        brokers = list(tub.brokerClass(None) for i in range(3))
+        for n, b in enumerate(brokers):
+            b.makeConnection(StringTransport())
+            ref = SturdyRef(encode_furl(another_tub.tubID, [], str(n)))
+            tub.brokerAttached(ref, b, isClient=(n % 2)==1)
+
+        stopping = tub.stopService()
+        d = flushEventualQueue()
+
+        def event(ignored):
+            self.assertNoResult(stopping)
+            for b in brokers:
+                b.connectionLost(failure.Failure(Exception("Connection lost")))
+            return flushEventualQueue()
+        d.addCallback(event)
+
+        def connectionsLost(ignored):
+            self.successResultOf(stopping)
+        d.addCallback(connectionsLost)
+
+        return d
+
 
 class Receiver(Referenceable):
     def __init__(self, tub):
