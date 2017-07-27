@@ -1,5 +1,20 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.12.7 (26-Jul-2017)
+
+This is a minor bugfix release to help Tahoe-LAFS.
+
+It depends upon a newer version of I2P, which should handle Tahoe storage
+servers that listen on I2P sockets (the Tahoe executable makes an outbound
+connection to the local I2P daemon, however it then accepts inbound TLS
+connections on that same socket, which confuses the TLS negotiation because
+both sides appear to be "clients", and TLS requires exactly one "client" and
+one "server").
+
+It also fixes a minor Tub shutdown behavior to let unit tests work more
+reliably.  #274
+
+
 * Release 0.12.6 (12-Jan-2017)
 
 This is a minor release to improve compatibility with Twisted and I2P.
