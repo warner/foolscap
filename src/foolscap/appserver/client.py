@@ -218,6 +218,11 @@ def parse_options(command_name, argv, stdio, stdout, stderr):
 def run_command(config):
     c = dispatch_table[config.subCommand]()
     tub = Tub()
+    try:
+        from foolscap.connections import tor
+        tub.addConnectionHintHandler("tor", tor.default_socks())
+    except ImportError:
+        pass
     d = defer.succeed(None)
     d.addCallback(lambda _ign: tub.startService())
     d.addCallback(lambda _ign: tub.getReference(config.furl))
