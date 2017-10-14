@@ -219,8 +219,20 @@ def run_command(config):
     c = dispatch_table[config.subCommand]()
     tub = Tub()
     try:
+        from twisted.internet import reactor
+        from twisted.internet.endpoints import clientFromString
         from foolscap.connections import tor
-        tub.addConnectionHintHandler("tor", tor.default_socks())
+        CONTROL = os.environ.get("FOOLSCAP_TOR_CONTROL_PORT", "")
+        SOCKS = os.environ.get("FOOLSCAP_TOR_SOCKS_PORT", "")
+        if CONTROL:
+            h = tor.control_endpoint(clientFromString(reactor, CONTROL))
+            tub.addConnectionHintHandler("tor", h)
+        elif SOCKS:
+            h = tor.socks_endpoint(clientFromString(reactor, SOCKS))
+            tub.addConnectionHintHandler("tor", h)
+        #else:
+        #    h = tor.default_socks()
+        #    tub.addConnectionHintHandler("tor", h)
     except ImportError:
         pass
     d = defer.succeed(None)
