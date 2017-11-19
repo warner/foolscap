@@ -49,8 +49,7 @@ class LogDumper:
         except flogfile.ThisIsActuallyAFurlFileError:
             print >>options.stderr, textwrap.dedent("""\
                 Error: %s appears to be a FURL file.
-                Perhaps you meant to run 'flogtool tail' instead of 'flogtool
-                dump'?"""
+                Perhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?"""
                 % (options.dumpfile,))
             return 1
         except flogfile.EvilPickleFlogFile:

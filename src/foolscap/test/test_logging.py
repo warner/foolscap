@@ -1,5 +1,5 @@
 
-import os, sys, json, time, bz2, base64
+import os, sys, json, time, bz2, base64, re
 from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
@@ -1994,7 +1994,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             self.failUnlessEqual(err, "")
             lines = list(StringIO(out).readlines())
             self.failUnless("header" in lines[0])
-            self.failUnless("'message': 'one'" in lines[1])
+            self.failUnless(re.search(r"u?'message': u?'one'", lines[1]), lines[1])
             self.failUnless("'level': 20" in lines[1])
             self.failUnless(": four: {" in lines[-1])
 
