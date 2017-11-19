@@ -2129,27 +2129,12 @@ class OldPickleDumper(unittest.TestCase):
 class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
     def compare_events(self, a, b):
-        # cmp(a,b) won't quite work, because two instances of CopiedFailure
-        # loaded from the same pickle don't compare as equal
-        self.failUnlessEqual(len(a), len(b))
-        for i in range(len(a)):
-            a1,b1 = a[i],b[i]
-            self.failUnlessEqual(set(a1.keys()), set(b1.keys()))
-            for k in a1:
-                if k == "d":
-                    self.failUnlessEqual(set(a1["d"].keys()),
-                                         set(b1["d"].keys()))
-                    for k2 in a1["d"]:
-                        if k2 == "failure":
-                            f1 = a1["d"][k2]
-                            f2 = b1["d"][k2]
-                            self.failUnlessEqual(f1.value, f2.value)
-                            self.failUnlessEqual(f1.getTraceback(),
-                                                 f2.getTraceback())
-                        else:
-                            self.failUnlessEqual(a1["d"][k2], b1["d"][k2])
-                else:
-                    self.failUnlessEqual(a1[k], b1[k])
+        ## # cmp(a,b) won't quite work, because two instances of CopiedFailure
+        ## # loaded from the same pickle don't compare as equal
+
+        # in fact we no longer create CopiedFailure instances in logs, so a
+        # simple failUnlessEqual will now suffice
+        self.failUnlessEqual(a, b)
 
 
     def test_basic(self):
