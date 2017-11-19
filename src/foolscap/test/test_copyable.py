@@ -1,5 +1,4 @@
 
-import pickle
 from twisted.trial import unittest
 from twisted.python import components, failure, reflect
 from foolscap.test.common import TargetMixin, HelperTarget
@@ -133,18 +132,20 @@ class Copyable(TargetMixin, unittest.TestCase):
         # there should be a traceback
         self.failUnless(f.traceback.find("raise RuntimeError") != -1,
                         "no 'raise RuntimeError' in '%s'" % (f.traceback,))
-        # we should be able to pickle CopiedFailures, and when we restore
-        # them, they should look like the original
-        p = pickle.dumps(f)
-        f2 = pickle.loads(p)
-        self.failUnlessEqual(reflect.qual(f2.type), "exceptions.RuntimeError")
-        self.failUnless(f2.check, RuntimeError)
-        self.failUnlessEqual(f2.value, "message here")
-        self.failUnlessEqual(f2.frames, [])
-        self.failUnlessEqual(f2.tb, None)
-        self.failUnlessEqual(f2.stack, [])
-        self.failUnless(f2.traceback.find("raise RuntimeError") != -1,
-                        "no 'raise RuntimeError' in '%s'" % (f2.traceback,))
+        # older Twisted (before 17.9.0) used a Failure class that could be
+        # pickled, so our derived CopiedFailure class could be round-tripped
+        # through pickle correclty. Twisted-17.9.0 changed that, so we no
+        # longer try that.
+        ## p = pickle.dumps(f)
+        ## f2 = pickle.loads(p)
+        ## self.failUnlessEqual(reflect.qual(f2.type), "exceptions.RuntimeError")
+        ## self.failUnless(f2.check, RuntimeError)
+        ## self.failUnlessEqual(f2.value, "message here")
+        ## self.failUnlessEqual(f2.frames, [])
+        ## self.failUnlessEqual(f2.tb, None)
+        ## self.failUnlessEqual(f2.stack, [])
+        ## self.failUnless(f2.traceback.find("raise RuntimeError") != -1,
+        ##                 "no 'raise RuntimeError' in '%s'" % (f2.traceback,))
 
     def testFailure2(self):
         self.callingBroker.unsafeTracebacks = False
@@ -167,17 +168,17 @@ class Copyable(TargetMixin, unittest.TestCase):
         # there should not be a traceback
         self.failUnlessEqual(f.traceback, "Traceback unavailable\n")
 
-        # we should be able to pickle CopiedFailures, and when we restore
-        # them, they should look like the original
-        p = pickle.dumps(f)
-        f2 = pickle.loads(p)
-        self.failUnlessEqual(reflect.qual(f2.type), "exceptions.RuntimeError")
-        self.failUnless(f2.check, RuntimeError)
-        self.failUnlessEqual(f2.value, "message here")
-        self.failUnlessEqual(f2.frames, [])
-        self.failUnlessEqual(f2.tb, None)
-        self.failUnlessEqual(f2.stack, [])
-        self.failUnlessEqual(f2.traceback, "Traceback unavailable\n")
+        ## # we should be able to pickle CopiedFailures, and when we restore
+        ## # them, they should look like the original
+        ## p = pickle.dumps(f)
+        ## f2 = pickle.loads(p)
+        ## self.failUnlessEqual(reflect.qual(f2.type), "exceptions.RuntimeError")
+        ## self.failUnless(f2.check, RuntimeError)
+        ## self.failUnlessEqual(f2.value, "message here")
+        ## self.failUnlessEqual(f2.frames, [])
+        ## self.failUnlessEqual(f2.tb, None)
+        ## self.failUnlessEqual(f2.stack, [])
+        ## self.failUnlessEqual(f2.traceback, "Traceback unavailable\n")
 
     def testCopy1(self):
         obj = MyCopyable1() # just copies the dict
