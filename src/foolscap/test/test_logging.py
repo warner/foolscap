@@ -1955,9 +1955,6 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             line0 = "local#%d %s: one" % (events[1]["d"]["num"],
                                           format_time(events[1]["d"]["time"],
                                                       tmode))
-            print "----"
-            for l in lines: print "-", l,
-            print "----"
             self.failUnlessEqual(lines[0].strip(), line0)
             self.failUnless("FAILURE:" in lines[3])
             self.failUnlessIn("test_logging.SampleError", lines[4])
@@ -1996,7 +1993,6 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
             self.failUnlessEqual(err, "")
             lines = list(StringIO(out).readlines())
-            print lines
             self.failUnless("header" in lines[0])
             self.failUnless("'message': 'one'" in lines[1])
             self.failUnless("'level': 20" in lines[1])
