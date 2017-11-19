@@ -2251,6 +2251,9 @@ def getPage(url):
         # with a transport that does not have an abortConnection method")
         # which seems to be https://twistedmatrix.com/trac/ticket/8227
         page = yield client.readBody(response)
+    if response.code != 200:
+        raise ValueError("request failed (%d), page contents were: %s" % (
+            response.code, page))
     returnValue(page)
 
 class Web(unittest.TestCase):
