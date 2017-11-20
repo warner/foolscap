@@ -1,5 +1,26 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.13.0 (20-Nov-2017)
+
+This release fixes compatibility with the latest Twisted-17.9.0 and changes
+the way logfiles are encoded.
+
+Foolscap's "flogtool" event-logging system can be configured to serialize log
+events into "Incident Files". In previous versions, these were serialized
+with the stdlib "pickle" module. However a recent change to Twisted's
+"Failure" class made them unpickleable, causing Foolscap's unit test suite to
+fail, and also affect applications which foolscap.logging.log.msg() with
+Failures as arguments. And untrusted pickles were unsafe to load anyways.
+
+This release replaces pickle with JSON, making it safe to use "flogtool"
+utilities on untrusted incident files. All new incident files created by this
+version will use JSON, and all tools (e.g. "flogtool dump") can only handle
+JSON-based files.  #247
+
+This also resolves a problem with tox-2.9.0, which caused tests to not run at
+all because nothing was installed into the test environment.
+
+
 * Release 0.12.7 (26-Jul-2017)
 
 This is a minor bugfix release to help Tahoe-LAFS.
