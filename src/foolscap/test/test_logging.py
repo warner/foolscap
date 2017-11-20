@@ -1,5 +1,6 @@
 
 import os, sys, json, time, bz2, base64, re
+import mock
 from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
@@ -267,6 +268,8 @@ class NoStdio(unittest.TestCase):
         self.assert_(m.startswith(expected), m)
         self.assertIn("ValueError('oops'", m)
 
+def ser(what):
+    return json.dumps(what, cls=flogfile.ExtendedEncoder)
 
 class Serialization(unittest.TestCase):
     def test_lazy_serialization(self):
@@ -290,10 +293,59 @@ class Serialization(unittest.TestCase):
         events = list(fl.get_buffered_events())
         self.failUnless(events[0]["arg"]["key"], "new")
 
+    def test_failure(self):
+        try:
+            raise ValueError("oops5")
+        except ValueError:
+            f = failure.Failure()
+        out = json.loads(ser({"f": f}))["f"]
+        self.assertEqual(out["@"], "Failure")
+        self.assertIn("Failure exceptions.ValueError: oops5", out["repr"])
+        self.assertIn("traceback", out)
+
+    def test_unserializable(self):
+        # The code that serializes log events to disk (with JSON) tries very
+        # hard to get *something* recorded, even when you give log.msg()
+        # something strange.
+        self.assertEqual(json.loads(ser({"a": 1})), {"a": 1})
+        unjsonable = [set([1,2])]
+        self.assertEqual(json.loads(ser(unjsonable)),
+                         [{'@': 'UnJSONable',
+                           'repr': 'set([1, 2])',
+                           'message': "log.msg() was given an object that could not be encoded into JSON. I've replaced it with this UnJSONable object. The object's repr is in .repr"}])
+
+        # if the repr() fails, we get a different message
+        class Unreprable:
+            def __repr__(self):
+                raise ValueError("oops7")
+        unrep = [Unreprable()]
+        self.assertEqual(json.loads(ser(unrep)),
+                         [{"@": "Unreprable",
+                           "exception_repr": "ValueError('oops7',)",
+                           "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. I've put the repr of the exception in .exception_repr",
+                           }])
+
+        # and if repr()ing the failed repr() exception fails, we give up
+        real_repr = repr
+        def really_bad_repr(o):
+            if isinstance(o, ValueError):
+                raise TypeError("oops9")
+            return real_repr(o)
+        import __builtin__
+        assert __builtin__.repr is repr
+        with mock.patch("__builtin__.repr", really_bad_repr):
+            s = ser(unrep)
+        self.assertEqual(json.loads(s),
+                         [{"@": "ReallyUnreprable",
+                           "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. That exception wasn't repr()able either. I give up. Good luck.",
+                           }])
+
     def test_not_pickle(self):
         # Older versions of Foolscap used pickle to store events into the
-        # Incident log. Newer ones use JSON. Test that pickleable (but not
-        # JSON-able) objects are *not* written to the file.
+        # Incident log, and dealt with errors by dropping the event. Newer ones
+        # use JSON, and use a placeholder when errors occur. Test that
+        # pickleable (but not JSON-able) objects are *not* written to the file
+        # directly, but are replaced by an "unjsonable" placeholder.
         basedir = "logging/Serialization/not_pickle"
         os.makedirs(basedir)
         fl = log.FoolscapLogger()
@@ -320,10 +372,14 @@ class Serialization(unittest.TestCase):
             events = list(flogfile.get_events(fn))
             self.failUnlessEqual(events[0]["header"]["type"], "incident")
             self.failUnlessEqual(events[1]["d"]["message"], "first")
-            self.failUnlessEqual(len(events), 3)
+            self.failUnlessEqual(len(events), 5)
             # actually this should record 5 events: both unrecordable events
             # should be replaced with error messages that *are* recordable
-            self.failUnlessEqual(events[2]["d"]["message"], "last")
+            self.failUnlessEqual(events[2]["d"]["message"], "unjsonable")
+            self.failUnlessEqual(events[2]["d"]["arg"][0]["@"], "UnJSONable")
+            self.failUnlessEqual(events[3]["d"]["message"], "unserializable")
+            self.failUnlessEqual(events[3]["d"]["arg"][0]["@"], "UnJSONable")
+            self.failUnlessEqual(events[4]["d"]["message"], "last")
         d.addCallback(_check)
         return d
 

@@ -2,10 +2,6 @@ import json
 from contextlib import closing
 from twisted.python import failure
 
-class JSONableFailure:
-    def __init__(self, f):
-        self.f = f
-
 class ExtendedEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, failure.Failure):
@@ -19,7 +15,22 @@ class ExtendedEncoder(json.JSONEncoder):
                     "traceback": o.getTraceback(),
                     # o.frames? .stack? .type?
                     }
-        return json.JSONEncoder.default(self, o)
+        try:
+            return {"@": "UnJSONable",
+                    "message": "log.msg() was given an object that could not be encoded into JSON. I've replaced it with this UnJSONable object. The object's repr is in .repr",
+                    "repr": repr(o),
+                    }
+        except Exception as e:
+            try:
+                return {"@": "Unreprable",
+                        "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. I've put the repr of the exception in .exception_repr",
+                        "exception_repr": repr(e),
+                        }
+            except Exception:
+                return {"@": "ReallyUnreprable",
+                        "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. That exception wasn't repr()able either. I give up. Good luck.",
+                        }
+
 
 def serialize_raw_header(f, header):
     json.dump({"header": header}, f, cls=ExtendedEncoder)
