@@ -90,6 +90,7 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         reactor.callLater(timeout, d.callback, res)
         return d
 
+    @defer.inlineCallbacks
     def test_retry(self):
         tubC = Tub(certData=self.tubB.getCertData())
         connects = []
@@ -99,31 +100,28 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         d1 = defer.Deferred()
         notifiers = [d1]
         self.services.remove(self.tubB)
-        d = self.tubB.stopService()
-        def _start_connecting(res):
-            # this will fail, since tubB is not listening anymore
-            self.rc = self.tubA.connectTo(url, self._connected,
-                                          notifiers, connects)
-            # give it a few tries, then start tubC listening on the same port
-            # that tubB used to, which should allow the connection to
-            # complete (since they both use the same certData)
-            return self.stall(2)
-        d.addCallback(_start_connecting)
-        def _start_tubC(res):
-            self.failUnlessEqual(len(connects), 0)
-            self.services.append(tubC)
-            tubC.startService()
-            tubC.listenOn("tcp:%d:interface=127.0.0.1" % portb)
-            tubC.setLocation("tcp:127.0.0.1:%d" % portb)
-            url2 = tubC.registerReference(target, "target")
-            assert url2 == url
-            return d1
-        d.addCallback(_start_tubC)
-        def _connected(res):
-            self.failUnlessEqual(len(connects), 1)
-            self.rc.stopConnecting()
-        d.addCallback(_connected)
-        return d
+
+        # This will fail, since tubB is not listening anymore. Wait until it's
+        # moved to the "waiting" state.
+        yield self.tubB.stopService()
+        rc = self.tubA.connectTo(url, self._connected, notifiers, connects)
+        yield self.poll(lambda: rc.getReconnectionInfo().state == "waiting")
+        self.failUnlessEqual(len(connects), 0)
+
+        # now start tubC listening on the same port that tubB used to, which
+        # should allow the connection to complete (since they both use the same
+        # certData)
+
+        self.services.append(tubC)
+        tubC.startService()
+        tubC.listenOn("tcp:%d:interface=127.0.0.1" % portb)
+        tubC.setLocation("tcp:127.0.0.1:%d" % portb)
+        url2 = tubC.registerReference(target, "target")
+        assert url2 == url
+        yield d1
+
+        self.failUnlessEqual(len(connects), 1)
+        rc.stopConnecting()
 
     @defer.inlineCallbacks
     def test_negotiate_fails_and_retry(self):
@@ -137,15 +135,13 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
 
         d1 = defer.Deferred()
         notifiers = [d1]
-        self.rc = self.tubA.connectTo(url, self._connected, notifiers, connects)
-        def _ready():
-            return self.rc.getReconnectionInfo().state == "waiting"
-        yield self.poll(_ready)
+        rc = self.tubA.connectTo(url, self._connected, notifiers, connects)
+        yield self.poll(lambda: rc.getReconnectionInfo().state == "waiting")
 
         # the reconnector should have failed once or twice, since the
         # negotiation would always fail.
         self.failUnlessEqual(len(connects), 0)
-        ci = self.rc.getReconnectionInfo().connectionInfo
+        ci = rc.getReconnectionInfo().connectionInfo
         cs = ci.connectorStatuses
         self.assertEqual(cs, {hint: "negotiation failed: I always fail"})
 
@@ -159,8 +155,9 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         yield d1
 
         self.failUnlessEqual(len(connects), 1)
-        self.rc.stopConnecting()
+        rc.stopConnecting()
 
+    @defer.inlineCallbacks
     def test_lose_and_retry(self):
         tubC = Tub(self.tubB.getCertData())
         connects = []
@@ -170,70 +167,70 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         target = HelperTarget("bob")
         url = self.tubB.registerReference(target, "target")
         portb = self.tub_ports[1]
-        self.rc = self.tubA.connectTo(url, self._connected,
-                                      notifiers, connects)
-        def _connected_first(res):
-            # we are now connected to tubB. Shut it down to force a
-            # disconnect.
-            self.services.remove(self.tubB)
-            d = self.tubB.stopService()
-            return d
-        d1.addCallback(_connected_first)
-        def _wait(res):
-            # wait a few seconds to give the Reconnector a chance to try and
-            # fail a few times
-            return self.stall(2)
-        d1.addCallback(_wait)
-        def _start_tubC(res):
-            # now start tubC listening on the same port that tubB used to,
-            # which should allow the connection to complete (since they both
-            # use the same certData)
-            self.services.append(tubC)
-            tubC.startService()
-            tubC.listenOn("tcp:%d:interface=127.0.0.1" % portb)
-            tubC.setLocation("tcp:127.0.0.1:%d" % portb)
-            url2 = tubC.registerReference(target, "target")
-            assert url2 == url
-            # this will fire when the second connection has been made
-            return d2
-        d1.addCallback(_start_tubC)
-        def _connected(res):
-            self.failUnlessEqual(len(connects), 2)
-            self.rc.stopConnecting()
-        d1.addCallback(_connected)
-        return d1
+        rc = self.tubA.connectTo(url, self._connected, notifiers, connects)
+        yield d1
+        self.assertEqual(rc.getReconnectionInfo().state, "connected")
+        # we are now connected to tubB. Shut it down to force a disconnect.
+        self.services.remove(self.tubB)
+        yield self.tubB.stopService()
 
+        # wait for at least one retry
+        yield self.poll(lambda: rc.getReconnectionInfo().state == "waiting")
+
+        # wait a few seconds more to give the Reconnector a chance to try and
+        # fail a few times. It isn't easy to catch the "connecting" state since
+        # the target is local and the kernel knows that it's not listening.
+        # TODO: add an internal retry counter to the Reconnector that we can
+        # poll for tests.
+        yield self.stall(2)
+
+        # now start tubC listening on the same port that tubB used to,
+        # which should allow the connection to complete (since they both
+        # use the same certData)
+        self.services.append(tubC)
+        tubC.startService()
+        tubC.listenOn("tcp:%d:interface=127.0.0.1" % portb)
+        tubC.setLocation("tcp:127.0.0.1:%d" % portb)
+        url2 = tubC.registerReference(target, "target")
+        assert url2 == url
+        # this will fire when the second connection has been made
+        yield d2
+
+        self.failUnlessEqual(len(connects), 2)
+        rc.stopConnecting()
+
+    @defer.inlineCallbacks
     def test_stop_trying(self):
         connects = []
         target = HelperTarget("bob")
         url = self.tubB.registerReference(target, "target")
-        d1 = defer.Deferred()
         self.services.remove(self.tubB)
-        d = self.tubB.stopService()
-        def _start_connecting(res):
-            # this will fail, since tubB is not listening anymore
-            self.rc = self.tubA.connectTo(url, self._connected, d1, connects)
-            self.rc.verbose = True # get better code coverage
-            # give it a few tries, then tell it to stop trying
-            return self.stall(2)
-        d.addCallback(_start_connecting)
-        def _stop_trying(res):
-            self.failUnlessEqual(len(connects), 0)
-            f = self.rc.getLastFailure()
-            self.failUnless(f.check(error.ConnectionRefusedError))
-            delay = self.rc.getDelayUntilNextAttempt()
-            self.failUnless(delay > 0, delay)
-            self.failUnless(delay < 60, delay)
-            self.rc.reset()
-            delay = self.rc.getDelayUntilNextAttempt()
-            self.failUnless(delay < 2)
-            # this stopConnecting occurs while the reconnector's timer is
-            # active
-            self.rc.stopConnecting()
-            self.failUnlessEqual(self.rc.getDelayUntilNextAttempt(), None)
-        d.addCallback(_stop_trying)
+        # this will fail, since tubB is not listening anymore
+        yield self.tubB.stopService()
+        rc = self.tubA.connectTo(url, self._connected, [], connects)
+        rc.verbose = True # get better code coverage
+
+        # wait for at least one retry
+        yield self.poll(lambda: rc.getReconnectionInfo().state == "waiting")
+
+        # and a bit more, for good measure
+        yield self.stall(2)
+
+        self.failUnlessEqual(len(connects), 0)
+        f = rc.getLastFailure()
+        self.failUnless(f.check(error.ConnectionRefusedError))
+        delay = rc.getDelayUntilNextAttempt()
+        self.failUnless(delay > 0, delay)
+        self.failUnless(delay < 60, delay)
+        rc.reset()
+        delay = rc.getDelayUntilNextAttempt()
+        self.failUnless(delay < 2)
+        # this stopConnecting occurs while the reconnector's timer is
+        # active
+        rc.stopConnecting()
+        self.failUnlessEqual(rc.getDelayUntilNextAttempt(), None)
         # if it keeps trying, we'll see a dirty reactor
-        return d
+
 
 class Unstarted(MakeTubsMixin, unittest.TestCase):
     def setUp(self):
@@ -247,7 +244,7 @@ class Unstarted(MakeTubsMixin, unittest.TestCase):
 
 # TODO: look at connections that succeed because of a listener, and also
 # loopback
-class Failed(unittest.TestCase):
+class Failed(PollMixin, unittest.TestCase):
     def setUp(self):
         self.services = []
     def tearDown(self):
@@ -276,9 +273,7 @@ class Failed(unittest.TestCase):
         ri = rc.getReconnectionInfo()
         self.assertEqual(ri.state, "connecting")
 
-        d = defer.Deferred()
-        reactor.callLater(1.0, d.callback, None)
-        yield d
+        yield self.poll(lambda: rc.getReconnectionInfo().state != "connecting")
 
         # now look at the details
         ri = rc.getReconnectionInfo()
