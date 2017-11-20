@@ -57,8 +57,9 @@ class LogDumper:
             Error: %s appears to be an old-style
             (pickle-based) flogfile, which cannot be loaded safely. If you
             wish to allow the author of the flogfile to take over your
-            computer, and view the content, please use the flogtool from a
-            copy of foolscap-0.9.2 or earlier.""" % (options.dumpfile,))
+            computer (and incidentally allow you to view the content), please
+            use the flogtool from a copy of foolscap-0.12.7 or earlier."""
+                                                    % (options.dumpfile,))
             return 1
         except flogfile.BadMagic as e:
             print >>options.stderr, textwrap.dedent("""\
