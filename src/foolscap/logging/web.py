@@ -78,6 +78,9 @@ def web_format_time(t, mode="short-local"):
     extended = "Local=%s  Local=%s  UTC=%s" % (time_ctime, time_local, time_utc)
     return time_s, extended
 
+def web_escape(u):
+    return html.escape(u.encode("utf-8"))
+
 class Welcome(resource.Resource):
     def __init__(self, viewer, timestamps):
         self.viewer = viewer
@@ -107,14 +110,16 @@ class Welcome(resource.Resource):
                 ((first_number, first_time),
                  (last_number, last_time),
                  num_events, levels, pid, versions) = self.viewer.summaries[lf]
+                # remember: the logfile uses JSON, so all strings will be
+                # unicode, and twisted.web requires bytes
                 data += "  <li>PID %s</li>\n" % html.escape(str(pid))
                 if versions:
                     data += "  <li>Application Versions:\n"
                     data += "   <ul>\n"
                     for name in sorted(versions.keys()):
                         ver = versions[name]
-                        data += "    <li>%s: %s</li>\n" % (html.escape(name),
-                                                           html.escape(ver))
+                        data += "    <li>%s: %s</li>\n" % (web_escape(name),
+                                                           web_escape(ver))
                     data += "   </ul>\n"
                     data += "  </li>\n"
                 if first_time and last_time:
@@ -281,8 +286,8 @@ class LogEvent:
         self.incarnation = base32.encode(e['d']['incarnation'][0])
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
-            self.anchor_index = "%s_%s_%d" % (urllib.quote(e['from']),
-                                              self.incarnation,
+            self.anchor_index = "%s_%s_%d" % (urllib.quote(e['from'].encode("utf-8")),
+                                              self.incarnation.encode("utf-8"),
                                               e['d']['num'])
         self.parent_index = None
         if 'parent' in e['d']:
@@ -305,12 +310,14 @@ class LogEvent:
         return self.LEVELMAP.get(level, "UNKNOWN")
 
     def to_html(self, href_base="", timestamps="short-local"):
+        # this must return bytes to satisfy twisted.web, but the logfile is
+        # JSON so we get unicode here
         d = self.e['d']
         time_short, time_extended = web_format_time(d['time'], timestamps)
-        msg = html.escape(log.format_message(d))
+        msg = web_escape(log.format_message(d))
         if 'failure' in d:
             lines = str(d['failure']).split("\n")
-            html_lines = [html.escape(line) for line in lines]
+            html_lines = [web_escape(line) for line in lines]
             f_html = "\n".join(html_lines)
             msg += " FAILURE:<pre>%s</pre>" % f_html
         level = d.get('level', log.OPERATIONAL)
@@ -318,8 +325,8 @@ class LogEvent:
         if level >= log.UNUSUAL:
             level_s = self.LEVELMAP.get(level, "") + " "
         details = "  ".join(["Event #%d" % d['num'],
-                             "TubID=%s" % self.e['from'],
-                             "Incarnation=%s" % self.incarnation,
+                             "TubID=%s" % web_escape(self.e['from']),
+                             "Incarnation=%s" % web_escape(self.incarnation),
                              time_extended])
         label = '<span title="%s">%s</span>' % (details, time_short)
         data = '%s [<span id="E%s"><a href="%s#E%s">%d</a></span>]: %s%s' \

@@ -188,6 +188,7 @@ class GathererService(GatheringBase):
         new_filename = "from-%s---to-present.flog" % self.format_time(now)
         self._savefile_name = os.path.join(self.basedir, new_filename)
         self._savefile = open(self._savefile_name, "ab", 0)
+        self._savefile.write(flogfile.MAGIC)
         self._starting_timestamp = now
         flogfile.serialize_header(self._savefile, "gatherer",
                                   start=self._starting_timestamp)
@@ -405,6 +406,7 @@ class IncidentObserver(Referenceable):
         now = time.time()
         (header, events) = incident
         f = bz2.BZ2File(filename, "w")
+        f.write(flogfile.MAGIC)
         flogfile.serialize_raw_header(f, header)
         for e in events:
             flogfile.serialize_wrapper(f, e, from_=self.tubid_s, rx_time=now)

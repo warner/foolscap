@@ -110,7 +110,8 @@ class IncidentSubscription(Referenceable):
             fn = new[name]
             trigger = self.publisher.get_incident_trigger(fn)
             if trigger:
-                self.observer.callRemoteOnly("new_incident", name, trigger)
+                self.observer.callRemoteOnly("new_incident", name,
+                                             _keys_to_bytes(trigger))
         self.observer.callRemoteOnly("done_with_incident_catchup")
 
     def unsubscribe(self):
@@ -129,6 +130,15 @@ class IncidentSubscription(Referenceable):
         print "INCIDENT PUBLISH FAILED: %s" % f
         self.unsubscribe()
 
+
+def _keys_to_bytes(d):
+    # the interfaces.Header and Event schema require the keys to be bytes
+    # ("str", since we're in py2), but we get unicode since we're pulling
+    # from a JSON-serialized incident file. These keys are fixed strings
+    # like (message, level, facility, from, rx_time, d). Encode to ASCII to
+    # make this clear. The user-provided data lives in the *values* of
+    # these dicts, which are unconstrained (the schemas use Any())
+    return dict([ (k.encode("ascii"), v) for (k,v) in d.iteritems()])
 
 class LogPublisher(Referenceable):
     """Publish log events to anyone subscribed to our 'logport'.
@@ -218,7 +228,7 @@ class LogPublisher(Referenceable):
         for (name,fn) in self.list_incident_names(since):
             trigger = self.get_incident_trigger(fn)
             if trigger:
-                incidents[name] = trigger
+                incidents[name] = _keys_to_bytes(trigger)
         return incidents
 
     def remote_get_incident(self, name):
@@ -230,12 +240,12 @@ class LogPublisher(Referenceable):
             fn = abs_fn + ".bz2"
             if not os.path.exists(fn):
                 fn = abs_fn
-            events = flogfile.get_events(fn, ignore_value_error=True)
+            events = flogfile.get_events(fn)
             # note the generator isn't actually cycled yet, not until next()
-            header = next(events)["header"]
+            header = _keys_to_bytes(next(events)["header"])
         except EnvironmentError:
             raise KeyError("no incident named %s" % name)
-        wrapped_events = [event["d"] for event in events]
+        wrapped_events = [_keys_to_bytes(event["d"]) for event in events]
         return (header, wrapped_events)
 
     def remote_subscribe_to_incidents(self, observer, catch_up=False, since=""):

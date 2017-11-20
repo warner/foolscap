@@ -465,11 +465,9 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
             self.failUnlessEqual(len(failures), 1)
             f = failures[0]
             self.failUnless(isinstance(f, failure.Failure))
-            self.failUnless(isinstance(f, call.CopiedFailure))
-            self.failUnless("Traceback (most recent call last):\n"
-                            in str(f))
-            self.failUnless("\nexceptions.ValueError: you asked me to fail\n"
-                            in str(f))
+            self.failUnlessIn("Traceback:", str(f))
+            self.failUnlessIn("exceptions.ValueError", str(f))
+            self.failUnlessIn(": you asked me to fail\n", str(f))
         d.addBoth(_check)
         return d
     testLogLocalFailure.timeout = 2

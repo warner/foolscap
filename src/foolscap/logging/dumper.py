@@ -1,5 +1,5 @@
 
-import sys, errno
+import sys, errno, textwrap
 from twisted.python import usage
 from foolscap.logging import flogfile
 from foolscap.logging.log import format_message
@@ -47,11 +47,24 @@ class LogDumper:
                 return 1
             raise
         except flogfile.ThisIsActuallyAFurlFileError:
-            print >>options.stderr, (
-                "Error: %s appears to be a FURL file.\n"
-                "Perhaps you meant to run"
-                " 'flogtool tail' instead of 'flogtool dump'?"
+            print >>options.stderr, textwrap.dedent("""\
+                Error: %s appears to be a FURL file.
+                Perhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?"""
                 % (options.dumpfile,))
+            return 1
+        except flogfile.EvilPickleFlogFile:
+            print >>options.stderr, textwrap.dedent("""\
+            Error: %s appears to be an old-style
+            (pickle-based) flogfile, which cannot be loaded safely. If you
+            wish to allow the author of the flogfile to take over your
+            computer (and incidentally allow you to view the content), please
+            use the flogtool from a copy of foolscap-0.12.7 or earlier."""
+                                                    % (options.dumpfile,))
+            return 1
+        except flogfile.BadMagic as e:
+            print >>options.stderr, textwrap.dedent("""\
+            Error: %s does not appear to be a flogfile.
+            """ % (options.dumpfile,))
             return 1
         except ValueError, ex:
             print >>options.stderr, (
@@ -91,7 +104,11 @@ class LogDumper:
         # let's mark the trigger event from incident reports with
         # [INCIDENT-TRIGGER] at the end of the line
         is_trigger = bool(self.trigger and (eid == self.trigger))
-        text = format_message(d)
+        try:
+            text = format_message(d)
+        except:
+            print "unformattable event", d
+            raise
 
         t = "%s#%d " % (short, d['num'])
         if options['rx-time']:
@@ -108,6 +125,6 @@ class LogDumper:
         print >>stdout, t
         if 'failure' in d:
             print >>stdout," FAILURE:"
-            lines = str(d['failure']).split("\n")
+            lines = str(d['failure'].get('str', d['failure'])).split("\n")
             for line in lines:
                 print >>stdout, " %s" % (line,)

@@ -1,5 +1,6 @@
 
-import os, sys, pickle, time, bz2
+import os, sys, json, time, bz2, base64, re
+import mock
 from cStringIO import StringIO
 from zope.interface import implements
 from twisted.trial import unittest
@@ -113,13 +114,11 @@ class Advanced(unittest.TestCase):
             l.removeObserver(ob.msg)
             ob._logFile.close()
             f = open(fn, "rb")
+            expected_magic = f.read(len(flogfile.MAGIC))
+            self.failUnlessEqual(expected_magic, flogfile.MAGIC)
             events = []
-            while True:
-                try:
-                    e = pickle.load(f)
-                    events.append(e)
-                except EOFError:
-                    break
+            for line in f:
+                events.append(json.loads(line))
             self.failUnlessEqual(len(events), 3)
             self.failUnlessEqual(events[0]["header"]["type"],
                                  "log-file-observer")
@@ -269,6 +268,8 @@ class NoStdio(unittest.TestCase):
         self.assert_(m.startswith(expected), m)
         self.assertIn("ValueError('oops'", m)
 
+def ser(what):
+    return json.dumps(what, cls=flogfile.ExtendedEncoder)
 
 class Serialization(unittest.TestCase):
     def test_lazy_serialization(self):
@@ -292,6 +293,96 @@ class Serialization(unittest.TestCase):
         events = list(fl.get_buffered_events())
         self.failUnless(events[0]["arg"]["key"], "new")
 
+    def test_failure(self):
+        try:
+            raise ValueError("oops5")
+        except ValueError:
+            f = failure.Failure()
+        out = json.loads(ser({"f": f}))["f"]
+        self.assertEqual(out["@"], "Failure")
+        self.assertIn("Failure exceptions.ValueError: oops5", out["repr"])
+        self.assertIn("traceback", out)
+
+    def test_unserializable(self):
+        # The code that serializes log events to disk (with JSON) tries very
+        # hard to get *something* recorded, even when you give log.msg()
+        # something strange.
+        self.assertEqual(json.loads(ser({"a": 1})), {"a": 1})
+        unjsonable = [set([1,2])]
+        self.assertEqual(json.loads(ser(unjsonable)),
+                         [{'@': 'UnJSONable',
+                           'repr': 'set([1, 2])',
+                           'message': "log.msg() was given an object that could not be encoded into JSON. I've replaced it with this UnJSONable object. The object's repr is in .repr"}])
+
+        # if the repr() fails, we get a different message
+        class Unreprable:
+            def __repr__(self):
+                raise ValueError("oops7")
+        unrep = [Unreprable()]
+        self.assertEqual(json.loads(ser(unrep)),
+                         [{"@": "Unreprable",
+                           "exception_repr": "ValueError('oops7',)",
+                           "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. I've put the repr of the exception in .exception_repr",
+                           }])
+
+        # and if repr()ing the failed repr() exception fails, we give up
+        real_repr = repr
+        def really_bad_repr(o):
+            if isinstance(o, ValueError):
+                raise TypeError("oops9")
+            return real_repr(o)
+        import __builtin__
+        assert __builtin__.repr is repr
+        with mock.patch("__builtin__.repr", really_bad_repr):
+            s = ser(unrep)
+        self.assertEqual(json.loads(s),
+                         [{"@": "ReallyUnreprable",
+                           "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. That exception wasn't repr()able either. I give up. Good luck.",
+                           }])
+
+    def test_not_pickle(self):
+        # Older versions of Foolscap used pickle to store events into the
+        # Incident log, and dealt with errors by dropping the event. Newer ones
+        # use JSON, and use a placeholder when errors occur. Test that
+        # pickleable (but not JSON-able) objects are *not* written to the file
+        # directly, but are replaced by an "unjsonable" placeholder.
+        basedir = "logging/Serialization/not_pickle"
+        os.makedirs(basedir)
+        fl = log.FoolscapLogger()
+        ir = incident.IncidentReporter(basedir, fl, "tubid")
+        ir.TRAILING_DELAY = None
+        fl.msg("first")
+        unjsonable = [object()] # still picklable
+        unserializable = [lambda: "neither pickle nor JSON can capture me"]
+        # having unserializble data in the logfile should not break the rest
+        fl.msg("unjsonable", arg=unjsonable)
+        fl.msg("unserializable", arg=unserializable)
+        fl.msg("last")
+        events = list(fl.get_buffered_events())
+        # if unserializable data breaks incident reporting, this
+        # incident_declared() call will cause an exception
+        ir.incident_declared(events[0])
+        # that won't record any trailing events, but does
+        # eventually(finished_Recording), so wait for that to conclude
+        d = flushEventualQueue()
+        def _check(_):
+            files = os.listdir(basedir)
+            self.failUnlessEqual(len(files), 1)
+            fn = os.path.join(basedir, files[0])
+            events = list(flogfile.get_events(fn))
+            self.failUnlessEqual(events[0]["header"]["type"], "incident")
+            self.failUnlessEqual(events[1]["d"]["message"], "first")
+            self.failUnlessEqual(len(events), 5)
+            # actually this should record 5 events: both unrecordable events
+            # should be replaced with error messages that *are* recordable
+            self.failUnlessEqual(events[2]["d"]["message"], "unjsonable")
+            self.failUnlessEqual(events[2]["d"]["arg"][0]["@"], "UnJSONable")
+            self.failUnlessEqual(events[3]["d"]["message"], "unserializable")
+            self.failUnlessEqual(events[3]["d"]["arg"][0]["@"], "UnJSONable")
+            self.failUnlessEqual(events[4]["d"]["message"], "last")
+        d.addCallback(_check)
+        return d
+
 class SuperstitiousQualifier(incident.IncidentQualifier):
     def check_event(self, ev):
         if "thirteen" in ev.get("message", ""):
@@ -307,7 +398,7 @@ class NoFollowUpReporter(incident.IncidentReporter):
 
 class LogfileReaderMixin:
     def _read_logfile(self, fn):
-        return list(flogfile.get_events(fn, ignore_value_error=True))
+        return list(flogfile.get_events(fn))
 
 class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
     def test_basic(self):
@@ -478,11 +569,11 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             options.stdout = StringIO()
             ic2.run(options)
             out = options.stdout.getvalue()
-            self.failUnless(".flog.bz2: unknown\n" in out, out)
+            self.failUnlessIn(".flog.bz2: unknown\n", out)
             # this should have a pprinted trigger dictionary
-            self.failUnless("'message': 'foom'," in out, out)
-            self.failUnless("'num': 0," in out, out)
-            self.failUnless("RuntimeError" in out, out)
+            self.failUnless(re.search(r"u?'message': u?'foom',", out), out)
+            self.failUnlessIn("'num': 0,", out)
+            self.failUnlessIn("RuntimeError", out)
 
         d.addCallback(_check)
         return d
@@ -1338,8 +1429,8 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         self.failUnlessEqual(data['d']['message'], "")
         self.failUnless(data['d']["isError"])
         self.failUnless("failure" in data['d'])
-        self.failUnless(data['d']["failure"].check(SampleError))
-        self.failUnless("whoops1" in str(data['d']["failure"]))
+        self.failUnlessIn("SampleError", data['d']["failure"]["repr"])
+        self.failUnlessIn("whoops1", data['d']["failure"]["repr"])
 
         # grab the third event from the log
         data = events.pop(0)
@@ -1348,8 +1439,8 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         self.failUnlessEqual(data['d']['message'], "")
         self.failUnless(data['d']["isError"])
         self.failUnless("failure" in data['d'])
-        self.failUnless(data['d']["failure"].check(SampleError))
-        self.failUnless("whoops2" in str(data['d']["failure"]))
+        self.failUnlessIn("SampleError", data['d']["failure"]["repr"])
+        self.failUnlessIn("whoops2", data['d']["failure"]["repr"])
 
     def test_wrongdir(self):
         basedir = "logging/Gatherer/wrongdir"
@@ -1721,9 +1812,11 @@ class Tail(unittest.TestCase):
         del outmsg
         lp.saver.disconnected() # cause the file to be closed
         f = open(saveto_filename, "rb")
-        data = pickle.load(f) # header
+        expected_magic = f.read(len(flogfile.MAGIC))
+        self.failUnlessEqual(expected_magic, flogfile.MAGIC)
+        data = json.loads(f.readline()) # header
         self.failUnlessEqual(data["header"]["type"], "tail")
-        data = pickle.load(f) # event
+        data = json.loads(f.readline()) # event
         self.failUnlessEqual(data["from"], "jiijpvbg")
         self.failUnlessEqual(data["d"]["message"], "howdy")
         self.failUnlessEqual(data["d"]["num"], 123)
@@ -1920,7 +2013,8 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
                                                       tmode))
             self.failUnlessEqual(lines[0].strip(), line0)
             self.failUnless("FAILURE:" in lines[3])
-            self.failUnless("test_logging.SampleError: whoops1" in lines[-3])
+            self.failUnlessIn("test_logging.SampleError", lines[4])
+            self.failUnlessIn(": whoops1", lines[4])
             self.failUnless(lines[-1].startswith("local#3 "))
 
             argv = ["flogtool", "dump", "--just-numbers", fn]
@@ -1956,7 +2050,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             self.failUnlessEqual(err, "")
             lines = list(StringIO(out).readlines())
             self.failUnless("header" in lines[0])
-            self.failUnless("'message': 'one'" in lines[1])
+            self.failUnless(re.search(r"u?'message': u?'one'", lines[1]), lines[1])
             self.failUnless("'level': 20" in lines[1])
             self.failUnless(": four: {" in lines[-1])
 
@@ -2007,30 +2101,96 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
         self.failUnlessEqual(err, "Error: %s appears to be a FURL file.\nPerhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?\n" % fn)
 
+PICKLE_DUMPFILE_B64 = """
+KGRwMApTJ2hlYWRlcicKcDEKKGRwMgpTJ3RocmVzaG9sZCcKcDMKSTAKc1MncGlkJwpwNA
+pJMTg3MjgKc1MndHlwZScKcDUKUydsb2ctZmlsZS1vYnNlcnZlcicKcDYKc1MndmVyc2lv
+bnMnCnA3CihkcDgKUydmb29sc2NhcCcKcDkKUycwLjkuMSsyMi5nNzhlNWEzZC5kaXJ0eS
+cKcDEwCnNTJ3R3aXN0ZWQnCnAxMQpTJzE1LjUuMCcKcDEyCnNzcy6AAn1xAChVBGZyb21x
+AVUFbG9jYWxxAlUHcnhfdGltZXEDR0HVmqGrUXpjVQFkcQR9cQUoVQVsZXZlbHEGSxRVC2
+luY2FybmF0aW9ucQdVCMZQLsaodzvDcQhOhnEJVQhmYWNpbGl0eXEKVQxiaWcuZmFjaWxp
+dHlxC1UDbnVtcQxLAFUEdGltZXENR0HVmqGrRFtbVQdtZXNzYWdlcQ5VA29uZXEPdXUugA
+J9cQAoVQRmcm9tcQFVBWxvY2FscQJVB3J4X3RpbWVxA0dB1Zqhq1F+s1UBZHEEfXEFKFUH
+bWVzc2FnZXEGVQN0d29xB1UDbnVtcQhLAVUEdGltZXEJR0HVmqGrUU6cVQtpbmNhcm5hdG
+lvbnEKVQjGUC7GqHc7w3ELToZxDFUFbGV2ZWxxDUsTdXUugAJ9cQAoVQRmcm9tcQFVBWxv
+Y2FscQJVB3J4X3RpbWVxA0dB1Zqhq1GAiFUBZHEEfXEFKFUFbGV2ZWxxBksUVQtpbmNhcm
+5hdGlvbnEHVQjGUC7GqHc7w3EIToZxCVUDd2h5cQpOVQdmYWlsdXJlcQsoY2Zvb2xzY2Fw
+LmNhbGwKQ29waWVkRmFpbHVyZQpxDG9xDX1xDyhVAnRicRBOVQl0cmFjZWJhY2txEVSBAw
+AAVHJhY2ViYWNrIChtb3N0IHJlY2VudCBjYWxsIGxhc3QpOgogIEZpbGUgIi9Vc2Vycy93
+YXJuZXIvc3R1ZmYvcHl0aG9uL2Zvb2xzY2FwL3ZlL2xpYi9weXRob24yLjcvc2l0ZS1wYW
+NrYWdlcy90d2lzdGVkL3RyaWFsL19hc3luY3Rlc3QucHkiLCBsaW5lIDExMiwgaW4gX3J1
+bgogICAgdXRpbHMucnVuV2l0aFdhcm5pbmdzU3VwcHJlc3NlZCwgc2VsZi5fZ2V0U3VwcH
+Jlc3MoKSwgbWV0aG9kKQogIEZpbGUgIi9Vc2Vycy93YXJuZXIvc3R1ZmYvcHl0aG9uL2Zv
+b2xzY2FwL3ZlL2xpYi9weXRob24yLjcvc2l0ZS1wYWNrYWdlcy90d2lzdGVkL2ludGVybm
+V0L2RlZmVyLnB5IiwgbGluZSAxNTAsIGluIG1heWJlRGVmZXJyZWQKICAgIHJlc3VsdCA9
+IGYoKmFyZ3MsICoqa3cpCiAgRmlsZSAiL1VzZXJzL3dhcm5lci9zdHVmZi9weXRob24vZm
+9vbHNjYXAvdmUvbGliL3B5dGhvbjIuNy9zaXRlLXBhY2thZ2VzL3R3aXN0ZWQvaW50ZXJu
+ZXQvdXRpbHMucHkiLCBsaW5lIDE5NywgaW4gcnVuV2l0aFdhcm5pbmdzU3VwcHJlc3NlZA
+ogICAgcmVzdWx0ID0gZigqYSwgKiprdykKICBGaWxlICIvVXNlcnMvd2FybmVyL3N0dWZm
+L3B5dGhvbi9mb29sc2NhcC9mb29sc2NhcC90ZXN0L3Rlc3RfbG9nZ2luZy5weSIsIGxpbm
+UgMTg4MywgaW4gdGVzdF9kdW1wCiAgICBkID0gc2VsZi5jcmVhdGVfbG9nZmlsZSgpCi0t
+LSA8ZXhjZXB0aW9uIGNhdWdodCBoZXJlPiAtLS0KICBGaWxlICIvVXNlcnMvd2FybmVyL3
+N0dWZmL3B5dGhvbi9mb29sc2NhcC9mb29sc2NhcC90ZXN0L3Rlc3RfbG9nZ2luZy5weSIs
+IGxpbmUgMTg0MiwgaW4gY3JlYXRlX2xvZ2ZpbGUKICAgIHJhaXNlIFNhbXBsZUVycm9yKC
+J3aG9vcHMxIikKZm9vbHNjYXAudGVzdC50ZXN0X2xvZ2dpbmcuU2FtcGxlRXJyb3I6IHdo
+b29wczEKcRJVBXZhbHVlcRNVB3dob29wczFxFFUHcGFyZW50c3EVXXEWKFUmZm9vbHNjYX
+AudGVzdC50ZXN0X2xvZ2dpbmcuU2FtcGxlRXJyb3JxF1UUZXhjZXB0aW9ucy5FeGNlcHRp
+b25xGFUYZXhjZXB0aW9ucy5CYXNlRXhjZXB0aW9ucRlVEl9fYnVpbHRpbl9fLm9iamVjdH
+EaZVUGZnJhbWVzcRtdcRxVBHR5cGVxHVUmZm9vbHNjYXAudGVzdC50ZXN0X2xvZ2dpbmcu
+U2FtcGxlRXJyb3JxHlUFc3RhY2txH11xIHViVQNudW1xIUsCVQR0aW1lcSJHQdWaoatRVt
+JVB21lc3NhZ2VxI1UFdGhyZWVxJFUHaXNFcnJvcnElSwF1dS6AAn1xAChVBGZyb21xAVUF
+bG9jYWxxAlUHcnhfdGltZXEDR0HVmqGrUYXkVQFkcQR9cQUoVQdtZXNzYWdlcQZVBGZvdX
+JxB1UDbnVtcQhLA1UEdGltZXEJR0HVmqGrUXU2VQtpbmNhcm5hdGlvbnEKVQjGUC7GqHc7
+w3ELToZxDFUFbGV2ZWxxDUsUdXUu
+"""
+
+PICKLE_INCIDENT_B64 = """
+QlpoOTFBWSZTWUOW3hEAAHjfgAAQAcl/4QkhCAS/59/iQAGdWS2BJRTNNQ2oB6gGgPU9T1
+BoEkintKGIABiAAaAwANGhowjJoNGmgMCpJDSaNGqbSMnqGhoaAP1S5rw5GxrNlUoxLXu2
+sZ5TYy2rVCVNHMKgeDE97TBiw1hXtCfdSCISDpSlL61KFiacqWj9apY80J2PIpO7mde+vd
+Jz18Myu4+djYU10JPMGU5vFAcUmmyk0kmcGUSMIDUJcKkog4W2EyyQStwwSYUEohGpr6Wm
+F4KU7qccsjPJf8dTIv3ydZM5hpkW41JjJ8j0PETxlRRVFSeZYsqFU+hufU3n5O3hmYASDC
+DhWMHFPJE7nXCYRsz5BGjktwUQCu6d4cixrgmGYLYA7JVCM7UqkMDVD9EMaclrFuayYGBR
+xMIwXxM9pjeUuZVv2ceR5E6FSWpVRKKD98ObK5wmGmU9vqNBKqjp0wwqZlZ3x3nA4n+LTS
+rmhbVjNyWeh/xdyRThQkEOW3hE
+"""
+
+class OldPickleDumper(unittest.TestCase):
+    def test_dump(self):
+        self.basedir = "logging/OldPickleDumper/dump"
+        if not os.path.exists(self.basedir):
+            os.makedirs(self.basedir)
+        fn = os.path.join(self.basedir, "dump.flog")
+        with open(fn, "wb") as f:
+            f.write(base64.b64decode(PICKLE_DUMPFILE_B64))
+
+        argv = ["flogtool", "dump", fn]
+        (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnlessEqual(out, "")
+        self.failUnlessIn("which cannot be loaded safely", err)
+
+    def test_incident(self):
+        self.basedir = "logging/OldPickleDumper/incident"
+        if not os.path.exists(self.basedir):
+            os.makedirs(self.basedir)
+        fn = os.path.join(self.basedir,
+                          "incident-2015-12-11--08-18-28Z-uqyuiea.flog.bz2")
+        with open(fn, "wb") as f:
+            f.write(base64.b64decode(PICKLE_INCIDENT_B64))
+
+        argv = ["flogtool", "dump", fn]
+        (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
+        self.failUnlessEqual(out, "")
+        self.failUnlessIn("which cannot be loaded safely", err)
+
 class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
     def compare_events(self, a, b):
-        # cmp(a,b) won't quite work, because two instances of CopiedFailure
-        # loaded from the same pickle don't compare as equal
-        self.failUnlessEqual(len(a), len(b))
-        for i in range(len(a)):
-            a1,b1 = a[i],b[i]
-            self.failUnlessEqual(set(a1.keys()), set(b1.keys()))
-            for k in a1:
-                if k == "d":
-                    self.failUnlessEqual(set(a1["d"].keys()),
-                                         set(b1["d"].keys()))
-                    for k2 in a1["d"]:
-                        if k2 == "failure":
-                            f1 = a1["d"][k2]
-                            f2 = b1["d"][k2]
-                            self.failUnlessEqual(f1.value, f2.value)
-                            self.failUnlessEqual(f1.getTraceback(),
-                                                 f2.getTraceback())
-                        else:
-                            self.failUnlessEqual(a1["d"][k2], b1["d"][k2])
-                else:
-                    self.failUnlessEqual(a1[k], b1[k])
+        ## # cmp(a,b) won't quite work, because two instances of CopiedFailure
+        ## # loaded from the same pickle don't compare as equal
+
+        # in fact we no longer create CopiedFailure instances in logs, so a
+        # simple failUnlessEqual will now suffice
+        self.failUnlessEqual(a, b)
 
 
     def test_basic(self):
@@ -2147,6 +2307,9 @@ def getPage(url):
         # with a transport that does not have an abortConnection method")
         # which seems to be https://twistedmatrix.com/trac/ticket/8227
         page = yield client.readBody(response)
+    if response.code != 200:
+        raise ValueError("request failed (%d), page contents were: %s" % (
+            response.code, page))
     returnValue(page)
 
 class Web(unittest.TestCase):

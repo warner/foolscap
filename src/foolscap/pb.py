@@ -215,12 +215,12 @@ class Tub(service.MultiService):
         self.tubID = crypto.digest32(cert.digest("sha1"))
 
     def make_incarnation(self):
-        unique = os.urandom(8)
+        unique = binascii.b2a_hex(os.urandom(8))
         # TODO: it'd be nice to have a sequential component, so incarnations
         # could be ordered, but it requires disk space
         sequential = None
         self.incarnation = (unique, sequential)
-        self.incarnation_string = binascii.b2a_hex(unique)
+        self.incarnation_string = unique
 
     def getIncarnationString(self):
         return self.incarnation_string

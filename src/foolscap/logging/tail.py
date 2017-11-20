@@ -18,6 +18,7 @@ class LogSaver(Referenceable):
     def __init__(self, nodeid_s, savefile):
         self.nodeid_s = nodeid_s
         self.f = savefile # we own this, and may close it
+        self.f.write(flogfile.MAGIC)
 
     def emit_header(self, versions, pid):
         flogfile.serialize_header(self.f, "tail", versions=versions, pid=pid)
