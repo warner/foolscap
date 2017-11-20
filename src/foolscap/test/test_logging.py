@@ -513,11 +513,11 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             options.stdout = StringIO()
             ic2.run(options)
             out = options.stdout.getvalue()
-            self.failUnless(".flog.bz2: unknown\n" in out, out)
+            self.failUnlessIn(".flog.bz2: unknown\n", out)
             # this should have a pprinted trigger dictionary
-            self.failUnless("'message': 'foom'," in out, out)
-            self.failUnless("'num': 0," in out, out)
-            self.failUnless("RuntimeError" in out, out)
+            self.failUnless(re.search(r"u?'message': u?'foom',", out), out)
+            self.failUnlessIn("'num': 0,", out)
+            self.failUnlessIn("RuntimeError", out)
 
         d.addCallback(_check)
         return d
