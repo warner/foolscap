@@ -1373,8 +1373,8 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         self.failUnlessEqual(data['d']['message'], "")
         self.failUnless(data['d']["isError"])
         self.failUnless("failure" in data['d'])
-        self.failUnless(data['d']["failure"].check(SampleError))
-        self.failUnless("whoops1" in str(data['d']["failure"]))
+        self.failUnlessIn("SampleError", data['d']["failure"]["repr"])
+        self.failUnlessIn("whoops1", data['d']["failure"]["repr"])
 
         # grab the third event from the log
         data = events.pop(0)
@@ -1383,8 +1383,8 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         self.failUnlessEqual(data['d']['message'], "")
         self.failUnless(data['d']["isError"])
         self.failUnless("failure" in data['d'])
-        self.failUnless(data['d']["failure"].check(SampleError))
-        self.failUnless("whoops2" in str(data['d']["failure"]))
+        self.failUnlessIn("SampleError", data['d']["failure"]["repr"])
+        self.failUnlessIn("whoops2", data['d']["failure"]["repr"])
 
     def test_wrongdir(self):
         basedir = "logging/Gatherer/wrongdir"

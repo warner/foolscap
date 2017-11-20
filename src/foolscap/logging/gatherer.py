@@ -188,6 +188,7 @@ class GathererService(GatheringBase):
         new_filename = "from-%s---to-present.flog" % self.format_time(now)
         self._savefile_name = os.path.join(self.basedir, new_filename)
         self._savefile = open(self._savefile_name, "ab", 0)
+        self._savefile.write(flogfile.MAGIC)
         self._starting_timestamp = now
         flogfile.serialize_header(self._savefile, "gatherer",
                                   start=self._starting_timestamp)
