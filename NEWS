@@ -1,5 +1,21 @@
 User visible changes in Foolscap                    -*- outline -*-
 
+* Release 0.13.1 (20-Nov-2017)
+
+This release adds a minor feature to "flappclient": it now pays attention to
+a pair of environment variables named $FOOLSCAP_TOR_CONTROL_PORT and
+$FOOLSCAP_TOR_SOCKS_PORT. If set, the client will install a connection
+handler that routes "tor:" -type FURLs through a Tor daemon at the given
+ports (both of which are endpoint descriptors, e.g. "tcp:localhost:9050").
+
+To use this, install the "tor" extra, like "pip install foolscap[tor]". If
+this extra was not installed (e.g. "txtorcon" is not importable), the
+environment variables will be ignored.
+
+This release also improves the reliability of the unit test suite
+(specifically test_reconnector) on slower systems.
+
+
 * Release 0.13.0 (20-Nov-2017)
 
 This release fixes compatibility with the latest Twisted-17.9.0 and changes
