@@ -218,6 +218,23 @@ def parse_options(command_name, argv, stdio, stdout, stderr):
 def run_command(config):
     c = dispatch_table[config.subCommand]()
     tub = Tub()
+    try:
+        from twisted.internet import reactor
+        from twisted.internet.endpoints import clientFromString
+        from foolscap.connections import tor
+        CONTROL = os.environ.get("FOOLSCAP_TOR_CONTROL_PORT", "")
+        SOCKS = os.environ.get("FOOLSCAP_TOR_SOCKS_PORT", "")
+        if CONTROL:
+            h = tor.control_endpoint(clientFromString(reactor, CONTROL))
+            tub.addConnectionHintHandler("tor", h)
+        elif SOCKS:
+            h = tor.socks_endpoint(clientFromString(reactor, SOCKS))
+            tub.addConnectionHintHandler("tor", h)
+        #else:
+        #    h = tor.default_socks()
+        #    tub.addConnectionHintHandler("tor", h)
+    except ImportError:
+        pass
     d = defer.succeed(None)
     d.addCallback(lambda _ign: tub.startService())
     d.addCallback(lambda _ign: tub.getReference(config.furl))
