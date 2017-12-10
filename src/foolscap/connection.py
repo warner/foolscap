@@ -85,7 +85,7 @@ class TubConnector(object):
     """
 
     failureReason = None
-    CONNECTION_TIMEOUT = 60
+    CONNECTION_TIMEOUT = 120
     timer = None
 
     def __init__(self, parent, tubref, connectionPlugins):
