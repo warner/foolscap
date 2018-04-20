@@ -42,7 +42,7 @@ class CreateOptions(BaseOptions):
         ]
     optParameters = [
         ("port", "p", "tcp:3116", "TCP port to listen on (strports string)"),
-        ("location", "l", None, "(required) Tub location hints to use in generated FURLs. e.g. 'example.org:3116'"),
+        ("location", "l", None, "(required) Tub location hints to use in generated FURLs. e.g. 'tcp:example.org:3116'"),
         ("umask", None, None, "(octal) file creation mask to use for the server. If not provided, the current umask (%04o) is copied." % get_umask()),
         ]
 

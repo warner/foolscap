@@ -89,8 +89,8 @@ class AppServer(service.MultiService):
             raise ValueError("This flappserver was created without "
                              "'--location=', and Foolscap no longer uses "
                              "IP-address autodetection. Please edit '%s' "
-                             "to contain e.g. 'example.org:12345', with a "
-                             "hostname and port number that match this "
+                             "to contain e.g. 'tcp:example.org:12345', with "
+                             "a hostname and port number that match this "
                              "server (we're listening on %s)"
                              % (location_fn, self.port))
         self.tub.setLocation(location)
