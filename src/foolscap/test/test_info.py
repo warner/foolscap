@@ -146,9 +146,13 @@ class Connect(unittest.TestCase):
         self.assertEqual(ci.connectorStatuses, {})
         (listener, status) = ci.listenerStatus
         self.assertEqual(status, "successful")
-        self.assertEqual(listener,
-                         "Listener on IPv4Address(TCP, '127.0.0.1', %d)"
-                         % self._portnum)
+
+        self.assertTrue(
+            (listener == ("Listener on IPv4Address(TCP, '127.0.0.1', %d)"
+                          % self._portnum)) or
+            (listener == ("Listener on IPv4Address(type='TCP', host='127.0.0.1',"
+                          " port=%d)"
+                          % self._portnum)))
 
     @defer.inlineCallbacks
     def testLoopback(self):
