@@ -146,9 +146,12 @@ class Connect(unittest.TestCase):
         self.assertEqual(ci.connectorStatuses, {})
         (listener, status) = ci.listenerStatus
         self.assertEqual(status, "successful")
-        self.assertEqual(listener,
-                         "Listener on IPv4Address(TCP, '127.0.0.1', %d)"
-                         % self._portnum)
+        # Twisted-18.4.0 used the first one. Twisted-18.7.0 switched to
+        # attrs, which stringifies as the second one.
+        self.assertIn(listener,
+                      ("Listener on IPv4Address(TCP, '127.0.0.1', %d)" % self._portnum,
+                       "Listener on IPv4Address(type='TCP', host='127.0.0.1', port=%d)"
+                       % self._portnum))
 
     @defer.inlineCallbacks
     def testLoopback(self):
