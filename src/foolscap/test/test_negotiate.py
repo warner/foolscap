@@ -447,14 +447,6 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
         return d
     test3.timeout = 10
 
-    @inlineCallbacks
-    def test4(self):
-        # prevent listener1 from doing sendHello by dropping the Deferred
-        self.makeServers(lo1={'debug_pause_sendHello': lambda d: None})
-        rref1 = yield self.connect2()
-        self.checkConnectedViaReverse(rref1, [negotiate.ENCRYPTED])
-    test4.timeout = 10
-
 class Crossfire(CrossfireReverse):
     tub1IsMaster = True
 
