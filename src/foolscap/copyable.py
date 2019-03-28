@@ -7,8 +7,8 @@ from twisted.python import reflect, log
 from twisted.python.components import registerAdapter
 from twisted.internet import defer
 
-import slicer, tokens
-from tokens import BananaError, Violation
+from . import slicer, tokens
+from .tokens import BananaError, Violation
 from foolscap.constraint import OpenerConstraint, IConstraint, Optional
 
 Interface = interface.Interface
@@ -51,7 +51,7 @@ class CopyableSlicer(slicer.BaseSlicer):
         assert isinstance(copytype, str)
         yield copytype
         state = self.obj.getStateToCopy()
-        for k,v in state.iteritems():
+        for k,v in state.items():
             yield k
             yield v
     def describe(self):
@@ -137,7 +137,7 @@ class RemoteCopyUnslicer(slicer.BaseUnslicer):
         assert ready_deferred is None
         if self.attrname == None:
             attrname = obj
-            if self.d.has_key(attrname):
+            if attrname in self.d:
                 raise BananaError("duplicate attribute name '%s'" % attrname)
             s = self.schema
             if s:
@@ -248,7 +248,7 @@ def registerRemoteCopyUnslicerFactory(typename, unslicerfactory,
 
     if registry == None:
         registry = CopyableRegistry
-    assert not registry.has_key(typename)
+    assert typename not in registry
     registry[typename] = unslicerfactory
 
 # this keeps track of everything submitted to registerRemoteCopyFactory
@@ -368,8 +368,8 @@ class AttributeDictConstraint(OpenerConstraint):
         self.acceptUnknown = kwargs.get('acceptUnknown', False)
         self.keys = {}
         for name, constraint in (list(attrTuples) +
-                                 kwargs.get('attributes', {}).items()):
-            assert name not in self.keys.keys()
+                                 list(kwargs.get('attributes', {}).items())):
+            assert name not in list(self.keys.keys())
             self.keys[name] = IConstraint(constraint)
 
     def getAttrConstraint(self, attrname):
@@ -387,16 +387,16 @@ class AttributeDictConstraint(OpenerConstraint):
 
     def checkObject(self, obj, inbound):
         if type(obj) != type({}):
-            raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
-                                                                type(obj))
-        allkeys = self.keys.keys()
-        for k in obj.keys():
+            raise Violation("'%s' (%s) is not a Dictionary" % (obj,
+                                                               type(obj)))
+        allkeys = list(self.keys.keys())
+        for k in list(obj.keys()):
             try:
                 constraint = self.keys[k]
                 allkeys.remove(k)
             except KeyError:
                 if not self.ignoreUnknown:
-                    raise Violation, "key '%s' not in schema" % k
+                    raise Violation("key '%s' not in schema" % k)
                 else:
                     # hmm. kind of a soft violation. allow it for now.
                     pass

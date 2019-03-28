@@ -1,6 +1,6 @@
-
+from __future__ import print_function
 import os, sys
-from StringIO import StringIO
+from io import StringIO
 from twisted.python import usage
 from twisted.internet import defer
 
@@ -42,7 +42,7 @@ class UploadFile(Referenceable):
     def _upload(self, _ignored, rref, sf, name):
         return Uploader().run(rref, sf, name)
     def _done(self, _ignored, options, name):
-        print >>options.stdout, "%s: uploaded" % name
+        print("%s: uploaded" % name, file=options.stdout)
 
 
 class RunCommandOptions(BaseOptions):
@@ -180,13 +180,13 @@ class ClientOptions(usage.Options):
             raise usage.UsageError("must specify a command")
 
     def opt_help(self):
-        print >>self.stdout, self.synopsis
+        print(self.synopsis, file=self.stdout)
         sys.exit(0)
 
     def opt_version(self):
         from twisted import copyright
-        print >>self.stdout, "Foolscap version:", foolscap.__version__
-        print >>self.stdout, "Twisted version:", copyright.version
+        print("Foolscap version:", foolscap.__version__, file=self.stdout)
+        print("Twisted version:", copyright.version, file=self.stdout)
         sys.exit(0)
 
 dispatch_table = {
@@ -206,11 +206,11 @@ def parse_options(command_name, argv, stdio, stdout, stderr):
         config.subOptions.stdout = stdout
         config.subOptions.stderr = stderr
 
-    except usage.error, e:
-        print >>stderr, "%s:  %s" % (command_name, e)
-        print >>stderr
+    except usage.error as e:
+        print("%s:  %s" % (command_name, e), file=stderr)
+        print(file=stderr)
         c = getattr(config, 'subOptions', config)
-        print >>stderr, str(c)
+        print(str(c), file=stderr)
         sys.exit(1)
 
     return config
@@ -271,8 +271,8 @@ def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
             if f.check(SystemExit):
                 stash_rc.append(f.value.args[0])
             else:
-                print >>stderr, "flappclient command failed:"
-                print >>stderr, f
+                print("flappclient command failed:", file=stderr)
+                print(f, file=stderr)
                 stash_rc.append(-1)
             reactor.stop()
         d.addCallbacks(good, oops)

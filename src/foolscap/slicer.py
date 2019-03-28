@@ -4,8 +4,8 @@ from twisted.python.components import registerAdapter
 from twisted.python import log
 from zope.interface import implements
 from twisted.internet.defer import Deferred
-import tokens
-from tokens import Violation, BananaError
+from . import tokens
+from .tokens import Violation, BananaError
 from foolscap.ipb import IBroker
 
 class SlicerClass(type):
@@ -131,7 +131,7 @@ BananaUnslicerRegistry = {}
 def registerUnslicer(opentype, factory, registry=None):
     if registry is None:
         registry = UnslicerRegistry
-    assert not registry.has_key(opentype)
+    assert opentype not in registry
     registry[opentype] = factory
 
 class UnslicerClass(type):
@@ -260,13 +260,13 @@ class ScopedUnslicer(BaseUnslicer):
 
     def setObject(self, counter, obj):
         if self.protocol.debugReceive:
-            print "setObject(%s): %s{%s}" % (counter, obj, id(obj))
+            print("setObject(%s): %s{%s}" % (counter, obj, id(obj)))
         self.references[counter] = obj
 
     def getObject(self, counter):
         obj = self.references.get(counter)
         if self.protocol.debugReceive:
-            print "getObject(%s) -> %s{%s}" % (counter, obj, id(obj))
+            print("getObject(%s) -> %s{%s}" % (counter, obj, id(obj)))
         return obj
 
 

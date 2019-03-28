@@ -38,7 +38,7 @@ def serialize_raw_header(f, header):
 
 def serialize_header(f, type, **kwargs):
     header = {"header": {"type": type} }
-    for k,v in kwargs.items():
+    for k,v in list(kwargs.items()):
         header["header"][k] = v
     json.dump(header, f, cls=ExtendedEncoder)
     f.write("\n")

@@ -64,7 +64,7 @@ class TestPersist(UsefulMixin, unittest.TestCase):
         s1.listenOn("tcp:%d:interface=127.0.0.1" % port)
         s1.setLocation("127.0.0.1:%d" % port)
         public_url = s1.registerReference(t1, "name")
-        self.failUnless(public_url.startswith("pb:"))
+        self.assertTrue(public_url.startswith("pb:"))
         d = defer.maybeDeferred(s1.stopService)
         d.addCallback(self._testPersist_1, s1, s2, t1, public_url, port)
         return d
@@ -83,12 +83,12 @@ class TestPersist(UsefulMixin, unittest.TestCase):
         newurl = re.sub(":%d/" % port, ":%d/" % newport, public_url)
         d = s2.getReference(newurl)
         d.addCallback(lambda rr: rr.callRemote("add", a=1, b=2))
-        d.addCallback(self.failUnlessEqual, 3)
+        d.addCallback(self.assertEqual, 3)
         d.addCallback(self._testPersist_2, t1, t2)
         return d
     def _testPersist_2(self, res, t1, t2):
-        self.failUnlessEqual(t1.calls, [])
-        self.failUnlessEqual(t2.calls, [(1,2)])
+        self.assertEqual(t1.calls, [])
+        self.assertEqual(t2.calls, [(1,2)])
 
 
 class TestListeners(UsefulMixin, unittest.TestCase):
@@ -97,23 +97,23 @@ class TestListeners(UsefulMixin, unittest.TestCase):
     def testListenOn(self):
         s1 = self.services[0]
         l = s1.listenOn("tcp:%d:interface=127.0.0.1" % allocate_tcp_port())
-        self.failUnless(isinstance(l, pb.Listener))
-        self.failUnlessEqual(len(s1.getListeners()), 1)
+        self.assertTrue(isinstance(l, pb.Listener))
+        self.assertEqual(len(s1.getListeners()), 1)
         s1.stopListeningOn(l)
-        self.failUnlessEqual(len(s1.getListeners()), 0)
+        self.assertEqual(len(s1.getListeners()), 0)
 
     def testGetPort1(self):
         s1,s2,s3 = self.services
         s1.listenOn("tcp:%d:interface=127.0.0.1" % allocate_tcp_port())
         listeners = s1.getListeners()
-        self.failUnlessEqual(len(listeners), 1)
+        self.assertEqual(len(listeners), 1)
 
     def testGetPort2(self):
         s1,s2,s3 = self.services
         s1.listenOn("tcp:%d:interface=127.0.0.1" % allocate_tcp_port())
         listeners = s1.getListeners()
-        self.failUnlessEqual(len(listeners), 1)
+        self.assertEqual(len(listeners), 1)
         # listen on a second port too
         s1.listenOn("tcp:%d:interface=127.0.0.1" % allocate_tcp_port())
         l2 = s1.getListeners()
-        self.failUnlessEqual(len(l2), 2)
+        self.assertEqual(len(l2), 2)

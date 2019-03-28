@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
+from __future__ import print_function
 import re, time
 from zope.interface import implements, implementsOnly, implementedBy, Interface
 from twisted.python import log
@@ -44,7 +45,7 @@ class Loopback:
         except:
             f = failure.Failure()
             log.err(f)
-            print "Loopback.write exception:", f
+            print("Loopback.write exception:", f)
             self.loseConnection(f)
 
     def loseConnection(self, why=failure.Failure(CONNECTION_DONE)):
@@ -389,7 +390,7 @@ class ShouldFailMixin:
                     self.fail("got failure %s, was expecting %s"
                               % (res, expected_failure))
                 if substring:
-                    self.failUnless(substring in str(res),
+                    self.assertTrue(substring in str(res),
                                     "%s: substring '%s' not in '%s'"
                                     % (which, substring, str(res)))
                 # make the Failure available to a subsequent callback, but

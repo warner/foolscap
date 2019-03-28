@@ -35,13 +35,13 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # this is done without interfaces
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("add", a=1, b=2)
-        d.addCallback(lambda res: self.failUnlessEqual(res, 3))
-        d.addCallback(lambda res: self.failUnlessEqual(target.calls, [(1,2)]))
+        d.addCallback(lambda res: self.assertEqual(res, 3))
+        d.addCallback(lambda res: self.assertEqual(target.calls, [(1,2)]))
         d.addCallback(self._testCall1_1, rr)
         return d
     def _testCall1_1(self, res, rr):
         # the caller still holds the RemoteReference
-        self.failUnless(self.callingBroker.yourReferenceByCLID.has_key(1))
+        self.assertTrue(1 in self.callingBroker.yourReferenceByCLID)
 
         # release the RemoteReference. This does two things: 1) the
         # callingBroker will forget about it. 2) they will send a decref to
@@ -52,22 +52,22 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # we need to give it a moment to deliver the DecRef message and act
         # on it. Poll until the caller has received it.
         def _check():
-            if self.callingBroker.yourReferenceByCLID.has_key(1):
+            if 1 in self.callingBroker.yourReferenceByCLID:
                 return False
             return True
         d = self.poll(_check)
         d.addCallback(self._testCall1_2)
         return d
     def _testCall1_2(self, res):
-        self.failIf(self.callingBroker.yourReferenceByCLID.has_key(1))
-        self.failIf(self.targetBroker.myReferenceByCLID.has_key(1))
+        self.assertFalse(1 in self.callingBroker.yourReferenceByCLID)
+        self.assertFalse(1 in self.targetBroker.myReferenceByCLID)
 
     def testCall1a(self):
         # no interfaces, but use positional args
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("add", 1, 2)
-        d.addCallback(lambda res: self.failUnlessEqual(res, 3))
-        d.addCallback(lambda res: self.failUnlessEqual(target.calls, [(1,2)]))
+        d.addCallback(lambda res: self.assertEqual(res, 3))
+        d.addCallback(lambda res: self.assertEqual(target.calls, [(1,2)]))
         return d
     testCall1a.timeout = 2
 
@@ -75,8 +75,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # no interfaces, use both positional and keyword args
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("add", 1, b=2)
-        d.addCallback(lambda res: self.failUnlessEqual(res, 3))
-        d.addCallback(lambda res: self.failUnlessEqual(target.calls, [(1,2)]))
+        d.addCallback(lambda res: self.assertEqual(res, 3))
+        d.addCallback(lambda res: self.assertEqual(target.calls, [(1,2)]))
         return d
     testCall1b.timeout = 2
 
@@ -84,17 +84,17 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # this is done without interfaces
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("fail")
-        self.failIf(target.calls)
+        self.assertFalse(target.calls)
         d.addBoth(self._testFail1_1)
         return d
     testFail1.timeout = 2
     def _testFail1_1(self, f):
         # f should be a CopiedFailure
-        self.failUnless(isinstance(f, Failure),
+        self.assertTrue(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
-        self.failUnless(isinstance(f, CopiedFailure),
+        self.assertTrue(isinstance(f, CopiedFailure),
                         "not CopiedFailure: %s" % f)
-        self.failUnless(f.check(ValueError),
+        self.assertTrue(f.check(ValueError),
                         "wrong exception type: %s" % f)
         self.failUnlessSubstring("you asked me to fail", f.value)
 
@@ -103,14 +103,14 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("add", a=1, b=2, c=3)
         # add() does not take a 'c' argument, so we get a TypeError here
-        self.failIf(target.calls)
+        self.assertFalse(target.calls)
         d.addBoth(self._testFail2_1)
         return d
     testFail2.timeout = 2
     def _testFail2_1(self, f):
-        self.failUnless(isinstance(f, Failure),
+        self.assertTrue(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
-        self.failUnless(f.check(TypeError),
+        self.assertTrue(f.check(TypeError),
                         "wrong exception type: %s" % f.type)
         self.failUnlessSubstring("remote_add() got an unexpected keyword "
                                  "argument 'c'", f.value)
@@ -120,14 +120,14 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("bogus", a=1, b=2)
         # the target does not have .bogus method, so we get an AttributeError
-        self.failIf(target.calls)
+        self.assertFalse(target.calls)
         d.addBoth(self._testFail3_1)
         return d
     testFail3.timeout = 2
     def _testFail3_1(self, f):
-        self.failUnless(isinstance(f, Failure),
+        self.assertTrue(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
-        self.failUnless(f.check(AttributeError),
+        self.assertTrue(f.check(AttributeError),
                         "wrong exception type: %s" % f.type)
         self.failUnlessSubstring("TargetWithoutInterfaces", str(f))
         self.failUnlessSubstring(" has no attribute 'remote_bogus'", str(f))
@@ -139,15 +139,15 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
             return
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         d = rr.callRemote("failstring")
-        self.failIf(target.calls)
+        self.assertFalse(target.calls)
         d.addBoth(self._testFailStringException_1)
         return d
     testFailStringException.timeout = 2
     def _testFailStringException_1(self, f):
         # f should be a CopiedFailure
-        self.failUnless(isinstance(f, Failure),
+        self.assertTrue(isinstance(f, Failure),
                         "Hey, we didn't fail: %s" % f)
-        self.failUnless(f.check("string exceptions are annoying"),
+        self.assertTrue(f.check("string exceptions are annoying"),
                         "wrong exception type: %s" % f)
 
     def testCopiedFailure(self):
@@ -157,9 +157,9 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d = rr.callRemote("fail_remotely", target)
         def _check(f):
             # f should be a CopiedFailure
-            self.failUnless(isinstance(f, Failure),
+            self.assertTrue(isinstance(f, Failure),
                             "Hey, we didn't fail: %s" % f)
-            self.failUnless(f.check(ValueError),
+            self.assertTrue(f.check(ValueError),
                             "wrong exception type: %s" % f)
             self.failUnlessSubstring("you asked me to fail", f.value)
         d.addBoth(_check)
@@ -171,7 +171,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         rr, target = self.setupTarget(Target(), True)
         d = rr.callRemote("add", a=3, b=4, _useSchema=False)
         # the schema is enforced upon receipt
-        d.addCallback(lambda res: self.failUnlessEqual(res, 7))
+        d.addCallback(lambda res: self.assertEqual(res, 7))
         return d
     testCall2.timeout = 2
 
@@ -179,7 +179,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # use interface on both sides
         rr, target = self.setupTarget(Target(), True)
         d = rr.callRemote('add', 3, 4) # enforces schemas
-        d.addCallback(lambda res: self.failUnlessEqual(res, 7))
+        d.addCallback(lambda res: self.assertEqual(res, 7))
         return d
     testCall3.timeout = 2
 
@@ -187,7 +187,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # call through a manually-defined RemoteMethodSchema
         rr, target = self.setupTarget(Target(), True)
         d = rr.callRemote("add", 3, 4, _methodConstraint=RIMyTarget['add1'])
-        d.addCallback(lambda res: self.failUnlessEqual(res, 7))
+        d.addCallback(lambda res: self.assertEqual(res, 7))
         return d
     testCall4.timeout = 2
 
@@ -201,9 +201,9 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # children (using the default of 1000 bytes instead).
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("choice1", 4)
-        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        d.addCallback(lambda res: self.assertEqual(res, None))
         d.addCallback(lambda res: rr.callRemote("choice1", "a"*2000))
-        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        d.addCallback(lambda res: self.assertEqual(res, None))
         # False does not conform
         d.addCallback(lambda res:
                       self.shouldFail(Violation, "testChoiceOf", None,
@@ -225,7 +225,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         obj1 = {"key": [t]}
         obj2 = (set([1,2,3]), [1,2,3], {1:"two"})
         d = rr.callRemote("megaschema", obj1, obj2)
-        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        d.addCallback(lambda res: self.assertEqual(res, None))
         return d
 
     def testMega3(self):
@@ -234,15 +234,15 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         obj = [t, t]
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("mega3", obj)
-        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        d.addCallback(lambda res: self.assertEqual(res, None))
         return d
 
     def testUnconstrainedMethod(self):
         rr, target = self.setupTarget(Target(), True)
         d = rr.callRemote('free', 3, 4, x="boo")
         def _check(res):
-            self.failUnlessEqual(res, "bird")
-            self.failUnlessEqual(target.calls, [((3,4), {"x": "boo"})])
+            self.assertEqual(res, "bird")
+            self.assertEqual(target.calls, [((3,4), {"x": "boo"})])
         d.addCallback(_check)
         return d
 
@@ -255,8 +255,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         return d
     testFailWrongMethodLocal.timeout = 2
     def _testFailWrongMethodLocal_1(self, f):
-        self.failUnless(f.check(Violation))
-        self.failUnless(re.search(r'RIMyTarget\(.*\) does not offer bogus',
+        self.assertTrue(f.check(Violation))
+        self.assertTrue(re.search(r'RIMyTarget\(.*\) does not offer bogus',
                                   str(f)))
 
     def testFailWrongMethodRemote(self):
@@ -270,7 +270,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         return d
     testFailWrongMethodRemote.timeout = 2
     def _testFailWrongMethodRemote_1(self, f):
-        self.failUnless(f.check(Violation))
+        self.assertTrue(f.check(Violation))
         self.failUnlessSubstring("method 'bogus' not defined in RIMyTarget",
                                  str(f))
 
@@ -283,12 +283,12 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # does not
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        self._testFailWrongMethodRemote2_1)
-        d.addCallback(lambda res: self.failIf(target.calls))
+        d.addCallback(lambda res: self.assertFalse(target.calls))
         return d
     testFailWrongMethodRemote2.timeout = 2
     def _testFailWrongMethodRemote2_1(self, f):
-        self.failUnless(f.check(Violation))
-        self.failUnless(re.search(r'RIMyTarget\(.*\) does not offer bogus',
+        self.assertTrue(f.check(Violation))
+        self.assertTrue(re.search(r'RIMyTarget\(.*\) does not offer bogus',
                                   str(f)))
 
     def testFailWrongArgsLocal1(self):
@@ -297,11 +297,11 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d = rr.callRemote("add", a=1, b=2, c=3)
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        self._testFailWrongArgsLocal1_1)
-        d.addCallback(lambda res: self.failIf(target.calls))
+        d.addCallback(lambda res: self.assertFalse(target.calls))
         return d
     testFailWrongArgsLocal1.timeout = 2
     def _testFailWrongArgsLocal1_1(self, f):
-        self.failUnless(f.check(Violation))
+        self.assertTrue(f.check(Violation))
         self.failUnlessSubstring("unknown argument 'c'", str(f.value))
 
     def testFailWrongArgsLocal2(self):
@@ -310,11 +310,11 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d = rr.callRemote("add", a=1, b="two")
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        self._testFailWrongArgsLocal2_1)
-        d.addCallback(lambda res: self.failIf(target.calls))
+        d.addCallback(lambda res: self.assertFalse(target.calls))
         return d
     testFailWrongArgsLocal2.timeout = 2
     def _testFailWrongArgsLocal2_1(self, f):
-        self.failUnless(f.check(Violation))
+        self.assertTrue(f.check(Violation))
         self.failUnlessSubstring("not a number", str(f.value))
 
     def testFailWrongArgsRemote1(self):
@@ -324,11 +324,11 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d = rr.callRemote("add", a=1, b="foo", _useSchema=False)
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        self._testFailWrongArgsRemote1_1)
-        d.addCallbacks(lambda res: self.failIf(target.calls))
+        d.addCallbacks(lambda res: self.assertFalse(target.calls))
         return d
     testFailWrongArgsRemote1.timeout = 2
     def _testFailWrongArgsRemote1_1(self, f):
-        self.failUnless(f.check(Violation))
+        self.assertTrue(f.check(Violation))
         self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
                                  f.value)
         self.failUnlessSubstring("<RootUnslicer>.<methodcall", f.value)
@@ -343,7 +343,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         return d
     testFailWrongReturnRemote.timeout = 2
     def _testFailWrongReturnRemote_1(self, f):
-        self.failUnless(f.check(Violation))
+        self.assertTrue(f.check(Violation))
         self.failUnlessSubstring("in return value of <foolscap.test.common.BrokenTarget object at ", f.value)
         self.failUnlessSubstring(">.add", f.value)
         self.failUnlessSubstring("not a number", f.value)
@@ -358,11 +358,11 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        self._testFailWrongReturnLocal_1)
         # the method should have been run
-        d.addCallback(lambda res: self.failUnless(target.calls))
+        d.addCallback(lambda res: self.assertTrue(target.calls))
         return d
     testFailWrongReturnLocal.timeout = 2
     def _testFailWrongReturnLocal_1(self, f):
-        self.failUnless(f.check(Violation))
+        self.assertTrue(f.check(Violation))
         self.failUnlessSubstring("INT token rejected by ByteStringConstraint",
                                  str(f))
         self.failUnlessSubstring("in inbound method results", str(f))
@@ -373,7 +373,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def testDefer(self):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("defer", obj=12)
-        d.addCallback(lambda res: self.failUnlessEqual(res, 12))
+        d.addCallback(lambda res: self.assertEqual(res, 12))
         return d
     testDefer.timeout = 2
 
@@ -383,7 +383,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         rr, target = self.setupTarget(HelperTarget())
         d0 = rr.callRemote("hang")
         d = rr.callRemote("echo", 1)
-        d.addCallback(lambda res: self.failUnlessEqual(res, 1))
+        d.addCallback(lambda res: self.assertEqual(res, 1))
         def _done(res):
             target.d.callback(2)
             return d0
@@ -408,10 +408,11 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d = self.shouldFail(DeadReferenceError, "lost_is_deadref.1",
                             "Connection was lost",
                             get_d)
-        def _examine_error((f,)):
+        def _examine_error(xxx_todo_changeme):
             # the (to tubid=XXX) part will see "tub=call", which is an
             # abbreviation of "callingBroker" as created in
             # TargetMixin.setupBrokers
+            (f,) = xxx_todo_changeme
             self.failUnlessIn("(to tubid=call)", str(f.value))
             self.failUnlessIn("(during method=None:hang)", str(f.value))
         d.addCallback(_examine_error)
@@ -438,14 +439,14 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def testNotifyOnDisconnect(self):
         rr, target = self.setupTarget(HelperTarget())
         self.lost = 0
-        self.failUnlessEqual(rr.isConnected(), True)
+        self.assertEqual(rr.isConnected(), True)
         rr.notifyOnDisconnect(self.disconnected)
         rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
         d = flushEventualQueue()
         def _check(res):
-            self.failUnlessEqual(rr.isConnected(), False)
-            self.failUnless(self.lost)
-            self.failUnlessEqual(self.lost_args, ((),{}))
+            self.assertEqual(rr.isConnected(), False)
+            self.assertTrue(self.lost)
+            self.assertEqual(self.lost_args, ((),{}))
             # it should be safe to unregister now, even though the callback
             # has already fired, since dontNotifyOnDisconnect is tolerant
             rr.dontNotifyOnDisconnect(self.disconnected)
@@ -463,7 +464,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         rr.dontNotifyOnDisconnect(m)
         rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
         d = flushEventualQueue()
-        d.addCallback(lambda res: self.failIf(self.lost))
+        d.addCallback(lambda res: self.assertFalse(self.lost))
         return d
 
     def testNotifyOnDisconnect_args(self):
@@ -473,8 +474,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         rr.tracker.broker.transport.loseConnection(Failure(CONNECTION_LOST))
         d = flushEventualQueue()
         def _check(res):
-            self.failUnless(self.lost)
-            self.failUnlessEqual(self.lost_args, (("arg",),
+            self.assertTrue(self.lost)
+            self.assertEqual(self.lost_args, (("arg",),
                                                   {"foo": "kwarg"}))
         d.addCallback(_check)
         return d
@@ -489,8 +490,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d.addCallback(lambda res: rr.notifyOnDisconnect(self.disconnected))
         d.addCallback(lambda res: flushEventualQueue())
         def _check(res):
-            self.failUnless(self.lost, "disconnect handler not run")
-            self.failUnlessEqual(self.lost_args, ((),{}))
+            self.assertTrue(self.lost, "disconnect handler not run")
+            self.assertEqual(self.lost_args, ((),{}))
         d.addCallback(_check)
         return d
 
@@ -502,7 +503,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         return d
     testUnsendable.timeout = 2
     def _testUnsendable_1(self, why):
-        self.failUnless(why.check(Violation))
+        self.assertTrue(why.check(Violation))
         self.failUnlessSubstring("cannot serialize", why.value.args[0])
 
     def test_bad_clid(self):
@@ -516,7 +517,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
             f = res[0]
             if not f.check(Violation):
                 self.fail("expected Violation, got %s" % f)
-            self.failUnless("unknown CLID %d" % clid in str(f))
+            self.assertTrue("unknown CLID %d" % clid in str(f))
         d.addCallback(_check)
         return d
 
@@ -534,7 +535,7 @@ class TestCallOnly(TargetMixin, unittest.TestCase):
         # for the call to take place. It should happen pretty quickly.
         def _check():
             if target.calls:
-                self.failUnlessEqual(target.calls, [(1,2)])
+                self.assertEqual(target.calls, [(1,2)])
                 return True
             return False
         d = self.poll(_check)
@@ -545,70 +546,70 @@ class ExamineFailuresMixin:
     def _examine_raise(self, r, should_be_remote):
         f = r[0]
         if should_be_remote:
-            self.failUnless(f.check(RemoteException))
-            self.failIf(f.check(ValueError))
+            self.assertTrue(f.check(RemoteException))
+            self.assertFalse(f.check(ValueError))
             f2 = f.value.failure
         else:
-            self.failUnless(f.check(ValueError))
-            self.failIf(f.check(RemoteException))
+            self.assertTrue(f.check(ValueError))
+            self.assertFalse(f.check(RemoteException))
             f2 = f
-        self.failUnless(f2.check(ValueError))
-        self.failUnless(isinstance(f2, CopiedFailure))
+        self.assertTrue(f2.check(ValueError))
+        self.assertTrue(isinstance(f2, CopiedFailure))
         self.failUnlessSubstring("you asked me to fail", f2.value)
-        self.failIf(f2.check(RemoteException))
+        self.assertFalse(f2.check(RemoteException))
         l = flog.FoolscapLogger()
         l.msg("f1", failure=f)
         l.msg("f2", failure=f2)
 
     def _examine_local_violation(self, r):
         f = r[0]
-        self.failUnless(f.check(Violation))
-        self.failUnless(re.search(r'RIMyTarget\(.*\) does not offer bogus',
+        self.assertTrue(f.check(Violation))
+        self.assertTrue(re.search(r'RIMyTarget\(.*\) does not offer bogus',
                                   str(f)))
-        self.failIf(f.check(RemoteException))
+        self.assertFalse(f.check(RemoteException))
 
     def _examine_remote_violation(self, r, should_be_remote):
         f = r[0]
         if should_be_remote:
-            self.failUnless(f.check(RemoteException))
-            self.failIf(f.check(Violation))
+            self.assertTrue(f.check(RemoteException))
+            self.assertFalse(f.check(Violation))
             f2 = f.value.failure
         else:
-            self.failIf(f.check(RemoteException))
-            self.failUnless(f.check(Violation))
+            self.assertFalse(f.check(RemoteException))
+            self.assertTrue(f.check(Violation))
             f2 = f
-        self.failUnless(isinstance(f2, CopiedFailure))
-        self.failUnless(f2.check(Violation))
+        self.assertTrue(isinstance(f2, CopiedFailure))
+        self.assertTrue(f2.check(Violation))
         self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
                                  f2.value)
         self.failUnlessSubstring("<RootUnslicer>.<methodcall", f2.value)
         self.failUnlessSubstring(" methodname=add", f2.value)
         self.failUnlessSubstring("<arguments arg[b]>", f2.value)
-        self.failIf(f2.check(RemoteException))
+        self.assertFalse(f2.check(RemoteException))
 
     def _examine_remote_attribute_error(self, r, should_be_remote):
         f = r[0]
         if should_be_remote:
-            self.failUnless(f.check(RemoteException))
-            self.failIf(f.check(AttributeError))
+            self.assertTrue(f.check(RemoteException))
+            self.assertFalse(f.check(AttributeError))
             f2 = f.value.failure
         else:
-            self.failUnless(f.check(AttributeError))
-            self.failIf(f.check(RemoteException))
+            self.assertTrue(f.check(AttributeError))
+            self.assertFalse(f.check(RemoteException))
             f2 = f
-        self.failUnless(isinstance(f2, CopiedFailure))
-        self.failUnless(f2.check(AttributeError))
+        self.assertTrue(isinstance(f2, CopiedFailure))
+        self.assertTrue(f2.check(AttributeError))
         self.failUnlessSubstring(" has no attribute 'remote_bogus'", str(f2))
-        self.failIf(f2.check(RemoteException))
+        self.assertFalse(f2.check(RemoteException))
 
     def _examine_local_return_violation(self, r):
         f = r[0]
-        self.failUnless(f.check(Violation))
+        self.assertTrue(f.check(Violation))
         self.failUnlessSubstring("INT token rejected by ByteStringConstraint",
                                  str(f))
         self.failUnlessSubstring("in inbound method results", str(f))
         self.failUnlessSubstring("<RootUnslicer>.Answer(req=1)", str(f))
-        self.failIf(f.check(RemoteException))
+        self.assertFalse(f.check(RemoteException))
 
 class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
                unittest.TestCase):
@@ -840,7 +841,7 @@ class ReferenceCounting(ShouldFailMixin, MakeTubsMixin, unittest.TestCase):
         # sequences) won't notice the loss of sync
         d.addCallback(lambda ign: self.rref.callRemote("set", 42))
         def _check_42(ign):
-            self.failUnlessEqual(target.obj, 42)
+            self.assertEqual(target.obj, 42)
         d.addCallback(_check_42)
         # but when the call takes shared arguments, sync matters
         l = ["list", 1, 2]
@@ -850,16 +851,16 @@ class ReferenceCounting(ShouldFailMixin, MakeTubsMixin, unittest.TestCase):
         def _check_shared(ign):
             # the off-by-two bug would cause the second tuple shared-ref to
             # point at the set instead of the first tuple
-            self.failUnlessEqual(type(target.obj), list)
+            self.assertEqual(type(target.obj), list)
             one, two, three, four = target.obj
-            self.failUnlessEqual(type(one), tuple)
-            self.failUnlessEqual(one, t)
-            self.failUnlessEqual(type(two), list)
-            self.failUnlessEqual(two, l)
-            self.failUnlessEqual(type(three), set)
-            self.failUnlessEqual(three, s)
-            self.failUnlessEqual(type(four), tuple) # this is where it fails
-            self.failUnlessEqual(four, t)
+            self.assertEqual(type(one), tuple)
+            self.assertEqual(one, t)
+            self.assertEqual(type(two), list)
+            self.assertEqual(two, l)
+            self.assertEqual(type(three), set)
+            self.assertEqual(three, s)
+            self.assertEqual(type(four), tuple) # this is where it fails
+            self.assertEqual(four, t)
             self.failUnlessIdentical(one, four)
         d.addCallback(_check_shared)
         return d

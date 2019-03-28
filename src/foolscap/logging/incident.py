@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import sys, os.path, time, bz2
 from pprint import pprint
 from zope.interface import implements
@@ -239,17 +239,17 @@ class IncidentClassifier(IncidentClassifierBase):
             abs_fn = os.path.expanduser(f)
             incident = self.load_incident(abs_fn)
             categories = self.classify_incident(incident)
-            print >>out, "%s: %s" % (f, ",".join(sorted(categories)))
+            print("%s: %s" % (f, ",".join(sorted(categories))), file=out)
             if list(categories) == ["unknown"] and options["verbose"]:
                 (header, events) = incident
                 trigger = header["trigger"]
                 from foolscap.logging.log import format_message
-                print >>out, format_message(trigger)
+                print(format_message(trigger), file=out)
                 pprint(trigger, stream=out)
                 if 'failure' in trigger:
-                    print >>out," FAILURE:"
+                    print(" FAILURE:", file=out)
                     lines = str(trigger['failure']).split("\n")
                     for line in lines:
-                        print >>out, " %s" % (line,)
-                print >>out, ""
+                        print(" %s" % (line,), file=out)
+                print("", file=out)
 

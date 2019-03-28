@@ -6,7 +6,7 @@ from foolscap import copyable, slicer, tokens
 from foolscap.copyable import AttributeDictConstraint
 from foolscap.constraint import ByteStringConstraint
 from foolscap.slicers.list import ListConstraint
-from tokens import BananaError, Violation
+from .tokens import BananaError, Violation
 from foolscap.util import AsyncAND
 from foolscap.logging import log
 
@@ -116,7 +116,7 @@ class ArgumentSlicer(slicer.ScopedSlicer):
         for i,arg in enumerate(self.args):
             self.which = "arg[%d]-of-%s" % (i, self.methodname)
             yield arg
-        keys = self.kwargs.keys()
+        keys = list(self.kwargs.keys())
         keys.sort()
         for argname in keys:
             self.which = "arg[%s]-of-%s" % (argname, self.methodname)
@@ -322,7 +322,7 @@ class ArgumentUnslicer(slicer.ScopedUnslicer):
                 accept, self.argConstraint = \
                         ms.getKeywordArgConstraint(self.argname,
                                                    self.numargs,
-                                                   self.kwargs.keys())
+                                                   list(self.kwargs.keys()))
                 assert accept
             return
 
@@ -606,7 +606,7 @@ class AnswerUnslicer(slicer.ScopedUnslicer):
             if self.resultConstraint:
                 try:
                     self.resultConstraint.checkToken(typebyte, size)
-                except Violation, v:
+                except Violation as v:
                     # improve the error message
                     if v.args:
                         # this += gives me a TypeError "object doesn't
@@ -777,7 +777,7 @@ class FailureSlicer(slicer.BaseSlicer):
         yield 'copyable'
         yield self.classname
         state = self.getStateToCopy(self.obj, banana)
-        for k,v in state.iteritems():
+        for k,v in state.items():
             yield k
             yield v
     def describe(self):

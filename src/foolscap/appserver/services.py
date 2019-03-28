@@ -28,7 +28,7 @@ This service allows clients to upload files to a specific directory.
         ("allow-subdirectories", None, "allow client to write to subdirectories"),
         ]
     optParameters = [
-        ("mode", None, 0644,
+        ("mode", None, 0o644,
          "(octal) mode to set uploaded files to, use 0644 for world-readable")
         ]
 

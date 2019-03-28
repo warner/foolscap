@@ -2,6 +2,7 @@
 
 # This module is responsible for the per-connection Broker object
 
+from __future__ import print_function
 import types, time
 from itertools import count
 
@@ -19,6 +20,7 @@ from foolscap.ipb import DeadReferenceError, IBroker
 from foolscap.slicers.root import RootSlicer, RootUnslicer, ScopedRootSlicer
 from foolscap.eventual import eventually
 from foolscap.logging import log
+from functools import reduce
 
 LOST_CONNECTION_ERRORS = [error.ConnectionLost, error.ConnectionDone]
 try:
@@ -64,7 +66,7 @@ class PBRootUnslicer(RootUnslicer):
                 # TODO: this is silly, of course (should pre-compute maxlen)
                 maxlen = reduce(max,
                                 [len(cname) \
-                                 for cname in copyable.CopyableRegistry.keys()]
+                                 for cname in list(copyable.CopyableRegistry.keys())]
                                 )
                 if size > maxlen:
                     why = "copyable-classname token is too long, %d>%d" % \
@@ -94,7 +96,7 @@ class PBRootUnslicer(RootUnslicer):
 
     def reportViolation(self, f):
         if self.logViolations:
-            print "hey, something failed:", f
+            print("hey, something failed:", f)
         return None # absorb the failure
 
     def receiveChild(self, token, ready_deferred):
@@ -423,9 +425,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def freeYourReferenceTracker(self, res, tracker):
         if tracker.received_count != 0:
             return
-        if self.yourReferenceByCLID.has_key(tracker.clid):
+        if tracker.clid in self.yourReferenceByCLID:
             del self.yourReferenceByCLID[tracker.clid]
-        if tracker.url and self.yourReferenceByURL.has_key(tracker.url):
+        if tracker.url and tracker.url in self.yourReferenceByURL:
             del self.yourReferenceByURL[tracker.url]
 
 
@@ -517,7 +519,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             raise Violation("non-existent reqID '%d'" % reqID)
 
     def abandonAllRequests(self, why):
-        for req in self.waitingForAnswers.values():
+        for req in list(self.waitingForAnswers.values()):
             if why.check(*LOST_CONNECTION_ERRORS):
                 # map all connection-lost errors to DeadReferenceError, so
                 # application code only needs to check for one exception type
@@ -591,7 +593,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         obj = delivery.obj
         args = delivery.allargs.args
         kwargs = delivery.allargs.kwargs
-        for i in args + kwargs.values():
+        for i in args + list(kwargs.values()):
             assert not isinstance(i, defer.Deferred)
 
         if delivery.methodSchema:
@@ -625,7 +627,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             methodName = methodSchema.name
             try:
                 methodSchema.checkResults(res, False) # may raise Violation
-            except Violation, v:
+            except Violation as v:
                 v.prependLocation("in return value of %s.%s" %
                                   (delivery.obj, methodSchema.name))
                 raise

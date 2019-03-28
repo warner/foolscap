@@ -480,7 +480,7 @@ class RemoteReference(RemoteReferenceOnly):
             # any arguments are of the wrong type
             try:
                 methodSchema.checkAllArgs(args, kwargs, False)
-            except Violation, v:
+            except Violation as v:
                 v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
                                              v.getLocation()))
                 raise

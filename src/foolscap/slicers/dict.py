@@ -12,7 +12,7 @@ class DictSlicer(BaseSlicer):
     trackReferences = True
     slices = None
     def sliceBody(self, streamable, banana):
-        for key,value in self.obj.items():
+        for key,value in list(self.obj.items()):
             yield key
             yield value
 
@@ -91,7 +91,7 @@ class DictUnslicer(BaseUnslicer):
         if isinstance(key, Deferred):
             raise BananaError("incomplete object as dictionary key")
         try:
-            if self.d.has_key(key):
+            if key in self.d:
                 raise BananaError("duplicate key '%s'" % key)
         except TypeError:
             raise BananaError("unhashable key '%s'" % key)
@@ -119,7 +119,7 @@ class DictUnslicer(BaseUnslicer):
 class OrderedDictSlicer(DictSlicer):
     slices = dict
     def sliceBody(self, streamable, banana):
-        keys = self.obj.keys()
+        keys = list(self.obj.keys())
         keys.sort()
         for key in keys:
             value = self.obj[key]
@@ -137,11 +137,9 @@ class DictConstraint(OpenerConstraint):
         self.maxKeys = maxKeys
     def checkObject(self, obj, inbound):
         if not isinstance(obj, dict):
-            raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
-                                                                type(obj))
+            raise Violation("'%s' (%s) is not a Dictionary" % (obj, type(obj)))
         if self.maxKeys != None and len(obj) > self.maxKeys:
-            raise Violation, "Dict keys=%d > maxKeys=%d" % (len(obj),
-                                                            self.maxKeys)
-        for key, value in obj.iteritems():
+            raise Violation("Dict keys=%d > maxKeys=%d" % (len(obj), self.maxKeys))
+        for key, value in obj.items():
             self.keyConstraint.checkObject(key, inbound)
             self.valueConstraint.checkObject(value, inbound)

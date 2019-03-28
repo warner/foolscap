@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+from __future__ import print_function
 from twisted.internet import defer
 from twisted.python import log
 from foolscap.slicers.list import ListSlicer
@@ -116,8 +117,8 @@ class SetUnslicer(BaseUnslicer):
             self.set.add(obj)
 
     def printErr(self, why):
-        print "ERR!"
-        print why.getBriefTraceback()
+        print("ERR!")
+        print(why.getBriefTraceback())
         log.err(why)
 
     def receiveClose(self):
