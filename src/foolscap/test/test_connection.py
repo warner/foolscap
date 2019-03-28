@@ -8,11 +8,10 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.internet.interfaces import IStreamClientEndpoint
 from twisted.application import service
 import txtorcon
-from txsocksx.client import SOCKS5ClientEndpoint
 from foolscap.api import Tub
 from foolscap.info import ConnectionInfo
 from foolscap.connection import get_endpoint
-from foolscap.connections import tcp, socks, tor, i2p
+from foolscap.connections import tcp, tor, i2p
 from foolscap.tokens import NoLocationHintsError
 from foolscap.ipb import InvalidHintError
 from foolscap.test.common import (certData_low, certData_high, Target,
@@ -239,44 +238,6 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
             self.failUnlessEqual(h.accepted, 1)
         d.addCallback(_got)
         return d
-
-class Socks(unittest.TestCase):
-    @mock.patch("foolscap.connections.socks.SOCKS5ClientEndpoint")
-    def test_ep(self, scep):
-        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.socks_endpoint(proxy_ep)
-
-        rv = scep.return_value = mock.Mock()
-        ep, host = h.hint_to_endpoint("tor:example.com:1234", reactor,
-                                      discard_status)
-        self.assertEqual(scep.mock_calls,
-                         [mock.call("example.com", 1234, proxy_ep)])
-        self.assertIdentical(ep, rv)
-        self.assertEqual(host, "example.com")
-
-    def test_real_ep(self):
-        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.socks_endpoint(proxy_ep)
-        ep, host = h.hint_to_endpoint("tcp:example.com:1234", reactor,
-                                      discard_status)
-        self.assertIsInstance(ep, SOCKS5ClientEndpoint)
-        self.assertEqual(host, "example.com")
-
-
-    def test_bad_hint(self):
-        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.socks_endpoint(proxy_ep)
-        # legacy hints will be upgraded before the connection handler is
-        # invoked, so the handler should not handle them
-        self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "example.com:1234", reactor,
-                          discard_status)
-        self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "tcp:example.com:noport", reactor,
-                          discard_status)
-        self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "tcp:@:1234", reactor,
-                          discard_status)
 
 class Empty:
     pass

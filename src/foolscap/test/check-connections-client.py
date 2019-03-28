@@ -19,7 +19,7 @@ LOCALPORT = 7006
 import os, sys, time
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.internet.endpoints import HostnameEndpoint, clientFromString
+from twisted.internet.endpoints import clientFromString
 from foolscap.api import Referenceable, Tub
 
 
@@ -28,16 +28,6 @@ tub = Tub()
 which = sys.argv[1] if len(sys.argv) > 1 else None
 if which == "tcp":
     furl = "pb://%s@tcp:%s:%d/calculator" % (TUBID, HOSTNAME, LOCALPORT)
-elif which == "socks":
-    # "slogin -D 8013 HOSTNAME" starts a SOCKS server on localhost 8013, for
-    # which connections will emerge from the other end. Check the server logs
-    # to see the peer address of each addObserver call to verify that it is
-    # coming from 127.0.0.1 rather than the client host.
-    from foolscap.connections import socks
-    h = socks.socks_endpoint(HostnameEndpoint(reactor, "localhost", 8013))
-    tub.removeAllConnectionHintHandlers()
-    tub.addConnectionHintHandler("tcp", h)
-    furl = "pb://%s@tcp:localhost:%d/calculator" % (TUBID, LOCALPORT)
 elif which in ("tor-default", "tor-socks", "tor-control", "tor-launch"):
     from foolscap.connections import tor
     if which == "tor-default":
@@ -66,7 +56,7 @@ elif which in ("i2p-default", "i2p-sam"):
     tub.addConnectionHintHandler("i2p", h)
     furl = "pb://%s@i2p:%s:%d/calculator" % (TUBID, I2P, I2PPORT)
 else:
-    print "run as 'check-connections-client.py [tcp|socks|tor-default|tor-socks|tor-control|tor-launch|i2p-default|i2p-sam]'"
+    print "run as 'check-connections-client.py [tcp|tor-default|tor-socks|tor-control|tor-launch|i2p-default|i2p-sam]'"
     sys.exit(1)
 print "using %s: %s" % (which, furl)
 

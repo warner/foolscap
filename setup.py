@@ -61,8 +61,7 @@ object reference system, and a capability-based security model.
     "cmdclass": commands,
     "install_requires": ["twisted[tls] >= 16.0.0", "pyOpenSSL"],
     "extras_require": {
-        "dev": ["mock", "txsocksx", "txtorcon >= 0.16.1", "txi2p >= 0.3.2"],
-        "socks": ["txsocksx"],
+        "dev": ["mock", "txtorcon >= 0.16.1", "txi2p >= 0.3.2"],
         "tor": ["txtorcon >= 0.16.1"],
         "i2p": ["txi2p >= 0.3.2"],
         },
