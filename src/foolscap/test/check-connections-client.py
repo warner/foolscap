@@ -1,4 +1,5 @@
 #! /usr/bin/python
+from __future__ import print_function
 
 # This is the client side of a manual test for the socks/tor
 # connection-handler code. To use it, first set up the server as described in
@@ -44,9 +45,9 @@ elif which in ("tor-default", "tor-socks", "tor-control", "tor-launch"):
     tub.addConnectionHintHandler("tor", h)
     furl = "pb://%s@tor:%s:%d/calculator" % (TUBID, ONION, ONIONPORT)
 else:
-    print "run as 'check-connections-client.py [tcp|tor-default|tor-socks|tor-control|tor-launch]'"
+    print("run as 'check-connections-client.py [tcp|tor-default|tor-socks|tor-control|tor-launch]'")
     sys.exit(1)
-print "using %s: %s" % (which, furl)
+print("using %s: %s" % (which, furl))
 
 class Observer(Referenceable):
     def remote_event(self, msg):
@@ -84,14 +85,14 @@ def go():
     start = time.time()
     number = yield remote.callRemote("pop")
     rtts.append(time.time() - start)
-    print "the result is", number
+    print("the result is", number)
 
-    print "t_connect:", t_connect
-    print "avg rtt:", sum(rtts) / len(rtts)
+    print("t_connect:", t_connect)
+    print("avg rtt:", sum(rtts) / len(rtts))
 
 d = go()
 def _oops(f):
-    print "error", f
+    print("error", f)
 d.addErrback(_oops)
 d.addCallback(lambda res: reactor.stop())
 

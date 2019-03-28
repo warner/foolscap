@@ -175,7 +175,7 @@ class TubConnector(object):
             d.cancel()
             # this will trigger self._connectionFailed(), via the errback,
             # with a ConnectingCancelledError
-        for n in self.pendingNegotiations.keys():
+        for n in list(self.pendingNegotiations.keys()):
             n.transport.loseConnection()
             # triggers n.connectionLost(), then self.connectorNegotiationFailed()
 

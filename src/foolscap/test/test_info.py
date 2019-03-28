@@ -113,8 +113,8 @@ class Connect(unittest.TestCase):
         self.assertEqual(ci.connectorStatuses, {hint: "connecting"})
         # we use debug_pause_sendHello to catch "negotiating" here, then wait
         rref = yield d
-        self.failUnlessEqual(h.asked, 1)
-        self.failUnlessEqual(h.accepted, 1)
+        self.assertEqual(h.asked, 1)
+        self.assertEqual(h.accepted, 1)
         ci = tubB.getConnectionInfoForFURL(furl)
         self.assertEqual(ci.connectorStatuses, {hint: "successful"})
         del rref

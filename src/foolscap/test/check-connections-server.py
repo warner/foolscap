@@ -1,5 +1,7 @@
 #! /usr/bin/python
 
+from __future__ import print_function
+
 # This is the server side of a manual test for the socks/tor
 # connection-handler code. On the server host, configure Tor to route a
 # hidden service to our port with something like:
@@ -27,7 +29,7 @@ class Calculator(Referenceable):
         self.observers = []
     def remote_addObserver(self, observer):
         self.observers.append(observer)
-        print "observer is from", observer.getPeer()
+        print("observer is from", observer.getPeer())
     def log(self, msg):
         for o in self.observers:
             o.callRemote("event", msg=msg)
@@ -56,7 +58,7 @@ if 0:
 tub.listenOn(lp)
 tub.setLocation("tor:%s:%d" % (ONION, ONIONPORT))
 url = tub.registerReference(Calculator(), "calculator")
-print "the object is available at:", url
+print("the object is available at:", url)
 
 application = service.Application("check-connections-server")
 tub.setServiceParent(application)

@@ -30,5 +30,5 @@ def hashVocabTable(table_index):
     return digest[:4]
 
 def getVocabRange():
-    keys = INITIAL_VOCAB_TABLES.keys()
+    keys = list(INITIAL_VOCAB_TABLES.keys())
     return min(keys), max(keys)

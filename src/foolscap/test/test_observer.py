@@ -11,9 +11,9 @@ class Observer(unittest.TestCase):
         d1 = ol.whenFired()
         d2 = ol.whenFired()
         def _addmore(res):
-            self.failUnlessEqual(res, "result")
+            self.assertEqual(res, "result")
             d3 = ol.whenFired()
-            d3.addCallback(self.failUnlessEqual, "result")
+            d3.addCallback(self.assertEqual, "result")
             return d3
         d1.addCallback(_addmore)
         ol.fire("result")

@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import os, sys, time, bz2
 signal = None
 try:
@@ -75,7 +75,7 @@ class GatheringBase(service.MultiService, Referenceable):
 
         self.my_furl = self._tub.registerReference(self, furlFile=furlFile)
         if self.verbose:
-            print "Gatherer waiting at:", self.my_furl
+            print("Gatherer waiting at:", self.my_furl)
 
 class CreateGatherOptions(usage.Options):
     """flogtool create-gatherer GATHERER_DIRECTORY"""
@@ -214,7 +214,7 @@ class GathererService(GatheringBase):
             d = utils.getProcessOutput(self.bzip, [new_name], env=os.environ)
             new_name = new_name + ".bz2"
             def _compression_error(f):
-                print f
+                print(f)
             d.addErrback(_compression_error)
             # note that by returning this Deferred, the rotation timer won't
             # start again until the bzip process finishes
@@ -236,8 +236,8 @@ class GathererService(GatheringBase):
             flogfile.serialize_wrapper(self._savefile, d,
                                        from_=nodeid_s,
                                        rx_time=time.time())
-        except Exception, ex:
-            print "GATHERER: unable to serialize %s: %s" % (d, ex)
+        except Exception as ex:
+            print("GATHERER: unable to serialize %s: %s" % (d, ex))
 
 
 LOG_GATHERER_TACFILE = """\
@@ -296,8 +296,8 @@ def create_log_gatherer(config):
                                      })
     f.close()
     if not config["quiet"]:
-        print >>stdout, "Gatherer created in directory %s" % basedir
-        print >>stdout, "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir
+        print("Gatherer created in directory %s" % basedir, file=stdout)
+        print("Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir, file=stdout)
 
 
 ###################
@@ -352,8 +352,8 @@ class IncidentObserver(Referenceable):
             latest = open(statefile, "r").read().strip()
         except EnvironmentError:
             pass
-        print >>self.stdout, "connected to %s, last known incident is %s" \
-              % (self.tubid_s, latest)
+        print("connected to %s, last known incident is %s" \
+              % (self.tubid_s, latest), file=self.stdout)
         # now subscribe to everything since then
         d = self.publisher.callRemote("subscribe_to_incidents", self,
                                       catch_up=True, since=latest)
@@ -364,7 +364,7 @@ class IncidentObserver(Referenceable):
         return d
 
     def remote_new_incident(self, name, trigger):
-        print >>self.stdout, "new incident", name
+        print("new incident", name, file=self.stdout)
         # name= should look like "incident-2008-07-29-204211-aspkxoi". We
         # prevent name= from containing path metacharacters like / or : by
         # using FilePath later on.
@@ -380,7 +380,7 @@ class IncidentObserver(Referenceable):
             return
         self.incident_fetch_outstanding = True
         (name, trigger) = self.incidents_wanted.pop(0)
-        print >>self.stdout, "fetching incident", name
+        print("fetching incident", name, file=self.stdout)
         d = self.publisher.callRemote("get_incident", name)
         def _clear_outstanding(res):
             self.incident_fetch_outstanding = False
@@ -469,7 +469,7 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
 
     def classify_stored_incidents(self, indir):
         stdout = self.stdout or sys.stdout
-        print >>stdout, "classifying stored incidents"
+        print("classifying stored incidents", file=stdout)
         # now classify all stored incidents that aren't already classified
         already = set()
         outputdir = os.path.join(self.basedir, "classified")
@@ -478,7 +478,7 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
                 fn = line.strip()
                 abs_fn = os.path.join(self.basedir, fn)
                 already.add(abs_fn)
-        print >>stdout, "%d incidents already classified" % len(already)
+        print("%d incidents already classified" % len(already), file=stdout)
         count = 0
         for tubid_s in os.listdir(indir):
             nodedir = os.path.join(indir, tubid_s)
@@ -491,7 +491,7 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
                     rel_fn = os.path.join("incidents", tubid_s, fn)
                     self.move_incident(rel_fn, tubid_s, incident)
                     count += 1
-        print >>stdout, "done classifying %d stored incidents" % count
+        print("done classifying %d stored incidents" % count, file=stdout)
 
     def remote_logport(self, nodeid, publisher):
         # we ignore nodeid (which is a printable string), and get the tubid
@@ -517,7 +517,7 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
             f = open(fn, "a")
             f.write(rel_fn + "\n")
             f.close()
-        print >>stdout, "classified %s as [%s]" % (rel_fn, ",".join(categories))
+        print("classified %s as [%s]" % (rel_fn, ",".join(categories)), file=stdout)
         return categories
 
 
@@ -584,5 +584,5 @@ def create_incident_gatherer(config):
                                           })
     f.close()
     if not config["quiet"]:
-        print >>stdout, "Incident Gatherer created in directory %s" % basedir
-        print >>stdout, "Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir
+        print("Incident Gatherer created in directory %s" % basedir, file=stdout)
+        print("Now run '(cd %s && twistd -y gatherer.tac)' to launch the daemon" % basedir, file=stdout)

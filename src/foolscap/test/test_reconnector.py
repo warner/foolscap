@@ -38,19 +38,19 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         self.assertEqual(ri.state, "connecting")
         # at least make sure the stopConnecting method is present, even if we
         # don't have a real test for it yet
-        self.failUnless(self.rc.stopConnecting)
+        self.assertTrue(self.rc.stopConnecting)
         return self.done
 
     def _got_ref(self, rref, arg, kw):
-        self.failUnlessEqual(self.attached, False)
+        self.assertEqual(self.attached, False)
         self.attached = True
-        self.failUnlessEqual(arg, "arg")
-        self.failUnlessEqual(kw, "kwarg")
+        self.assertEqual(arg, "arg")
+        self.assertEqual(kw, "kwarg")
         ri = self.rc.getReconnectionInfo()
         self.assertEqual(ri.state, "connected")
         time2 = time.time()
         last = ri.lastAttempt
-        self.assert_(self._time1 <= last <= time2, (self._time1, last, time2))
+        self.assertTrue(self._time1 <= last <= time2, (self._time1, last, time2))
         ci = ri.connectionInfo
         self.assertEqual(ci.connected, True)
         hints = referenceable.SturdyRef(self.url).getTubRef().getLocations()
@@ -68,8 +68,8 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
             self.done.callback("done")
 
     def _disconnected(self, count):
-        self.failUnlessEqual(self.attached, True)
-        self.failUnlessEqual(count, self.count)
+        self.assertEqual(self.attached, True)
+        self.assertEqual(count, self.count)
         self.attached = False
         ri = self.rc.getReconnectionInfo()
         self.assertEqual(ri.state, "waiting")
@@ -78,7 +78,7 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         # systems, this may not be true.
         now = time.time()
         next_attempt = ri.nextAttempt
-        self.assert_(now <= next_attempt, (now, next_attempt))
+        self.assertTrue(now <= next_attempt, (now, next_attempt))
 
     def _connected(self, ref, notifiers, accumulate):
         accumulate.append(ref)
@@ -106,7 +106,7 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         yield self.tubB.stopService()
         rc = self.tubA.connectTo(url, self._connected, notifiers, connects)
         yield self.poll(lambda: rc.getReconnectionInfo().state == "waiting")
-        self.failUnlessEqual(len(connects), 0)
+        self.assertEqual(len(connects), 0)
 
         # now start tubC listening on the same port that tubB used to, which
         # should allow the connection to complete (since they both use the same
@@ -120,7 +120,7 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         assert url2 == url
         yield d1
 
-        self.failUnlessEqual(len(connects), 1)
+        self.assertEqual(len(connects), 1)
         rc.stopConnecting()
 
     @defer.inlineCallbacks
@@ -140,7 +140,7 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
 
         # the reconnector should have failed once or twice, since the
         # negotiation would always fail.
-        self.failUnlessEqual(len(connects), 0)
+        self.assertEqual(len(connects), 0)
         ci = rc.getReconnectionInfo().connectionInfo
         cs = ci.connectorStatuses
         self.assertEqual(cs, {hint: "negotiation failed: I always fail"})
@@ -154,7 +154,7 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         # the next time the reconnector tries, it should succeed
         yield d1
 
-        self.failUnlessEqual(len(connects), 1)
+        self.assertEqual(len(connects), 1)
         rc.stopConnecting()
 
     @defer.inlineCallbacks
@@ -196,7 +196,7 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         # this will fire when the second connection has been made
         yield d2
 
-        self.failUnlessEqual(len(connects), 2)
+        self.assertEqual(len(connects), 2)
         rc.stopConnecting()
 
     @defer.inlineCallbacks
@@ -216,19 +216,19 @@ class Reconnector(MakeTubsMixin, PollMixin, unittest.TestCase):
         # and a bit more, for good measure
         yield self.stall(2)
 
-        self.failUnlessEqual(len(connects), 0)
+        self.assertEqual(len(connects), 0)
         f = rc.getLastFailure()
-        self.failUnless(f.check(error.ConnectionRefusedError))
+        self.assertTrue(f.check(error.ConnectionRefusedError))
         delay = rc.getDelayUntilNextAttempt()
-        self.failUnless(delay > 0, delay)
-        self.failUnless(delay < 60, delay)
+        self.assertTrue(delay > 0, delay)
+        self.assertTrue(delay < 60, delay)
         rc.reset()
         delay = rc.getDelayUntilNextAttempt()
-        self.failUnless(delay < 2)
+        self.assertTrue(delay < 2)
         # this stopConnecting occurs while the reconnector's timer is
         # active
         rc.stopConnecting()
-        self.failUnlessEqual(rc.getDelayUntilNextAttempt(), None)
+        self.assertEqual(rc.getDelayUntilNextAttempt(), None)
         # if it keeps trying, we'll see a dirty reactor
 
 

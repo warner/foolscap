@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import os
 from collections import deque
 from zope.interface import implements
@@ -127,7 +127,7 @@ class IncidentSubscription(Referenceable):
         d.addErrback(self._error)
 
     def _error(self, f):
-        print "INCIDENT PUBLISH FAILED: %s" % f
+        print("INCIDENT PUBLISH FAILED: %s" % f)
         self.unsubscribe()
 
 
@@ -138,7 +138,7 @@ def _keys_to_bytes(d):
     # like (message, level, facility, from, rx_time, d). Encode to ASCII to
     # make this clear. The user-provided data lives in the *values* of
     # these dicts, which are unconstrained (the schemas use Any())
-    return dict([ (k.encode("ascii"), v) for (k,v) in d.iteritems()])
+    return dict([ (k.encode("ascii"), v) for (k,v) in d.items()])
 
 class LogPublisher(Referenceable):
     """Publish log events to anyone subscribed to our 'logport'.

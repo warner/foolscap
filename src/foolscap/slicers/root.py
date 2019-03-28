@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+from __future__ import print_function
 import types
 from zope.interface import implements
 from twisted.internet.defer import Deferred
@@ -10,6 +11,7 @@ from foolscap.slicer import UnslicerRegistry, BananaUnslicerRegistry
 from foolscap.slicers.vocab import ReplaceVocabularyTable, AddToVocabularyTable
 from foolscap import copyable # does this create a cycle?
 from twisted.python import log
+from functools import reduce
 
 class RootSlicer:
     implements(tokens.ISlicer, tokens.IRootSlicer)
@@ -78,7 +80,7 @@ class RootSlicer:
             self.streamable = self.streamableInGeneral
             return obj
         if self.protocol.debugSend:
-            print "LAST BAG"
+            print("LAST BAG")
         self.producingDeferred = Deferred()
         self.streamable = True
         return self.producingDeferred
@@ -98,7 +100,7 @@ class RootSlicer:
         if idle:
             # wake up
             if self.protocol.debugSend:
-                print " waking up to send"
+                print(" waking up to send")
             if self.producingDeferred:
                 d = self.producingDeferred
                 self.producingDeferred = None
@@ -157,7 +159,7 @@ class RootUnslicer(BaseUnslicer):
         self.objects = {}
         keys = []
         for r in self.topRegistries + self.openRegistries:
-            for k in r.keys():
+            for k in list(r.keys()):
                 keys.append(len(k[0]))
         self.maxIndexLength = reduce(max, keys)
 
@@ -235,14 +237,14 @@ class RootUnslicer(BaseUnslicer):
         assert not isinstance(obj, Deferred)
         assert ready_deferred is None
         if self.protocol.debugReceive:
-            print "RootUnslicer.receiveChild(%s)" % (obj,)
+            print("RootUnslicer.receiveChild(%s)" % (obj,))
         self.objects = {}
         if obj in (ReplaceVocabularyTable, AddToVocabularyTable):
             # the unslicer has already changed the vocab table
             return
         if self.protocol.exploded:
-            print "protocol exploded, can't deliver object"
-            print self.protocol.exploded
+            print("protocol exploded, can't deliver object")
+            print(self.protocol.exploded)
             self.protocol.receivedObject(self.protocol.exploded)
             return
         self.protocol.receivedObject(obj) # give finished object to Banana

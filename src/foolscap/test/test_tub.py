@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_tub -*-
 
+from __future__ import print_function
 import os.path
 from twisted.trial import unittest
 from twisted.internet import defer
@@ -54,29 +55,29 @@ class TestCertFile(unittest.TestCase):
     def test_generate(self):
         t = Tub()
         certdata = t.getCertData()
-        self.failUnless("BEGIN CERTIFICATE" in certdata)
-        self.failUnless("PRIVATE KEY" in certdata)
+        self.assertTrue("BEGIN CERTIFICATE" in certdata)
+        self.assertTrue("PRIVATE KEY" in certdata)
 
     def test_certdata(self):
         t1 = Tub()
         data1 = t1.getCertData()
         t2 = Tub(certData=data1)
         data2 = t2.getCertData()
-        self.failUnless(data1 == data2)
+        self.assertTrue(data1 == data2)
 
     def test_certfile(self):
         fn = "test_tub.TestCertFile.certfile"
         t1 = Tub(certFile=fn)
-        self.failUnless(os.path.exists(fn))
+        self.assertTrue(os.path.exists(fn))
         data1 = t1.getCertData()
 
         t2 = Tub(certFile=fn)
         data2 = t2.getCertData()
-        self.failUnless(data1 == data2)
+        self.assertTrue(data1 == data2)
 
     def test_tubid(self):
         t = Tub(certData=CERT_DATA)
-        self.failUnlessEqual(t.getTubID(), CERT_TUBID)
+        self.assertEqual(t.getTubID(), CERT_TUBID)
 
 class SetLocation(unittest.TestCase):
 
@@ -96,14 +97,14 @@ class SetLocation(unittest.TestCase):
         t.setServiceParent(self.s)
         t.setLocation("127.0.0.1:12345")
         # setLocation may only be called once
-        self.failUnlessRaises(PBError, t.setLocation, "127.0.0.1:12345")
+        self.assertRaises(PBError, t.setLocation, "127.0.0.1:12345")
 
     def test_unreachable(self):
         t = Tub()
         t.setServiceParent(self.s)
         # we call neither .listenOn nor .setLocation
-        self.failUnlessEqual(t.locationHints, [])
-        self.failUnlessRaises(NoLocationError,
+        self.assertEqual(t.locationHints, [])
+        self.assertRaises(NoLocationError,
                               t.registerReference, Referenceable())
 
 
@@ -132,8 +133,8 @@ class FurlFile(unittest.TestCase):
         furl1 = t1.registerReference(r1, furlFile=ffn)
         d = defer.maybeDeferred(t1.disownServiceParent)
 
-        self.failUnless(os.path.exists(ffn))
-        self.failUnlessEqual(furl1, open(ffn,"r").read().strip())
+        self.assertTrue(os.path.exists(ffn))
+        self.assertEqual(furl1, open(ffn,"r").read().strip())
 
         def _take2(res):
             t2 = Tub(certFile=cfn)
@@ -142,7 +143,7 @@ class FurlFile(unittest.TestCase):
             t2.setLocation("127.0.0.1:%d" % portnum)
             r2 = Referenceable()
             furl2 = t2.registerReference(r2, furlFile=ffn)
-            self.failUnlessEqual(furl1, furl2)
+            self.assertEqual(furl1, furl2)
             return t2.disownServiceParent()
         d.addCallback(_take2)
         return d
@@ -159,8 +160,8 @@ class FurlFile(unittest.TestCase):
         furl1 = t1.registerReference(r1, furlFile=ffn)
         d = defer.maybeDeferred(t1.disownServiceParent)
 
-        self.failUnless(os.path.exists(ffn))
-        self.failUnlessEqual(furl1, open(ffn,"r").read().strip())
+        self.assertTrue(os.path.exists(ffn))
+        self.assertEqual(furl1, open(ffn,"r").read().strip())
 
         def _take2(res):
             t2 = Tub() # gets a different key
@@ -168,7 +169,7 @@ class FurlFile(unittest.TestCase):
             t2.listenOn(port1)
             t2.setLocation("127.0.0.1:%d" % portnum)
             r2 = Referenceable()
-            self.failUnlessRaises(WrongTubIdError,
+            self.assertRaises(WrongTubIdError,
                                   t2.registerReference, r2, furlFile=ffn)
             return t2.disownServiceParent()
         d.addCallback(_take2)
@@ -206,11 +207,11 @@ class QueuedStartup(TargetMixin, MakeTubsMixin, unittest.TestCase):
         def _check(res):
             ((barry_success, barry_rref),
              (bill_success, bill_rref)) = res
-            self.failUnless(barry_success)
-            self.failUnless(bill_success)
-            self.failUnless(isinstance(barry_rref, RemoteReference))
-            self.failUnless(isinstance(bill_rref, RemoteReference))
-            self.failIf(barry_rref == bill_success)
+            self.assertTrue(barry_success)
+            self.assertTrue(bill_success)
+            self.assertTrue(isinstance(barry_rref, RemoteReference))
+            self.assertTrue(isinstance(bill_rref, RemoteReference))
+            self.assertFalse(barry_rref == bill_success)
         dl = defer.DeferredList([d1, d2])
         dl.addCallback(_check)
         self.services.append(t1)
@@ -229,9 +230,9 @@ class QueuedStartup(TargetMixin, MakeTubsMixin, unittest.TestCase):
             return False
         d = self.poll(_check)
         def _validate(res):
-            self.failUnless(isinstance(bill_connections[0], RemoteReference))
-            self.failUnless(isinstance(barry_connections[0], RemoteReference))
-            self.failIf(bill_connections[0] == barry_connections[0])
+            self.assertTrue(isinstance(bill_connections[0], RemoteReference))
+            self.assertTrue(isinstance(barry_connections[0], RemoteReference))
+            self.assertFalse(bill_connections[0] == barry_connections[0])
         d.addCallback(_validate)
         self.services.append(t1)
         eventually(t1.startService)
@@ -283,29 +284,29 @@ class NameLookup(TargetMixin, MakeTubsMixin, unittest.TestCase):
         d = self.tubA.getReference(s)
 
         def _check(res):
-            self.failUnless(isinstance(res, RemoteReference))
-            self.failUnlessEqual(self.lookups, ["foo"])
+            self.assertTrue(isinstance(res, RemoteReference))
+            self.assertEqual(self.lookups, ["foo"])
             # the first lookup should short-circuit the process
-            self.failUnlessEqual(self.lookups2, [])
+            self.assertEqual(self.lookups2, [])
             self.lookups = []; self.lookups2 = []
             s.name = "bar"
             return self.tubA.getReference(s)
         d.addCallback(_check)
 
         def _check2(res):
-            self.failUnless(isinstance(res, RemoteReference))
+            self.assertTrue(isinstance(res, RemoteReference))
             # if the first lookup fails, the second handler should be asked
-            self.failUnlessEqual(self.lookups, ["bar"])
-            self.failUnlessEqual(self.lookups2, ["bar"])
+            self.assertEqual(self.lookups, ["bar"])
+            self.assertEqual(self.lookups2, ["bar"])
             self.lookups = []; self.lookups2 = []
             # make sure that loopbacks use this too
             return self.tubB.getReference(s)
         d.addCallback(_check2)
 
         def _check3(res):
-            self.failUnless(isinstance(res, RemoteReference))
-            self.failUnlessEqual(self.lookups, ["bar"])
-            self.failUnlessEqual(self.lookups2, ["bar"])
+            self.assertTrue(isinstance(res, RemoteReference))
+            self.assertEqual(self.lookups, ["bar"])
+            self.assertEqual(self.lookups2, ["bar"])
             self.lookups = []; self.lookups2 = []
             # and make sure we can de-register handlers
             self.tubB.unregisterNameLookupHandler(self.lookup)
@@ -314,9 +315,9 @@ class NameLookup(TargetMixin, MakeTubsMixin, unittest.TestCase):
         d.addCallback(_check3)
 
         def _check4(res):
-            self.failUnless(isinstance(res, RemoteReference))
-            self.failUnlessEqual(self.lookups, [])
-            self.failUnlessEqual(self.lookups2, ["baz"])
+            self.assertTrue(isinstance(res, RemoteReference))
+            self.assertEqual(self.lookups, [])
+            self.assertEqual(self.lookups2, ["baz"])
             self.lookups = []; self.lookups2 = []
         d.addCallback(_check4)
 
@@ -389,7 +390,7 @@ class Receiver(Referenceable):
         d.addBoth(self.done_d.callback)
     def remote_two(self):
         msg = "Receiver.remote_two: I shouldn't be called"
-        print msg
+        print(msg)
         f = failure.Failure(ValueError(msg))
         log.err(f)
 
@@ -454,10 +455,10 @@ class BadLocationFURL(unittest.TestCase):
         # the buggy behavior is that the following call raises an exception
         d = tubA.getReference(furl)
         # whereas it ought to return a Deferred
-        self.failUnless(isinstance(d, defer.Deferred))
+        self.assertTrue(isinstance(d, defer.Deferred))
         def _check(f):
-            self.failUnless(isinstance(f, failure.Failure), f)
-            self.failUnless(f.check(NoLocationHintsError), f)
+            self.assertTrue(isinstance(f, failure.Failure), f)
+            self.assertTrue(f.check(NoLocationHintsError), f)
         d.addBoth(_check)
         return d
 
@@ -476,9 +477,9 @@ class BadLocationFURL(unittest.TestCase):
         # the buggy behavior is that the following call raises an exception
         d = tubA.getReference(furl)
         # whereas it ought to return a Deferred
-        self.failUnless(isinstance(d, defer.Deferred))
+        self.assertTrue(isinstance(d, defer.Deferred))
         def _check(f):
-            self.failUnless(isinstance(f, failure.Failure), f)
-            self.failUnless(f.check(NoLocationHintsError), f)
+            self.assertTrue(isinstance(f, failure.Failure), f)
+            self.assertTrue(f.check(NoLocationHintsError), f)
         d.addBoth(_check)
         return d

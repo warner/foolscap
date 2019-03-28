@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_negotiate -*-
 
+from __future__ import print_function
 import time
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor, defer
@@ -33,7 +34,7 @@ def check_inrange(my_min, my_max, decision, name):
         raise NegotiationError("I can't handle %s %d" % (name, decision))
 
 # negotiation phases
-PLAINTEXT, ENCRYPTED, DECIDING, BANANA, ABANDONED = range(5)
+PLAINTEXT, ENCRYPTED, DECIDING, BANANA, ABANDONED = list(range(5))
 
 
 # version number history:
@@ -252,15 +253,15 @@ class Negotiation(protocol.Protocol):
         return block
 
     def sendBlock(self, block):
-        keys = block.keys()
+        keys = list(block.keys())
         keys.sort()
         for k in keys:
             self.transport.write("%s: %s\r\n" % (k.lower(), block[k]))
         self.transport.write("\r\n") # end block
 
     def debug_doTimer(self, name, timeout, call, *args):
-        if (self._test_options.has_key("debug_slow_%s" % name) and
-            not self.debugTimers.has_key(name)):
+        if ("debug_slow_%s" % name in self._test_options and
+            name not in self.debugTimers):
             self.log("debug_doTimer(%s)" % name)
             t = reactor.callLater(timeout, self.debug_fireTimer, name)
             self.debugTimers[name] = (t, [(call, args)])
@@ -274,15 +275,15 @@ class Negotiation(protocol.Protocol):
         cb = self._test_options.get("debug_pause_%s" % name, None)
         if not cb:
             return False
-        if self.debugPauses.has_key(name):
+        if name in self.debugPauses:
             return False
         self.log("debug_doPause(%s)" % name)
         self.debugPauses[name] = d = defer.Deferred()
         d.addCallback(lambda _: call(*args))
         try:
             cb(d)
-        except Exception, e:
-            print e # otherwise failures are hard to track down
+        except Exception as e:
+            print(e) # otherwise failures are hard to track down
             raise
         return True
 
@@ -415,7 +416,7 @@ class Negotiation(protocol.Protocol):
             if self.buffer:
                 self.dataReceived("")
 
-        except Exception, e:
+        except Exception as e:
             why = Failure()
             if isinstance(e, RemoteNegotiationError):
                 pass # they've already hung up
@@ -460,7 +461,7 @@ class Negotiation(protocol.Protocol):
         # cancel the other slowdown timers, since they all involve sending
         # data, and the connection is no longer available
         self.debug_cancelAllTimers()
-        for k,t in self.debugTimers.items():
+        for k,t in list(self.debugTimers.items()):
             if t:
                 t[0].cancel()
                 self.debugTimers[k] = None
@@ -594,7 +595,7 @@ class Negotiation(protocol.Protocol):
             self.theirCertificate = them
 
         hello = self.parseLines(header)
-        if hello.has_key("error"):
+        if "error" in hello:
             raise RemoteNegotiationError(hello["error"])
         self.evaluateHello(hello)
 
@@ -618,8 +619,8 @@ class Negotiation(protocol.Protocol):
 
         self.log("evaluateHello(isClient=%s): offer=%s" %
                  (self.isClient, offer))
-        if not offer.has_key('banana-negotiation-range'):
-            if offer.has_key('banana-negotiation-version'):
+        if 'banana-negotiation-range' not in offer:
+            if 'banana-negotiation-version' in offer:
                 msg = ("Peer is speaking foolscap-0.0.5 or earlier, "
                        "which is not compatible with this version. "
                        "Please upgrade the peer.")
@@ -1004,7 +1005,7 @@ class Negotiation(protocol.Protocol):
         return acceptfunc(decision)
 
     def acceptDecisionVersion1(self, decision):
-        if decision.has_key("error"):
+        if "error" in decision:
             error = decision["error"]
             raise RemoteNegotiationError("Banana negotiation failed: %s"
                                          % error)

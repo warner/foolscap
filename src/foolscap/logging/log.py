@@ -308,8 +308,8 @@ class FoolscapLogger:
         # iterates over all current log events in no particular order. The
         # caller should sort them by event number. If this isn't iterated
         # quickly enough, more events may arrive.
-        for facility,b1 in self.buffers.iteritems():
-            for level,q in b1.iteritems():
+        for facility,b1 in self.buffers.items():
+            for level,q in b1.items():
                 for event in q:
                     yield event
 
@@ -431,7 +431,7 @@ def bridgeLogsToTwisted(filter=None,
     def _to_twisted(event):
         if "from-twisted" in event:
             return
-        if not filter(event):
+        if not list(filter(event)):
             return
         args = {"from-foolscap": True,
                 "num": event["num"],
@@ -486,8 +486,8 @@ if _flogfile:
         theLogger.addObserver(lfo.msg)
         #theLogger.set_generation_threshold(UNUSUAL, "foolscap.negotiation")
     except IOError:
-        print >>sys.stderr, "FLOGFILE: unable to write to %s, ignoring" % \
-              (_flogfile,)
+        print("FLOGFILE: unable to write to %s, ignoring" % \
+              (_flogfile,), file=sys.stderr)
 
 if "FLOGTWISTED" in os.environ:
     bridgeLogsFromTwisted()
