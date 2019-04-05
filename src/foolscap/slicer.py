@@ -18,8 +18,7 @@ class SlicerClass(type):
             registerAdapter(self, typ, tokens.ISlicer)
 
 
-class BaseSlicer(object):
-    __metaclass__ = SlicerClass
+class BaseSlicer(object, metaclass=SlicerClass):
     implements(tokens.ISlicer)
 
     slices = None
@@ -143,8 +142,7 @@ class UnslicerClass(type):
         if opentype:
             registerUnslicer(opentype, self, reg)
 
-class BaseUnslicer(object):
-    __metaclass__ = UnslicerClass
+class BaseUnslicer(object, metaclass=UnslicerClass):
     opentype = None
     implements(tokens.IUnslicer)
 

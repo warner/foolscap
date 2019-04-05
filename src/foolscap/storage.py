@@ -71,9 +71,9 @@ class MethodSlicer(slicer.BaseSlicer):
     trackReferences = True
 
     def sliceBody(self, streamable, banana):
-        yield self.obj.im_func.__name__
-        yield self.obj.im_self
-        yield self.obj.im_class
+        yield self.obj.__func__.__name__
+        yield self.obj.__self__
+        yield self.obj.__self__.__class__
 
 class FunctionSlicer(slicer.BaseSlicer):
     opentype = ('function',)
@@ -88,7 +88,7 @@ UnsafeSlicerTable = {}
 UnsafeSlicerTable.update({
     types.InstanceType: InstanceSlicer,
     types.ModuleType: ModuleSlicer,
-    types.ClassType: ClassSlicer,
+    type: ClassSlicer,
     types.MethodType: MethodSlicer,
     types.FunctionType: FunctionSlicer,
     #types.TypeType: NewstyleClassSlicer,
@@ -176,7 +176,7 @@ class InstanceUnslicer(slicer.BaseUnslicer):
         # probably still be holes
 
         klass = reflect.namedObject(self.classname)
-        assert type(klass) == types.ClassType # TODO: new-style classes
+        assert type(klass) == type # TODO: new-style classes
         obj = instance(klass, {})
 
         setInstanceState(obj, self.d)
@@ -285,15 +285,15 @@ class MethodUnslicer(slicer.BaseUnslicer):
         assert not isinstance(obj, Deferred)
         assert ready_deferred is None
         if self.state == 0:
-            self.im_func = obj
+            self.__func__ = obj
             self.state = 1
         elif self.state == 1:
-            assert type(obj) in (types.InstanceType, types.NoneType)
-            self.im_self = obj
+            assert type(obj) in (types.InstanceType, type(None))
+            self.__self__ = obj
             self.state = 2
         elif self.state == 2:
-            assert type(obj) == types.ClassType # TODO: new-style classes?
-            self.im_class = obj
+            assert type(obj) == type # TODO: new-style classes?
+            self.__self__.__class__ = obj
             self.state = 3
         else:
             raise BananaError("MethodUnslicer only accepts three objects")
@@ -301,17 +301,17 @@ class MethodUnslicer(slicer.BaseUnslicer):
     def receiveClose(self):
         if self.state != 3:
             raise BananaError("MethodUnslicer requires three objects")
-        if self.im_self is None:
-            meth = getattr(self.im_class, self.im_func)
+        if self.__self__ is None:
+            meth = getattr(self.__self__.__class__, self.__func__)
             # getattr gives us an unbound method
             return meth, None
         # TODO: late-available instances
         #if isinstance(self.im_self, NotKnown):
         #    im = _InstanceMethod(self.im_name, self.im_self, self.im_class)
         #    return im
-        meth = self.im_class.__dict__[self.im_func]
+        meth = self.__self__.__class__.__dict__[self.__func__]
         # whereas __dict__ gives us a function
-        im = instancemethod(meth, self.im_self, self.im_class)
+        im = instancemethod(meth, self.__self__, self.__self__.__class__)
         return im, None
 
 

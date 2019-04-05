@@ -33,14 +33,14 @@ _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 def format_message(e):
     try:
         if "format" in e:
-            assert isinstance(e['format'], (str,unicode))
+            assert isinstance(e['format'], str)
             return e['format'] % e
         elif "args" in e:
             assert "message" in e
-            assert isinstance(e['message'], (str,unicode))
+            assert isinstance(e['message'], str)
             return e['message'] % e['args']
         elif "message" in e:
-            assert isinstance(e['message'], (str,unicode))
+            assert isinstance(e['message'], str)
             return e['message']
         else:
             return ""
@@ -63,7 +63,7 @@ class Count:
     def __init__(self, firstval=0):
         self.n = firstval - 1
 
-    def next(self):
+    def __next__(self):
         self.n += 1
         return self.n
 
@@ -168,7 +168,7 @@ class FoolscapLogger:
         """
 
         if "num" not in kwargs:
-            num = self.seqnum.next()
+            num = next(self.seqnum)
             kwargs['num'] = num
         else:
             num = kwargs['num']
@@ -366,7 +366,7 @@ class TwistedLogBridge:
             # level.
             log_level = d.pop("log_level")
             new_log_level = llmap.get(log_level, log_level)
-            if not isinstance(new_log_level, (int, long, str, unicode, bool)):
+            if not isinstance(new_log_level, (int, str, bool)):
                 # it was something weird: just stringify it in-place
                 new_log_level = str(new_log_level)
             kwargs["level"] = new_log_level # foolscap level, not twisted

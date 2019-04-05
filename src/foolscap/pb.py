@@ -331,7 +331,7 @@ class Tub(service.MultiService):
 
     def setLogGathererFURL(self, gatherer_furl_or_furls):
         assert not self._log_gatherer_furls
-        if isinstance(gatherer_furl_or_furls, basestring):
+        if isinstance(gatherer_furl_or_furls, str):
             self._log_gatherer_furls.append(gatherer_furl_or_furls)
         else:
             self._log_gatherer_furls.extend(gatherer_furl_or_furls)

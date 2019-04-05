@@ -331,8 +331,8 @@ class Serialization(unittest.TestCase):
             if isinstance(o, ValueError):
                 raise TypeError("oops9")
             return real_repr(o)
-        import __builtin__
-        assert __builtin__.repr is repr
+        import builtins
+        assert builtins.repr is repr
         with mock.patch("__builtin__.repr", really_bad_repr):
             s = ser(unrep)
         self.assertEqual(json.loads(s),

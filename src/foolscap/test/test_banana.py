@@ -118,7 +118,7 @@ def untokenize(tokens):
             else:
                 raise RuntimeError("bad token")
         else:
-            if isinstance(t, (int, long)):
+            if isinstance(t, int):
                 if t >= 2**31:
                     s = long_to_bytes(t)
                     int2b128(len(s), data.append)
@@ -854,7 +854,7 @@ class ErrorfulSlicer(slicer.BaseSlicer):
             raise Violation("slice failed")
         return self
 
-    def next(self):
+    def __next__(self):
         self.counter += 1
         if not self.items:
             raise StopIteration
@@ -1340,12 +1340,12 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
         self.check(-127, bINT(-127))
 
     def testLong(self):
-        self.check(258L, "\x02\x85\x01\x02") # TODO: 0x85 for LONGINT??
-        self.check(-258L, "\x02\x86\x01\x02") # TODO: 0x85 for LONGINT??
-        self.check(0L, "\x85")
-        self.check(0L, "\x00\x85")
-        self.check(0L, "\x86")
-        self.check(0L, "\x00\x86")
+        self.check(258, "\x02\x85\x01\x02") # TODO: 0x85 for LONGINT??
+        self.check(-258, "\x02\x86\x01\x02") # TODO: 0x85 for LONGINT??
+        self.check(0, "\x85")
+        self.check(0, "\x00\x85")
+        self.check(0, "\x86")
+        self.check(0, "\x00\x86")
 
     def testString(self):
         self.check("", "\x82")
@@ -1660,18 +1660,18 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
     def test_bigint(self):
         # some of these are small enough to fit in an INT
         d = self.looptest(int(2**31-1)) # most positive representable number
-        d.addCallback(lambda res: self.looptest(long(2**31+0)))
-        d.addCallback(lambda res: self.looptest(long(2**31+1)))
+        d.addCallback(lambda res: self.looptest(int(2**31+0)))
+        d.addCallback(lambda res: self.looptest(int(2**31+1)))
 
-        d.addCallback(lambda res: self.looptest(long(-2**31-1)))
+        d.addCallback(lambda res: self.looptest(int(-2**31-1)))
         # the following is the most negative representable number
         d.addCallback(lambda res: self.looptest(int(-2**31+0)))
         d.addCallback(lambda res: self.looptest(int(-2**31+1)))
 
-        d.addCallback(lambda res: self.looptest(long(2**100)))
-        d.addCallback(lambda res: self.looptest(long(-2**100)))
-        d.addCallback(lambda res: self.looptest(long(2**1000)))
-        d.addCallback(lambda res: self.looptest(long(-2**1000)))
+        d.addCallback(lambda res: self.looptest(int(2**100)))
+        d.addCallback(lambda res: self.looptest(int(-2**100)))
+        d.addCallback(lambda res: self.looptest(int(2**1000)))
+        d.addCallback(lambda res: self.looptest(int(-2**1000)))
         return d
 
     def test_decimal(self):
@@ -1698,7 +1698,7 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
     def test_string(self):
         return self.looptest("biggles")
     def test_unicode(self):
-        return self.looptest(u"biggles\u1234")
+        return self.looptest("biggles\u1234")
     def test_list(self):
         return self.looptest([1,2])
     def test_tuple(self):
@@ -1746,9 +1746,9 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
         d.addCallback(self._test_boundMethod_1, m1)
         return d
     def _test_boundMethod_1(self, m2, m1):
-        self.failUnlessEqual(m1.im_class, m2.im_class)
-        self.failUnlessEqual(m1.im_self, m2.im_self)
-        self.failUnlessEqual(m1.im_func, m2.im_func)
+        self.assertEqual(m1.__self__.__class__, m2.__self__.__class__)
+        self.assertEqual(m1.__self__, m2.__self__)
+        self.assertEqual(m1.__func__, m2.__func__)
 
     def test_boundMethod_newstyle(self):
         raise unittest.SkipTest("new-style classes still broken")
@@ -1758,9 +1758,9 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
         d.addCallback(self._test_boundMethod_newstyle, m1)
         return d
     def _test_boundMethod_newstyle(self, m2, m1):
-        self.failUnlessEqual(m1.im_class, m2.im_class)
-        self.failUnlessEqual(m1.im_self, m2.im_self)
-        self.failUnlessEqual(m1.im_func, m2.im_func)
+        self.assertEqual(m1.__self__.__class__, m2.__self__.__class__)
+        self.assertEqual(m1.__self__, m2.__self__)
+        self.assertEqual(m1.__func__, m2.__func__)
 
     def test_classMethod(self):
         return self.looptest(A.amethod)
@@ -1787,13 +1787,13 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
         self.assertIdentical(z[0][0], z)
 
     def testUnicode(self):
-        x = [unicode('blah')]
+        x = [str('blah')]
         d = self.loop(x)
         d.addCallback(self._testUnicode_1, x)
         return d
     def _testUnicode_1(self, y, x):
-        self.assertEquals(x, y)
-        self.assertEquals(type(x[0]), type(y[0]))
+        self.assertEqual(x, y)
+        self.assertEqual(type(x[0]), type(y[0]))
 
     def testStressReferences(self):
         reref = []

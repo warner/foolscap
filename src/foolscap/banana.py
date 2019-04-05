@@ -176,7 +176,7 @@ class Banana(protocol.Protocol):
         assert tokens.IRootSlicer.providedBy(self.rootSlicer)
 
         itr = self.rootSlicer.slice()
-        next = iter(itr).next
+        next = iter(itr).__next__
         top = (self.rootSlicer, next, None)
         self.slicerStack = [top]
 
@@ -342,7 +342,7 @@ class Banana(protocol.Protocol):
         # methods which are *not* generators.
 
         itr = slicer.slice(topSlicer.streamable, self)
-        next = iter(itr).next
+        next = iter(itr).__next__
 
         # we are now committed to sending the OPEN token, meaning that
         # failures after this point will cause an ABORT/CLOSE to be sent
@@ -484,7 +484,7 @@ class Banana(protocol.Protocol):
 
     def sendToken(self, obj):
         write = self.transport.write
-        if isinstance(obj, (int, long)):
+        if isinstance(obj, int):
             if obj >= 2**31:
                 s = long_to_bytes(obj)
                 int2b128(len(s), write)
@@ -936,7 +936,7 @@ class Banana(protocol.Protocol):
             elif typebyte == NEG:
                 # -2**31 is too large for a positive int, so go through
                 # LongType first
-                obj = int(-long(header))
+                obj = int(-int(header))
             elif typebyte == LONGINT or typebyte == LONGNEG:
                 strlen = header
                 if len(self.buffer) >= strlen:
