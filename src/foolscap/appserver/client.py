@@ -1,6 +1,7 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
+import six
 import os, sys
-from io import StringIO
+from io import BytesIO
 from twisted.python import usage
 from twisted.internet import defer
 
@@ -42,7 +43,7 @@ class UploadFile(Referenceable):
     def _upload(self, _ignored, rref, sf, name):
         return Uploader().run(rref, sf, name)
     def _done(self, _ignored, options, name):
-        print("%s: uploaded" % name, file=options.stdout)
+        print(u"%s: uploaded" % name, file=options.stdout)
 
 
 class RunCommandOptions(BaseOptions):
@@ -87,6 +88,13 @@ from twisted.internet.protocol import Protocol
 #from zope.interface import implements
 #from twisted.internet.interfaces import IHalfCloseableProtocol
 
+def wrap_in_binary_mode(f):
+    if hasattr(f, "buffer"):
+        # py3 "text file", as returned by open(), or sys.std(in|out|err)
+        return f.buffer # _io.BufferedWriter
+    assert isinstance(f, BytesIO)
+    return f
+
 class RunCommand(Referenceable, Protocol):
     #implements(IHalfCloseableProtocol)
     def run(self, rref, options):
@@ -95,15 +103,15 @@ class RunCommand(Referenceable, Protocol):
         rref.notifyOnDisconnect(self._done, 3)
         self.stdin_writer = None
         self.stdio = options.stdio
-        self.stdout = options.stdout
-        self.stderr = options.stderr
+        self.stdout = wrap_in_binary_mode(options.stdout)
+        self.stderr = wrap_in_binary_mode(options.stderr)
         d = rref.callRemote("execute", self)
         d.addCallback(self._started)
         d.addErrback(self._err)
         return self.d
 
     def dataReceived(self, data):
-        if not isinstance(data, str):
+        if not isinstance(data, type(b"")):
             raise TypeError("stdin can accept only strings of bytes, not '%s'"
                             % (type(data),))
         # this is from stdin. It shouldn't be called until after _started
@@ -121,9 +129,14 @@ class RunCommand(Referenceable, Protocol):
         # otherwise they don't want our stdin, so leave stdin_writer=None
 
     def remote_stdout(self, data):
+        print("remote_stdout", type(data))
+        assert isinstance(data, type(b""))
+        print(data)
         self.stdout.write(data)
         self.stdout.flush()
+        print("flushed stdout")
     def remote_stderr(self, data):
+        assert isinstance(data, type(b""))
         self.stderr.write(data)
         self.stderr.flush()
     def remote_done(self, signal, exitcode):
@@ -180,13 +193,14 @@ class ClientOptions(usage.Options):
             raise usage.UsageError("must specify a command")
 
     def opt_help(self):
+        # TODO: our stdout is binary
         print(self.synopsis, file=self.stdout)
         sys.exit(0)
 
     def opt_version(self):
         from twisted import copyright
-        print("Foolscap version:", foolscap.__version__, file=self.stdout)
-        print("Twisted version:", copyright.version, file=self.stdout)
+        print(u"Foolscap version:", six.text_type(foolscap.__version__), file=self.stdout)
+        print(u"Twisted version:", six.text_type(copyright.version), file=self.stdout)
         sys.exit(0)
 
 dispatch_table = {
@@ -207,15 +221,16 @@ def parse_options(command_name, argv, stdio, stdout, stderr):
         config.subOptions.stderr = stderr
 
     except usage.error as e:
-        print("%s:  %s" % (command_name, e), file=stderr)
-        print(file=stderr)
+        print(u"%s:  %s" % (command_name, e), file=stderr)
+        print(u"", file=stderr)
         c = getattr(config, 'subOptions', config)
-        print(str(c), file=stderr)
+        print(six.text_type(c), file=stderr)
         sys.exit(1)
 
     return config
 
 def run_command(config):
+    assert isinstance(config.furl, type(b""))
     c = dispatch_table[config.subCommand]()
     tub = Tub()
     try:
@@ -248,8 +263,8 @@ def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
         stdout = sys.stdout
         stderr = sys.stderr
     else:
-        stdout = StringIO()
-        stderr = StringIO()
+        stdout = BytesIO()
+        stderr = BytesIO()
     if argv:
         command_name,argv = argv[0],argv[1:]
     else:
@@ -271,7 +286,7 @@ def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
             if f.check(SystemExit):
                 stash_rc.append(f.value.args[0])
             else:
-                print("flappclient command failed:", file=stderr)
+                print(u"flappclient command failed:", file=stderr)
                 print(f, file=stderr)
                 stash_rc.append(-1)
             reactor.stop()
