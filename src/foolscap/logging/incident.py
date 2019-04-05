@@ -1,6 +1,6 @@
 from __future__ import print_function
 import sys, os.path, time, bz2
-from pprint import pprint
+import json
 from zope.interface import implements
 from twisted.python import usage
 from twisted.internet import reactor
@@ -239,17 +239,18 @@ class IncidentClassifier(IncidentClassifierBase):
             abs_fn = os.path.expanduser(f)
             incident = self.load_incident(abs_fn)
             categories = self.classify_incident(incident)
-            print("%s: %s" % (f, ",".join(sorted(categories))), file=out)
+            print(u"%s: %s" % (f, ",".join(sorted(categories))), file=out)
             if list(categories) == ["unknown"] and options["verbose"]:
                 (header, events) = incident
                 trigger = header["trigger"]
                 from foolscap.logging.log import format_message
                 print(format_message(trigger), file=out)
-                pprint(trigger, stream=out)
+                #pprint(trigger, stream=out)
+                print(json.dumps(trigger).decode("ascii"), file=out)
                 if 'failure' in trigger:
-                    print(" FAILURE:", file=out)
+                    print(u" FAILURE:", file=out)
                     lines = str(trigger['failure']).split("\n")
                     for line in lines:
-                        print(" %s" % (line,), file=out)
-                print("", file=out)
+                        print(u" %s" % (line,), file=out)
+                print(u"", file=out)
 

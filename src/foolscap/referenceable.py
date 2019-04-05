@@ -426,6 +426,7 @@ class RemoteReference(RemoteReferenceOnly):
     def _callRemote(self, _name, *args, **kwargs):
         req = None
         broker = self.tracker.broker
+        _name = _name.encode("ascii")
 
         # remember that "none" is not a valid constraint, so we use it to
         # mean "not set by the caller", which means we fall back to whatever

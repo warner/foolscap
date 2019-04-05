@@ -570,9 +570,9 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             ic2.run(options)
             out = options.stdout.getvalue()
             self.failUnlessIn(".flog.bz2: unknown\n", out)
-            # this should have a pprinted trigger dictionary
-            self.assertTrue(re.search(r"u?'message': u?'foom',", out), out)
-            self.failUnlessIn("'num': 0,", out)
+            # this should have a JSON-formatted trigger dictionary
+            self.assertTrue(re.search(r'u?"message": u?"foom"', out), out)
+            self.failUnlessIn('"num": 0', out)
             self.failUnlessIn("RuntimeError", out)
 
         d.addCallback(_check)

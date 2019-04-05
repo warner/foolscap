@@ -1,5 +1,5 @@
-from __future__ import print_function
-import os, sys, time
+from __future__ import print_function, unicode_literals
+import six, os, sys, time
 from zope.interface import implements
 from twisted.internet import reactor
 from twisted.python import usage
@@ -93,7 +93,7 @@ class LogPrinter(Referenceable):
             self.saver.remote_msg(d)
 
     def simple_print(self, d):
-        print(d, file=self.output)
+        print(six.text_type(d), file=self.output)
 
     def formatted_print(self, d):
         time_s = format_time(d['time'], self.options["timestamps"])

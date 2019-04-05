@@ -1,5 +1,5 @@
-from __future__ import print_function
-import sys, errno, textwrap
+from __future__ import print_function, unicode_literals
+import six, sys, errno, textwrap
 from twisted.python import usage
 from foolscap.logging import flogfile
 from foolscap.logging.log import format_message
@@ -47,7 +47,7 @@ class LogDumper:
                 return 1
             raise
         except flogfile.ThisIsActuallyAFurlFileError:
-            print(textwrap.dedent("""\
+            print(textwrap.dedent(u"""\
                 Error: %s appears to be a FURL file.
                 Perhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?"""
                 % (options.dumpfile,)), file=options.stderr)
@@ -67,7 +67,7 @@ class LogDumper:
             """ % (options.dumpfile,)), file=options.stderr)
             return 1
         except ValueError as ex:
-            print("truncated pickle file? (%s): %s" % (options.dumpfile, ex), file=options.stderr)
+            print(u"truncated pickle file? (%s): %s" % (options.dumpfile, ex), file=options.stderr)
             return 1
 
     def print_header(self, e, options):
@@ -77,18 +77,18 @@ class LogDumper:
             t = h["trigger"]
             self.trigger = (t["incarnation"], t["num"])
         if options['verbose']:
-            print(e, file=stdout)
+            print(six.text_type(e), file=stdout)
         if not options["just-numbers"] and not options["verbose"]:
             if "versions" in h:
-                print("Application versions (embedded in logfile):", file=stdout)
+                print(u"Application versions (embedded in logfile):", file=stdout)
                 versions = h["versions"]
                 longest = max([len(name) for name in versions] + [0])
                 fmt = "%" + str(longest) + "s: %s"
                 for name in sorted(versions.keys()):
                     print(fmt % (name, versions[name]), file=stdout)
             if "pid" in h:
-                print("PID: %s" % (h["pid"],), file=stdout)
-            print(file=stdout)
+                print(u"PID: %s" % (h["pid"],), file=stdout)
+            print(u"", file=stdout)
 
     def print_event(self, e, options):
         stdout = options.stdout
@@ -96,7 +96,7 @@ class LogDumper:
         d = e['d']
         when = format_time(d['time'], options["timestamps"])
         if options['just-numbers']:
-            print(when, d.get('num'), file=stdout)
+            print(six.text_type(when), six.text_type(d.get('num')), file=stdout)
             return
 
         eid = (d["incarnation"], d["num"])
@@ -106,7 +106,7 @@ class LogDumper:
         try:
             text = format_message(d)
         except:
-            print("unformattable event", d)
+            print(u"unformattable event", d)
             raise
 
         t = "%s#%d " % (short, d['num'])
@@ -123,7 +123,7 @@ class LogDumper:
             t += " [INCIDENT-TRIGGER]"
         print(t, file=stdout)
         if 'failure' in d:
-            print(" FAILURE:", file=stdout)
+            print(u" FAILURE:", file=stdout)
             lines = str(d['failure'].get('str', d['failure'])).split("\n")
             for line in lines:
-                print(" %s" % (line,), file=stdout)
+                print(u" %s" % (line,), file=stdout)

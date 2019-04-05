@@ -2,7 +2,7 @@ from __future__ import print_function
 import io
 from foolscap import storage
 
-class TestTransport(io.StringIO):
+class TestTransport(io.BytesIO):
     disconnectReason = None
     def loseConnection(self):
         pass

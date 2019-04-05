@@ -800,6 +800,7 @@ class Tub(service.MultiService):
         if isinstance(sturdyOrURL, SturdyRef):
             sturdy = sturdyOrURL
         else:
+            sturdyOrURL = sturdyOrURL.encode("ascii")
             sturdy = SturdyRef(sturdyOrURL)
 
         if not self.running:
