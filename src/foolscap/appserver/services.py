@@ -211,15 +211,12 @@ class CommandPP(protocol.ProcessProtocol):
         self.log_stdout = log_stdout
         self.log_stderr = log_stderr
     def outReceived(self, data):
-        print "outReceived", type(data)
-        print data
         if self.outpipe:
             self.outpipe.callRemoteOnly("stdout", data)
         if self.log_stdout:
             sent = {True:"sent", False:"not sent"}[bool(self.outpipe)]
             log.msg("stdout (%s): %r" % (sent, data))
     def errReceived(self, data):
-        print "errReceived"
         if self.errpipe:
             self.errpipe.callRemoteOnly("stderr", data)
         if self.log_stderr:
@@ -227,7 +224,6 @@ class CommandPP(protocol.ProcessProtocol):
             log.msg("stderr (%s): %r" % (sent, data))
 
     def processEnded(self, reason):
-        print "processEnded"
         e = reason.value
         code = e.exitCode
         log.msg("process ended (signal=%s, rc=%s)" % (e.signal, code))
@@ -239,7 +235,6 @@ class Command(Referenceable):
         self.log_stdin = log_stdin
         self.closed = False
     def remote_feed_stdin(self, data):
-        print "remote_feed_stdin"
         if not isinstance(data, str):
             raise TypeError("stdin can accept only strings of bytes, not '%s'"
                             % (type(data),))
@@ -247,7 +242,6 @@ class Command(Referenceable):
             log.msg("stdin: %r" % data)
         self.process.write(data)
     def remote_close_stdin(self):
-        print "remote_close_stdin"
         if not self.closed:
             self.closed = True
             if self.log_stdin:
@@ -262,7 +256,6 @@ class CommandRunner(service.MultiService, Referenceable):
         self.options = options
 
     def remote_execute(self, watcher):
-        print "remote_execute"
         o = self.options
         outpipe = None
         if o.send_stdout:

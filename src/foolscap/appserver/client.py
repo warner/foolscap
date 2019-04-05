@@ -43,7 +43,7 @@ class UploadFile(Referenceable):
     def _upload(self, _ignored, rref, sf, name):
         return Uploader().run(rref, sf, name)
     def _done(self, _ignored, options, name):
-        print(u"%s: uploaded" % name, file=options.stdout)
+        print(six.binary_type("%s: uploaded" % name), file=options.stdout)
 
 
 class RunCommandOptions(BaseOptions):
@@ -129,12 +129,12 @@ class RunCommand(Referenceable, Protocol):
         # otherwise they don't want our stdin, so leave stdin_writer=None
 
     def remote_stdout(self, data):
-        print("remote_stdout", type(data))
+        #print("remote_stdout", type(data))
         assert isinstance(data, type(b""))
-        print(data)
+        #print(data)
         self.stdout.write(data)
         self.stdout.flush()
-        print("flushed stdout")
+        #print("flushed stdout")
     def remote_stderr(self, data):
         assert isinstance(data, type(b""))
         self.stderr.write(data)
@@ -193,14 +193,13 @@ class ClientOptions(usage.Options):
             raise usage.UsageError("must specify a command")
 
     def opt_help(self):
-        # TODO: our stdout is binary
-        print(self.synopsis, file=self.stdout)
+        print(six.binary_type(self.synopsis), file=self.stdout)
         sys.exit(0)
 
     def opt_version(self):
         from twisted import copyright
-        print(u"Foolscap version:", six.text_type(foolscap.__version__), file=self.stdout)
-        print(u"Twisted version:", six.text_type(copyright.version), file=self.stdout)
+        print(b"Foolscap version:", six.binary_type(foolscap.__version__), file=self.stdout)
+        print(b"Twisted version:", six.binary_type(copyright.version), file=self.stdout)
         sys.exit(0)
 
 dispatch_table = {
@@ -221,10 +220,10 @@ def parse_options(command_name, argv, stdio, stdout, stderr):
         config.subOptions.stderr = stderr
 
     except usage.error as e:
-        print(u"%s:  %s" % (command_name, e), file=stderr)
-        print(u"", file=stderr)
+        print(six.binary_type("%s:  %s" % (command_name, e)), file=stderr)
+        print(b"", file=stderr)
         c = getattr(config, 'subOptions', config)
-        print(six.text_type(c), file=stderr)
+        print(six.binary_type(c), file=stderr)
         sys.exit(1)
 
     return config
