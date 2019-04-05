@@ -15,7 +15,7 @@ This functionality is isolated here because it is never used for data coming
 over network connections.
 """
 
-from io import StringIO
+from io import BytesIO
 import types
 from new import instance, instancemethod
 from pickle import whichmodule  # used by FunctionSlicer
@@ -415,7 +415,7 @@ def serialize(obj, outstream=None, root_class=StorageRootSlicer, banana=None):
         b = StorageBanana()
         b.slicerClass = root_class
     if outstream is None:
-        sio = StringIO()
+        sio = BytesIO()
     else:
         sio = outstream
     b.transport = SerializerTransport(sio)

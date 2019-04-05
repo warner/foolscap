@@ -773,8 +773,8 @@ class RunCommand(unittest.TestCase, StallMixin):
         def _check_client(xxx_todo_changeme32):
             (rc,out,err) = xxx_todo_changeme32
             self.assertEqual(rc, 0)
-            self.assertEqual(out.strip(), DATA.strip())
             self.assertEqual(err.strip(), "")
+            self.assertEqual(out.strip(), DATA.strip())
         d.addCallback(_check_client)
 
         def _delete_foo(ign):

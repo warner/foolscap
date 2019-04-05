@@ -1,4 +1,5 @@
 from __future__ import print_function
+import six
 from twisted.python import usage
 import sys, os, bz2, time
 from foolscap.logging import log, flogfile
@@ -55,7 +56,7 @@ class Filter:
         stdout = options.stdout
         newfilename = options.newfile
         if options.newfile == options.oldfile:
-            print("modifying event file in place", file=stdout)
+            print(u"modifying event file in place", file=stdout)
             newfilename = newfilename + ".tmp"
         if options.newfile.endswith(".bz2"):
             newfile = bz2.BZ2File(newfilename, "w")
@@ -64,27 +65,27 @@ class Filter:
         newfile.write(flogfile.MAGIC)
         after = options['after']
         if after is not None:
-            print(" --after: removing events before %s" % time.ctime(after), file=stdout)
+            print(u" --after: removing events before %s" % time.ctime(after), file=stdout)
         before = options['before']
         if before is not None:
-            print(" --before: removing events after %s" % time.ctime(before), file=stdout)
+            print(u" --before: removing events after %s" % time.ctime(before), file=stdout)
         above = options['above']
         if above:
-            print(" --above: removing events below level %d" % above, file=stdout)
+            print(u" --above: removing events below level %d" % above, file=stdout)
         from_tubid = options['from']
         if from_tubid:
-            print(" --from: retaining events only from tubid prefix %s" % from_tubid, file=stdout)
+            print(u" --from: retaining events only from tubid prefix %s" % from_tubid, file=stdout)
         strip_facility = options['strip-facility']
         if strip_facility is not None:
-            print("--strip-facility: removing events for %s and children" % strip_facility, file=stdout)
+            print(u"--strip-facility: removing events for %s and children" % strip_facility, file=stdout)
         total = 0
         copied = 0
         for e in flogfile.get_events(options.oldfile):
             if options['verbose']:
                 if "d" in e:
-                    print(e['d']['num'], file=stdout)
+                    print(six.text_type(e['d']['num']), file=stdout)
                 else:
-                    print("HEADER", file=stdout)
+                    print(u"HEADER", file=stdout)
             total += 1
             if "d" in e:
                 if before is not None and e['d']['time'] >= before:
@@ -109,4 +110,4 @@ class Filter:
                 except OSError:
                     pass
             move_into_place(newfilename, options.newfile)
-        print("copied %d of %d events into new file" % (copied, total), file=stdout)
+        print(u"copied %d of %d events into new file" % (copied, total), file=stdout)

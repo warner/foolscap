@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import os, sys, time, weakref, binascii
 import traceback
 import collections
@@ -431,7 +431,7 @@ def bridgeLogsToTwisted(filter=None,
     def _to_twisted(event):
         if "from-twisted" in event:
             return
-        if not list(filter(event)):
+        if not filter(event):
             return
         args = {"from-foolscap": True,
                 "num": event["num"],

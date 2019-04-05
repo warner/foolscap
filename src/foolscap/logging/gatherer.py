@@ -1,5 +1,5 @@
-from __future__ import print_function
-import os, sys, time, bz2
+from __future__ import print_function, unicode_literals
+import six, os, sys, time, bz2
 signal = None
 try:
     import signal
@@ -347,7 +347,7 @@ class IncidentObserver(Referenceable):
         # look for a local state file, to see what incidents we've already
         # got
         statefile = self.basedir.child("latest").path
-        latest = ""
+        latest = b""
         try:
             latest = open(statefile, "r").read().strip()
         except EnvironmentError:
@@ -364,7 +364,6 @@ class IncidentObserver(Referenceable):
         return d
 
     def remote_new_incident(self, name, trigger):
-        print("new incident", name, file=self.stdout)
         # name= should look like "incident-2008-07-29-204211-aspkxoi". We
         # prevent name= from containing path metacharacters like / or : by
         # using FilePath later on.
@@ -380,7 +379,7 @@ class IncidentObserver(Referenceable):
             return
         self.incident_fetch_outstanding = True
         (name, trigger) = self.incidents_wanted.pop(0)
-        print("fetching incident", name, file=self.stdout)
+        print("fetching incident", six.text_type(name), file=self.stdout)
         d = self.publisher.callRemote("get_incident", name)
         def _clear_outstanding(res):
             self.incident_fetch_outstanding = False

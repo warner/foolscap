@@ -222,7 +222,7 @@ class UnbananaTestMixin:
         self.assertEqual(res.where, where)
         self.banana.object = None # to stop the tearDown check TODO ??
 
-class TestTransport(io.StringIO):
+class TestTransport(io.BytesIO):
     disconnectReason = None
     def loseConnection(self):
         pass

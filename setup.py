@@ -59,7 +59,7 @@ object reference system, and a capability-based security model.
         "flappclient = foolscap.appserver.client:run_flappclient",
         ] },
     "cmdclass": commands,
-    "install_requires": ["twisted[tls] >= 16.0.0", "pyOpenSSL"],
+    "install_requires": ["six", "twisted[tls] >= 16.0.0", "pyOpenSSL"],
     "extras_require": {
         "dev": ["mock", "txtorcon >= 19.0.0"],
         "tor": ["txtorcon >= 19.0.0"],

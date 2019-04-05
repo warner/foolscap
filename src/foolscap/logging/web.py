@@ -1,5 +1,5 @@
 from __future__ import print_function
-import time, urllib.request, urllib.parse, urllib.error
+import time, urllib
 from twisted.internet import reactor, endpoints
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.python import usage
@@ -286,7 +286,7 @@ class LogEvent:
         self.incarnation = base32.encode(e['d']['incarnation'][0])
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
-            self.anchor_index = "%s_%s_%d" % (urllib.parse.quote(e['from'].encode("utf-8")),
+            self.anchor_index = "%s_%s_%d" % (urllib.quote(e['from'].encode("utf-8")),
                                               self.incarnation.encode("utf-8"),
                                               e['d']['num'])
         self.parent_index = None

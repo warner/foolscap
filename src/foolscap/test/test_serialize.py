@@ -2,7 +2,7 @@
 
 from twisted.trial import unittest
 from twisted.application import service
-from io import StringIO
+from io import BytesIO
 import gc
 
 from foolscap.api import Referenceable, Copyable, RemoteCopy, \
@@ -74,7 +74,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
     def test_data_outstream(self):
         obj = ["look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
-        b = StringIO()
+        b = BytesIO()
         d = serialize(obj, outstream=b)
         def _out(res):
             self.failUnlessIdentical(res, b)

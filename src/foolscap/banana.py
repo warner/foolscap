@@ -77,7 +77,7 @@ def bytes_to_long(s):
 
     This is (essentially) the inverse of long_to_bytes().
     """
-    acc = 0
+    acc = 0L
     unpack = struct.unpack
     length = len(s)
     if length % 4:
