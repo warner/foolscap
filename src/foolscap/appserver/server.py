@@ -75,7 +75,7 @@ class AppServer(service.MultiService):
         self.tub.setServiceParent(self)
         self.tub.registerNameLookupHandler(self.lookup)
         self.setMyLocation()
-        print("Server Running", file=stdout)
+        print(u"Server Running", file=stdout)
 
     def startService(self):
         if self.umask is not None:
