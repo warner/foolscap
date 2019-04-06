@@ -1,4 +1,4 @@
-
+import six
 import re
 from twisted.trial import unittest
 from foolscap import schema, copyable, broker
@@ -290,7 +290,7 @@ class CreateTest(unittest.TestCase):
         self.check(c, schema.IntegerConstraint)
         self.failUnlessEqual(c.maxBytes, -1)
 
-        c = make(str)
+        c = make(six.binary_type)
         self.check(c, schema.ByteStringConstraint)
         self.failUnlessEqual(c.maxLength, None)
 
@@ -298,7 +298,7 @@ class CreateTest(unittest.TestCase):
         self.check(c, schema.ByteStringConstraint)
         self.failUnlessEqual(c.maxLength, 2000)
 
-        c = make(unicode)
+        c = make(six.text_type)
         self.check(c, schema.UnicodeConstraint)
         self.failUnlessEqual(c.maxLength, None)
 

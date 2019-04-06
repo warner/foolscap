@@ -1,4 +1,5 @@
 from __future__ import print_function
+import six
 import struct, time
 
 from twisted.internet import protocol, defer, reactor
@@ -10,6 +11,7 @@ from twisted.python import log
 from foolscap.slicers.allslicers import RootSlicer, RootUnslicer
 from foolscap.slicers.allslicers import ReplaceVocabSlicer, AddVocabSlicer
 
+from .util import long_type
 from . import stringchain
 from . import tokens
 from .tokens import SIZE_LIMIT, STRING, LIST, INT, NEG, \
@@ -77,7 +79,7 @@ def bytes_to_long(s):
 
     This is (essentially) the inverse of long_to_bytes().
     """
-    acc = 0L
+    acc = long_type(0)
     unpack = struct.unpack
     length = len(s)
     if length % 4:
@@ -90,7 +92,7 @@ def bytes_to_long(s):
 
 HIGH_BIT_SET = chr(0x80)
 
-
+SIMPLE_TOKENS = six.integer_types + (float, six.binary_type)
 
 # Banana is a big class. It is split up into three sections: sending,
 # receiving, and connection setup. These used to be separate classes, but
@@ -205,7 +207,7 @@ class Banana(protocol.Protocol):
                     obj.addErrback(self._slice_error, s)
                     # this is the primary exit point
                     break
-                elif type(obj) in (int, long, float, str):
+                elif type(obj) in SIMPLE_TOKENS:
                     # sendToken raises a BananaError for weird tokens
                     self.sendToken(obj)
                 else:
@@ -214,7 +216,7 @@ class Banana(protocol.Protocol):
                     try:
                         slicer = self.newSlicerFor(obj)
                         self.pushSlicer(slicer, obj)
-                    except Violation as v:
+                    except Violation:
                         # pushSlicer is arranged such that the pushing of
                         # the Slicer and the sending of the OPEN happen
                         # together: either both occur or neither occur. In
@@ -484,7 +486,7 @@ class Banana(protocol.Protocol):
 
     def sendToken(self, obj):
         write = self.transport.write
-        if isinstance(obj, (int, long)):
+        if isinstance(obj, six.integer_types):
             if obj >= 2**31:
                 s = long_to_bytes(obj)
                 int2b128(len(s), write)
@@ -504,7 +506,7 @@ class Banana(protocol.Protocol):
         elif isinstance(obj, float):
             write(FLOAT)
             write(struct.pack("!d", obj))
-        elif isinstance(obj, str):
+        elif isinstance(obj, six.binary_type):
             if obj in self.outgoingVocabulary:
                 symbolID = self.outgoingVocabulary[obj]
                 int2b128(symbolID, write)
@@ -936,7 +938,7 @@ class Banana(protocol.Protocol):
             elif typebyte == NEG:
                 # -2**31 is too large for a positive int, so go through
                 # LongType first
-                obj = int(-long(header))
+                obj = int(-long_type(header))
             elif typebyte == LONGINT or typebyte == LONGNEG:
                 strlen = header
                 if len(self.buffer) >= strlen:

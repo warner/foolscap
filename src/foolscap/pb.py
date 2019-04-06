@@ -331,7 +331,7 @@ class Tub(service.MultiService):
 
     def setLogGathererFURL(self, gatherer_furl_or_furls):
         assert not self._log_gatherer_furls
-        if isinstance(gatherer_furl_or_furls, basestring):
+        if isinstance(gatherer_furl_or_furls, (type(b""), type(u""))):
             self._log_gatherer_furls.append(gatherer_furl_or_furls)
         else:
             self._log_gatherer_furls.extend(gatherer_furl_or_furls)
@@ -1001,6 +1001,4 @@ class Tub(service.MultiService):
                         for (reqID, pr) in
                         sorted(_broker.waitingForAnswers.items()) ]
             output.append( (str(tubref), inbound, outbound) )
-        output.sort(lambda x,y: cmp( (len(x[1]), len(x[2])),
-                                     (len(y[1]), len(y[2])) ))
         return output

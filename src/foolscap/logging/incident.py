@@ -1,4 +1,5 @@
 from __future__ import print_function
+import six
 import sys, os.path, time, bz2
 import json
 from zope.interface import implements
@@ -108,7 +109,7 @@ class IncidentReporter:
 
         # use self.logger.buffers, copy events into logfile
         events = list(self.logger.get_buffered_events())
-        events.sort(lambda a,b: cmp(a['num'], b['num']))
+        events.sort(key=lambda a: a['num'])
         for e in events:
             flogfile.serialize_wrapper(self.f1, e,
                                        from_=self.tubid_s, rx_time=now)
@@ -207,7 +208,7 @@ class IncidentClassifierBase:
                 continue
             f = open(os.path.join(plugindir, fn), "r")
             localdict = {}
-            exec f in localdict
+            six.exec_(f, localdict)
             self.add_classifier(localdict["classify_incident"])
 
     def load_incident(self, abs_fn):

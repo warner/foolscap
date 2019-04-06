@@ -61,7 +61,7 @@ class LogDumper:
             use the flogtool from a copy of foolscap-0.12.7 or earlier."""
                                                     % (options.dumpfile,)), file=options.stderr)
             return 1
-        except flogfile.BadMagic as e:
+        except flogfile.BadMagic:
             print(textwrap.dedent("""\
             Error: %s does not appear to be a flogfile.
             """ % (options.dumpfile,)), file=options.stderr)

@@ -1,4 +1,5 @@
 from __future__ import print_function
+import six
 import os, sys, time, weakref, binascii
 import traceback
 import collections
@@ -33,14 +34,14 @@ _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 def format_message(e):
     try:
         if "format" in e:
-            assert isinstance(e['format'], (str,unicode))
+            assert isinstance(e['format'], (six.binary_type, six.text_type))
             return e['format'] % e
         elif "args" in e:
             assert "message" in e
-            assert isinstance(e['message'], (str,unicode))
+            assert isinstance(e['message'], (six.binary_type, six.text_type))
             return e['message'] % e['args']
         elif "message" in e:
-            assert isinstance(e['message'], (str,unicode))
+            assert isinstance(e['message'], (six.binary_type, six.text_type))
             return e['message']
         else:
             return ""
@@ -366,7 +367,9 @@ class TwistedLogBridge:
             # level.
             log_level = d.pop("log_level")
             new_log_level = llmap.get(log_level, log_level)
-            if not isinstance(new_log_level, (int, long, str, unicode, bool)):
+            if not isinstance(new_log_level,
+                              six.integer_types +
+                              (six.binary_type, six.text_type, bool)):
                 # it was something weird: just stringify it in-place
                 new_log_level = str(new_log_level)
             kwargs["level"] = new_log_level # foolscap level, not twisted

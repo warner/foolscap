@@ -37,7 +37,7 @@ class Subscription(Referenceable):
             # subscriber see events in sorted order. We bypass the bounded
             # queue for this.
             events = list(self.logger.get_buffered_events())
-            events.sort(lambda a,b: cmp(a['num'], b['num']))
+            events.sort(key=lambda a: a['num'])
             for e in events:
                 self.observer.callRemoteOnly("msg", e)
 

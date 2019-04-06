@@ -1,6 +1,7 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
 from __future__ import print_function
+import six
 import re, time
 from zope.interface import implements, implementsOnly, implementedBy, Interface
 from twisted.python import log
@@ -16,7 +17,7 @@ from foolscap.schema import Any, SetOf, DictOf, ListOf, TupleOf, \
      NumberConstraint, ByteStringConstraint, IntegerConstraint, \
      UnicodeConstraint, ChoiceOf
 from foolscap.referenceable import TubRef
-from foolscap.util import allocate_tcp_port
+from foolscap.util import allocate_tcp_port, long_type
 
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
@@ -72,7 +73,7 @@ class Loopback:
 Digits = re.compile("\d*")
 MegaSchema1 = DictOf(str,
                      ListOf(TupleOf(SetOf(int, maxLength=10, mutable=True),
-                                    str, bool, int, long, float, None,
+                                    six.binary_type, bool, int, long_type, float, None,
                                     UnicodeConstraint(),
                                     ByteStringConstraint(),
                                     Any(), NumberConstraint(),

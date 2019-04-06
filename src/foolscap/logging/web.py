@@ -249,7 +249,7 @@ class EventView(resource.Resource):
                 data += '</span></li>\n'
         elif sortby == "time":
             events = list(self.viewer.number_map.values())
-            events.sort(lambda a,b: cmp(a.e['d']['time'], b.e['d']['time']))
+            events.sort(key=lambda a: a.e['d']['time'])
             for e in events:
                 data += '<li><span class="%s">' % e.level_class()
                 data += e.to_html(timestamps=timestamps)
