@@ -116,14 +116,6 @@ def setInstanceState(inst, state):
         inst.__dict__ = state
     return inst
 
-class Dummy:
-    def __repr__(self):
-        return "<Dummy %s>" % self.__dict__
-    def __cmp__(self, other):
-        if not type(other) == type(self):
-            return -1
-        return cmp(self.__dict__, other.__dict__)
-
 UnsafeUnslicerRegistry = {}
 
 class InstanceUnslicer(slicer.BaseUnslicer):
@@ -183,7 +175,6 @@ class InstanceUnslicer(slicer.BaseUnslicer):
         # you could attempt to do some value-checking here, but there would
         # probably still be holes
 
-        #obj = Dummy()
         klass = reflect.namedObject(self.classname)
         assert type(klass) == types.ClassType # TODO: new-style classes
         obj = instance(klass, {})

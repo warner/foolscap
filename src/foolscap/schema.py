@@ -54,6 +54,8 @@ modifiers:
 
 """
 
+import sys
+import six
 from foolscap.tokens import Violation, UnknownSchemaType, BananaError, \
      tokenNames
 
@@ -134,14 +136,22 @@ def AnyStringConstraint(*args, **kwargs):
 StringConstraint = ByteStringConstraint
 
 constraintMap = {
-    str: ByteStringConstraint(),
-    unicode: UnicodeConstraint(),
+    six.binary_type: ByteStringConstraint(),
+    six.text_type: UnicodeConstraint(),
     bool: BooleanConstraint(),
-    int: IntegerConstraint(),
-    long: IntegerConstraint(maxBytes=1024),
     float: NumberConstraint(),
     None: Nothing(),
     }
+
+if sys.version_info.major >= 3:
+    constraintMap[int] = IntegerConstraint(maxBytes=1024)
+else:
+    for t in six.integer_types:
+        if t is int:
+            constraintMap[t] = IntegerConstraint()
+        else:
+            # t is long, but we can't say "long" in a py2+py3 program
+            constraintMap[t] = IntegerConstraint(maxBytes=1024)
 
 # This module provides a function named addToConstraintTypeMap() which helps
 # to resolve some import cycles.
