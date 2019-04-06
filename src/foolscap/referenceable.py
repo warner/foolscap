@@ -4,7 +4,9 @@
 # Referenceable (callable) objects. All details of actually invoking methods
 # live in call.py
 
+from __future__ import print_function
 import weakref
+from functools import total_ordering
 from zope.interface import interface
 from zope.interface import implements
 from twisted.python.components import registerAdapter
@@ -777,6 +779,7 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
         return "<gift-%s>" % self.giftID
 
 
+@total_ordering
 class SturdyRef(Copyable, RemoteCopy):
     """I am a pointer to a Referenceable that lives in some (probably remote)
     Tub. This pointer is long-lived, however you cannot send messages with it
@@ -819,12 +822,17 @@ class SturdyRef(Copyable, RemoteCopy):
 
     def __hash__(self):
         return hash(self._distinguishers())
-    def __cmp__(self, them):
-        return (cmp(type(self), type(them)) or
-                cmp(self.__class__, them.__class__) or
-                cmp(self._distinguishers(), them._distinguishers()))
 
+    def __lt__(self, them):
+        return self._distinguishers() < them._distinguishers()
+    def __eq__(self, them):
+        return (type(self) is type(them) and
+                self.__class__ == them.__class__ and
+                self._distinguishers() == them._distinguishers())
+    def __ne__(self, them):
+        return not self == them
 
+@total_ordering
 class TubRef(object):
     """This is a little helper class which provides a comparable identifier
     for Tubs. TubRefs can be used as keys in dictionaries that track
@@ -856,7 +864,12 @@ class TubRef(object):
 
     def __hash__(self):
         return hash(self._distinguishers())
-    def __cmp__(self, them):
-        return (cmp(type(self), type(them)) or
-                cmp(self.__class__, them.__class__) or
-                cmp(self._distinguishers(), them._distinguishers()))
+
+    def __lt__(self, them):
+        return self._distinguishers() < them._distinguishers()
+    def __eq__(self, them):
+        return (type(self) is type(them) and
+                self.__class__ == them.__class__ and
+                self._distinguishers() == them._distinguishers())
+    def __ne__(self, them):
+        return not self == them
