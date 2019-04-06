@@ -115,7 +115,7 @@ class Listener(protocol.ServerFactory, service.Service):
         return desc
 
 def generateSwissnumber(bits):
-    bytes = os.urandom(bits/8)
+    bytes = os.urandom(bits//8)
     return base32.encode(bytes)
 
 class Tub(service.MultiService):

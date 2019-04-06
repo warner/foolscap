@@ -20,6 +20,7 @@ from foolscap import broker, call
 from foolscap.constraint import IConstraint
 from foolscap.logging import log
 from foolscap.api import Tub
+from foolscap.pb import generateSwissnumber
 
 from foolscap.util import allocate_tcp_port
 from foolscap.test.common import HelperTarget, TargetMixin, \
@@ -697,6 +698,11 @@ class TestService(unittest.TestCase):
         self.failUnlessSubstring("TargetWithoutInterfaces", f.value)
         self.failUnlessSubstring(" has no attribute 'remote_missing'", f.value)
 
+class TestSwissnum(unittest.TestCase):
+    def test_length(self):
+        s = generateSwissnumber(160)
+        # 160 bits, 160/5= 32 characters in base32
+        self.assertEqual(len(s), 32)
 
 
 # TODO:
