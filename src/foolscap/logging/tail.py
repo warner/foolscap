@@ -1,6 +1,6 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 import os, sys, time
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet import reactor
 from twisted.python import usage
 from foolscap import base32
@@ -13,8 +13,8 @@ from .interfaces import RILogObserver
 def short_tubid_b2a(tubid):
     return base32.encode(tubid)[:8]
 
+@implementer(RILogObserver)
 class LogSaver(Referenceable):
-    implements(RILogObserver)
     def __init__(self, nodeid_s, savefile):
         self.nodeid_s = nodeid_s
         self.f = savefile # we own this, and may close it
@@ -66,9 +66,8 @@ class TailOptions(usage.Options):
         else:
             raise RuntimeError("Can't use tail target: %s" % target)
 
+@implementer(RILogObserver)
 class LogPrinter(Referenceable):
-    implements(RILogObserver)
-
     def __init__(self, options, target_tubid_s, output=sys.stdout):
         self.options = options
         self.saver = None

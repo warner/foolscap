@@ -1,5 +1,5 @@
 from __future__ import print_function
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionRefusedError
@@ -16,9 +16,8 @@ class RIConstrainedHelper(RemoteInterface):
     def set(obj=RIHelper): return None
 
 
+@implementer(RIConstrainedHelper)
 class ConstrainedHelper(Referenceable):
-    implements(RIConstrainedHelper)
-
     def __init__(self, name="unnamed"):
         self.name = name
 
