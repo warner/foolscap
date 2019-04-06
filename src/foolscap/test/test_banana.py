@@ -1,7 +1,6 @@
 from __future__ import print_function
 import six
 from twisted.trial import unittest
-from twisted.python import reflect
 from twisted.python.failure import Failure
 from twisted.python.components import registerAdapter
 from twisted.internet import defer
@@ -152,21 +151,21 @@ class UnbananaTestMixin:
     def setUp(self):
         self.hangup = False
         self.banana = storage.StorageBanana()
-        self.banana.slicerClass = storage.UnsafeStorageRootSlicer
-        self.banana.unslicerClass = storage.UnsafeStorageRootUnslicer
+        self.banana.slicerClass = storage.StorageRootSlicer
+        self.banana.unslicerClass = storage.StorageRootUnslicer
         self.banana.connectionMade()
     def tearDown(self):
         if not self.hangup:
             self.assertTrue(len(self.banana.receiveStack) == 1)
             self.assertTrue(isinstance(self.banana.receiveStack[0],
-                                       storage.UnsafeStorageRootUnslicer))
+                                       storage.StorageRootUnslicer))
 
     def do(self, tokens):
         self.banana.violation = None
         self.banana.disconnectReason = None
         self.assertTrue(len(self.banana.receiveStack) == 1)
         self.assertTrue(isinstance(self.banana.receiveStack[0],
-                                   storage.UnsafeStorageRootUnslicer))
+                                   storage.StorageRootUnslicer))
         data = untokenize(tokens)
         results = []
         d = self.banana.prepare()
@@ -237,8 +236,8 @@ class TestBananaMixin:
 
     def makeBanana(self):
         self.banana = storage.StorageBanana()
-        self.banana.slicerClass = storage.UnsafeStorageRootSlicer
-        self.banana.unslicerClass = storage.UnsafeStorageRootUnslicer
+        self.banana.slicerClass = storage.StorageRootSlicer
+        self.banana.unslicerClass = storage.StorageRootUnslicer
         self.banana.transport = TestTransport()
         self.banana.connectionMade()
 
@@ -455,68 +454,6 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         self.assertEqual(f.value.where, "<RootUnslicer>.{}")
         self.assertEqual(f.value.args[0], "unhashable key '[1, 2]'")
 
-    def test_instance(self):
-        "instance"
-        f1 = Foo(); f1.a = 1; f1.b = [2,3]
-        f2 = Bar(); f2.d = 4; f1.c = f2
-        res = self.do([tOPEN(0),'instance', "foolscap.test.test_banana.Foo",
-                        "a", 1,
-                        "b", tOPEN(1),'list', 2, 3, tCLOSE(1),
-                        "c", tOPEN(2),'instance',
-                              "foolscap.test.test_banana.Bar",
-                              "d", 4,
-                             tCLOSE(2),
-                       tCLOSE(0)])
-        self.assertEqual(res, f1)
-
-    def test_instance_bad1(self):
-        "subinstance with numeric classname"
-        tokens = [tOPEN(0),'instance', "Foo",
-                   "a", 1,
-                   "b", tOPEN(1),'list', 2, 3, tCLOSE(1),
-                   "c",
-                   tOPEN(2),'instance', 37, "d", 4, tCLOSE(2),
-                  tCLOSE(0)]
-        f = self.shouldDropConnection(tokens)
-        self.assertEqual(f.value.where, "<RootUnslicer>.<Foo>.c.<??>")
-        self.assertEqual(f.value.args[0],
-                             "InstanceUnslicer classname must be string")
-
-    def test_instance_bad2(self):
-        "subinstance with numeric attribute name"
-        tokens = [tOPEN(0),'instance', "Foo",
-                   "a", 1,
-                   "b", tOPEN(1),'list', 2, 3, tCLOSE(1),
-                   "c",
-                   tOPEN(2),'instance',
-                    "Bar", 37, 4,
-                   tCLOSE(2),
-                  tCLOSE(0)]
-        f = self.shouldDropConnection(tokens)
-        self.assertEqual(f.value.where,
-                             "<RootUnslicer>.<Foo>.c.<Bar>.attrname??")
-        self.assertEqual(f.value.args[0],
-                             "InstanceUnslicer keys must be STRINGs")
-
-    def test_instance_unsafe1(self):
-
-        "instances when instances aren't allowed"
-        self.banana.rootUnslicer.topRegistries = [slicer.UnslicerRegistry]
-        self.banana.rootUnslicer.openRegistries = [slicer.UnslicerRegistry]
-
-        tokens = [tOPEN(0),'instance', "Foo",
-                   "a", 1,
-                   "b", tOPEN(1),'list', 2, 3, tCLOSE(1),
-                   "c",
-                   tOPEN(2),'instance',
-                    "Bar", 37, 4,
-                   tCLOSE(2),
-                  tCLOSE(0)]
-        f = self.shouldFail(tokens)
-        self.assertEqual(f.value.where, "<RootUnslicer>")
-        self.assertEqual(f.value.args[0],
-                             "unknown top-level OPEN type ('instance',)")
-
     def test_ref1(self):
         res = self.do([tOPEN(0),'list',
                         tOPEN(1),'list', 1, 2, tCLOSE(1),
@@ -674,19 +611,11 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         self.assertEqual(f.value.where, "<RootUnslicer>.[1].{}")
         self.assertEqual(f.value.args[0], "dead in receiveClose()")
 
-class Bar:
-    def __eq__(self, them):
-        return (type(them) == type(self) and
-                self.__class__ == them.__class__ and
-                self.__dict__ == them.__dict__)
-class Foo(Bar):
-    pass
-
 class EncodeTest(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
-        self.banana.slicerClass = storage.UnsafeStorageRootSlicer
-        self.banana.unslicerClass = storage.UnsafeStorageRootUnslicer
+        self.banana.slicerClass = storage.StorageRootSlicer
+        self.banana.unslicerClass = storage.StorageRootUnslicer
         self.banana.connectionMade()
     def do(self, obj):
         return self.banana.testSlice(obj)
@@ -806,33 +735,6 @@ class EncodeTest(unittest.TestCase):
                        tCLOSE(0)])
         return d
 
-    def test_instance_one(self):
-        obj = Bar()
-        obj.a = 1
-        classname = reflect.qual(Bar)
-        d = self.do(obj)
-        d.addCallback(self.assertEqual,
-                      [tOPEN(0),'instance', classname, "a", 1, tCLOSE(0)])
-        return d
-
-    def test_instance_two(self):
-        f1 = Foo(); f1.a = 1; f1.b = [2,3]
-        f2 = Bar(); f2.d = 4; f1.c = f2
-        fooname = reflect.qual(Foo)
-        barname = reflect.qual(Bar)
-        # needs OrderedDictSlicer for the test to work
-        d = self.do(f1)
-        d.addCallback(self.assertEqual,
-                      [tOPEN(0),'instance', fooname,
-                        "a", 1,
-                        "b", tOPEN(1),'list', 2, 3, tCLOSE(1),
-                        "c",
-                          tOPEN(2),'instance', barname,
-                           "d", 4,
-                          tCLOSE(2),
-                       tCLOSE(0)])
-
-
 
 class ErrorfulSlicer(slicer.BaseSlicer):
     def __init__(self, mode, shouldSucceed, ignoreChildDeath=False):
@@ -896,8 +798,8 @@ class ErrorfulSlicer(slicer.BaseSlicer):
 class EncodeFailureTest(unittest.TestCase):
     def setUp(self):
         self.banana = TokenBanana()
-        self.banana.slicerClass = storage.UnsafeStorageRootSlicer
-        self.banana.unslicerClass = storage.UnsafeStorageRootUnslicer
+        self.banana.slicerClass = storage.StorageRootSlicer
+        self.banana.unslicerClass = storage.StorageRootUnslicer
         self.banana.connectionMade()
 
     def tearDown(self):
@@ -993,24 +895,6 @@ class EncodeFailureTest(unittest.TestCase):
                       self.assertEqual(self.banana.tokens,
                                            [('OPEN', 0), 1, 3, ('CLOSE', 0)]))
         return d
-
-    def test_instance_unsafe(self):
-        self.banana.rootSlicer.slicerTable = {}
-        f1 = Foo(); f1.a = 1; f1.b = [2,3]
-        d = self.send(f1)
-        d.addCallbacks(lambda res: self.fail("this was supposed to fail"),
-                       self._test_instance_unsafe_1)
-        return d
-    def _test_instance_unsafe_1(self, e):
-        e.trap(Violation)
-        self.assertEqual(e.value.where, "<RootSlicer>")
-        why = e.value.args[0]
-        self.assertTrue(
-            why.startswith("cannot serialize "
-                           "<foolscap.test.test_banana.Foo instance at"))
-        self.assertTrue(why.endswith(" (foolscap.test.test_banana.Foo)"))
-        # it will fail before any tokens have been emitted
-        self.assertEqual(self.banana.tokens, [])
 
 # receiving side:
 #  long header (>64 bytes)
@@ -1296,28 +1180,6 @@ class ByteStream(TestBananaMixin, unittest.TestCase):
                          bCLOSE(1),
                         bCLOSE(0))
         d = self.encode(obj)
-        d.addCallback(self.wantEqual, expected)
-        return d
-
-    def test_two(self):
-        f1 = Foo(); f1.a = 1; f1.b = [2,3]
-        f2 = Bar(); f2.d = 4; f1.c = f2
-        fooname = reflect.qual(Foo)
-        barname = reflect.qual(Bar)
-        # needs OrderedDictSlicer for the test to work
-
-        expected = join(bOPEN("instance",0), bSTR(fooname),
-                         bSTR("a"), bINT(1),
-                         bSTR("b"),
-                          bOPEN("list",1),
-                           bINT(2), bINT(3),
-                          bCLOSE(1),
-                         bSTR("c"),
-                           bOPEN("instance",2), bSTR(barname),
-                            bSTR("d"), bINT(4),
-                           bCLOSE(2),
-                        bCLOSE(0))
-        d = self.encode(f1)
         d.addCallback(self.wantEqual, expected)
         return d
 
@@ -1628,29 +1490,6 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                       schema.BooleanConstraint(True))
 
 
-class A:
-    """
-    dummy class
-    """
-    def amethod(self):
-        pass
-    def __eq__(self, them):
-        return (type(them) == type(self) and
-                self.__class__ == them.__class__ and
-                self.__dict__ == them.__dict__)
-
-class B(object):
-    # new-style class
-    def amethod(self):
-        pass
-    def __eq__(self, them):
-        return (type(them) == type(self) and
-                self.__class__ == them.__class__ and
-                self.__dict__ == them.__dict__)
-
-def afunc(self):
-    pass
-
 class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
 
     def test_int(self):
@@ -1721,54 +1560,6 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
         return d
     def test_dict(self):
         return self.looptest({'a':1})
-
-    def test_func(self):
-        return self.looptest(afunc)
-    def test_module(self):
-        return self.looptest(unittest)
-    def test_instance(self):
-        a = A()
-        return self.looptest(a)
-    def test_instance_newstyle(self):
-        raise unittest.SkipTest("new-style classes still broken")
-        b = B()
-        return self.looptest(b)
-
-    def test_class(self):
-        return self.looptest(A)
-    def test_class_newstyle(self):
-        raise unittest.SkipTest("new-style classes still broken")
-        return self.looptest(B)
-
-    def test_boundMethod(self):
-        a = A()
-        m1 = a.amethod
-        d = self.loop(m1)
-        d.addCallback(self._test_boundMethod_1, m1)
-        return d
-    def _test_boundMethod_1(self, m2, m1):
-        self.failUnlessEqual(m1.im_class, m2.im_class)
-        self.failUnlessEqual(m1.im_self, m2.im_self)
-        self.failUnlessEqual(m1.im_func, m2.im_func)
-
-    def test_boundMethod_newstyle(self):
-        raise unittest.SkipTest("new-style classes still broken")
-        b = B()
-        m1 = b.amethod
-        d = self.loop(m1)
-        d.addCallback(self._test_boundMethod_newstyle, m1)
-        return d
-    def _test_boundMethod_newstyle(self, m2, m1):
-        self.failUnlessEqual(m1.im_class, m2.im_class)
-        self.failUnlessEqual(m1.im_self, m2.im_self)
-        self.failUnlessEqual(m1.im_func, m2.im_func)
-
-    def test_classMethod(self):
-        return self.looptest(A.amethod)
-
-    def test_classMethod_newstyle(self):
-        raise unittest.SkipTest("new-style classes still broken")
-        return self.looptest(B.amethod)
 
     # some stuff from test_newjelly
     def testIdentity(self):
