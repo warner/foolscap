@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 import types
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet.defer import Deferred
 from foolscap import tokens
 from foolscap.tokens import Violation, BananaError
@@ -13,9 +13,8 @@ from foolscap import copyable # does this create a cycle?
 from twisted.python import log
 from functools import reduce
 
+@implementer(tokens.ISlicer, tokens.IRootSlicer)
 class RootSlicer:
-    implements(tokens.ISlicer, tokens.IRootSlicer)
-
     streamableInGeneral = True
     producingDeferred = None
     objectSentDeferred = None

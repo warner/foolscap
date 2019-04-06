@@ -5,7 +5,7 @@ try:
     import signal
 except ImportError:
     pass
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet import reactor, utils, defer
 from twisted.python import usage, procutils, filepath, log as tw_log
 from twisted.application import service, internet
@@ -104,9 +104,8 @@ class CreateGatherOptions(usage.Options):
             raise usage.UsageError("--location= is mandatory")
 
 
+@implementer(RILogObserver)
 class Observer(Referenceable):
-    implements(RILogObserver)
-
     def __init__(self, nodeid_s, gatherer):
         self.nodeid_s = nodeid_s # printable string
         self.gatherer = gatherer
@@ -114,6 +113,7 @@ class Observer(Referenceable):
     def remote_msg(self, d):
         self.gatherer.msg(self.nodeid_s, d)
 
+@implementer(RILogGatherer)
 class GathererService(GatheringBase):
     # create this with 'flogtool create-gatherer BASEDIR'
     # run this as 'cd BASEDIR && twistd -y gatherer.tac'
@@ -148,7 +148,6 @@ class GathererService(GatheringBase):
 
     """
 
-    implements(RILogGatherer)
     verbose = True
     furlFile = "log_gatherer.furl"
     tacFile = "gatherer.tac"
@@ -328,9 +327,8 @@ class CreateIncidentGatherOptions(usage.Options):
             raise usage.UsageError("--location= is mandatory")
 
 
+@implementer(RILogObserver)
 class IncidentObserver(Referenceable):
-    implements(RILogObserver)
-
     def __init__(self, basedir, tubid_s, gatherer, publisher, stdout):
         if not os.path.isdir(basedir):
             os.makedirs(basedir)
@@ -420,6 +418,7 @@ class IncidentObserver(Referenceable):
         self.caught_up_d.callback(None)
         return None
 
+@implementer(RILogGatherer)
 class IncidentGathererService(GatheringBase, IncidentClassifierBase):
     # create this with 'flogtool create-incident-gatherer BASEDIR'
     # run this as 'cd BASEDIR && twistd -y gatherer.tac'
@@ -442,7 +441,6 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
 
     """
 
-    implements(RILogGatherer)
     verbose = True
     furlFile = "log_gatherer.furl"
     tacFile = "gatherer.tac"

@@ -7,7 +7,7 @@ import six
 import types, time
 from itertools import count
 
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.python import failure
 from twisted.internet import defer, error
 from twisted.internet import interfaces as twinterfaces
@@ -132,6 +132,7 @@ class RIBroker(remoteinterface.RemoteInterface):
         return None
 
 
+@implementer(RIBroker, IBroker)
 class Broker(banana.Banana, referenceable.Referenceable):
     """I manage a connection to a remote Broker.
 
@@ -142,7 +143,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     """
 
-    implements(RIBroker, IBroker)
     slicerClass = PBRootSlicer
     unslicerClass = PBRootUnslicer
     unsafeTracebacks = True
@@ -736,12 +736,13 @@ class StorageBroker(Broker):
 # we use it for real, not just for testing. The IConsumer stuff hasn't been
 # tested at all.
 
+@implementer(twinterfaces.IAddress)
 class LoopbackAddress(object):
-    implements(twinterfaces.IAddress)
+    pass
 
+@implementer(twinterfaces.ITransport, twinterfaces.IConsumer)
 class LoopbackTransport(object):
     # we always create these in pairs, with .peer pointing at each other
-    implements(twinterfaces.ITransport, twinterfaces.IConsumer)
 
     producer = None
 

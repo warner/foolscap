@@ -2,7 +2,7 @@ from __future__ import print_function
 import six
 import sys, os.path, time, bz2
 import json
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.python import usage
 from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
@@ -38,6 +38,7 @@ class IncidentQualifier:
         if self.check_event(ev) and self.handler:
             self.handler.declare_incident(ev)
 
+@implementer(IIncidentReporter)
 class IncidentReporter:
     """Once an Incident has been declared, I am responsible for making a
     durable record all relevant log events. I do this by creating a logfile
@@ -56,7 +57,6 @@ class IncidentReporter:
     of the logfile I created and the triggering event. This can be used to
     notify remote subscribers about the incident that just occurred.
     """
-    implements(IIncidentReporter)
 
     TRAILING_DELAY = 5.0 # gather 5 seconds of post-trigger events
     TRAILING_EVENT_LIMIT = 100 # or 100 events, whichever comes first
