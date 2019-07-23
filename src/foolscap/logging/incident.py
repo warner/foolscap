@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import sys, os.path, time, bz2
 from pprint import pprint
 from zope.interface import implements, implementer
