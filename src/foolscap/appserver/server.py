@@ -4,6 +4,7 @@ from twisted.application import service
 from foolscap.api import Tub
 from foolscap.appserver.services import build_service
 from foolscap.util import move_into_place
+from __future__ import print_function
 
 class UnknownVersion(Exception):
     pass
