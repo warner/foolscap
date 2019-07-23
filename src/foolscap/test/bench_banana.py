@@ -1,7 +1,7 @@
-import StringIO
+import io
 from foolscap import storage
 
-class TestTransport(StringIO.StringIO):
+class TestTransport(io.StringIO):
     disconnectReason = None
     def loseConnection(self):
         pass
@@ -41,6 +41,6 @@ from twisted.internet import reactor
 from pyutil import benchutil
 b = B()
 for N in 10**3, 10**4, 10**5, 10**6, 10**7:
-    print "%8d" % N,
+    print("%8d" % N, end=' ')
     sys.stdout.flush()
     benchutil.rep_bench(b.bench_huge_string_decode, N, b.setup_huge_string)

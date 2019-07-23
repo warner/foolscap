@@ -33,14 +33,14 @@ _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 def format_message(e):
     try:
         if "format" in e:
-            assert isinstance(e['format'], (str,unicode))
+            assert isinstance(e['format'], str)
             return e['format'] % e
         elif "args" in e:
             assert "message" in e
-            assert isinstance(e['message'], (str,unicode))
+            assert isinstance(e['message'], str)
             return e['message'] % e['args']
         elif "message" in e:
-            assert isinstance(e['message'], (str,unicode))
+            assert isinstance(e['message'], str)
             return e['message']
         else:
             return ""
@@ -63,7 +63,7 @@ class Count:
     def __init__(self, firstval=0):
         self.n = firstval - 1
 
-    def next(self):
+    def __next__(self):
         self.n += 1
         return self.n
 
@@ -168,7 +168,7 @@ class FoolscapLogger:
         """
 
         if "num" not in kwargs:
-            num = self.seqnum.next()
+            num = next(self.seqnum)
             kwargs['num'] = num
         else:
             num = kwargs['num']
@@ -308,8 +308,8 @@ class FoolscapLogger:
         # iterates over all current log events in no particular order. The
         # caller should sort them by event number. If this isn't iterated
         # quickly enough, more events may arrive.
-        for facility,b1 in self.buffers.iteritems():
-            for level,q in b1.iteritems():
+        for facility,b1 in self.buffers.items():
+            for level,q in b1.items():
                 for event in q:
                     yield event
 
@@ -366,7 +366,7 @@ class TwistedLogBridge:
             # level.
             log_level = d.pop("log_level")
             new_log_level = llmap.get(log_level, log_level)
-            if not isinstance(new_log_level, (int, long, str, unicode, bool)):
+            if not isinstance(new_log_level, (int, str, bool)):
                 # it was something weird: just stringify it in-place
                 new_log_level = str(new_log_level)
             kwargs["level"] = new_log_level # foolscap level, not twisted
@@ -431,7 +431,7 @@ def bridgeLogsToTwisted(filter=None,
     def _to_twisted(event):
         if "from-twisted" in event:
             return
-        if not filter(event):
+        if not list(filter(event)):
             return
         args = {"from-foolscap": True,
                 "num": event["num"],
@@ -486,8 +486,8 @@ if _flogfile:
         theLogger.addObserver(lfo.msg)
         #theLogger.set_generation_threshold(UNUSUAL, "foolscap.negotiation")
     except IOError:
-        print >>sys.stderr, "FLOGFILE: unable to write to %s, ignoring" % \
-              (_flogfile,)
+        print("FLOGFILE: unable to write to %s, ignoring" % \
+              (_flogfile,), file=sys.stderr)
 
 if "FLOGTWISTED" in os.environ:
     bridgeLogsFromTwisted()

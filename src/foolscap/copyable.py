@@ -2,14 +2,17 @@
 
 # this module is responsible for all copy-by-value objects
 
-from zope.interface import interface, implements
+from zope.interface import interface, implementer
 from twisted.python import reflect, log
 from twisted.python.components import registerAdapter
 from twisted.internet import defer
 
-import slicer, tokens
-from tokens import BananaError, Violation
+from . import slicer, tokens
+from .tokens import BananaError, Violation
 from foolscap.constraint import OpenerConstraint, IConstraint, Optional
+import collections
+
+import six #PY3KPORT
 
 Interface = interface.Interface
 
@@ -29,8 +32,8 @@ class ICopyable(Interface):
         serialized and sent to the remote end. This state object will be
         given to the receiving object's setCopyableState method."""
 
+@implementer(ICopyable)
 class Copyable(object):
-    implements(ICopyable)
     # you *must* set 'typeToCopy'
 
     def getTypeToCopy(self):
@@ -51,7 +54,7 @@ class CopyableSlicer(slicer.BaseSlicer):
         assert isinstance(copytype, str)
         yield copytype
         state = self.obj.getStateToCopy()
-        for k,v in state.iteritems():
+        for k,v in state.items():
             yield k
             yield v
     def describe(self):
@@ -86,8 +89,9 @@ def registerCopier(klass, copier):
     classname is used.
     """
     klassname = reflect.qual(klass)
+
+    @implementer(ICopyable)
     class _CopierAdapter:
-        implements(ICopyable)
         def __init__(self, original):
             self.nameToCopy, self.state = copier(original)
             if self.nameToCopy is None:
@@ -137,7 +141,7 @@ class RemoteCopyUnslicer(slicer.BaseUnslicer):
         assert ready_deferred is None
         if self.attrname == None:
             attrname = obj
-            if self.d.has_key(attrname):
+            if attrname in self.d:
                 raise BananaError("duplicate attribute name '%s'" % attrname)
             s = self.schema
             if s:
@@ -239,7 +243,7 @@ def registerRemoteCopyUnslicerFactory(typename, unslicerfactory,
     be a callable which takes no arguments and returns an object which
     provides IUnslicer.
     """
-    assert callable(unslicerfactory)
+    assert isinstance(unslicerfactory, collections.Callable)
     # in addition, it must produce a tokens.IUnslicer . This is safe to do
     # because Unslicers don't do anything significant when they are created.
     test_unslicer = unslicerfactory()
@@ -248,7 +252,7 @@ def registerRemoteCopyUnslicerFactory(typename, unslicerfactory,
 
     if registry == None:
         registry = CopyableRegistry
-    assert not registry.has_key(typename)
+    assert typename not in registry
     registry[typename] = unslicerfactory
 
 # this keeps track of everything submitted to registerRemoteCopyFactory
@@ -264,7 +268,7 @@ def registerRemoteCopyFactory(typename, factory, stateSchema=None,
     deserialize Failures (or instances which inherit from one, like
     CopiedFailure). In exchange for this, it cannot handle reference cycles.
     """
-    assert callable(factory)
+    assert isinstance(factory, collections.Callable)
     debug_CopyableFactories[typename] = (factory, stateSchema, cyclic)
     if cyclic:
         def _RemoteCopyUnslicerFactory():
@@ -323,9 +327,8 @@ class RemoteCopyClass(type):
             registry = dict.get('copyableRegistry', None)
             registerRemoteCopy(copytype, self, registry)
 
+@implementer(IRemoteCopy)
 class _RemoteCopyBase:
-
-    implements(IRemoteCopy)
 
     stateSchema = None # always a class attribute
     nonCyclic = False
@@ -342,13 +345,13 @@ class RemoteCopyOldStyle(_RemoteCopyBase):
     # classes do not do metaclass magic
     copytype = None
 
+@six.add_metaclass(RemoteCopyClass)
 class RemoteCopy(_RemoteCopyBase, object):
     # Set 'copytype' to a unique string that is shared between the
     # sender-side Copyable and the receiver-side RemoteCopy. This RemoteCopy
     # subclass will be auto-registered using the 'copytype' name. Set
     # copytype to None to disable auto-registration.
 
-    __metaclass__ = RemoteCopyClass
     pass
 
 
@@ -368,8 +371,8 @@ class AttributeDictConstraint(OpenerConstraint):
         self.acceptUnknown = kwargs.get('acceptUnknown', False)
         self.keys = {}
         for name, constraint in (list(attrTuples) +
-                                 kwargs.get('attributes', {}).items()):
-            assert name not in self.keys.keys()
+                                 list(kwargs.get('attributes', {}).items())):
+            assert name not in list(self.keys.keys())
             self.keys[name] = IConstraint(constraint)
 
     def getAttrConstraint(self, attrname):
@@ -387,16 +390,16 @@ class AttributeDictConstraint(OpenerConstraint):
 
     def checkObject(self, obj, inbound):
         if type(obj) != type({}):
-            raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
-                                                                type(obj))
-        allkeys = self.keys.keys()
-        for k in obj.keys():
+            raise Violation("'%s' (%s) is not a Dictionary" % (obj,
+                                                                type(obj)))
+        allkeys = list(self.keys.keys())
+        for k in list(obj.keys()):
             try:
                 constraint = self.keys[k]
                 allkeys.remove(k)
             except KeyError:
                 if not self.ignoreUnknown:
-                    raise Violation, "key '%s' not in schema" % k
+                    raise Violation("key '%s' not in schema" % k)
                 else:
                     # hmm. kind of a soft violation. allow it for now.
                     pass

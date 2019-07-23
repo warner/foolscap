@@ -6,7 +6,7 @@
 
 import weakref
 from zope.interface import interface
-from zope.interface import implements
+from zope.interface import implements, implementer
 from twisted.python.components import registerAdapter
 Interface = interface.Interface
 from twisted.internet import defer
@@ -23,14 +23,15 @@ from foolscap.copyable import Copyable, RemoteCopy
 from foolscap.eventual import eventually, fireEventually
 from foolscap.furl import decode_furl
 
+@implementer(ipb.IReferenceable)
 class OnlyReferenceable(object):
-    implements(ipb.IReferenceable)
 
     def processUniqueID(self):
         return id(self)
 
+@implementer(ipb.IReferenceable, ipb.IRemotelyCallable)
 class Referenceable(OnlyReferenceable):
-    implements(ipb.IReferenceable, ipb.IRemotelyCallable)
+
     _interface = None
     _interfaceName = None
 
@@ -186,9 +187,9 @@ class CallableSlicer(slicer.BaseSlicer):
         return None # TODO: not quite ready yet
         # callables which are actually bound methods of a pb.Referenceable
         # can use the schema from that
-        s = ipb.IReferenceable(self.obj.im_self, None)
+        s = ipb.IReferenceable(self.obj.__self__, None)
         if s:
-            return s.getSchemaForMethodNamed(self.obj.im_func.__name__)
+            return s.getSchemaForMethodNamed(self.obj.__func__.__name__)
         # both bound methods and raw callables can also use a .schema
         # attribute
         return getattr(self.obj, "schema", None)
@@ -337,8 +338,8 @@ class RemoteReferenceTracker(object):
         # _handleRefLost. In this case, don't decref anything.
 
 
+@implementer(ipb.IRemoteReference)
 class RemoteReferenceOnly(object):
-    implements(ipb.IRemoteReference)
 
     def __init__(self, tracker):
         """@param tracker: the RemoteReferenceTracker which points to us"""
@@ -480,7 +481,7 @@ class RemoteReference(RemoteReferenceOnly):
             # any arguments are of the wrong type
             try:
                 methodSchema.checkAllArgs(args, kwargs, False)
-            except Violation, v:
+            except Violation as v:
                 v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
                                              v.getLocation()))
                 raise
@@ -606,8 +607,9 @@ class RemoteMethodReference(RemoteReference):
         methodSchema = None
         return interfaceName, methodName, methodSchema
 
+@implementer(ipb.IRemoteReference)
 class LocalReferenceable(object):
-    implements(ipb.IRemoteReference)
+
     def __init__(self, original):
         self.original = original
 

@@ -6,7 +6,7 @@
 # This imports foolscap.tokens, but no other Foolscap modules.
 
 import re
-from zope.interface import implements, Interface
+from zope.interface import implementer, Interface
 
 from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
      STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, \
@@ -65,14 +65,13 @@ class IRemoteMethodConstraint(IConstraint):
 
         This should either raise Violation or return None."""
 
+@implementer(IConstraint)
 class Constraint(object):
     """
     Each __schema__ attribute is turned into an instance of this class, and
     is eventually given to the unserializer (the 'Unslicer') to enforce as
     the tokens are arriving off the wire.
     """
-
-    implements(IConstraint)
 
     taster = everythingTaster
     """the Taster is a dict that specifies which basic token types are
@@ -146,6 +145,8 @@ class Constraint(object):
                 # we might have a partial match: they haven't flunked yet
                 if opentype == o[:len(opentype)]:
                     return # still in the running
+
+        import pdb;pdb.set_trace()          
 
         raise Violation("unacceptable OPEN type: %s not in my list %s" %
                         (opentype, self.opentypes))
@@ -244,7 +245,7 @@ class IntegerConstraint(Constraint):
             self.taster[LONGNEG] = maxBytes
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, (int, long)):
+        if not isinstance(obj, int):
             raise Violation("'%r' is not a number" % (obj,))
         if self.maxBytes == -1:
             if obj >= 2**31 or obj < -2**31:

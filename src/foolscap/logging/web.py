@@ -1,5 +1,5 @@
 
-import time, urllib
+import time, urllib.request, urllib.parse, urllib.error
 from twisted.internet import reactor, endpoints
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.python import usage
@@ -171,7 +171,7 @@ class Summary(resource.Resource):
 
     def getChild(self, path, req):
         if "-" in path:
-            lfnum,levelnum = map(int, path.split("-"))
+            lfnum,levelnum = list(map(int, path.split("-")))
             lf = self._viewer.logfiles[lfnum]
             (first, last, num_events, levels,
              pid, versions) = self._viewer.summaries[lf]
@@ -248,7 +248,7 @@ class EventView(resource.Resource):
                 data += e.to_html(timestamps=timestamps)
                 data += '</span></li>\n'
         elif sortby == "time":
-            events = self.viewer.number_map.values()
+            events = list(self.viewer.number_map.values())
             events.sort(lambda a,b: cmp(a.e['d']['time'], b.e['d']['time']))
             for e in events:
                 data += '<li><span class="%s">' % e.level_class()
@@ -286,7 +286,7 @@ class LogEvent:
         self.incarnation = base32.encode(e['d']['incarnation'][0])
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
-            self.anchor_index = "%s_%s_%d" % (urllib.quote(e['from'].encode("utf-8")),
+            self.anchor_index = "%s_%s_%d" % (urllib.parse.quote(e['from'].encode("utf-8")),
                                               self.incarnation.encode("utf-8"),
                                               e['d']['num'])
         self.parent_index = None
@@ -354,11 +354,11 @@ class WebViewer:
         d = fireEventually(options)
         d.addCallback(self.start)
         d.addErrback(self._error)
-        print "starting.."
+        print("starting..")
         reactor.run()
 
     def _error(self, f):
-        print "ERROR", f
+        print("ERROR", f)
         reactor.stop()
 
     @inlineCallbacks
@@ -383,13 +383,13 @@ class WebViewer:
         url = "http://localhost:%d/" % portnum
 
         if not options["quiet"]:
-            print "scanning.."
+            print("scanning..")
         self.logfiles = [options.dumpfile]
         self.load_logfiles()
 
         if not options["quiet"]:
-            print "please point your browser at:"
-            print url
+            print("please point your browser at:")
+            print(url)
         if options["open"]:
             import webbrowser
             webbrowser.open(url)

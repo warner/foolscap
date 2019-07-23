@@ -60,7 +60,7 @@ from foolscap.tokens import Violation, UnknownSchemaType, BananaError, \
 # make constraints available in a single location
 from foolscap.constraint import Constraint, Any, ByteStringConstraint, \
      IntegerConstraint, NumberConstraint, IConstraint, Optional, Shared
-from foolscap.slicers.unicode import UnicodeConstraint
+# from foolscap.slicers.unicode import UnicodeConstraint
 from foolscap.slicers.bool import BooleanConstraint
 from foolscap.slicers.dict import DictConstraint
 from foolscap.slicers.list import ListConstraint
@@ -69,7 +69,7 @@ from foolscap.slicers.tuple import TupleConstraint
 from foolscap.slicers.none import Nothing
 #  we don't import RemoteMethodSchema from remoteinterface.py, because
 #  remoteinterface.py needs to import us (for addToConstraintTypeMap)
-ignored = [Constraint, Any, ByteStringConstraint, UnicodeConstraint,
+ignored = [Constraint, Any, ByteStringConstraint, # UnicodeConstraint,
            IntegerConstraint, NumberConstraint, BooleanConstraint,
            DictConstraint, ListConstraint, SetConstraint, TupleConstraint,
            Nothing, Optional, Shared,
@@ -126,8 +126,8 @@ class PolyConstraint(Constraint):
 ChoiceOf = PolyConstraint
 
 def AnyStringConstraint(*args, **kwargs):
-    return ChoiceOf(ByteStringConstraint(*args, **kwargs),
-                    UnicodeConstraint(*args, **kwargs))
+    return ChoiceOf(ByteStringConstraint(*args, **kwargs),)
+#                     UnicodeConstraint(*args, **kwargs))
 
 # keep the old meaning, for now. Eventually StringConstraint should become an
 # AnyStringConstraint
@@ -135,10 +135,10 @@ StringConstraint = ByteStringConstraint
 
 constraintMap = {
     str: ByteStringConstraint(),
-    unicode: UnicodeConstraint(),
+    # unicode: UnicodeConstraint(),
     bool: BooleanConstraint(),
     int: IntegerConstraint(),
-    long: IntegerConstraint(maxBytes=1024),
+    # long: IntegerConstraint(maxBytes=1024),
     float: NumberConstraint(),
     None: Nothing(),
     }

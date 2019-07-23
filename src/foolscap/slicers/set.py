@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 from twisted.internet import defer
 from twisted.python import log
 from foolscap.slicers.list import ListSlicer
@@ -116,8 +117,8 @@ class SetUnslicer(BaseUnslicer):
             self.set.add(obj)
 
     def printErr(self, why):
-        print "ERR!"
-        print why.getBriefTraceback()
+        print("ERR!")
+        print(why.getBriefTraceback())
         log.err(why)
 
     def receiveClose(self):
@@ -150,7 +151,11 @@ class SetConstraint(OpenerConstraint):
 
     # TODO: if mutable!=None, we won't throw out the wrong set type soon
     # enough. We need to override checkOpenType to accomplish this.
-    opentypes = [("set",), ("immutable-set",)]
+    if six.PY2:
+        opentypes = [("set",), ("immutable-set",)]
+    else:
+        opentypes = [(six.b("set"),), (six.b("immutable-set"),)]
+        
     name = "SetConstraint"
 
     def __init__(self, constraint, maxLength=None, mutable=None):

@@ -65,7 +65,7 @@ class ConformTest(unittest.TestCase):
         self.violates(c2, "too short")
         self.conforms(c2, "long enough")
         self.violates(c2, "this is too long")
-        self.violates(c2, u"I am unicode")
+        self.violates(c2, "I am unicode")
 
         c3 = schema.ByteStringConstraint(regexp="needle")
         self.violates(c3, "no present")
@@ -85,38 +85,38 @@ class ConformTest(unittest.TestCase):
 
         c = schema.StringConstraint(20)
         self.conforms(c, "I'm short")
-        self.violates(c, u"I am unicode")
+        self.violates(c, "I am unicode")
 
     def testUnicode(self):
         c = schema.UnicodeConstraint(10)
         self.violates(c, "I'm a bytestring")
-        self.conforms(c, u"I'm short")
-        self.violates(c, u"I am too long")
-        self.conforms(c, u"a" * 10)
-        self.violates(c, u"a" * 11)
+        self.conforms(c, "I'm short")
+        self.violates(c, "I am too long")
+        self.conforms(c, "a" * 10)
+        self.violates(c, "a" * 11)
         self.violates(c, 123)
         self.violates(c, Dummy())
         self.violates(c, None)
 
         c2 = schema.UnicodeConstraint(15, 10)
         self.violates(c2, "I'm a bytestring")
-        self.violates(c2, u"too short")
-        self.conforms(c2, u"long enough")
-        self.violates(c2, u"this is too long")
+        self.violates(c2, "too short")
+        self.conforms(c2, "long enough")
+        self.violates(c2, "this is too long")
 
         c3 = schema.UnicodeConstraint(regexp="needle")
         self.violates(c3, "I'm a bytestring")
-        self.violates(c3, u"no present")
-        self.conforms(c3, u"needle in a haystack")
+        self.violates(c3, "no present")
+        self.conforms(c3, "needle in a haystack")
         c4 = schema.UnicodeConstraint(regexp="[abc]+")
         self.violates(c4, "I'm a bytestring")
-        self.violates(c4, u"spelled entirely without those letters")
-        self.conforms(c4, u"add better cases")
+        self.violates(c4, "spelled entirely without those letters")
+        self.conforms(c4, "add better cases")
         c5 = schema.UnicodeConstraint(regexp=re.compile("\d+\s\w+"))
         self.violates(c5, "I'm a bytestring")
-        self.conforms(c5, u": 123 boo")
-        self.violates(c5, u"more than 1  spaces")
-        self.violates(c5, u"letters first 123")
+        self.conforms(c5, ": 123 boo")
+        self.violates(c5, "more than 1  spaces")
+        self.violates(c5, "letters first 123")
 
     def testBool(self):
         c = schema.BooleanConstraint()
@@ -133,7 +133,7 @@ class ConformTest(unittest.TestCase):
                                   schema.IntegerConstraint())
         self.conforms(c, "string")
         self.conforms(c, 123)
-        self.violates(c, u"unicode")
+        self.violates(c, "unicode")
         self.violates(c, 123.4)
         self.violates(c, ["not", "a", "list"])
 
@@ -282,25 +282,25 @@ class ConformTest(unittest.TestCase):
 
 class CreateTest(unittest.TestCase):
     def check(self, obj, expected):
-        self.failUnless(isinstance(obj, expected))
+        self.assertTrue(isinstance(obj, expected))
 
     def testMakeConstraint(self):
         make = IConstraint
         c = make(int)
         self.check(c, schema.IntegerConstraint)
-        self.failUnlessEqual(c.maxBytes, -1)
+        self.assertEqual(c.maxBytes, -1)
 
         c = make(str)
         self.check(c, schema.ByteStringConstraint)
-        self.failUnlessEqual(c.maxLength, None)
+        self.assertEqual(c.maxLength, None)
 
         c = make(schema.ByteStringConstraint(2000))
         self.check(c, schema.ByteStringConstraint)
-        self.failUnlessEqual(c.maxLength, 2000)
+        self.assertEqual(c.maxLength, 2000)
 
-        c = make(unicode)
+        c = make(str)
         self.check(c, schema.UnicodeConstraint)
-        self.failUnlessEqual(c.maxLength, None)
+        self.assertEqual(c.maxLength, None)
 
         self.check(make(bool), schema.BooleanConstraint)
         self.check(make(float), schema.NumberConstraint)
@@ -313,15 +313,15 @@ class CreateTest(unittest.TestCase):
 
         c = make(common.RIHelper)
         self.check(c, RemoteInterfaceConstraint)
-        self.failUnlessEqual(c.interface, common.RIHelper)
+        self.assertEqual(c.interface, common.RIHelper)
 
         c = make(common.IFoo)
         self.check(c, LocalInterfaceConstraint)
-        self.failUnlessEqual(c.interface, common.IFoo)
+        self.assertEqual(c.interface, common.IFoo)
 
         c = make(Referenceable)
         self.check(c, RemoteInterfaceConstraint)
-        self.failUnlessEqual(c.interface, None)
+        self.assertEqual(c.interface, None)
 
 
 class Arguments(unittest.TestCase):
@@ -330,25 +330,25 @@ class Arguments(unittest.TestCase):
         r = RemoteMethodSchema(method=foo)
         getpos = r.getPositionalArgConstraint
         getkw = r.getKeywordArgConstraint
-        self.failUnless(isinstance(getpos(0)[1], schema.IntegerConstraint))
-        self.failUnless(isinstance(getpos(1)[1], schema.BooleanConstraint))
-        self.failUnless(isinstance(getpos(2)[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getpos(0)[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getpos(1)[1], schema.BooleanConstraint))
+        self.assertTrue(isinstance(getpos(2)[1], schema.IntegerConstraint))
 
-        self.failUnless(isinstance(getkw("a")[1], schema.IntegerConstraint))
-        self.failUnless(isinstance(getkw("b")[1], schema.BooleanConstraint))
-        self.failUnless(isinstance(getkw("c")[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getkw("a")[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getkw("b")[1], schema.BooleanConstraint))
+        self.assertTrue(isinstance(getkw("c")[1], schema.IntegerConstraint))
 
-        self.failUnless(isinstance(r.getResponseConstraint(),
+        self.assertTrue(isinstance(r.getResponseConstraint(),
                                    schema.ByteStringConstraint))
 
-        self.failUnless(isinstance(getkw("c", 1, [])[1],
+        self.assertTrue(isinstance(getkw("c", 1, [])[1],
                                    schema.IntegerConstraint))
-        self.failUnlessRaises(schema.Violation, getkw, "a", 1, [])
-        self.failUnlessRaises(schema.Violation, getkw, "b", 1, ["b"])
-        self.failUnlessRaises(schema.Violation, getkw, "a", 2, [])
-        self.failUnless(isinstance(getkw("c", 2, [])[1],
+        self.assertRaises(schema.Violation, getkw, "a", 1, [])
+        self.assertRaises(schema.Violation, getkw, "b", 1, ["b"])
+        self.assertRaises(schema.Violation, getkw, "a", 2, [])
+        self.assertTrue(isinstance(getkw("c", 2, [])[1],
                                    schema.IntegerConstraint))
-        self.failUnless(isinstance(getkw("c", 0, ["a", "b"])[1],
+        self.assertTrue(isinstance(getkw("c", 0, ["a", "b"])[1],
                                    schema.IntegerConstraint))
 
         try:
@@ -359,26 +359,26 @@ class Arguments(unittest.TestCase):
             r.checkResults("good", False)
         except schema.Violation:
             self.fail("that shouldn't have raised a Violation")
-        self.failUnlessRaises(schema.Violation, # 2 is not bool
+        self.assertRaises(schema.Violation, # 2 is not bool
                               r.checkAllArgs, (1,2,3), {}, False)
-        self.failUnlessRaises(schema.Violation, # too many
+        self.assertRaises(schema.Violation, # too many
                               r.checkAllArgs, (1,True,3,4), {}, False)
-        self.failUnlessRaises(schema.Violation, # double "a"
+        self.assertRaises(schema.Violation, # double "a"
                               r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3},
                               False)
-        self.failUnlessRaises(schema.Violation, # missing required "b"
+        self.assertRaises(schema.Violation, # missing required "b"
                               r.checkAllArgs, (1,), {"c": 3}, False)
-        self.failUnlessRaises(schema.Violation, # missing required "a"
+        self.assertRaises(schema.Violation, # missing required "a"
                               r.checkAllArgs, (), {"b":True, "c": 3}, False)
-        self.failUnlessRaises(schema.Violation,
+        self.assertRaises(schema.Violation,
                               r.checkResults, 12, False)
 
     def test_bad_arguments(self):
         def foo(nodefault): return str
-        self.failUnlessRaises(InvalidRemoteInterface,
+        self.assertRaises(InvalidRemoteInterface,
                               RemoteMethodSchema, method=foo)
         def bar(nodefault, a=int): return str
-        self.failUnlessRaises(InvalidRemoteInterface,
+        self.assertRaises(InvalidRemoteInterface,
                               RemoteMethodSchema, method=bar)
 
 
@@ -386,13 +386,13 @@ class Interfaces(unittest.TestCase):
     def check_inbound(self, obj, constraint):
         try:
             constraint.checkObject(obj, True)
-        except Violation, f:
+        except Violation as f:
             self.fail("constraint was violated: %s" % f)
 
     def check_outbound(self, obj, constraint):
         try:
             constraint.checkObject(obj, False)
-        except Violation, f:
+        except Violation as f:
             self.fail("constraint was violated: %s" % f)
 
     def violates_inbound(self, obj, constraint):

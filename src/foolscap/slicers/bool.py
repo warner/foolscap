@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 from twisted.python.components import registerAdapter
 from twisted.internet.defer import Deferred
 from foolscap import tokens
@@ -54,7 +55,12 @@ class BooleanUnslicer(LeafUnslicer):
 
 class BooleanConstraint(OpenerConstraint):
     strictTaster = True
-    opentypes = [("boolean",)]
+
+    if six.PY2:
+        opentypes = [('boolean',)]
+    else:
+        opentypes = [(six.b('boolean'),)]     
+    
     _myint = IntegerConstraint()
     name = "BooleanConstraint"
 

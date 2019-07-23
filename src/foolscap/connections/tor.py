@@ -10,6 +10,7 @@ from ..ipb import IConnectionHintHandler, InvalidHintError
 from ..util import allocate_tcp_port
 import txtorcon
 from .tcp import DOTTED_QUAD_RESTR, DNS_NAME_RESTR
+import collections
 
 def is_non_public_numeric_address(host):
     # for numeric hostnames, skip RFC1918 addresses, since no Tor exit
@@ -154,7 +155,7 @@ def launch(data_directory=None, tor_binary=None):
 class _ConnectedTor(_Common):
     def __init__(self, tor_control_endpoint_maker):
         _Common.__init__(self)
-        assert callable(tor_control_endpoint_maker), tor_control_endpoint_maker
+        assert isinstance(tor_control_endpoint_maker, collections.Callable), tor_control_endpoint_maker
         self._tor_control_endpoint_maker = tor_control_endpoint_maker
 
     @inlineCallbacks
@@ -199,7 +200,7 @@ def control_endpoint_maker(tor_control_endpoint_maker, takes_status=False):
       the maker function to make status updates as it launches or locates the
       Tor control port.
     """
-    assert callable(tor_control_endpoint_maker), tor_control_endpoint_maker
+    assert isinstance(tor_control_endpoint_maker, collections.Callable), tor_control_endpoint_maker
     if takes_status:
         return _ConnectedTor(tor_control_endpoint_maker)
     else:

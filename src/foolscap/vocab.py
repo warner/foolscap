@@ -1,4 +1,5 @@
 
+import six
 from hashlib import sha1
 
 # here is the list of initial vocab tables. If the two ends negotiate to use
@@ -26,9 +27,9 @@ INITIAL_VOCAB_TABLES = { 0: vocab_v0, 1: vocab_v1 }
 
 def hashVocabTable(table_index):
     data = "\x00".join(INITIAL_VOCAB_TABLES[table_index])
-    digest = sha1(data).hexdigest()
+    digest = sha1(six.ensure_binary(data)).hexdigest()
     return digest[:4]
 
 def getVocabRange():
-    keys = INITIAL_VOCAB_TABLES.keys()
+    keys = list(INITIAL_VOCAB_TABLES.keys())
     return min(keys), max(keys)

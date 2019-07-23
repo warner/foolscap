@@ -1,12 +1,15 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 from twisted.python.components import registerAdapter
 from twisted.python import log
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet.defer import Deferred
-import tokens
-from tokens import Violation, BananaError
+from . import tokens
+from .tokens import Violation, BananaError
 from foolscap.ipb import IBroker
+
+from six import with_metaclass # PY3KPORT
 
 class SlicerClass(type):
     # auto-register Slicers
@@ -18,9 +21,8 @@ class SlicerClass(type):
             registerAdapter(self, typ, tokens.ISlicer)
 
 
-class BaseSlicer(object):
-    __metaclass__ = SlicerClass
-    implements(tokens.ISlicer)
+@implementer(tokens.ISlicer)
+class BaseSlicer(with_metaclass(SlicerClass, object)):
 
     slices = None
 
@@ -129,11 +131,22 @@ UnslicerRegistry = {}
 BananaUnslicerRegistry = {}
 
 def registerUnslicer(opentype, factory, registry=None):
+
     if registry is None:
         registry = UnslicerRegistry
-    assert not registry.has_key(opentype)
+    assert opentype not in registry
+
+
     registry[opentype] = factory
 
+    # PY3KPORT  
+    if type(opentype) is tuple:
+        key = (six.ensure_binary(opentype[0]),)
+    else:
+        key = six.ensure_binary(opentype)
+
+    registry[key] = factory
+        
 class UnslicerClass(type):
     # auto-register Unslicers
     def __init__(self, name, bases, dict):
@@ -143,10 +156,9 @@ class UnslicerClass(type):
         if opentype:
             registerUnslicer(opentype, self, reg)
 
-class BaseUnslicer(object):
-    __metaclass__ = UnslicerClass
+@implementer(tokens.IUnslicer)
+class BaseUnslicer(with_metaclass(UnslicerClass, object)):
     opentype = None
-    implements(tokens.IUnslicer)
 
     def __init__(self):
         pass
@@ -260,13 +272,13 @@ class ScopedUnslicer(BaseUnslicer):
 
     def setObject(self, counter, obj):
         if self.protocol.debugReceive:
-            print "setObject(%s): %s{%s}" % (counter, obj, id(obj))
+            print("setObject(%s): %s{%s}" % (counter, obj, id(obj)))
         self.references[counter] = obj
 
     def getObject(self, counter):
         obj = self.references.get(counter)
         if self.protocol.debugReceive:
-            print "getObject(%s) -> %s{%s}" % (counter, obj, id(obj))
+            print("getObject(%s) -> %s{%s}" % (counter, obj, id(obj)))
         return obj
 
 

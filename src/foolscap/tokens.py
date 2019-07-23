@@ -1,25 +1,28 @@
 
+from six import int2byte
 from twisted.python.failure import Failure
 from zope.interface import Attribute, Interface
 
+
 # delimiter characters.
-LIST     = chr(0x80) # old
-INT      = chr(0x81)
-STRING   = chr(0x82)
-NEG      = chr(0x83)
-FLOAT    = chr(0x84)
+LIST     = int2byte(0x80) # old
+INT      = int2byte(0x81)
+STRING   = int2byte(0x82)
+NEG      = int2byte(0x83)
+FLOAT    = int2byte(0x84)
 # "optional" -- these might be refused by a low-level implementation.
-LONGINT  = chr(0x85) # old
-LONGNEG  = chr(0x86) # old
+LONGINT  = int2byte(0x85) # old
+LONGNEG  = int2byte(0x86) # old
 # really optional; this is is part of the 'pb' vocabulary
-VOCAB    = chr(0x87)
+VOCAB    = int2byte(0x87)
+
 # newbanana tokens
-OPEN     = chr(0x88)
-CLOSE    = chr(0x89)
-ABORT    = chr(0x8A)
-ERROR    = chr(0x8D)
-PING     = chr(0x8E)
-PONG     = chr(0x8F)
+OPEN     = int2byte(0x88)
+CLOSE    = int2byte(0x89)
+ABORT    = int2byte(0x8A)
+ERROR    = int2byte(0x8D)
+PING     = int2byte(0x8E)
+PONG     = int2byte(0x8F)
 
 tokenNames = {
     LIST: "LIST",
@@ -61,13 +64,16 @@ class Violation(Exception):
 
     def setLocation(self, where):
         self.where = where
+
     def getLocation(self):
         return self.where
+
     def prependLocation(self, prefix):
         if self.where:
             self.where = prefix + " " + self.where
         else:
             self.where = prefix
+
     def appendLocation(self, suffix):
         if self.where:
             self.where = self.where + " " + suffix

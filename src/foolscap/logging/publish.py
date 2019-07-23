@@ -1,15 +1,15 @@
 
 import os
 from collections import deque
-from zope.interface import implements
+from zope.interface import implements, implementer
 from twisted.python import filepath
 from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
 from foolscap.logging import app_versions, flogfile
 from foolscap.eventual import eventually
 
+@implementer(RISubscription)
 class Subscription(Referenceable):
-    implements(RISubscription)
     # used as a marker, and as an unsubscribe() method. We use this to manage
     # the outbound size-limited queue.
     MAX_QUEUE_SIZE = 2000
@@ -88,8 +88,8 @@ class Subscription(Referenceable):
         #print "PUBLISH FAILED: %s" % f
         self.unsubscribe()
 
+@implementer(RISubscription)
 class IncidentSubscription(Referenceable):
-    implements(RISubscription)
 
     def __init__(self, observer, logger, publisher):
         self.observer = observer
@@ -127,7 +127,7 @@ class IncidentSubscription(Referenceable):
         d.addErrback(self._error)
 
     def _error(self, f):
-        print "INCIDENT PUBLISH FAILED: %s" % f
+        print("INCIDENT PUBLISH FAILED: %s" % f)
         self.unsubscribe()
 
 
@@ -138,8 +138,9 @@ def _keys_to_bytes(d):
     # like (message, level, facility, from, rx_time, d). Encode to ASCII to
     # make this clear. The user-provided data lives in the *values* of
     # these dicts, which are unconstrained (the schemas use Any())
-    return dict([ (k.encode("ascii"), v) for (k,v) in d.iteritems()])
+    return dict([ (k.encode("ascii"), v) for (k,v) in d.items()])
 
+@implementer(RILogPublisher)
 class LogPublisher(Referenceable):
     """Publish log events to anyone subscribed to our 'logport'.
 
@@ -170,8 +171,6 @@ class LogPublisher(Referenceable):
     will cause the Tub to connect to the gatherer and grant it access to the
     logport.
     """
-
-    implements(RILogPublisher)
 
     # the 'versions' dict used to live here in LogPublisher, but now it lives
     # in foolscap.logging.app_versions and should be accessed from there.

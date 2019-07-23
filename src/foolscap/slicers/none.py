@@ -26,6 +26,7 @@ class NoneUnslicer(LeafUnslicer):
 class Nothing(OpenerConstraint):
     """Accept only 'None'."""
     strictTaster = True
+
     opentypes = [("none",)]
     name = "Nothing"
 

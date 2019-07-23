@@ -39,7 +39,7 @@ class LogDumper:
                     self.print_header(e, options)
                 if "d" in e:
                     self.print_event(e, options)
-        except EnvironmentError, e:
+        except EnvironmentError as e:
             # "flogtool dump FLOGFILE |less" is very common, and if you quit
             # it early with "q", the stdout pipe is broken and python dies
             # with a messy stacktrace. Catch and ignore that.
@@ -47,28 +47,28 @@ class LogDumper:
                 return 1
             raise
         except flogfile.ThisIsActuallyAFurlFileError:
-            print >>options.stderr, textwrap.dedent("""\
+            print(textwrap.dedent("""\
                 Error: %s appears to be a FURL file.
                 Perhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?"""
-                % (options.dumpfile,))
+                % (options.dumpfile,)), file=options.stderr)
             return 1
         except flogfile.EvilPickleFlogFile:
-            print >>options.stderr, textwrap.dedent("""\
+            print(textwrap.dedent("""\
             Error: %s appears to be an old-style
             (pickle-based) flogfile, which cannot be loaded safely. If you
             wish to allow the author of the flogfile to take over your
             computer (and incidentally allow you to view the content), please
             use the flogtool from a copy of foolscap-0.12.7 or earlier."""
-                                                    % (options.dumpfile,))
+                                                    % (options.dumpfile,)), file=options.stderr)
             return 1
         except flogfile.BadMagic as e:
-            print >>options.stderr, textwrap.dedent("""\
+            print(textwrap.dedent("""\
             Error: %s does not appear to be a flogfile.
-            """ % (options.dumpfile,))
+            """ % (options.dumpfile,)), file=options.stderr)
             return 1
-        except ValueError, ex:
-            print >>options.stderr, (
-                "truncated pickle file? (%s): %s" % (options.dumpfile, ex))
+        except ValueError as ex:
+            print((
+                "truncated pickle file? (%s): %s" % (options.dumpfile, ex)), file=options.stderr)
             return 1
 
     def print_header(self, e, options):
@@ -78,18 +78,18 @@ class LogDumper:
             t = h["trigger"]
             self.trigger = (t["incarnation"], t["num"])
         if options['verbose']:
-            print >>stdout, e
+            print(e, file=stdout)
         if not options["just-numbers"] and not options["verbose"]:
             if "versions" in h:
-                print >>stdout, "Application versions (embedded in logfile):"
+                print("Application versions (embedded in logfile):", file=stdout)
                 versions = h["versions"]
                 longest = max([len(name) for name in versions] + [0])
                 fmt = "%" + str(longest) + "s: %s"
                 for name in sorted(versions.keys()):
-                    print >>stdout, fmt % (name, versions[name])
+                    print(fmt % (name, versions[name]), file=stdout)
             if "pid" in h:
-                print >>stdout, "PID: %s" % (h["pid"],)
-            print >>stdout
+                print("PID: %s" % (h["pid"],), file=stdout)
+            print(file=stdout)
 
     def print_event(self, e, options):
         stdout = options.stdout
@@ -97,7 +97,7 @@ class LogDumper:
         d = e['d']
         when = format_time(d['time'], options["timestamps"])
         if options['just-numbers']:
-            print >>stdout, when, d.get('num')
+            print(when, d.get('num'), file=stdout)
             return
 
         eid = (d["incarnation"], d["num"])
@@ -107,7 +107,7 @@ class LogDumper:
         try:
             text = format_message(d)
         except:
-            print "unformattable event", d
+            print("unformattable event", d)
             raise
 
         t = "%s#%d " % (short, d['num'])
@@ -122,9 +122,9 @@ class LogDumper:
             t += ": %r" % d
         if is_trigger:
             t += " [INCIDENT-TRIGGER]"
-        print >>stdout, t
+        print(t, file=stdout)
         if 'failure' in d:
-            print >>stdout," FAILURE:"
+            print(" FAILURE:", file=stdout)
             lines = str(d['failure'].get('str', d['failure'])).split("\n")
             for line in lines:
-                print >>stdout, " %s" % (line,)
+                print(" %s" % (line,), file=stdout)

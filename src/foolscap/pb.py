@@ -2,7 +2,7 @@
 
 import os.path, weakref, binascii, re
 from warnings import warn
-from zope.interface import implements
+from zope.interface import implements, implementer
 from twisted.internet import (reactor, defer, protocol, error, interfaces,
                               endpoints)
 from twisted.application import service
@@ -118,6 +118,7 @@ def generateSwissnumber(bits):
     bytes = os.urandom(bits/8)
     return base32.encode(bytes)
 
+@implementer(ipb.ITub)
 class Tub(service.MultiService):
     """I am a presence in the PB universe, also known as a Tub.
 
@@ -169,7 +170,6 @@ class Tub(service.MultiService):
                  authentication information, hash of SSL certificate
 
     """
-    implements(ipb.ITub)
 
     unsafeTracebacks = True # TODO: better way to enable this
     logLocalFailures = False
@@ -331,7 +331,7 @@ class Tub(service.MultiService):
 
     def setLogGathererFURL(self, gatherer_furl_or_furls):
         assert not self._log_gatherer_furls
-        if isinstance(gatherer_furl_or_furls, basestring):
+        if isinstance(gatherer_furl_or_furls, str):
             self._log_gatherer_furls.append(gatherer_furl_or_furls)
         else:
             self._log_gatherer_furls.extend(gatherer_furl_or_furls)
@@ -591,7 +591,7 @@ class Tub(service.MultiService):
         for c in list(self._activeConnectors):
             c.shutdown()
         why = Failure(error.ConnectionDone("Tub.stopService was called"))
-        for b in self.brokers.values():
+        for b in list(self.brokers.values()):
             broker_disconnected = defer.Deferred()
             dl.append(broker_disconnected)
             b._notifyOnConnectionLost(
@@ -671,7 +671,7 @@ class Tub(service.MultiService):
             f.close()
             if need_to_chmod:
                 # XXX: open-to-chmod race here
-                os.chmod(furlFile, 0600)
+                os.chmod(furlFile, 0o600)
         return furl
 
     # this is called by either registerReference or by
@@ -684,7 +684,7 @@ class Tub(service.MultiService):
         if not self.locationHints:
             # without a location, there is no point in giving it a name
             return None
-        if self.referenceToName.has_key(ref):
+        if ref in self.referenceToName:
             return self.referenceToName[ref]
         name = preferred_name
         if not name:
@@ -982,7 +982,7 @@ class Tub(service.MultiService):
         # this doesn't confuse us.
 
         # the Broker will have already severed all active references
-        for tubref in self.brokers.keys():
+        for tubref in list(self.brokers.keys()):
             if self.brokers[tubref] is broker:
                 del self.brokers[tubref]
 
@@ -993,7 +993,7 @@ class Tub(service.MultiService):
         # 'outbound' is a list of PendingRequest objects (one per message
         # that's waiting on a remote broker to complete).
         output = []
-        all_brokers = self.brokers.items()
+        all_brokers = list(self.brokers.items())
         for tubref,_broker in all_brokers:
             inbound = _broker.inboundDeliveryQueue[:]
             outbound = [pr

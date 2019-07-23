@@ -15,9 +15,12 @@ This functionality is isolated here because it is never used for data coming
 over network connections.
 """
 
-from cStringIO import StringIO
+from io import StringIO
 import types
-from new import instance, instancemethod
+import six
+import inspect
+
+# from new import instance, instancemethod
 from pickle import whichmodule  # used by FunctionSlicer
 
 from foolscap import slicer, banana, tokens
@@ -27,12 +30,37 @@ from twisted.python import reflect
 from foolscap.slicers.dict import OrderedDictSlicer
 from foolscap.slicers.root import ScopedRootSlicer, ScopedRootUnslicer
 
+#PY3KPORT
+try:
+  from types import InstanceType
+except ImportError:
+  InstanceType = object
 
+# PY3KPORT
+def get_class_that_defined_method(meth):
+  """ Hacky function that return the class that defined a given method """
+
+  # HACK for Python3 to get classes for unbound methods
+  # for the MethodSlicer
+  # Ref: https://stackoverflow.com/questions/3589311/get-defining-class-of-unbound-method-object-in-python-3
+  # with some fixes and simplifications
+  
+  if inspect.ismethod(meth):
+    # If its a method, we can rely on __self__
+    return meth.__self__.__class__
+
+  if inspect.isfunction(meth):
+    cls = getattr(inspect.getmodule(meth),
+                  meth.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)[0])
+    if isinstance(cls, type):
+      return cls
+          
 ################## Slicers for "unsafe" things
 
 # Extended types, not generally safe. The UnsafeRootSlicer checks for these
 # with a separate table.
 
+          
 def getInstanceState(inst):
     """Utility function to default to 'normal' state rules in serialization.
     """
@@ -49,6 +77,7 @@ class InstanceSlicer(OrderedDictSlicer):
     def sliceBody(self, streamable, banana):
         yield reflect.qual(self.obj.__class__) # really a second index token
         self.obj = getInstanceState(self.obj)
+
         for t in OrderedDictSlicer.sliceBody(self, streamable, banana):
             yield t
 
@@ -71,10 +100,30 @@ class MethodSlicer(slicer.BaseSlicer):
     trackReferences = True
 
     def sliceBody(self, streamable, banana):
+      if six.PY2:
         yield self.obj.im_func.__name__
         yield self.obj.im_self
         yield self.obj.im_class
-
+      elif six.PY3:
+        # Name is ok
+        yield self.obj.__name__
+        # For bound methods this is easy as the function has
+        # a __self__ defined
+        if hasattr(self.obj, '__self__'):
+          # Now these are tricky!
+          yield self.obj.__self__ 
+          yield self.obj.__self__.__class__ 
+        else:
+          # This is an unbound method!
+          # These are very tricky in Python3 as they
+          # are nothing but functions attached to
+          # a namespace (of the class)
+          yield None
+          klass = get_class_that_defined_method(self.obj)
+          # Hack
+          self.obj.im_class = klass
+          yield klass
+          
 class FunctionSlicer(slicer.BaseSlicer):
     opentype = ('function',)
     trackReferences = True
@@ -85,16 +134,22 @@ class FunctionSlicer(slicer.BaseSlicer):
         yield fullname
 
 UnsafeSlicerTable = {}
-UnsafeSlicerTable.update({
+if six.PY3:
+  UnsafeSlicerTable.update({
+    InstanceType: InstanceSlicer,
+    types.ModuleType: ModuleSlicer,
+    type: ClassSlicer,
+    types.MethodType: MethodSlicer,
+    types.FunctionType: FunctionSlicer
+    })
+elif six.PY2:
+  UnsafeSlicerTable.update({
     types.InstanceType: InstanceSlicer,
     types.ModuleType: ModuleSlicer,
     types.ClassType: ClassSlicer,
     types.MethodType: MethodSlicer,
-    types.FunctionType: FunctionSlicer,
-    #types.TypeType: NewstyleClassSlicer,
-    # ???: NewstyleInstanceSlicer,  # pickle uses obj.__reduce__ to help
-    # http://docs.python.org/lib/node68.html
-    })
+    types.FunctionType: FunctionSlicer
+    })  
 
 # the root slicer for storage is exactly like the regular root slicer
 class StorageRootSlicer(ScopedRootSlicer):
@@ -170,7 +225,7 @@ class InstanceUnslicer(slicer.BaseUnslicer):
                 # be possible to remove it, but I need to think through
                 # it carefully first
                 raise BananaError("unreferenceable object in attribute")
-            if self.d.has_key(self.attrname):
+            if self.attrname in self.d:
                 raise BananaError("duplicate attribute name '%s'" %
                                   self.attrname)
             self.setAttribute(self.attrname, obj)
@@ -184,10 +239,14 @@ class InstanceUnslicer(slicer.BaseUnslicer):
         # probably still be holes
 
         #obj = Dummy()
-        klass = reflect.namedObject(self.classname)
-        assert type(klass) == types.ClassType # TODO: new-style classes
-        obj = instance(klass, {})
+        klass = reflect.namedObject(six.ensure_str(self.classname))
+        # PY3KPORT: Not sure how portable this is across 2 and 3
+        # In 2, class_types[-1] == classobj and in 3 there is only
+        # one element in the list anyway
+        assert type(klass) == six.class_types[-1] # TODO: new-style classes
 
+        obj = klass()
+        
         setInstanceState(obj, self.d)
 
         self.protocol.setObject(self.count, obj)
@@ -220,7 +279,8 @@ class ModuleUnslicer(slicer.LeafUnslicer):
             raise BananaError("ModuleUnslicer only accepts one string")
         self.finished = True
         # TODO: taste here!
-        mod = __import__(obj, {}, {}, "x")
+        obj_s = six.ensure_str(obj)
+        mod = __import__(obj_s, {}, {}, "x")
         self.mod = mod
 
     def receiveClose(self):
@@ -245,7 +305,7 @@ class ClassUnslicer(slicer.LeafUnslicer):
             raise BananaError("ClassUnslicer only accepts one string")
         self.finished = True
         # TODO: taste here!
-        self.klass = reflect.namedObject(obj)
+        self.klass = reflect.namedObject(six.ensure_str(obj))
 
     def receiveClose(self):
         if not self.finished:
@@ -278,14 +338,21 @@ class MethodUnslicer(slicer.BaseUnslicer):
                 raise BananaError("MethodUnslicer class must be an OPEN")
 
     def doOpen(self, opentype):
+
+        if opentype[0] != None:
+            open_type = six.ensure_str(opentype[0])
+        else:
+            open_type = None
+            
         # check the opentype
         if self.state == 1:
-            if opentype[0] not in ("instance", "none"):
+            if open_type not in ("instance", "none"):
                 raise BananaError("MethodUnslicer instance must be " +
                                   "instance or None")
         elif self.state == 2:
-            if opentype[0] != "class":
+            if open_type != "class":
                 raise BananaError("MethodUnslicer class must be a class")
+
         unslicer = self.open(opentype)
         # TODO: apply constraint
         return unslicer
@@ -293,16 +360,30 @@ class MethodUnslicer(slicer.BaseUnslicer):
     def receiveChild(self, obj, ready_deferred=None):
         assert not isinstance(obj, Deferred)
         assert ready_deferred is None
+
         if self.state == 0:
-            self.im_func = obj
-            self.state = 1
+          self.__func__ = six.ensure_str(obj)
+          self.state = 1
         elif self.state == 1:
-            assert type(obj) in (types.InstanceType, types.NoneType)
-            self.im_self = obj
+            if six.PY2:
+              assert type(obj) in (InstanceType, type(None))
+            elif six.PY3:
+              # No more instance types in PY3
+              if hasattr(obj, '__class__'):
+                assert(isinstance(obj.__class__, type))
+              else:
+                assert(type(obj) == type(None))
+                
+            self.__self__ = obj
             self.state = 2
         elif self.state == 2:
-            assert type(obj) == types.ClassType # TODO: new-style classes?
+            # PY3KPORT
+            assert type(obj) == six.class_types[-1] 
             self.im_class = obj
+            # Ok - this is coming as None in some cases
+            # especially on Unbound methods, so added this check
+            if self.__self__ != None:
+                self.__self__.__class__ = obj
             self.state = 3
         else:
             raise BananaError("MethodUnslicer only accepts three objects")
@@ -310,17 +391,17 @@ class MethodUnslicer(slicer.BaseUnslicer):
     def receiveClose(self):
         if self.state != 3:
             raise BananaError("MethodUnslicer requires three objects")
-        if self.im_self is None:
-            meth = getattr(self.im_class, self.im_func)
-            # getattr gives us an unbound method
-            return meth, None
-        # TODO: late-available instances
-        #if isinstance(self.im_self, NotKnown):
-        #    im = _InstanceMethod(self.im_name, self.im_self, self.im_class)
-        #    return im
-        meth = self.im_class.__dict__[self.im_func]
+
+        if self.__self__ is None:
+          meth = getattr(self.im_class, self.__func__)
+          # getattr gives us an unbound method                
+          return meth, None
+
+        meth = self.__self__.__class__.__dict__[self.__func__]
         # whereas __dict__ gives us a function
-        im = instancemethod(meth, self.im_self, self.im_class)
+        # PY3KPORT
+        im = types.MethodType(meth, self.__self__)
+          
         return im, None
 
 
@@ -341,7 +422,10 @@ class FunctionUnslicer(slicer.LeafUnslicer):
             raise BananaError("FunctionUnslicer only accepts one string")
         self.finished = True
         # TODO: taste here!
-        self.func = reflect.namedObject(obj)
+        try:
+          self.func = reflect.namedObject(six.ensure_str(obj))
+        except Exception as ex:
+          import pdb;pdb.set_trace()
 
     def receiveClose(self):
         if not self.finished:

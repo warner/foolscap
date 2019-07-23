@@ -1,4 +1,5 @@
 import copy
+import six
 
 from collections import deque
 
@@ -48,6 +49,7 @@ class StringChain(object):
         this unless you need to.) This has a side-effect of collecting all the
         bytes in this StringChain object into a single string which is stored
         in the first element of its internal deque. """
+
         self._collapse()
         if self.d:
             return self.d[0]
@@ -59,6 +61,7 @@ class StringChain(object):
         new StringChain object. (Use str() on it if you want the bytes in a
         string, or call popleft() instead of popleft_new_stringchain().) """
         #assert self._assert_invariants()
+
         if not bytes or not self.d:
             return self.__class__()
 
@@ -100,7 +103,7 @@ class StringChain(object):
         string. """
         #assert self._assert_invariants()
         if not bytes or not self.d:
-            return ''
+            return six.b('')
 
         assert bytes >= 0, bytes
 
@@ -109,6 +112,7 @@ class StringChain(object):
         resstrs = []
 
         s = self.d.popleft()
+
         if self.ignored:
             s = s[self.ignored:]
             self.ignored = 0
@@ -130,7 +134,7 @@ class StringChain(object):
             self.len += overrun
             resstrs[-1] = resstrs[-1][:-overrun]
 
-        resstr = ''.join(resstrs)
+        return six.b('').join([six.ensure_binary(item, 'latin1') for item in resstrs])
 
         # Either you got exactly how many you asked for, or you drained self entirely and you asked for more than you got.
         #assert (len(resstr) == bytes) or ((not self.d) and (bytes > self.len)), (len(resstr), bytes, len(self.d), overrun)

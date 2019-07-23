@@ -6,7 +6,7 @@
 
 from foolscap.slicers.none import NoneSlicer, NoneUnslicer
 from foolscap.slicers.bool import BooleanSlicer, BooleanUnslicer
-from foolscap.slicers.unicode import UnicodeSlicer, UnicodeUnslicer
+# from foolscap.slicers.str import UnicodeSlicer, UnicodeUnslicer
 from foolscap.slicers.decimal_slicer import DecimalSlicer, DecimalUnslicer
 from foolscap.slicers.list import ListSlicer, ListUnslicer
 from foolscap.slicers.tuple import TupleSlicer, TupleUnslicer
@@ -23,7 +23,7 @@ from foolscap.slicers.root import RootSlicer, RootUnslicer
 unused = [
     NoneSlicer, NoneUnslicer,
     BooleanSlicer, BooleanUnslicer,
-    UnicodeSlicer, UnicodeUnslicer,
+    # UnicodeSlicer, UnicodeUnslicer,
     DecimalSlicer, DecimalUnslicer,
     ListSlicer, ListUnslicer,
     TupleSlicer, TupleUnslicer,
