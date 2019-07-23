@@ -1,5 +1,6 @@
 
-import time, urllib.request, urllib.parse, urllib.error
+import time
+import six.moves.urllib as urllib
 from twisted.internet import reactor, endpoints
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.python import usage
