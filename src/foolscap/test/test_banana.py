@@ -1,5 +1,5 @@
 
-
+from __future__ import print_function
 from twisted.trial import unittest
 from twisted.python import reflect
 from twisted.python.failure import Failure
