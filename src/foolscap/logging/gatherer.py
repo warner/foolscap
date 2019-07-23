@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import os, sys, time, bz2
 signal = None
 try:
