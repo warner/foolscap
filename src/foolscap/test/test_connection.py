@@ -13,7 +13,7 @@ from txsocksx.client import SOCKS5ClientEndpoint
 from foolscap.api import Tub
 from foolscap.info import ConnectionInfo
 from foolscap.connection import get_endpoint
-# from foolscap.connections import tcp, socks, tor, i2p
+from foolscap.connections import tcp, socks, tor, i2p
 from foolscap.connections import tcp, socks, tor
 from foolscap.tokens import NoLocationHintsError
 from foolscap.ipb import InvalidHintError
