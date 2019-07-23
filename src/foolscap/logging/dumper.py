@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import sys, errno, textwrap
 from twisted.python import usage
 from foolscap.logging import flogfile
@@ -48,9 +49,10 @@ class LogDumper:
             raise
         except flogfile.ThisIsActuallyAFurlFileError:
             print(textwrap.dedent("""\
-                Error: %s appears to be a FURL file.
-                Perhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?"""
-                % (options.dumpfile,)), file=options.stderr)
+            Error: %s appears to be a FURL file.
+            Perhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?"""
+                                  % (options.dumpfile,)), file=options.stderr)
+
             return 1
         except flogfile.EvilPickleFlogFile:
             print(textwrap.dedent("""\
