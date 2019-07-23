@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 from twisted.python import usage
 import sys, os, bz2, time
 from foolscap.logging import log, flogfile
