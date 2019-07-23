@@ -1,10 +1,10 @@
 
+from __future__ import print_function
 import os, sys, shutil, errno, time, signal
 from io import StringIO
 from twisted.python import usage
 from twisted.internet import defer
 from twisted.scripts import twistd
-from __future__ import print_function
 
 # does "flappserver start" need us to refrain from importing the reactor here?
 # A: probably, to allow --reactor= to work
