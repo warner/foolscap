@@ -1,10 +1,11 @@
 
 
+from __future__ import print_function
 import os, sys
 from io import StringIO
 from twisted.python import usage
 from twisted.internet import defer
-from __future__ import print_function
+
 
 # does "flappserver start" need us to refrain from importing the reactor here?
 import foolscap
