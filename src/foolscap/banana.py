@@ -23,6 +23,13 @@ EPSILON = 0.1
 if six.PY3:
     long = int
 
+def ensure_byte(ch):
+    # PY3PORT - new function
+    if six.PY2:
+        return ch
+    elif six.PY3:
+        return six.int2byte(ch)
+
 def int2b128(integer, stream):
     if integer == 0:
         # PY3KPORT
@@ -534,7 +541,8 @@ class Banana(protocol.Protocol):
                 self.maybeVocabizeString(obj)
                 int2b128(len(obj), write)
                 write(STRING)
-                write(obj)
+                # PY3KPORT - A bit unsure about this
+                write(six.ensure_binary(obj))
         else:
             raise BananaError("could not send object: %s" % repr(obj))
 
@@ -748,6 +756,7 @@ class Banana(protocol.Protocol):
             first65 = self.buffer.popleft(65)
             pos = 0
             for ch in first65:
+                ch = ensure_byte(ch)                
                 if ch >= HIGH_BIT_SET:
                     break
                 pos = pos + 1
@@ -768,7 +777,9 @@ class Banana(protocol.Protocol):
             # At this point, the header and type byte have been received.
             # The body may or may not be complete.
 
-            typebyte = first65[pos]
+            # PY3KPORT
+            typebyte = ensure_byte(first65[pos])
+                
             if pos:
                 header = b1282int(first65[:pos])
             else:
