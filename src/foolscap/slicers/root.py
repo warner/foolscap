@@ -1,6 +1,15 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+try:
+    from types import InstanceType
+except:
+    # PY3KPORT
+    InstanceType = object
+
+# PY3KPORT
+import six
 import types
+
 from zope.interface import implementer
 from twisted.internet.defer import Deferred
 from foolscap import tokens
@@ -10,6 +19,7 @@ from foolscap.slicer import UnslicerRegistry, BananaUnslicerRegistry
 from foolscap.slicers.vocab import ReplaceVocabularyTable, AddToVocabularyTable
 from foolscap import copyable # does this create a cycle?
 from twisted.python import log
+from functools import reduce
 
 @implementer(tokens.ISlicer, tokens.IRootSlicer)
 class RootSlicer:
@@ -30,6 +40,10 @@ class RootSlicer:
     def registerRefID(self, refid, obj):
         pass
 
+    def next(self):
+        # PY3KPORT
+        return self.__next__()
+    
     def slicerForObject(self, obj):
         # could use a table here if you think it'd be faster than an
         # adapter lookup
@@ -54,22 +68,56 @@ class RootSlicer:
             s = tokens.ISlicer(copier)
             return s
 
-        slicerFactory = self.slicerTable.get(type(obj))
+        slicerFactory = None
+        
+        # PY3KPORT
+        if six.PY2:
+            slicerFactory = self.slicerTable.get(type(obj))
+        elif six.PY3:
+            if type(obj) not in self.slicerTable:
+                # Determine if this is an instance
+                # Unfortunately this is True for file objects as well
+                # so we need another check as file objects have a different slicer
+                if hasattr(obj, '__class__') and isinstance(obj.__class__, type) and (not hasattr(obj, 'fileno')):
+                    # This is a class instance
+                    slicerFactory = self.slicerTable.get(InstanceType)
+
+            # Also for class methods i.e if obj == C.f where C is a
+            # class and f is its method, in Py3 the type evaluates
+            # to 'function' not 'method' whereas in Py2 it returns
+            # MethodSlicer, so we need to take care of that too.
+            elif type(obj) == types.FunctionType:
+                # Check the __qualname__ of the function - if it has
+                # a . then it means it belongs to a class so return
+                # MethodSlicer instead!
+                if hasattr(obj, '__qualname__') and '.' in obj.__qualname__:
+                    log.msg("{} is a method, not a function".format(obj))
+                    slicerFactory = self.slicerTable.get(types.MethodType)
+                else:
+                    slicerFactory = self.slicerTable.get(type(obj))
+                    
+            else:
+                slicerFactory = self.slicerTable.get(type(obj))
+            
         if slicerFactory:
             if self.debug: log.msg(" got slicerFactory %s" % slicerFactory)
             return slicerFactory(obj)
-        if issubclass(type(obj), types.InstanceType):
+
+        if issubclass(type(obj), InstanceType):
             name = str(obj.__class__)
         else:
             name = str(type(obj))
+
         if self.debug: log.msg("cannot serialize %s (%s)" % (obj, name))
         raise Violation("cannot serialize %s (%s)" % (obj, name))
 
     def slice(self):
         return self
+    
     def __iter__(self):
         return self # we are our own iterator
-    def next(self):
+
+    def __next__(self):
         if self.objectSentDeferred:
             self.objectSentDeferred.callback(None)
             self.objectSentDeferred = None
@@ -78,7 +126,7 @@ class RootSlicer:
             self.streamable = self.streamableInGeneral
             return obj
         if self.protocol.debugSend:
-            print "LAST BAG"
+            print("LAST BAG")
         self.producingDeferred = Deferred()
         self.streamable = True
         return self.producingDeferred
@@ -98,7 +146,7 @@ class RootSlicer:
         if idle:
             # wake up
             if self.protocol.debugSend:
-                print " waking up to send"
+                print(" waking up to send")
             if self.producingDeferred:
                 d = self.producingDeferred
                 self.producingDeferred = None
@@ -157,7 +205,7 @@ class RootUnslicer(BaseUnslicer):
         self.objects = {}
         keys = []
         for r in self.topRegistries + self.openRegistries:
-            for k in r.keys():
+            for k in list(r.keys()):
                 keys.append(len(k[0]))
         self.maxIndexLength = reduce(max, keys)
 
@@ -219,6 +267,7 @@ class RootUnslicer(BaseUnslicer):
         assert len(self.protocol.receiveStack) == 1
         if self.constraint:
             self.constraint.checkOpentype(opentype)
+
         for reg in self.topRegistries:
             opener = reg.get(opentype)
             if opener is not None:
@@ -235,14 +284,14 @@ class RootUnslicer(BaseUnslicer):
         assert not isinstance(obj, Deferred)
         assert ready_deferred is None
         if self.protocol.debugReceive:
-            print "RootUnslicer.receiveChild(%s)" % (obj,)
+            print("RootUnslicer.receiveChild(%s)" % (obj,))
         self.objects = {}
         if obj in (ReplaceVocabularyTable, AddToVocabularyTable):
             # the unslicer has already changed the vocab table
             return
         if self.protocol.exploded:
-            print "protocol exploded, can't deliver object"
-            print self.protocol.exploded
+            print("protocol exploded, can't deliver object")
+            print(self.protocol.exploded)
             self.protocol.receivedObject(self.protocol.exploded)
             return
         self.protocol.receivedObject(obj) # give finished object to Banana
