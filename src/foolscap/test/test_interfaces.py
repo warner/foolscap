@@ -1,6 +1,6 @@
 # -*- test-case-name: foolscap.test.test_interfaces -*-
 
-from zope.interface import implementsOnly
+from zope.interface import implementer_only
 from twisted.trial import unittest
 
 from foolscap import schema, remoteinterface
@@ -16,8 +16,9 @@ from foolscap.test.common import getRemoteInterfaceName, Target, RIMyTarget, \
      DummyTarget
 
 
+@implementer_only(IFoo, RIMyTarget2)
 class Target2(Target):
-    implementsOnly(IFoo, RIMyTarget2)
+    pass
 
 class TestInterface(TargetMixin, unittest.TestCase):
 

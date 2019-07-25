@@ -2,7 +2,7 @@
 
 from twisted.python.components import registerAdapter
 from twisted.python import log
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet.defer import Deferred
 import tokens
 from tokens import Violation, BananaError
@@ -18,9 +18,9 @@ class SlicerClass(type):
             registerAdapter(self, typ, tokens.ISlicer)
 
 
+@implementer(tokens.ISlicer)
 class BaseSlicer(object):
     __metaclass__ = SlicerClass
-    implements(tokens.ISlicer)
 
     slices = None
 
@@ -143,10 +143,10 @@ class UnslicerClass(type):
         if opentype:
             registerUnslicer(opentype, self, reg)
 
+@implementer(tokens.IUnslicer)
 class BaseUnslicer(object):
     __metaclass__ = UnslicerClass
     opentype = None
-    implements(tokens.IUnslicer)
 
     def __init__(self):
         pass

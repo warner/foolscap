@@ -2,7 +2,7 @@
 
 import os.path, weakref, binascii, re
 from warnings import warn
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet import (reactor, defer, protocol, error, interfaces,
                               endpoints)
 from twisted.application import service
@@ -118,6 +118,7 @@ def generateSwissnumber(bits):
     bytes = os.urandom(bits/8)
     return base32.encode(bytes)
 
+@implementer(ipb.ITub)
 class Tub(service.MultiService):
     """I am a presence in the PB universe, also known as a Tub.
 
@@ -169,7 +170,6 @@ class Tub(service.MultiService):
                  authentication information, hash of SSL certificate
 
     """
-    implements(ipb.ITub)
 
     unsafeTracebacks = True # TODO: better way to enable this
     logLocalFailures = False

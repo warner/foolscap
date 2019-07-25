@@ -2,7 +2,7 @@
 
 # this module is responsible for all copy-by-value objects
 
-from zope.interface import interface, implements
+from zope.interface import interface, implementer
 from twisted.python import reflect, log
 from twisted.python.components import registerAdapter
 from twisted.internet import defer
@@ -29,8 +29,9 @@ class ICopyable(Interface):
         serialized and sent to the remote end. This state object will be
         given to the receiving object's setCopyableState method."""
 
+@implementer(ICopyable)
 class Copyable(object):
-    implements(ICopyable)
+
     # you *must* set 'typeToCopy'
 
     def getTypeToCopy(self):
@@ -86,8 +87,9 @@ def registerCopier(klass, copier):
     classname is used.
     """
     klassname = reflect.qual(klass)
+
+    @implementer(ICopyable)
     class _CopierAdapter:
-        implements(ICopyable)
         def __init__(self, original):
             self.nameToCopy, self.state = copier(original)
             if self.nameToCopy is None:
@@ -323,9 +325,8 @@ class RemoteCopyClass(type):
             registry = dict.get('copyableRegistry', None)
             registerRemoteCopy(copytype, self, registry)
 
+@implementer(IRemoteCopy)
 class _RemoteCopyBase:
-
-    implements(IRemoteCopy)
 
     stateSchema = None # always a class attribute
     nonCyclic = False

@@ -1,13 +1,13 @@
 
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.trial import unittest
 from foolscap.ipb import IRemoteReference
 from foolscap.test.common import HelperTarget, Target, ShouldFailMixin
 from foolscap.eventual import flushEventualQueue
 from foolscap import broker, referenceable, api
 
+@implementer(IRemoteReference)
 class Remote:
-    implements(IRemoteReference)
     pass
 
 

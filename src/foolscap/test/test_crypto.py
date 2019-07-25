@@ -2,7 +2,7 @@
 import re
 from twisted.trial import unittest
 
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet import defer
 from foolscap import pb
 from foolscap.api import RemoteInterface, Referenceable, Tub, flushEventualQueue
@@ -20,8 +20,8 @@ class RIMyCryptoTarget(RemoteInterface):
     def join(a=str, b=str, c=int): return str
     def getName(): return str
 
+@implementer(RIMyCryptoTarget)
 class Target(Referenceable):
-    implements(RIMyCryptoTarget)
 
     def __init__(self, name=None):
         self.calls = []
