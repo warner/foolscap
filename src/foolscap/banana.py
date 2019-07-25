@@ -1,4 +1,5 @@
 
+import six
 import struct, time
 
 from twisted.internet import protocol, defer, reactor
@@ -12,29 +13,38 @@ from foolscap.slicers.allslicers import ReplaceVocabSlicer, AddVocabSlicer
 
 import stringchain
 import tokens
-from tokens import SIZE_LIMIT, STRING, LIST, INT, NEG, \
-     LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR, \
-     PING, PONG, \
-     BananaError, BananaFailure, Violation
+from tokens import (SIZE_LIMIT, STRING, LIST, INT, NEG, 
+                    LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR, 
+                    PING, PONG, 
+                    BananaError, BananaFailure, Violation)
 
 EPSILON = 0.1
 
+if six.PY3:
+    long = int
+
 def int2b128(integer, stream):
     if integer == 0:
-        stream(chr(0))
+        # PY3KPORT
+        stream(six.int2byte(0))
         return
     assert integer > 0, "can only encode positive integers"
     while integer:
-        stream(chr(integer & 0x7f))
+        # PY3KPORT      
+        stream(six.int2byte(integer & 0x7f))
         integer = integer >> 7
-
+        
 def b1282int(st):
     # NOTE that this is little-endian
     oneHundredAndTwentyEight = 128
     i = 0
     place = 0
     for char in st:
-        num = ord(char)
+        try:
+            num = ord(char)
+        except TypeError:
+            # PY3KPORT          
+            num = ord(six.int2byte(char))       
         i = i + (num * (oneHundredAndTwentyEight ** place))
         place = place + 1
     return i
@@ -50,7 +60,7 @@ def long_to_bytes(n, blocksize=0):
     blocksize.
     """
     # after much testing, this algorithm was deemed to be the fastest
-    s = ''
+    s = six.b('')
     n = long(n)
     pack = struct.pack
     while n > 0:
@@ -58,17 +68,17 @@ def long_to_bytes(n, blocksize=0):
         n = n >> 32
     # strip off leading zeros
     for i in range(len(s)):
-        if s[i] != '\000':
+        if s[i] != six.b('\000'):
             break
     else:
         # only happens when n == 0
-        s = '\000'
+        s = six.b('\000')
         i = 0
     s = s[i:]
     # add back some pad bytes. this could be done more efficiently w.r.t. the
     # de-padding being done above, but sigh...
     if blocksize > 0 and len(s) % blocksize:
-        s = (blocksize - len(s) % blocksize) * '\000' + s
+        s = (blocksize - len(s) % blocksize) * six.b('\000') + s
     return s
 
 def bytes_to_long(s):
@@ -82,13 +92,13 @@ def bytes_to_long(s):
     length = len(s)
     if length % 4:
         extra = (4 - length % 4)
-        s = '\000' * extra + s
+        s = six.b('\000') * extra + s
         length = length + extra
     for i in range(0, length, 4):
         acc = (acc << 32) + unpack('>I', s[i:i+4])[0]
     return acc
 
-HIGH_BIT_SET = chr(0x80)
+HIGH_BIT_SET = six.int2byte(0x80)
 
 
 
