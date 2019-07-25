@@ -15,9 +15,9 @@ This functionality is isolated here because it is never used for data coming
 over network connections.
 """
 
-from io import StringIO
 import types
 import six
+from six import StringIO
 import inspect
 from pickle import whichmodule  # used by FunctionSlicer
 
@@ -477,6 +477,7 @@ class SerializerTransport:
         self.sio = sio
     def write(self, data):
         self.sio.write(data)
+            
     def loseConnection(self, why="ignored"):
         pass
 
