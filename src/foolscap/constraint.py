@@ -5,12 +5,13 @@
 
 # This imports foolscap.tokens, but no other Foolscap modules.
 
+import six
 import re
 from zope.interface import implementer, Interface
 
-from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
-     STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, \
-     tokenNames
+from foolscap.tokens import (Violation, BananaError, SIZE_LIMIT, 
+                             STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, 
+                             tokenNames)
 
 everythingTaster = {
     # he likes everything
@@ -243,7 +244,7 @@ class IntegerConstraint(Constraint):
             self.taster[LONGNEG] = maxBytes
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, (int, long)):
+        if not isinstance(obj, six.integer_types):
             raise Violation("'%r' is not a number" % (obj,))
         if self.maxBytes == -1:
             if obj >= 2**31 or obj < -2**31:
