@@ -1,14 +1,19 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 import re
 from twisted.internet.defer import Deferred
 from foolscap.tokens import BananaError, STRING, VOCAB, Violation
 from foolscap.slicer import BaseSlicer, LeafUnslicer
 from foolscap.constraint import OpenerConstraint, Any
 
+if six.PY3:
+    unicode = str
+    
 class UnicodeSlicer(BaseSlicer):
     opentype = ("unicode",)
-    slices = unicode
+    slices = six.text_type
+    
     def sliceBody(self, streamable, banana):
         yield self.obj.encode("UTF-8")
 
