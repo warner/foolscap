@@ -54,12 +54,14 @@ modifiers:
 
 """
 
-from foolscap.tokens import Violation, UnknownSchemaType, BananaError, \
-     tokenNames
+import six
+from foolscap.tokens import (Violation, UnknownSchemaType,
+                             BananaError, tokenNames)
 
 # make constraints available in a single location
-from foolscap.constraint import Constraint, Any, ByteStringConstraint, \
-     IntegerConstraint, NumberConstraint, IConstraint, Optional, Shared
+from foolscap.constraint import (Constraint, Any, ByteStringConstraint, 
+                                 IntegerConstraint, NumberConstraint, IConstraint,
+                                 Optional, Shared)
 from foolscap.slicers.unicode import UnicodeConstraint
 from foolscap.slicers.bool import BooleanConstraint
 from foolscap.slicers.dict import DictConstraint
@@ -82,7 +84,10 @@ ListOf = ListConstraint
 DictOf = DictConstraint
 SetOf = SetConstraint
 
-
+if six.PY3:
+    unicode = str
+    long = int
+    
 # note: using PolyConstraint (aka ChoiceOf) for inbound tasting is probably
 # not fully vetted. One of the issues would be with something like
 # ListOf(ChoiceOf(TupleOf(stuff), SetOf(stuff))). The ListUnslicer, when
@@ -126,8 +131,11 @@ class PolyConstraint(Constraint):
 ChoiceOf = PolyConstraint
 
 def AnyStringConstraint(*args, **kwargs):
-    return ChoiceOf(ByteStringConstraint(*args, **kwargs),
-                    UnicodeConstraint(*args, **kwargs))
+    if six.PY2:
+        return ChoiceOf(ByteStringConstraint(*args, **kwargs),
+                        UnicodeConstraint(*args, **kwargs))
+    else:
+        return ByteStringConstraint(*args, **kwargs)
 
 # keep the old meaning, for now. Eventually StringConstraint should become an
 # AnyStringConstraint
@@ -135,7 +143,6 @@ StringConstraint = ByteStringConstraint
 
 constraintMap = {
     str: ByteStringConstraint(),
-    unicode: UnicodeConstraint(),
     bool: BooleanConstraint(),
     int: IntegerConstraint(),
     long: IntegerConstraint(maxBytes=1024),
@@ -143,6 +150,9 @@ constraintMap = {
     None: Nothing(),
     }
 
+if six.PY2:
+    constraintMap[unicode] = UnicodeConstraint()
+    
 # This module provides a function named addToConstraintTypeMap() which helps
 # to resolve some import cycles.
 
