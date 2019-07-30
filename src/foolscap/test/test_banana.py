@@ -268,7 +268,7 @@ class UnbananaTestMixin:
     def failIfBananaFailure(self, res):
         if isinstance(res, BananaFailure):
             # something went wrong
-            print(("There was a failure while Unbananaing '%s':" % res.where))
+            print("There was a failure while Unbananaing '%s':" % res.where)
             print(res.getTraceback())
             self.fail("BananaFailure")
 
