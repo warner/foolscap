@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 import decimal
 from twisted.internet.defer import Deferred
 from foolscap.tokens import BananaError, STRING, VOCAB
@@ -33,7 +34,7 @@ class DecimalUnslicer(LeafUnslicer):
         assert ready_deferred is None
         if self.value != None:
             raise BananaError("already received a string")
-        self.value = decimal.Decimal(obj)
+        self.value = decimal.Decimal(six.ensure_str(obj, 'latin1'))
 
     def receiveClose(self):
         return self.value, None
