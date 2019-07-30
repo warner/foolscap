@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 from twisted.python import log
 from twisted.internet.defer import Deferred
 from foolscap.tokens import Violation
@@ -99,8 +100,8 @@ class ListUnslicer(BaseUnslicer):
             self.list.append(obj)
 
     def printErr(self, why):
-        print "ERR!"
-        print why.getBriefTraceback()
+        print("ERR!")
+        print(why.getBriefTraceback())
         log.err(why)
 
     def receiveClose(self):
@@ -118,7 +119,7 @@ class ListConstraint(OpenerConstraint):
     accept lists of any length, use maxLength=None. All member objects must
     obey the given constraint."""
 
-    opentypes = [("list",)]
+    opentypes = [(six.b("list"),)]
     name = "ListConstraint"
 
     def __init__(self, constraint, maxLength=None, minLength=0):
