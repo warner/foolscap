@@ -1,4 +1,5 @@
 import copy
+import six
 
 from collections import deque
 
@@ -52,7 +53,7 @@ class StringChain(object):
         if self.d:
             return self.d[0]
         else:
-            return ''
+            return six.b('')
 
     def popleft_new_stringchain(self, bytes):
         """ Remove some of the leading bytes of the chain and return them as a
@@ -98,9 +99,10 @@ class StringChain(object):
     def popleft(self, bytes):
         """ Remove some of the leading bytes of the chain and return them as a
         string. """
+
         #assert self._assert_invariants()
         if not bytes or not self.d:
-            return ''
+            return six.b('')
 
         assert bytes >= 0, bytes
 
@@ -130,7 +132,7 @@ class StringChain(object):
             self.len += overrun
             resstrs[-1] = resstrs[-1][:-overrun]
 
-        resstr = ''.join(resstrs)
+        resstr = six.b('').join([six.ensure_binary(item, 'latin1') for item in resstrs])
 
         # Either you got exactly how many you asked for, or you drained self entirely and you asked for more than you got.
         #assert (len(resstr) == bytes) or ((not self.d) and (bytes > self.len)), (len(resstr), bytes, len(self.d), overrun)
@@ -203,7 +205,7 @@ class StringChain(object):
             self.d[-1] = self.d[-1][:-self.tailignored]
             self.tailignored = 0
         if len(self.d) > 1:
-            newstr = ''.join(self.d)
+            newstr = six.b('').join(self.d)
             self.d.clear()
             self.d.append(newstr)
         #assert self._assert_invariants()
