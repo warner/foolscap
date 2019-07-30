@@ -272,13 +272,13 @@ class ScopedUnslicer(BaseUnslicer):
 
     def setObject(self, counter, obj):
         if self.protocol.debugReceive:
-            print("setObject(%s): %s{%s}" % (counter, obj, id(obj)))
+            print(("setObject(%s): %s{%s}" % (counter, obj, id(obj))))
         self.references[counter] = obj
 
     def getObject(self, counter):
         obj = self.references.get(counter)
         if self.protocol.debugReceive:
-            print("getObject(%s) -> %s{%s}" % (counter, obj, id(obj)))
+            print(("getObject(%s) -> %s{%s}" % (counter, obj, id(obj))))
         return obj
 
 
