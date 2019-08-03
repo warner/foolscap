@@ -2,7 +2,7 @@
 import os, sys, json, time, bz2, base64, re
 import mock
 from cStringIO import StringIO
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer, reactor
@@ -578,8 +578,9 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         d.addCallback(_check)
         return d
 
+@implementer(RILogObserver)
 class Observer(Referenceable):
-    implements(RILogObserver)
+
     def __init__(self):
         self.messages = []
         self.incidents = []
