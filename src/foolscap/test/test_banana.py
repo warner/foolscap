@@ -1856,7 +1856,7 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
     def test_string(self):
         return self.looptest("biggles")
     def test_unicode(self):
-        self.looptest("biggles\u1234")
+        self.looptest(six.ensure_text("biggles\u1234"))
     def test_list(self):
         return self.looptest([1,2])
     def test_tuple(self):
