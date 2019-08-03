@@ -24,7 +24,8 @@ if six.PY3:
     long = int
 
 def ensure_byte(ch):
-    # PY3PORT - new function
+    """ Convert an integer to a byte in a 2/3 portable way """
+    
     if six.PY2:
         return ch
     elif six.PY3:
@@ -32,15 +33,13 @@ def ensure_byte(ch):
 
 def int2b128(integer, stream):
     if integer == 0:
-        # PY3KPORT
         stream(six.int2byte(0))
         return
     assert integer > 0, "can only encode positive integers"
     while integer:
-        # PY3KPORT      
         stream(six.int2byte(integer & 0x7f))
         integer = integer >> 7
-        
+
 def b1282int(st):
     # NOTE that this is little-endian
     oneHundredAndTwentyEight = 128
@@ -50,7 +49,6 @@ def b1282int(st):
         try:
             num = ord(char)
         except TypeError:
-            # PY3KPORT          
             num = ord(six.int2byte(char))       
         i = i + (num * (oneHundredAndTwentyEight ** place))
         place = place + 1
@@ -194,7 +192,6 @@ class Banana(protocol.Protocol):
 
         itr = self.rootSlicer.slice()
 
-        # PY3KPORT
         try:
             next = iter(itr).__next__
         except Exception:
@@ -366,7 +363,6 @@ class Banana(protocol.Protocol):
 
         itr = slicer.slice(topSlicer.streamable, self)
 
-        # PY3KPORT
         try:
             next = iter(itr).__next__
         except Exception:
@@ -541,7 +537,6 @@ class Banana(protocol.Protocol):
                 self.maybeVocabizeString(obj)
                 int2b128(len(obj), write)
                 write(STRING)
-                # PY3KPORT - A bit unsure about this
                 write(six.ensure_binary(obj))
         else:
             raise BananaError("could not send object: %s" % repr(obj))
@@ -777,7 +772,6 @@ class Banana(protocol.Protocol):
             # At this point, the header and type byte have been received.
             # The body may or may not be complete.
 
-            # PY3KPORT
             typebyte = ensure_byte(first65[pos])
                 
             if pos:
