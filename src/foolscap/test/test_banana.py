@@ -395,7 +395,7 @@ class TestBananaMixin:
         d = self.loop(obj)
         d.addCallback(self._looptest_1, newvalue)
         return d
-    
+
     def _looptest_1(self, obj2, newvalue):
         if type(obj2) is dict:
             self.assertEqual(dict_key_to_bytes(obj2),
@@ -1856,7 +1856,7 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
     def test_string(self):
         return self.looptest("biggles")
     def test_unicode(self):
-        return self.looptest("biggles\\u1234")
+        self.looptest("biggles\u1234")
     def test_list(self):
         return self.looptest([1,2])
     def test_tuple(self):
@@ -1955,8 +1955,8 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
             x = six.ensure_text(x)
             y = six.ensure_text(y)
         elif type(x) in (list, tuple):
-            x = list(map(six.ensure_text, x))
-            y = list(map(six.ensure_text, y))
+            x = [six.ensure_text(i) for i in x]
+            y = [six.ensure_text(i) for i in y]
             
         self.assertEqual(x, y)
         self.assertEqual(type(x[0]), type(y[0]))
@@ -2044,8 +2044,7 @@ class VocabTest1(unittest.TestCase):
         b = TokenBanana()
         b.connectionMade()
         vdict = {1: 'list', 2: 'tuple', 3: 'dict'}
-        keys = list(vdict.keys())
-        keys.sort()
+        keys = sorted(vdict.keys())
         setVdict = [tOPEN(0),'set-vocab']
         for k in keys:
             setVdict.append(k)
@@ -2061,8 +2060,7 @@ class VocabTest1(unittest.TestCase):
         b.tokens = []
         strings = ["list", "tuple", "dict"]
         vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
-        keys = list(vdict.keys())
-        keys.sort()
+        keys = sorted(vdict.keys())
         setVdict = [tOPEN(0),'set-vocab']
         for k in keys:
             setVdict.append(k)
