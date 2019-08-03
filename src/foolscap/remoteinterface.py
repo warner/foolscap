@@ -1,7 +1,7 @@
 
 import types
 import inspect
-from zope.interface import interface, providedBy, implements
+from zope.interface import interface, providedBy, implementer
 from foolscap.constraint import Constraint, OpenerConstraint, nothingTaster, \
      IConstraint, IRemoteMethodConstraint, Optional, Any
 from foolscap.tokens import Violation, InvalidRemoteInterface
@@ -130,7 +130,7 @@ def getRemoteInterfaceByName(iname):
     return RemoteInterfaceRegistry.get(iname)
 
 
-
+@implementer(IRemoteMethodConstraint)
 class RemoteMethodSchema(object):
     """
     This is a constraint for a single remotely-invokable method. It gets to
@@ -150,7 +150,6 @@ class RemoteMethodSchema(object):
     of these objects.
     """
 
-    implements(IRemoteMethodConstraint)
 
     taster = {} # this should not be used as a top-level constraint
     opentypes = [] # overkill
@@ -296,6 +295,7 @@ class RemoteMethodSchema(object):
             # location appropriately: they have more information than we do.
             self.responseConstraint.checkObject(results, inbound)
 
+@implementer(IRemoteMethodConstraint)
 class UnconstrainedMethod(object):
     """I am a method constraint that accepts any arguments and any return
     value.
@@ -307,7 +307,6 @@ class UnconstrainedMethod(object):
              return str
          not_method = UnconstrainedMethod()  # this one is not
     """
-    implements(IRemoteMethodConstraint)
 
     def getPositionalArgConstraint(self, argnum):
         return (True, Any())
