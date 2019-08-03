@@ -6,7 +6,7 @@
 
 import weakref
 from zope.interface import interface
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.python.components import registerAdapter
 Interface = interface.Interface
 from twisted.internet import defer
@@ -23,14 +23,14 @@ from foolscap.copyable import Copyable, RemoteCopy
 from foolscap.eventual import eventually, fireEventually
 from foolscap.furl import decode_furl
 
+@implementer(ipb.IReferenceable)
 class OnlyReferenceable(object):
-    implements(ipb.IReferenceable)
-
+    
     def processUniqueID(self):
         return id(self)
 
+@implementer(ipb.IReferenceable, ipb.IRemotelyCallable)
 class Referenceable(OnlyReferenceable):
-    implements(ipb.IReferenceable, ipb.IRemotelyCallable)
     _interface = None
     _interfaceName = None
 
@@ -337,8 +337,8 @@ class RemoteReferenceTracker(object):
         # _handleRefLost. In this case, don't decref anything.
 
 
+@implementer(ipb.IRemoteReference)
 class RemoteReferenceOnly(object):
-    implements(ipb.IRemoteReference)
 
     def __init__(self, tracker):
         """@param tracker: the RemoteReferenceTracker which points to us"""
@@ -606,8 +606,9 @@ class RemoteMethodReference(RemoteReference):
         methodSchema = None
         return interfaceName, methodName, methodSchema
 
+@implementer(ipb.IRemoteReference)
 class LocalReferenceable(object):
-    implements(ipb.IRemoteReference)
+
     def __init__(self, original):
         self.original = original
 
