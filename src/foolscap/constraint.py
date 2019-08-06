@@ -6,7 +6,7 @@
 # This imports foolscap.tokens, but no other Foolscap modules.
 
 import re
-from zope.interface import implements, Interface
+from zope.interface import implementer, Interface
 
 from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
      STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, \
@@ -65,6 +65,7 @@ class IRemoteMethodConstraint(IConstraint):
 
         This should either raise Violation or return None."""
 
+@implementer(IConstraint)
 class Constraint(object):
     """
     Each __schema__ attribute is turned into an instance of this class, and
@@ -72,7 +73,6 @@ class Constraint(object):
     the tokens are arriving off the wire.
     """
 
-    implements(IConstraint)
 
     taster = everythingTaster
     """the Taster is a dict that specifies which basic token types are

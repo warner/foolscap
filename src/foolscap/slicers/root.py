@@ -1,7 +1,7 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
 import types
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet.defer import Deferred
 from foolscap import tokens
 from foolscap.tokens import Violation, BananaError
@@ -11,8 +11,8 @@ from foolscap.slicers.vocab import ReplaceVocabularyTable, AddToVocabularyTable
 from foolscap import copyable # does this create a cycle?
 from twisted.python import log
 
+@implementer(tokens.ISlicer, tokens.IRootSlicer)
 class RootSlicer:
-    implements(tokens.ISlicer, tokens.IRootSlicer)
 
     streamableInGeneral = True
     producingDeferred = None

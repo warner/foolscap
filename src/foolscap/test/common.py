@@ -1,7 +1,7 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
 import re, time
-from zope.interface import implements, implementsOnly, implementedBy, Interface
+from zope.interface import implementer, implementer_only, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer, reactor, task, protocol
 from twisted.application import internet
@@ -104,8 +104,9 @@ class RIHelper(RemoteInterface):
     def mega3(obj1=MegaSchema3): return None
     def choice1(obj1=ChoiceOf(ByteStringConstraint(2000), int)): return None
 
+@implementer(RIHelper)
 class HelperTarget(Referenceable):
-    implements(RIHelper)
+
     d = None
     def __init__(self, name="unnamed"):
         self.name = name
@@ -284,8 +285,8 @@ RIMyTarget3['sub'] = RemoteMethodSchema(_response=int, a=int, b=int)
 RIMyTarget3['sub'].name = "sub"
 RIMyTarget3['sub'].interface = RIMyTarget3
 
+@implementer(RIMyTarget)
 class Target(Referenceable):
-    implements(RIMyTarget)
 
     def __init__(self, name=None):
         self.calls = []
@@ -311,12 +312,13 @@ class Target(Referenceable):
     def remote_failstring(self):
         raise "string exceptions are annoying"
 
+@implementer_only(implementedBy(Referenceable))
 class TargetWithoutInterfaces(Target):
     # undeclare the RIMyTarget interface
-    implementsOnly(implementedBy(Referenceable))
+    pass
 
+@implementer(RIMyTarget)
 class BrokenTarget(Referenceable):
-    implements(RIMyTarget)
 
     def remote_add(self, a, b):
         return "error"
@@ -326,8 +328,9 @@ class IFoo(Interface):
     # non-remote Interface
     pass
 
+@implementer(IFoo)
 class Foo(Referenceable):
-    implements(IFoo)
+    pass
 
 class RIDummy(RemoteInterface):
     pass
@@ -339,11 +342,12 @@ class RITypes(RemoteInterface):
     def takes_interface(a=IFoo): return str
     def returns_interface(work=bool): return IFoo
 
+@implementer(RIDummy)
 class DummyTarget(Referenceable):
-    implements(RIDummy)
+    pass
 
+@implementer(RITypes)
 class TypesTarget(Referenceable):
-    implements(RITypes)
 
     def remote_returns_none(self, work):
         if work:
