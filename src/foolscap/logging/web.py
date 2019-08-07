@@ -354,11 +354,11 @@ class WebViewer:
         d = fireEventually(options)
         d.addCallback(self.start)
         d.addErrback(self._error)
-        print "starting.."
+        print("starting..")
         reactor.run()
 
     def _error(self, f):
-        print "ERROR", f
+        print("ERROR", f)
         reactor.stop()
 
     @inlineCallbacks
@@ -383,13 +383,13 @@ class WebViewer:
         url = "http://localhost:%d/" % portnum
 
         if not options["quiet"]:
-            print "scanning.."
+            print("scanning..")
         self.logfiles = [options.dumpfile]
         self.load_logfiles()
 
         if not options["quiet"]:
-            print "please point your browser at:"
-            print url
+            print("please point your browser at:")
+            print(url)
         if options["open"]:
             import webbrowser
             webbrowser.open(url)

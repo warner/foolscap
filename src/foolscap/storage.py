@@ -15,7 +15,7 @@ This functionality is isolated here because it is never used for data coming
 over network connections.
 """
 
-from cStringIO import StringIO
+from six import StringIO
 import types
 from new import instance, instancemethod
 from pickle import whichmodule  # used by FunctionSlicer

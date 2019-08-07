@@ -93,7 +93,7 @@ class Copyable(TargetMixin, unittest.TestCase):
         TargetMixin.setUp(self)
         self.setupBrokers()
         if 0:
-            print
+            print()
             self.callingBroker.doLog = "TX"
             self.targetBroker.doLog = " rx"
 

@@ -282,7 +282,7 @@ class Negotiation(protocol.Protocol):
         try:
             cb(d)
         except Exception as e:
-            print e # otherwise failures are hard to track down
+            print(e) # otherwise failures are hard to track down
             raise
         return True
 

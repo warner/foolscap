@@ -1,6 +1,6 @@
 
 import os, sys, json
-from StringIO import StringIO
+from six import StringIO
 from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.application import service

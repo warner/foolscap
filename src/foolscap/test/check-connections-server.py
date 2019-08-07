@@ -27,7 +27,7 @@ class Calculator(Referenceable):
         self.observers = []
     def remote_addObserver(self, observer):
         self.observers.append(observer)
-        print "observer is from", observer.getPeer()
+        print("observer is from", observer.getPeer())
     def log(self, msg):
         for o in self.observers:
             o.callRemote("event", msg=msg)
@@ -56,7 +56,7 @@ if 0:
 tub.listenOn(lp)
 tub.setLocation("tor:%s:%d" % (ONION, ONIONPORT))
 url = tub.registerReference(Calculator(), "calculator")
-print "the object is available at:", url
+print("the object is available at:", url)
 
 application = service.Application("check-connections-server")
 tub.setServiceParent(application)

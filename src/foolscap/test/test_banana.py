@@ -15,7 +15,7 @@ from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
 from foolscap.constraint import IConstraint
 from foolscap.banana import int2b128, long_to_bytes
 
-import StringIO
+from six import StringIO
 import struct
 from decimal import Decimal
 
@@ -225,7 +225,7 @@ class UnbananaTestMixin:
         self.failUnlessEqual(res.where, where)
         self.banana.object = None # to stop the tearDown check TODO ??
 
-class TestTransport(StringIO.StringIO):
+class TestTransport(StringIO):
     disconnectReason = None
     def loseConnection(self):
         pass
