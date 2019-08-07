@@ -671,7 +671,7 @@ class Tub(service.MultiService):
             f.close()
             if need_to_chmod:
                 # XXX: open-to-chmod race here
-                os.chmod(furlFile, 0600)
+                os.chmod(furlFile, 0o600)
         return furl
 
     # this is called by either registerReference or by

@@ -44,7 +44,7 @@ class Loopback:
         except:
             f = failure.Failure()
             log.err(f)
-            print "Loopback.write exception:", f
+            print("Loopback.write exception:", f)
             self.loseConnection(f)
 
     def loseConnection(self, why=failure.Failure(CONNECTION_DONE)):
@@ -310,7 +310,7 @@ class Target(Referenceable):
         return target.callRemote("fail")
 
     def remote_failstring(self):
-        raise "string exceptions are annoying"
+        raise Exception("string exceptions are annoying")
 
 @implementer_only(implementedBy(Referenceable))
 class TargetWithoutInterfaces(Target):

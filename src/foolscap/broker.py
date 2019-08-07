@@ -624,7 +624,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             methodName = methodSchema.name
             try:
                 methodSchema.checkResults(res, False) # may raise Violation
-            except Violation, v:
+            except Violation as v:
                 v.prependLocation("in return value of %s.%s" %
                                   (delivery.obj, methodSchema.name))
                 raise

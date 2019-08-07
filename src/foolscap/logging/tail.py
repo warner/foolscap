@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import os, sys, time
 from zope.interface import implementer
 from twisted.internet import reactor
@@ -29,8 +30,8 @@ class LogSaver(Referenceable):
             flogfile.serialize_wrapper(self.f, d,
                                        from_=self.nodeid_s,
                                        rx_time=time.time())
-        except Exception, ex:
-            print "GATHERER: unable to serialize %s: %s" % (d, ex)
+        except Exception as ex:
+            print("GATHERER: unable to serialize %s: %s" % (d, ex))
 
     def disconnected(self):
         self.f.close()
@@ -79,9 +80,9 @@ class LogPrinter(Referenceable):
         self.output = output
 
     def got_versions(self, versions, pid=None):
-        print >>self.output, "Remote Versions:"
+        print("Remote Versions:", file=self.output)
         for k in sorted(versions.keys()):
-            print >>self.output, " %s: %s" % (k, versions[k])
+            print(" %s: %s" % (k, versions[k]), file=self.output)
         if self.saver:
             self.saver.emit_header(versions, pid)
 
@@ -94,7 +95,7 @@ class LogPrinter(Referenceable):
             self.saver.remote_msg(d)
 
     def simple_print(self, d):
-        print >>self.output, d
+        print(d, file=self.output)
 
     def formatted_print(self, d):
         time_s = format_time(d['time'], self.options["timestamps"])
@@ -103,13 +104,15 @@ class LogPrinter(Referenceable):
         level = d.get('level', log.OPERATIONAL)
 
         tubid = "" # TODO
-        print >>self.output, "%s L%d [%s]#%d %s" % (time_s, level, tubid,
-                                                    d["num"], msg)
+        print("%s L%d [%s]#%d %s" % (time_s, level, tubid,
+                                     d["num"], msg),
+              file=self.output)
+        
         if 'failure' in d:
-            print >>self.output, " FAILURE:"
+            print(" FAILURE:", file=self.output)
             lines = str(d['failure']).split("\n")
             for line in lines:
-                print >>self.output, " %s" % (line,)
+                print(" %s" % (line,), file=self.output)
 
 
 class LogTail:
@@ -121,15 +124,15 @@ class LogTail:
         d = fireEventually(target_furl)
         d.addCallback(self.start, target_tubid)
         d.addErrback(self._error)
-        print "starting.."
+        print("starting..")
         reactor.run()
 
     def _error(self, f):
-        print "ERROR", f
+        print("ERROR", f)
         reactor.stop()
 
     def start(self, target_furl, target_tubid):
-        print "Connecting.."
+        print("Connecting..")
         self._tub = Tub()
         self._tub.startService()
         self._tub.connectTo(target_furl, self._got_logpublisher, target_tubid)
@@ -138,12 +141,12 @@ class LogTail:
         d = publisher.callRemote("get_pid")
         def _announce(pid_or_failure):
             if isinstance(pid_or_failure, int):
-                print "Connected (to pid %d)" % pid_or_failure
+                print("Connected (to pid %d)" % pid_or_failure)
                 return pid_or_failure
             else:
                 # the logport is probably foolscap-0.2.8 or earlier and
                 # doesn't offer get_pid()
-                print "Connected (unable to get pid)"
+                print("Connected (unable to get pid)")
                 return None
         d.addBoth(_announce)
         publisher.notifyOnDisconnect(self._lost_logpublisher)
@@ -166,6 +169,6 @@ class LogTail:
         return d
 
     def _lost_logpublisher(publisher):
-        print "Disconnected"
+        print("Disconnected")
 
 

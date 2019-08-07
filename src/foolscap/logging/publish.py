@@ -127,7 +127,7 @@ class IncidentSubscription(Referenceable):
         d.addErrback(self._error)
 
     def _error(self, f):
-        print "INCIDENT PUBLISH FAILED: %s" % f
+        print("INCIDENT PUBLISH FAILED: %s" % f)
         self.unsubscribe()
 
 

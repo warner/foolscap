@@ -137,11 +137,11 @@ class DictConstraint(OpenerConstraint):
         self.maxKeys = maxKeys
     def checkObject(self, obj, inbound):
         if not isinstance(obj, dict):
-            raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
-                                                                type(obj))
+            raise Violation("'%s' (%s) is not a Dictionary" % (obj,
+                                                                type(obj)))
         if self.maxKeys != None and len(obj) > self.maxKeys:
-            raise Violation, "Dict keys=%d > maxKeys=%d" % (len(obj),
-                                                            self.maxKeys)
+            raise Violation("Dict keys=%d > maxKeys=%d" % (len(obj),
+                                                           self.maxKeys))
         for key, value in obj.iteritems():
             self.keyConstraint.checkObject(key, inbound)
             self.valueConstraint.checkObject(value, inbound)
