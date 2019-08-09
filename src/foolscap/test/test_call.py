@@ -2,7 +2,6 @@
 import gc
 import re
 import sys
-import six
 
 if False:
     from twisted.python import log
@@ -23,9 +22,6 @@ from foolscap.api import RemoteException, DeadReferenceError
 from foolscap.call import CopiedFailure
 from foolscap.logging import log as flog
 
-if six.PY3:
-    long = int
-    
 class Unsendable:
     pass
 
@@ -218,7 +214,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # try to exercise all our constraints at once
         rr, target = self.setupTarget(HelperTarget())
         t = (set([1, 2, 3]),
-             "str", True, 12, long(12), 19.3, None,
+             "str", True, 12, 12, 19.3, None,
              u"unicode",
              "bytestring",
              "any", 14.3,
