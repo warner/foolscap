@@ -58,7 +58,7 @@ def long_to_bytes(n, blocksize=0):
     n = long(n)
     pack = struct.pack
     while n > 0:
-        s = pack('>I', n & long(0xffffffff)) + s
+        s = pack('>I', n & 0xffffffff) + s
         n = n >> 32
     # strip off leading zeros
     for i in range(len(s)):
@@ -81,7 +81,7 @@ def bytes_to_long(s):
 
     This is (essentially) the inverse of long_to_bytes().
     """
-    acc = long(0)
+    acc = 0
     unpack = struct.unpack
     length = len(s)
     if length % 4:
@@ -90,7 +90,7 @@ def bytes_to_long(s):
         length = length + extra
     for i in range(0, length, 4):
         acc = (acc << 32) + unpack('>I', s[i:i+4])[0]
-    return acc
+    return long(acc)
 
 HIGH_BIT_SET = chr(0x80)
 
