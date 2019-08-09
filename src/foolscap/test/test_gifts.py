@@ -137,7 +137,7 @@ class Gifts(Base, unittest.TestCase):
             return d2 # this fires with the gift that bob got
         d.addCallback(_introduce)
         def _bobGotCarol(args):
-            balice,bcarol = args            
+            balice, bcarol = args            
             if self.debug: print("Bob got Carol")
             self.bcarol = bcarol
             if self.debug: print("Bob says something to Carol")
@@ -352,7 +352,7 @@ class Gifts(Base, unittest.TestCase):
     # until I figure out what the new scheme ought to be asserting.
 
     def OFF_bobGotCarol(self, args):
-        balice,bcarol = args        
+        balice, bcarol = args        
         if self.debug: print("Bob got Carol")
         # Bob has received the gift
         self.bcarol = bcarol
@@ -527,7 +527,7 @@ class LongFURL(Base, unittest.TestCase):
             return d2 # this fires with the gift that bob got
         d.addCallback(_introduce)
         def _bobGotCarol(args):
-            balice,bcarol = args            
+            balice, bcarol = args            
             if self.debug: print("Bob got Carol")
             self.bcarol = bcarol
             if self.debug: print("Bob says something to Carol")
@@ -572,7 +572,7 @@ class Enabled(Base, unittest.TestCase):
             return d3 # this fires with the gift that bob got
         d.addCallback(_introduce)
         def _bobGotCarol(args):
-            balice,bcarol = args
+            balice, bcarol = args
             A,B,C,D = self.tubIDs
             b_connections = self.get_connections(self.tubB)
             self.assertIn(C, b_connections)
