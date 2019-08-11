@@ -116,8 +116,8 @@ class SetUnslicer(BaseUnslicer):
             self.set.add(obj)
 
     def printErr(self, why):
-        print "ERR!"
-        print why.getBriefTraceback()
+        print("ERR!")
+        print(why.getBriefTraceback())
         log.err(why)
 
     def receiveClose(self):

@@ -66,9 +66,9 @@ elif which in ("i2p-default", "i2p-sam"):
     tub.addConnectionHintHandler("i2p", h)
     furl = "pb://%s@i2p:%s:%d/calculator" % (TUBID, I2P, I2PPORT)
 else:
-    print "run as 'check-connections-client.py [tcp|socks|tor-default|tor-socks|tor-control|tor-launch|i2p-default|i2p-sam]'"
+    print("run as 'check-connections-client.py [tcp|socks|tor-default|tor-socks|tor-control|tor-launch|i2p-default|i2p-sam]'")
     sys.exit(1)
-print "using %s: %s" % (which, furl)
+print("using %s: %s" % (which, furl))
 
 class Observer(Referenceable):
     def remote_event(self, msg):
@@ -106,14 +106,14 @@ def go():
     start = time.time()
     number = yield remote.callRemote("pop")
     rtts.append(time.time() - start)
-    print "the result is", number
+    print("the result is", number)
 
-    print "t_connect:", t_connect
-    print "avg rtt:", sum(rtts) / len(rtts)
+    print("t_connect:", t_connect)
+    print("avg rtt:", sum(rtts) / len(rtts))
 
 d = go()
 def _oops(f):
-    print "error", f
+    print("error", f)
 d.addErrback(_oops)
 d.addCallback(lambda res: reactor.stop())
 

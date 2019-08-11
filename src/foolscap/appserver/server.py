@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import os, sys, json, ast
 from twisted.application import service
 from foolscap.api import Tub
@@ -75,7 +76,7 @@ class AppServer(service.MultiService):
         self.tub.setServiceParent(self)
         self.tub.registerNameLookupHandler(self.lookup)
         self.setMyLocation()
-        print >>stdout, "Server Running"
+        print("Server Running", file=stdout)
 
     def startService(self):
         if self.umask is not None:

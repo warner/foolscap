@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import os, sys, time, weakref, binascii
 import traceback
 import collections
@@ -486,8 +487,8 @@ if _flogfile:
         theLogger.addObserver(lfo.msg)
         #theLogger.set_generation_threshold(UNUSUAL, "foolscap.negotiation")
     except IOError:
-        print >>sys.stderr, "FLOGFILE: unable to write to %s, ignoring" % \
-              (_flogfile,)
+        print("FLOGFILE: unable to write to %s, ignoring" % (_flogfile,),
+              file=sys.stderr)
 
 if "FLOGTWISTED" in os.environ:
     bridgeLogsFromTwisted()

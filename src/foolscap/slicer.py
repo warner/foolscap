@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+from __future__ import print_function
 from six import with_metaclass 
 from twisted.python.components import registerAdapter
 from twisted.python import log
@@ -259,13 +260,13 @@ class ScopedUnslicer(BaseUnslicer):
 
     def setObject(self, counter, obj):
         if self.protocol.debugReceive:
-            print "setObject(%s): %s{%s}" % (counter, obj, id(obj))
+            print("setObject(%s): %s{%s}" % (counter, obj, id(obj)))
         self.references[counter] = obj
 
     def getObject(self, counter):
         obj = self.references.get(counter)
         if self.protocol.debugReceive:
-            print "getObject(%s) -> %s{%s}" % (counter, obj, id(obj))
+            print("getObject(%s) -> %s{%s}" % (counter, obj, id(obj)))
         return obj
 
 

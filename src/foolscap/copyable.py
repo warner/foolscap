@@ -387,8 +387,8 @@ class AttributeDictConstraint(OpenerConstraint):
 
     def checkObject(self, obj, inbound):
         if type(obj) != type({}):
-            raise Violation, "'%s' (%s) is not a Dictionary" % (obj,
-                                                                type(obj))
+            raise Violation("'%s' (%s) is not a Dictionary" % (obj,
+                                                               type(obj)))
         allkeys = self.keys.keys()
         for k in obj.keys():
             try:
@@ -396,7 +396,7 @@ class AttributeDictConstraint(OpenerConstraint):
                 allkeys.remove(k)
             except KeyError:
                 if not self.ignoreUnknown:
-                    raise Violation, "key '%s' not in schema" % k
+                    raise Violation("key '%s' not in schema" % k)
                 else:
                     # hmm. kind of a soft violation. allow it for now.
                     pass

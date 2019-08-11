@@ -178,7 +178,7 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         TargetMixin.setUp(self)
         self.setupBrokers()
         if 0:
-            print
+            print()
             self.callingBroker.doLog = "TX"
             self.targetBroker.doLog = " rx"
 
@@ -244,7 +244,8 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         d = self.send2(r, r)
         d.addCallback(self._testRef3_1)
         return d
-    def _testRef3_1(self, (res1, res2)):
+    def _testRef3_1(self, res):
+        res1, res2 = res
         self.failUnless(res1 == res2)
         self.failUnless(res1 is res2)
 

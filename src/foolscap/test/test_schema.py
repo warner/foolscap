@@ -386,13 +386,13 @@ class Interfaces(unittest.TestCase):
     def check_inbound(self, obj, constraint):
         try:
             constraint.checkObject(obj, True)
-        except Violation, f:
+        except Violation as f:
             self.fail("constraint was violated: %s" % f)
 
     def check_outbound(self, obj, constraint):
         try:
             constraint.checkObject(obj, False)
-        except Violation, f:
+        except Violation as f:
             self.fail("constraint was violated: %s" % f)
 
     def violates_inbound(self, obj, constraint):

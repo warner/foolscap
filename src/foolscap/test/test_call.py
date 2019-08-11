@@ -214,7 +214,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # try to exercise all our constraints at once
         rr, target = self.setupTarget(HelperTarget())
         t = (set([1, 2, 3]),
-             "str", True, 12, 12L, 19.3, None,
+             "str", True, 12, 12, 19.3, None,
              u"unicode",
              "bytestring",
              "any", 14.3,
@@ -408,7 +408,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         d = self.shouldFail(DeadReferenceError, "lost_is_deadref.1",
                             "Connection was lost",
                             get_d)
-        def _examine_error((f,)):
+        def _examine_error(args):
+            f = args[0]
             # the (to tubid=XXX) part will see "tub=call", which is an
             # abbreviation of "callingBroker" as created in
             # TargetMixin.setupBrokers

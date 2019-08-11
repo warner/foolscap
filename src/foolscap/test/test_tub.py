@@ -389,7 +389,7 @@ class Receiver(Referenceable):
         d.addBoth(self.done_d.callback)
     def remote_two(self):
         msg = "Receiver.remote_two: I shouldn't be called"
-        print msg
+        print(msg)
         f = failure.Failure(ValueError(msg))
         log.err(f)
 

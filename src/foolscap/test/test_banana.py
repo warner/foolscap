@@ -1,4 +1,5 @@
 
+import six
 from twisted.trial import unittest
 from twisted.python import reflect
 from twisted.python.failure import Failure
@@ -14,10 +15,12 @@ from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
 from foolscap.constraint import IConstraint
 from foolscap.banana import int2b128, long_to_bytes
 
-import StringIO
+from six import StringIO
 import struct
 from decimal import Decimal
 
+if six.PY3:
+    long = int
 #log.startLogging(sys.stderr)
 
 # some utility functions to manually assemble bytestreams
@@ -143,7 +146,7 @@ def untokenize(tokens):
                 data.append(STRING)
                 data.append(t)
             else:
-                raise BananaError, "could not send object: %s" % repr(t)
+                raise BananaError("could not send object: %s" % repr(t))
     return "".join(data)
 
 class UnbananaTestMixin:
@@ -205,24 +208,24 @@ class UnbananaTestMixin:
     def failIfBananaFailure(self, res):
         if isinstance(res, BananaFailure):
             # something went wrong
-            print "There was a failure while Unbananaing '%s':" % res.where
-            print res.getTraceback()
+            print("There was a failure while Unbananaing '%s':" % res.where)
+            print(res.getTraceback())
             self.fail("BananaFailure")
 
     def checkBananaFailure(self, res, where, failtype=None):
-        print res
+        print(res)
         self.failUnless(isinstance(res, BananaFailure))
         if failtype:
             self.failUnless(res.failure,
                             "No Failure object in BananaFailure")
             if not res.check(failtype):
-                print "Wrong exception (wanted '%s'):" % failtype
-                print res.getTraceback()
+                print("Wrong exception (wanted '%s'):" % failtype)
+                print(res.getTraceback())
                 self.fail("Wrong exception (wanted '%s'):" % failtype)
         self.failUnlessEqual(res.where, where)
         self.banana.object = None # to stop the tearDown check TODO ??
 
-class TestTransport(StringIO.StringIO):
+class TestTransport(StringIO):
     disconnectReason = None
     def loseConnection(self):
         pass
@@ -306,9 +309,9 @@ class TestBananaMixin:
 
     def wantEqual(self, got, wanted):
         if got != wanted:
-            print
-            print "wanted: '%s'" % wanted, repr(wanted)
-            print "got   : '%s'" % got, repr(got)
+            print()
+            print("wanted: '%s'" % wanted, repr(wanted))
+            print("got   : '%s'" % got, repr(got))
             self.fail("did not get expected string")
 
     def loop(self, obj):
@@ -872,7 +875,7 @@ class ErrorfulSlicer(slicer.BaseSlicer):
             # Hah! Serialize that!
             return unserializable
         if obj == "unreached":
-            print "error: slicer.next called after it should have stopped"
+            print("error: slicer.next called after it should have stopped")
         return obj
 
     def childAborted(self, v):
@@ -1039,21 +1042,21 @@ class ErrorfulUnslicer(slicer.BaseUnslicer):
         self.mode = self.protocol.mode
         self.ignoreChildDeath = self.protocol.ignoreChildDeath
         if self.debug:
-            print "ErrorfulUnslicer.start, mode=%s" % self.mode
+            print("ErrorfulUnslicer.start, mode=%s" % self.mode)
         self.list = []
         if self.mode == "start":
             raise Violation("boom")
 
     def openerCheckToken(self, typebyte, size, opentype):
         if self.debug:
-            print "ErrorfulUnslicer.openerCheckToken(%s)" % tokenNames[typebyte]
+            print("ErrorfulUnslicer.openerCheckToken(%s)" % tokenNames[typebyte])
         if self.mode == "openerCheckToken":
             raise Violation("boom")
         return slicer.BaseUnslicer.openerCheckToken(self, typebyte,
                                                     size, opentype)
     def checkToken(self, typebyte, size):
         if self.debug:
-            print "ErrorfulUnslicer.checkToken(%s)" % tokenNames[typebyte]
+            print("ErrorfulUnslicer.checkToken(%s)" % tokenNames[typebyte])
         if self.mode == "checkToken":
             raise Violation("boom")
         if self.mode == "checkToken-OPEN" and typebyte == OPEN:
@@ -1061,7 +1064,7 @@ class ErrorfulUnslicer(slicer.BaseUnslicer):
         return slicer.BaseUnslicer.checkToken(self, typebyte, size)
 
     def receiveChild(self, obj, ready_deferred=None):
-        if self.debug: print "ErrorfulUnslicer.receiveChild", obj
+        if self.debug: print("ErrorfulUnslicer.receiveChild", obj)
         if self.mode == "receiveChild":
             raise Violation("boom")
         self.list.append(obj)
@@ -1072,13 +1075,13 @@ class ErrorfulUnslicer(slicer.BaseUnslicer):
         return why
 
     def receiveClose(self):
-        if self.debug: print "ErrorfulUnslicer.receiveClose"
+        if self.debug: print("ErrorfulUnslicer.receiveClose")
         if self.protocol.mode == "receiveClose":
             raise Violation("boom")
         return self.list, None
 
     def finish(self):
-        if self.debug: print "ErrorfulUnslicer.receiveClose"
+        if self.debug: print("ErrorfulUnslicer.receiveClose")
         if self.protocol.mode == "finish":
             raise Violation("boom")
 
@@ -1339,13 +1342,14 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
         self.check(-1, bINT(-1))
         self.check(-127, bINT(-127))
 
-    def testLong(self):
-        self.check(258L, "\x02\x85\x01\x02") # TODO: 0x85 for LONGINT??
-        self.check(-258L, "\x02\x86\x01\x02") # TODO: 0x85 for LONGINT??
-        self.check(0L, "\x85")
-        self.check(0L, "\x00\x85")
-        self.check(0L, "\x86")
-        self.check(0L, "\x00\x86")
+    def testInt2(self):
+        # Not longs anymore
+        self.check(258, "\x02\x85\x01\x02") # TODO: 0x85 for LONGINT??
+        self.check(-258, "\x02\x86\x01\x02") # TODO: 0x85 for LONGINT??
+        self.check(0, "\x85")
+        self.check(0, "\x00\x85")
+        self.check(0, "\x86")
+        self.check(0, "\x00\x86")
 
     def testString(self):
         self.check("", "\x82")

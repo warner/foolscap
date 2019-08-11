@@ -207,7 +207,7 @@ class IncidentClassifierBase:
                 continue
             f = open(os.path.join(plugindir, fn), "r")
             localdict = {}
-            exec f in localdict
+            exec(f, localdict)
             self.add_classifier(localdict["classify_incident"])
 
     def load_incident(self, abs_fn):

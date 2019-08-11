@@ -2,7 +2,7 @@
 
 from twisted.trial import unittest
 from twisted.application import service
-from cStringIO import StringIO
+from six import StringIO
 import gc
 
 from foolscap.api import Referenceable, Copyable, RemoteCopy, \

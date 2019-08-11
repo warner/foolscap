@@ -606,7 +606,7 @@ class AnswerUnslicer(slicer.ScopedUnslicer):
             if self.resultConstraint:
                 try:
                     self.resultConstraint.checkToken(typebyte, size)
-                except Violation, v:
+                except Violation as v:
                     # improve the error message
                     if v.args:
                         # this += gives me a TypeError "object doesn't

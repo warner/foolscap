@@ -281,7 +281,7 @@ class RemoteMethodSchema(object):
                 pass
             try:
                 constraint.checkObject(argvalue, inbound)
-            except Violation, v:
+            except Violation as v:
                 v.setLocation("%s=" % argname)
                 raise
 

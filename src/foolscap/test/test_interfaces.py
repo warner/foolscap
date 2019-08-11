@@ -131,8 +131,8 @@ class TestInterface(TargetMixin, unittest.TestCase):
                     and ("rr.callRemote" in s[i+1]
                          or "in callRemote" in s[i+2])):
                     return # all good
-            print "failure looked like this:"
-            print f
+            print("failure looked like this:")
+            print(f)
             self.fail("didn't see invocation of callRemote in stacktrace")
         d.addCallbacks(lambda res: self.fail("hey, this was supposed to fail"),
                        _check_failure)
@@ -278,7 +278,7 @@ class LocalTypes(TargetMixin, unittest.TestCase):
         d = rr.callRemote('takes_interface', Foo())
         def _check_failure(f):
             f.trap(Violation)
-            print f
+            print(f)
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -296,7 +296,7 @@ class LocalTypes(TargetMixin, unittest.TestCase):
         d = rr.callRemote('returns_interface', False)
         def _check_failure(f):
             f.trap(Violation)
-            print f
+            print(f)
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 

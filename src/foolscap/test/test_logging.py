@@ -1,7 +1,7 @@
 
 import os, sys, json, time, bz2, base64, re
 import mock
-from cStringIO import StringIO
+from six import StringIO
 from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.application import service
@@ -1027,7 +1027,8 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         self.failIf(i_name.endswith(".flog") or i_name.endswith(".bz2"))
         trigger = incidents[i_name]
         self.failUnlessEqual(trigger["message"], "three")
-    def _check_incident(self, (header, events) ):
+    def _check_incident(self, args):
+        header, events = args
         self.failUnlessEqual(header["type"], "incident")
         self.failUnlessEqual(header["trigger"]["message"], "three")
         self.failUnlessEqual(len(events), 3)
@@ -1221,7 +1222,8 @@ class IncidentGatherer(unittest.TestCase,
 
         d.addCallback(lambda res: self.logger.msg("boom", level=log.WEIRD))
         d.addCallback(lambda res: incident_d)
-        def _new_incident((abs_fn, rel_fn)):
+        def _new_incident(args):
+            abs_fn, rel_fn = args
             events = self._read_logfile(abs_fn)
             header = events[0]["header"]
             self.failUnless("trigger" in header)
@@ -1286,9 +1288,9 @@ def classify_incident(trigger):
         d.addCallback(_update_classifiers)
         d.addCallback(lambda res: self.logger.msg("foom", level=log.WEIRD))
         d.addCallback(lambda res: incident_d2)
-        def _new_incident2((abs_fn, rel_fn)):
+        def _new_incident2(args):
             # this one should be classified as "foom"
-
+            abs_fn, rel_fn = args
             # it should have been classified as "unknown"
             fooms_fn = os.path.join(ig.basedir, "classified", "foom")
             fooms = [fn.strip() for fn in open(fooms_fn,"r").readlines()]
@@ -1979,8 +1981,8 @@ class LogfileWriterMixin:
         l.msg("boom", level=log.WEIRD)
         l.msg("four")
 
-        d.addCallback(lambda (name,trigger):
-                      os.path.join(self.basedir, name+".flog.bz2"))
+        d.addCallback(lambda name_trigger:
+                      os.path.join(self.basedir, name_trigger[0]+".flog.bz2"))
 
         return d
 

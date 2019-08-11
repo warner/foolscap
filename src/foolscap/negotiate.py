@@ -281,8 +281,8 @@ class Negotiation(protocol.Protocol):
         d.addCallback(lambda _: call(*args))
         try:
             cb(d)
-        except Exception, e:
-            print e # otherwise failures are hard to track down
+        except Exception as e:
+            print(e) # otherwise failures are hard to track down
             raise
         return True
 
@@ -415,7 +415,7 @@ class Negotiation(protocol.Protocol):
             if self.buffer:
                 self.dataReceived("")
 
-        except Exception, e:
+        except Exception as e:
             why = Failure()
             if isinstance(e, RemoteNegotiationError):
                 pass # they've already hung up

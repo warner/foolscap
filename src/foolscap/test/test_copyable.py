@@ -93,7 +93,7 @@ class Copyable(TargetMixin, unittest.TestCase):
         TargetMixin.setUp(self)
         self.setupBrokers()
         if 0:
-            print
+            print()
             self.callingBroker.doLog = "TX"
             self.targetBroker.doLog = " rx"
 
@@ -120,7 +120,8 @@ class Copyable(TargetMixin, unittest.TestCase):
         d = self.send(f0)
         d.addCallback(self._testFailure1_1)
         return d
-    def _testFailure1_1(self, (f,)):
+    def _testFailure1_1(self, args):
+        f = args[0] 
         #print "CopiedFailure is:", f
         #print f.__dict__
         self.failUnlessEqual(reflect.qual(f.type), "exceptions.RuntimeError")
@@ -156,7 +157,8 @@ class Copyable(TargetMixin, unittest.TestCase):
         d = self.send(f0)
         d.addCallback(self._testFailure2_1)
         return d
-    def _testFailure2_1(self, (f,)):
+    def _testFailure2_1(self, args):
+        f = args[0]
         #print "CopiedFailure is:", f
         #print f.__dict__
         self.failUnlessEqual(reflect.qual(f.type), "exceptions.RuntimeError")
@@ -187,7 +189,8 @@ class Copyable(TargetMixin, unittest.TestCase):
         d = self.send(obj)
         d.addCallback(self._testCopy1_1)
         return d
-    def _testCopy1_1(self, (res,)):
+    def _testCopy1_1(self, args):
+        res = args[0]
         self.failUnless(isinstance(res, MyRemoteCopy1))
         self.failUnlessEqual(res.a, 12)
         self.failUnlessEqual(res.b, "foo")
@@ -199,7 +202,8 @@ class Copyable(TargetMixin, unittest.TestCase):
         d = self.send(obj)
         d.addCallback(self._testCopy2_1)
         return d
-    def _testCopy2_1(self, (res,)):
+    def _testCopy2_1(self, args):
+        res = args[0]
         self.failUnless(isinstance(res, MyRemoteCopy2))
         self.failUnlessEqual(res.c, 1)
         self.failUnlessEqual(res.d, "foo")
@@ -212,7 +216,8 @@ class Copyable(TargetMixin, unittest.TestCase):
         d = self.send(obj)
         d.addCallback(self._testCopy3_1)
         return d
-    def _testCopy3_1(self, (res,)):
+    def _testCopy3_1(self, args):
+        res = args[0]
         self.failUnless(isinstance(res, MyRemoteCopy3))
         self.failUnlessEqual(res.e, 2)
         self.failUnlessEqual(res.f, "yes")
@@ -225,7 +230,8 @@ class Copyable(TargetMixin, unittest.TestCase):
         d = self.send(obj)
         d.addCallback(self._testCopy4_1, obj)
         return d
-    def _testCopy4_1(self, (res,), obj):
+    def _testCopy4_1(self, args, obj):
+        res = args[0]
         self.failUnless(isinstance(res, MyRemoteCopy4))
         self.failUnlessEqual(res.foo, 12)
         self.failUnlessEqual(res.bar, "bar")
@@ -317,7 +323,8 @@ class Adaptation(TargetMixin, unittest.TestCase):
         d = self.send(obj)
         d.addCallback(self._testAdaptation_1)
         return d
-    def _testAdaptation_1(self, (res,)):
+    def _testAdaptation_1(self, args):
+        res = args[0]
         self.failUnless(isinstance(res, TheThirdPartyClassThatIWantToCopy))
         self.failUnlessEqual(res.a, 45)
         self.failUnlessEqual(res.b, 91)

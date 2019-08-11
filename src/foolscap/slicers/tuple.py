@@ -31,7 +31,7 @@ class TupleUnslicer(BaseUnslicer):
         self.num_unreferenceable_children = 0
         self.count = count
         if self.debug:
-            print "%s[%d].start with %s" % (self, self.count, self.list)
+            print("%s[%d].start with %s" % (self, self.count, self.list))
         self.finished = False
         self.deferred = Deferred()
         self.protocol.setObject(count, self.deferred)
@@ -58,7 +58,7 @@ class TupleUnslicer(BaseUnslicer):
 
     def update(self, obj, index):
         if self.debug:
-            print "%s[%d].update: [%d]=%s" % (self, self.count, index, obj)
+            print("%s[%d].update: [%d]=%s" % (self, self.count, index, obj))
         self.list[index] = obj
         self.num_unreferenceable_children -= 1
         if self.finished:
@@ -78,12 +78,12 @@ class TupleUnslicer(BaseUnslicer):
 
     def checkComplete(self):
         if self.debug:
-            print "%s[%d].checkComplete: %d pending" % \
-                  (self, self.count, self.num_unreferenceable_children)
+            print("%s[%d].checkComplete: %d pending" % \
+                  (self, self.count, self.num_unreferenceable_children))
         if self.num_unreferenceable_children:
             # not finished yet, we'll fire our Deferred when we are
             if self.debug:
-                print " not finished yet"
+                print(" not finished yet")
             return
 
         # list is now complete. We can finish.
@@ -96,20 +96,20 @@ class TupleUnslicer(BaseUnslicer):
 
         t = tuple(self.list)
         if self.debug:
-            print " finished! tuple:%s{%s}" % (t, id(t))
+            print(" finished! tuple:%s{%s}" % (t, id(t)))
         self.protocol.setObject(self.count, t)
         self.deferred.callback(t)
         return t, ready_deferred
 
     def receiveClose(self):
         if self.debug:
-            print "%s[%d].receiveClose" % (self, self.count)
+            print("%s[%d].receiveClose" % (self, self.count))
         self.finished = 1
 
         if self.num_unreferenceable_children:
             # not finished yet, we'll fire our Deferred when we are
             if self.debug:
-                print " not finished yet"
+                print(" not finished yet")
             ready_deferred = None
             if self._ready_deferreds:
                 ready_deferred = AsyncAND(self._ready_deferreds)

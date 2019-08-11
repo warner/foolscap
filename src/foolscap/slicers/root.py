@@ -78,7 +78,7 @@ class RootSlicer:
             self.streamable = self.streamableInGeneral
             return obj
         if self.protocol.debugSend:
-            print "LAST BAG"
+            print("LAST BAG")
         self.producingDeferred = Deferred()
         self.streamable = True
         return self.producingDeferred
@@ -98,7 +98,7 @@ class RootSlicer:
         if idle:
             # wake up
             if self.protocol.debugSend:
-                print " waking up to send"
+                print(" waking up to send")
             if self.producingDeferred:
                 d = self.producingDeferred
                 self.producingDeferred = None
@@ -235,14 +235,14 @@ class RootUnslicer(BaseUnslicer):
         assert not isinstance(obj, Deferred)
         assert ready_deferred is None
         if self.protocol.debugReceive:
-            print "RootUnslicer.receiveChild(%s)" % (obj,)
+            print("RootUnslicer.receiveChild(%s)" % (obj,))
         self.objects = {}
         if obj in (ReplaceVocabularyTable, AddToVocabularyTable):
             # the unslicer has already changed the vocab table
             return
         if self.protocol.exploded:
-            print "protocol exploded, can't deliver object"
-            print self.protocol.exploded
+            print("protocol exploded, can't deliver object")
+            print(self.protocol.exploded)
             self.protocol.receivedObject(self.protocol.exploded)
             return
         self.protocol.receivedObject(obj) # give finished object to Banana
