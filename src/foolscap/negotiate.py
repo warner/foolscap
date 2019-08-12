@@ -252,9 +252,7 @@ class Negotiation(protocol.Protocol):
         return block
 
     def sendBlock(self, block):
-        keys = block.keys()
-        keys.sort()
-        for k in keys:
+        for k in sorted(block.keys()):
             self.transport.write("%s: %s\r\n" % (k.lower(), block[k]))
         self.transport.write("\r\n") # end block
 

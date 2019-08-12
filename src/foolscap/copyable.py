@@ -51,7 +51,7 @@ class CopyableSlicer(slicer.BaseSlicer):
         assert isinstance(copytype, str)
         yield copytype
         state = self.obj.getStateToCopy()
-        for k,v in state.iteritems():
+        for k,v in state.items():
             yield k
             yield v
     def describe(self):
@@ -368,7 +368,7 @@ class AttributeDictConstraint(OpenerConstraint):
         self.acceptUnknown = kwargs.get('acceptUnknown', False)
         self.keys = {}
         for name, constraint in (list(attrTuples) +
-                                 kwargs.get('attributes', {}).items()):
+                                 list(kwargs.get('attributes', {}).items())):
             assert name not in self.keys.keys()
             self.keys[name] = IConstraint(constraint)
 

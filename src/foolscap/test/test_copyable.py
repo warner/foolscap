@@ -43,7 +43,7 @@ class MyCopyable3Slicer(copyable.CopyableSlicer):
         yield 'copyable'
         yield "MyCopyable3name"
         state = self.obj.getAlternateCopyableState()
-        for k,v in state.iteritems():
+        for k,v in state.items():
             yield k
             yield v
 

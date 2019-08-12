@@ -1883,10 +1883,8 @@ class VocabTest1(unittest.TestCase):
         b = TokenBanana()
         b.connectionMade()
         vdict = {1: 'list', 2: 'tuple', 3: 'dict'}
-        keys = vdict.keys()
-        keys.sort()
         setVdict = [tOPEN(0),'set-vocab']
-        for k in keys:
+        for k in sorted(vdict.keys()):
             setVdict.append(k)
             setVdict.append(vdict[k])
         setVdict.append(tCLOSE(0))
@@ -1900,10 +1898,8 @@ class VocabTest1(unittest.TestCase):
         b.tokens = []
         strings = ["list", "tuple", "dict"]
         vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
-        keys = vdict.keys()
-        keys.sort()
         setVdict = [tOPEN(0),'set-vocab']
-        for k in keys:
+        for k in sorted(vdict.keys()):
             setVdict.append(k)
             setVdict.append(vdict[k])
         setVdict.append(tCLOSE(0))
@@ -1928,7 +1924,7 @@ class VocabTest2(TestBananaMixin, unittest.TestCase):
     def test_loop(self):
         strings = ["list", "tuple", "dict"]
         vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
-        self.invdict = dict(list(zip(vdict.values(), vdict.keys())))
+        self.invdict = dict(list(zip(list(vdict.values()), list(vdict.keys()))))
 
         self.banana.setOutgoingVocabulary(strings)
         # this next check only happens to work because there is nothing to

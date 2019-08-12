@@ -32,9 +32,7 @@ class ReplaceVocabSlicer(BaseSlicer):
         stringToIndex = self.obj
         indexToString = dict([(stringToIndex[s],s) for s in stringToIndex])
         assert len(stringToIndex) == len(indexToString) # catch duplicates
-        indices = indexToString.keys()
-        indices.sort()
-        for index in indices:
+        for index in sorted(indexToString.keys()):
             string = indexToString[index]
             yield index
             yield string
