@@ -282,25 +282,25 @@ class ConformTest(unittest.TestCase):
 
 class CreateTest(unittest.TestCase):
     def check(self, obj, expected):
-        self.failUnless(isinstance(obj, expected))
+        self.assertTrue(isinstance(obj, expected))
 
     def testMakeConstraint(self):
         make = IConstraint
         c = make(int)
         self.check(c, schema.IntegerConstraint)
-        self.failUnlessEqual(c.maxBytes, -1)
+        self.assertEqual(c.maxBytes, -1)
 
         c = make(str)
         self.check(c, schema.ByteStringConstraint)
-        self.failUnlessEqual(c.maxLength, None)
+        self.assertEqual(c.maxLength, None)
 
         c = make(schema.ByteStringConstraint(2000))
         self.check(c, schema.ByteStringConstraint)
-        self.failUnlessEqual(c.maxLength, 2000)
+        self.assertEqual(c.maxLength, 2000)
 
         c = make(unicode)
         self.check(c, schema.UnicodeConstraint)
-        self.failUnlessEqual(c.maxLength, None)
+        self.assertEqual(c.maxLength, None)
 
         self.check(make(bool), schema.BooleanConstraint)
         self.check(make(float), schema.NumberConstraint)
@@ -313,15 +313,15 @@ class CreateTest(unittest.TestCase):
 
         c = make(common.RIHelper)
         self.check(c, RemoteInterfaceConstraint)
-        self.failUnlessEqual(c.interface, common.RIHelper)
+        self.assertEqual(c.interface, common.RIHelper)
 
         c = make(common.IFoo)
         self.check(c, LocalInterfaceConstraint)
-        self.failUnlessEqual(c.interface, common.IFoo)
+        self.assertEqual(c.interface, common.IFoo)
 
         c = make(Referenceable)
         self.check(c, RemoteInterfaceConstraint)
-        self.failUnlessEqual(c.interface, None)
+        self.assertEqual(c.interface, None)
 
 
 class Arguments(unittest.TestCase):
@@ -330,25 +330,25 @@ class Arguments(unittest.TestCase):
         r = RemoteMethodSchema(method=foo)
         getpos = r.getPositionalArgConstraint
         getkw = r.getKeywordArgConstraint
-        self.failUnless(isinstance(getpos(0)[1], schema.IntegerConstraint))
-        self.failUnless(isinstance(getpos(1)[1], schema.BooleanConstraint))
-        self.failUnless(isinstance(getpos(2)[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getpos(0)[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getpos(1)[1], schema.BooleanConstraint))
+        self.assertTrue(isinstance(getpos(2)[1], schema.IntegerConstraint))
 
-        self.failUnless(isinstance(getkw("a")[1], schema.IntegerConstraint))
-        self.failUnless(isinstance(getkw("b")[1], schema.BooleanConstraint))
-        self.failUnless(isinstance(getkw("c")[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getkw("a")[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getkw("b")[1], schema.BooleanConstraint))
+        self.assertTrue(isinstance(getkw("c")[1], schema.IntegerConstraint))
 
-        self.failUnless(isinstance(r.getResponseConstraint(),
+        self.assertTrue(isinstance(r.getResponseConstraint(),
                                    schema.ByteStringConstraint))
 
-        self.failUnless(isinstance(getkw("c", 1, [])[1],
+        self.assertTrue(isinstance(getkw("c", 1, [])[1],
                                    schema.IntegerConstraint))
-        self.failUnlessRaises(schema.Violation, getkw, "a", 1, [])
-        self.failUnlessRaises(schema.Violation, getkw, "b", 1, ["b"])
-        self.failUnlessRaises(schema.Violation, getkw, "a", 2, [])
-        self.failUnless(isinstance(getkw("c", 2, [])[1],
+        self.assertRaises(schema.Violation, getkw, "a", 1, [])
+        self.assertRaises(schema.Violation, getkw, "b", 1, ["b"])
+        self.assertRaises(schema.Violation, getkw, "a", 2, [])
+        self.assertTrue(isinstance(getkw("c", 2, [])[1],
                                    schema.IntegerConstraint))
-        self.failUnless(isinstance(getkw("c", 0, ["a", "b"])[1],
+        self.assertTrue(isinstance(getkw("c", 0, ["a", "b"])[1],
                                    schema.IntegerConstraint))
 
         try:
@@ -359,26 +359,26 @@ class Arguments(unittest.TestCase):
             r.checkResults("good", False)
         except schema.Violation:
             self.fail("that shouldn't have raised a Violation")
-        self.failUnlessRaises(schema.Violation, # 2 is not bool
+        self.assertRaises(schema.Violation, # 2 is not bool
                               r.checkAllArgs, (1,2,3), {}, False)
-        self.failUnlessRaises(schema.Violation, # too many
+        self.assertRaises(schema.Violation, # too many
                               r.checkAllArgs, (1,True,3,4), {}, False)
-        self.failUnlessRaises(schema.Violation, # double "a"
+        self.assertRaises(schema.Violation, # double "a"
                               r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3},
                               False)
-        self.failUnlessRaises(schema.Violation, # missing required "b"
+        self.assertRaises(schema.Violation, # missing required "b"
                               r.checkAllArgs, (1,), {"c": 3}, False)
-        self.failUnlessRaises(schema.Violation, # missing required "a"
+        self.assertRaises(schema.Violation, # missing required "a"
                               r.checkAllArgs, (), {"b":True, "c": 3}, False)
-        self.failUnlessRaises(schema.Violation,
+        self.assertRaises(schema.Violation,
                               r.checkResults, 12, False)
 
     def test_bad_arguments(self):
         def foo(nodefault): return str
-        self.failUnlessRaises(InvalidRemoteInterface,
+        self.assertRaises(InvalidRemoteInterface,
                               RemoteMethodSchema, method=foo)
         def bar(nodefault, a=int): return str
-        self.failUnlessRaises(InvalidRemoteInterface,
+        self.assertRaises(InvalidRemoteInterface,
                               RemoteMethodSchema, method=bar)
 
 

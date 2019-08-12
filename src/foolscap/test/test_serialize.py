@@ -38,7 +38,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         obj.append(obj) # and look at the pretty cycle
         data = serialize(obj)
         obj2 = unserialize(data)
-        self.failUnlessEqual(obj2[1], 3)
+        self.assertEqual(obj2[1], 3)
         self.failUnlessIdentical(obj2[3], obj2)
 
     def test_data(self):
@@ -46,7 +46,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
-            self.failUnlessEqual(obj2[1], 3)
+            self.assertEqual(obj2[1], 3)
         d.addCallback(_check)
         return d
 
@@ -56,7 +56,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
-            self.failUnlessEqual(obj2[1], 3)
+            self.assertEqual(obj2[1], 3)
             self.failUnlessIdentical(obj2[3], obj2)
         d.addCallback(_check)
         return d
@@ -66,7 +66,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
-            self.failUnless(isinstance(obj2[1], Bar))
+            self.assertTrue(isinstance(obj2[1], Bar))
             self.failIfIdentical(obj[1], obj2[1])
         d.addCallback(_check)
         return d
@@ -82,7 +82,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d.addCallback(_out)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
-            self.failUnlessEqual(obj2[1], 3)
+            self.assertEqual(obj2[1], 3)
             self.failUnlessIdentical(obj2[3], obj2)
         d.addCallback(_check)
         return d
@@ -116,13 +116,13 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d = t1.serialize(obj)
         del r1; del obj
         def _done(data):
-            self.failUnless("their-reference" in data)
+            self.assertTrue("their-reference" in data)
             return data
         d.addCallback(_done)
         d.addCallback(lambda data: t2.unserialize(data))
         def _check(obj2):
-            self.failUnlessEqual(obj2[0], "graph tangly")
-            self.failUnless(isinstance(obj2[1], RemoteReference))
+            self.assertEqual(obj2[0], "graph tangly")
+            self.assertTrue(isinstance(obj2[1], RemoteReference))
         d.addCallback(_check)
         return d
     test_referenceable.timeout = 5

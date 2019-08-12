@@ -346,7 +346,6 @@ class Banana(protocol.Protocol):
         # methods which are *not* generators.
 
         itr = slicer.slice(topSlicer.streamable, self)
-        
         next = iter(itr).next
 
         # we are now committed to sending the OPEN token, meaning that
