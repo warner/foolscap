@@ -112,7 +112,7 @@ class ServiceData(unittest.TestCase):
         f.close()
         e = self.assertRaises(server.UnknownVersion,
                                   server.load_service_data, basedir)
-        self.failUnlessIn("unable to handle version 99", str(e))
+        self.assertIn("unable to handle version 99", str(e))
 
     def test_save(self):
         basedir = "appserver/ServiceData/save"
@@ -155,7 +155,7 @@ class CLI(unittest.TestCase):
         d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
             self.assertEqual(rc, 1)
-            self.failUnlessIn("Refusing to touch pre-existing directory", err)
+            self.assertIn("Refusing to touch pre-existing directory", err)
             self.assertFalse(os.path.exists(os.path.join(serverdir, "port")))
             self.assertFalse(os.path.exists(os.path.join(serverdir, "services")))
         d.addCallback(_check)
@@ -322,8 +322,8 @@ class CLI(unittest.TestCase):
                                                ))
         def _check_add((rc,out,err)):
             self.assertNotEqual(rc, 0)
-            self.failUnlessIn("Error", err)
-            self.failUnlessIn("Wrong number of arguments", err)
+            self.assertIn("Error", err)
+            self.assertIn("Wrong number of arguments", err)
             self.assertEqual(os.listdir(servicesdir), [])
         d.addCallback(_check_add)
 
@@ -334,9 +334,9 @@ class CLI(unittest.TestCase):
                                                ))
         def _check_add2((rc,out,err)):
             self.assertNotEqual(rc, 0)
-            self.failUnlessIn("Error", err)
-            self.failUnlessIn("targetdir ", err)
-            self.failUnlessIn(" must already exist", err)
+            self.assertIn("Error", err)
+            self.assertIn("targetdir ", err)
+            self.assertIn(" must already exist", err)
             self.assertEqual(os.listdir(servicesdir), [])
         d.addCallback(_check_add2)
         return d
@@ -563,7 +563,7 @@ class Upload(unittest.TestCase, ShouldFailMixin):
                                                    sourcefile2))
         def _check_client3((rc,out,err)):
             self.assertNotEqual(rc, 0)
-            self.failUnlessIn("must provide --furl or --furlfile", err.strip())
+            self.assertIn("must provide --furl or --furlfile", err.strip())
         d.addCallback(_check_client3)
 
         sourcefile3 = os.path.join(basedir, "file3.txt")
@@ -589,9 +589,9 @@ class Upload(unittest.TestCase, ShouldFailMixin):
                                       sourcefile3, sourcefile4, sourcefile5))
         def _check_client4((rc,out,err)):
             self.assertEqual(rc, 0)
-            self.failUnlessIn("file3.txt: uploaded", out)
-            self.failUnlessIn("file4.txt: uploaded", out)
-            self.failUnlessIn("file5.txt: uploaded", out)
+            self.assertIn("file3.txt: uploaded", out)
+            self.assertIn("file4.txt: uploaded", out)
+            self.assertIn("file5.txt: uploaded", out)
             self.assertEqual(err.strip(), "")
 
             fn = os.path.join(incomingdir, "file3.txt")
@@ -624,13 +624,13 @@ class Client(unittest.TestCase):
         d = self.run_client()
         def _check_client1((rc,out,err)):
             self.assertNotEqual(rc, 0)
-            self.failUnlessIn("must provide --furl or --furlfile", err)
+            self.assertIn("must provide --furl or --furlfile", err)
         d.addCallback(_check_client1)
 
         d.addCallback(lambda _ign: self.run_client("--furl", "foo"))
         def _check_client2((rc,out,err)):
             self.assertNotEqual(rc, 0)
-            self.failUnlessIn("must specify a command", err)
+            self.assertIn("must specify a command", err)
         d.addCallback(_check_client2)
         return d
 
@@ -638,7 +638,7 @@ class Client(unittest.TestCase):
         d = self.run_client("--help")
         def _check_client((rc,out,err)):
             self.assertEqual(rc, 0)
-            self.failUnlessIn("Usage: flappclient [--furl=|--furlfile=] ", out)
+            self.assertIn("Usage: flappclient [--furl=|--furlfile=] ", out)
             self.assertEqual("", err.strip())
         d.addCallback(_check_client)
         return d
@@ -647,7 +647,7 @@ class Client(unittest.TestCase):
         d = self.run_client("--version")
         def _check_client((rc,out,err)):
             self.assertEqual(rc, 0)
-            self.failUnlessIn("Foolscap version:", out)
+            self.assertIn("Foolscap version:", out)
             self.assertEqual("", err.strip())
         d.addCallback(_check_client)
         return d
@@ -776,7 +776,7 @@ class RunCommand(unittest.TestCase, StallMixin):
             self.assertEqual(bardata, DATA2)
             # we use a script instead of the real dd; we know how it behaves
             self.assertEqual(out, "")
-            self.failUnlessIn("records in", err.strip())
+            self.assertIn("records in", err.strip())
         d.addCallback(_check_client3)
 
         # exercise some more options

@@ -38,7 +38,7 @@ class Send(unittest.TestCase):
             self.assertEqual(args, ("one",))
             self.assertEqual(kwargs, {"two": 2})
         p2 = p._then(_check, "one", two=2)
-        self.failUnlessIdentical(p2, p)
+        self.assertIs(p2, p)
         r(1)
 
     def testBasicFailure(self):
@@ -49,7 +49,7 @@ class Send(unittest.TestCase):
             self.assertEqual(args, ("one",))
             self.assertEqual(kwargs, {"two": 2})
         p2 = p._except(_check, "one", two=2)
-        self.failUnlessIdentical(p2, p)
+        self.assertIs(p2, p)
         r(Failure(KaboomError("oops")))
 
     def testSend(self):

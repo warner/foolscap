@@ -96,7 +96,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
                         "not CopiedFailure: %s" % f)
         self.assertTrue(f.check(ValueError),
                         "wrong exception type: %s" % f)
-        self.failUnlessSubstring("you asked me to fail", f.value)
+        self.assertIn("you asked me to fail", f.value)
 
     def testFail2(self):
         # this is done without interfaces
@@ -112,8 +112,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
                         "Hey, we didn't fail: %s" % f)
         self.assertTrue(f.check(TypeError),
                         "wrong exception type: %s" % f.type)
-        self.failUnlessSubstring("remote_add() got an unexpected keyword "
-                                 "argument 'c'", f.value)
+        self.assertIn("remote_add() got an unexpected keyword "
+                      "argument 'c'", f.value)
 
     def testFail3(self):
         # this is done without interfaces
@@ -129,8 +129,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
                         "Hey, we didn't fail: %s" % f)
         self.assertTrue(f.check(AttributeError),
                         "wrong exception type: %s" % f.type)
-        self.failUnlessSubstring("TargetWithoutInterfaces", str(f))
-        self.failUnlessSubstring(" has no attribute 'remote_bogus'", str(f))
+        self.assertIn("TargetWithoutInterfaces", str(f))
+        self.assertIn(" has no attribute 'remote_bogus'", str(f))
 
     def testFailStringException(self):
         # make sure we handle string exceptions correctly
@@ -161,7 +161,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
                             "Hey, we didn't fail: %s" % f)
             self.assertTrue(f.check(ValueError),
                             "wrong exception type: %s" % f)
-            self.failUnlessSubstring("you asked me to fail", f.value)
+            self.assertIn("you asked me to fail", f.value)
         d.addBoth(_check)
         return d
     testCopiedFailure.timeout = 2
@@ -271,8 +271,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     testFailWrongMethodRemote.timeout = 2
     def _testFailWrongMethodRemote_1(self, f):
         self.assertTrue(f.check(Violation))
-        self.failUnlessSubstring("method 'bogus' not defined in RIMyTarget",
-                                 str(f))
+        self.assertIn("method 'bogus' not defined in RIMyTarget",
+                     str(f))
 
     def testFailWrongMethodRemote2(self):
         # call a method which doesn't actually exist. The sender thinks
@@ -302,7 +302,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     testFailWrongArgsLocal1.timeout = 2
     def _testFailWrongArgsLocal1_1(self, f):
         self.assertTrue(f.check(Violation))
-        self.failUnlessSubstring("unknown argument 'c'", str(f.value))
+        self.assertIn("unknown argument 'c'", str(f.value))
 
     def testFailWrongArgsLocal2(self):
         # we violate the interface (bad arg), and the sender should catch it
@@ -315,7 +315,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     testFailWrongArgsLocal2.timeout = 2
     def _testFailWrongArgsLocal2_1(self, f):
         self.assertTrue(f.check(Violation))
-        self.failUnlessSubstring("not a number", str(f.value))
+        self.assertIn("not a number", str(f.value))
 
     def testFailWrongArgsRemote1(self):
         # the sender thinks they're ok but the recipient catches the
@@ -329,11 +329,11 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     testFailWrongArgsRemote1.timeout = 2
     def _testFailWrongArgsRemote1_1(self, f):
         self.assertTrue(f.check(Violation))
-        self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
+        self.assertIn("STRING token rejected by IntegerConstraint",
                                  f.value)
-        self.failUnlessSubstring("<RootUnslicer>.<methodcall", f.value)
-        self.failUnlessSubstring(" methodname=add", f.value)
-        self.failUnlessSubstring("<arguments arg[b]>", f.value)
+        self.assertIn("<RootUnslicer>.<methodcall", f.value)
+        self.assertIn(" methodname=add", f.value)
+        self.assertIn("<arguments arg[b]>", f.value)
 
     def testFailWrongReturnRemote(self):
         rr, target = self.setupTarget(BrokenTarget(), True)
@@ -344,9 +344,9 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     testFailWrongReturnRemote.timeout = 2
     def _testFailWrongReturnRemote_1(self, f):
         self.assertTrue(f.check(Violation))
-        self.failUnlessSubstring("in return value of <foolscap.test.common.BrokenTarget object at ", f.value)
-        self.failUnlessSubstring(">.add", f.value)
-        self.failUnlessSubstring("not a number", f.value)
+        self.assertIn("in return value of <foolscap.test.common.BrokenTarget object at ", f.value)
+        self.assertIn(">.add", f.value)
+        self.assertIn("not a number", f.value)
 
     def testFailWrongReturnLocal(self):
         # the target returns a value which violates our _resultConstraint
@@ -363,10 +363,10 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     testFailWrongReturnLocal.timeout = 2
     def _testFailWrongReturnLocal_1(self, f):
         self.assertTrue(f.check(Violation))
-        self.failUnlessSubstring("INT token rejected by ByteStringConstraint",
+        self.assertIn("INT token rejected by ByteStringConstraint",
                                  str(f))
-        self.failUnlessSubstring("in inbound method results", str(f))
-        self.failUnlessSubstring("<RootUnslicer>.Answer(req=1)", str(f))
+        self.assertIn("in inbound method results", str(f))
+        self.assertIn("<RootUnslicer>.Answer(req=1)", str(f))
 
 
 
@@ -413,8 +413,8 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
             # the (to tubid=XXX) part will see "tub=call", which is an
             # abbreviation of "callingBroker" as created in
             # TargetMixin.setupBrokers
-            self.failUnlessIn("(to tubid=call)", str(f.value))
-            self.failUnlessIn("(during method=None:hang)", str(f.value))
+            self.assertIn("(to tubid=call)", str(f.value))
+            self.assertIn("(during method=None:hang)", str(f.value))
         d.addCallback(_examine_error)
         # and once the connection is down, we should get a DeadReferenceError
         # for new messages
@@ -504,7 +504,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     testUnsendable.timeout = 2
     def _testUnsendable_1(self, why):
         self.assertTrue(why.check(Violation))
-        self.failUnlessSubstring("cannot serialize", why.value.args[0])
+        self.assertIn("cannot serialize", why.value.args[0])
 
     def test_bad_clid(self):
         rr, target = self.setupTarget(HelperTarget())
@@ -530,7 +530,7 @@ class TestCallOnly(TargetMixin, unittest.TestCase):
     def testCallOnly(self):
         rr, target = self.setupTarget(TargetWithoutInterfaces())
         ret = rr.callRemoteOnly("add", a=1, b=2)
-        self.failUnlessIdentical(ret, None)
+        self.assertIs(ret, None)
         # since we don't have a Deferred to wait upon, we just have to poll
         # for the call to take place. It should happen pretty quickly.
         def _check():
@@ -555,7 +555,7 @@ class ExamineFailuresMixin:
             f2 = f
         self.assertTrue(f2.check(ValueError))
         self.assertTrue(isinstance(f2, CopiedFailure))
-        self.failUnlessSubstring("you asked me to fail", f2.value)
+        self.assertIn("you asked me to fail", f2.value)
         self.assertFalse(f2.check(RemoteException))
         l = flog.FoolscapLogger()
         l.msg("f1", failure=f)
@@ -580,11 +580,11 @@ class ExamineFailuresMixin:
             f2 = f
         self.assertTrue(isinstance(f2, CopiedFailure))
         self.assertTrue(f2.check(Violation))
-        self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
+        self.assertIn("STRING token rejected by IntegerConstraint",
                                  f2.value)
-        self.failUnlessSubstring("<RootUnslicer>.<methodcall", f2.value)
-        self.failUnlessSubstring(" methodname=add", f2.value)
-        self.failUnlessSubstring("<arguments arg[b]>", f2.value)
+        self.assertIn("<RootUnslicer>.<methodcall", f2.value)
+        self.assertIn(" methodname=add", f2.value)
+        self.assertIn("<arguments arg[b]>", f2.value)
         self.assertFalse(f2.check(RemoteException))
 
     def _examine_remote_attribute_error(self, r, should_be_remote):
@@ -599,16 +599,16 @@ class ExamineFailuresMixin:
             f2 = f
         self.assertTrue(isinstance(f2, CopiedFailure))
         self.assertTrue(f2.check(AttributeError))
-        self.failUnlessSubstring(" has no attribute 'remote_bogus'", str(f2))
+        self.assertIn(" has no attribute 'remote_bogus'", str(f2))
         self.assertFalse(f2.check(RemoteException))
 
     def _examine_local_return_violation(self, r):
         f = r[0]
         self.assertTrue(f.check(Violation))
-        self.failUnlessSubstring("INT token rejected by ByteStringConstraint",
+        self.assertIn("INT token rejected by ByteStringConstraint",
                                  str(f))
-        self.failUnlessSubstring("in inbound method results", str(f))
-        self.failUnlessSubstring("<RootUnslicer>.Answer(req=1)", str(f))
+        self.assertIn("in inbound method results", str(f))
+        self.assertIn("<RootUnslicer>.Answer(req=1)", str(f))
         self.assertFalse(f.check(RemoteException))
 
 class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
@@ -861,7 +861,7 @@ class ReferenceCounting(ShouldFailMixin, MakeTubsMixin, unittest.TestCase):
             self.assertEqual(three, s)
             self.assertEqual(type(four), tuple) # this is where it fails
             self.assertEqual(four, t)
-            self.failUnlessIdentical(one, four)
+            self.assertIs(one, four)
         d.addCallback(_check_shared)
         return d
 

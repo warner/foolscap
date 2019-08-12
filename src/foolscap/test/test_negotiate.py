@@ -304,8 +304,8 @@ class SharedConnections(BaseMixin, unittest.TestCase):
         d.addCallback(lambda _: client.getReference(furl2))
         d.addCallback(rrefs.append)
         def _check(_):
-            self.failUnlessIdentical(rrefs[0].tracker.broker,
-                                     rrefs[1].tracker.broker)
+            self.assertIs(rrefs[0].tracker.broker,
+                          rrefs[1].tracker.broker)
         d.addCallback(_check)
         return d
 

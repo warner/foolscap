@@ -569,11 +569,11 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             options.stdout = StringIO()
             ic2.run(options)
             out = options.stdout.getvalue()
-            self.failUnlessIn(".flog.bz2: unknown\n", out)
+            self.assertIn(".flog.bz2: unknown\n", out)
             # this should have a pprinted trigger dictionary
             self.assertTrue(re.search(r"u?'message': u?'foom',", out), out)
-            self.failUnlessIn("'num': 0,", out)
-            self.failUnlessIn("RuntimeError", out)
+            self.assertIn("'num': 0,", out)
+            self.assertIn("RuntimeError", out)
 
         d.addCallback(_check)
         return d
@@ -1432,8 +1432,8 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         self.assertEqual(data['d']['message'], "")
         self.assertTrue(data['d']["isError"])
         self.assertTrue("failure" in data['d'])
-        self.failUnlessIn("SampleError", data['d']["failure"]["repr"])
-        self.failUnlessIn("whoops1", data['d']["failure"]["repr"])
+        self.assertIn("SampleError", data['d']["failure"]["repr"])
+        self.assertIn("whoops1", data['d']["failure"]["repr"])
 
         # grab the third event from the log
         data = events.pop(0)
@@ -1442,8 +1442,8 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         self.assertEqual(data['d']['message'], "")
         self.assertTrue(data['d']["isError"])
         self.assertTrue("failure" in data['d'])
-        self.failUnlessIn("SampleError", data['d']["failure"]["repr"])
-        self.failUnlessIn("whoops2", data['d']["failure"]["repr"])
+        self.assertIn("SampleError", data['d']["failure"]["repr"])
+        self.assertIn("whoops2", data['d']["failure"]["repr"])
 
     def test_wrongdir(self):
         basedir = "logging/Gatherer/wrongdir"
@@ -1909,7 +1909,7 @@ class CLI(unittest.TestCase):
         e = self.assertRaises(usage.UsageError,
                                   cli.run_flogtool, argv[1:],
                                   run_by_human=False)
-        self.failUnlessIn("--location= is mandatory", str(e))
+        self.assertIn("--location= is mandatory", str(e))
 
     def test_wrapper(self):
         basedir = "logging/CLI/wrapper"
@@ -2016,8 +2016,8 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
                                                       tmode))
             self.assertEqual(lines[0].strip(), line0)
             self.assertTrue("FAILURE:" in lines[3])
-            self.failUnlessIn("test_logging.SampleError", lines[4])
-            self.failUnlessIn(": whoops1", lines[4])
+            self.assertIn("test_logging.SampleError", lines[4])
+            self.assertIn(": whoops1", lines[4])
             self.assertTrue(lines[-1].startswith("local#3 "))
 
             argv = ["flogtool", "dump", "--just-numbers", fn]
@@ -2169,7 +2169,7 @@ class OldPickleDumper(unittest.TestCase):
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
         self.assertEqual(out, "")
-        self.failUnlessIn("which cannot be loaded safely", err)
+        self.assertIn("which cannot be loaded safely", err)
 
     def test_incident(self):
         self.basedir = "logging/OldPickleDumper/incident"
@@ -2183,7 +2183,7 @@ class OldPickleDumper(unittest.TestCase):
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
         self.assertEqual(out, "")
-        self.failUnlessIn("which cannot be loaded safely", err)
+        self.assertIn("which cannot be loaded safely", err)
 
 class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 

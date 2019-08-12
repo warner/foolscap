@@ -36,7 +36,7 @@ class Convert(unittest.TestCase):
             d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
         (ep, host) = self.successResultOf(d)
         self.assertTrue(isinstance(ep, FakeHostnameEndpoint), ep)
-        self.failUnlessIdentical(ep.reactor, reactor)
+        self.assertIs(ep.reactor, reactor)
         self.assertEqual(ep.host, expected_host)
         self.assertEqual(ep.port, expected_port)
 

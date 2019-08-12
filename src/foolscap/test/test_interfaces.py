@@ -50,13 +50,13 @@ class TestInterface(TargetMixin, unittest.TestCase):
         self.assertEqual(iface, RIMyTarget)
         iname = getRemoteInterfaceName(target)
         self.assertEqual(iname, "RIMyTarget")
-        self.failUnlessIdentical(RemoteInterfaceRegistry["RIMyTarget"],
+        self.assertIs(RemoteInterfaceRegistry["RIMyTarget"],
                                  RIMyTarget)
 
         rr, target = self.setupTarget(Target2())
         iname = getRemoteInterfaceName(target)
         self.assertEqual(iname, "RIMyTargetInterface2")
-        self.failUnlessIdentical(\
+        self.assertIs(\
             RemoteInterfaceRegistry["RIMyTargetInterface2"], RIMyTarget2)
 
 
@@ -181,9 +181,9 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('returns_none', False)
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object", str(f))
-            self.failUnlessIn(">.returns_none", str(f))
-            self.failUnlessIn("'not None' is not None", str(f))
+            self.assertIn("(in return value of <foolscap.test.common.TypesTarget object", str(f))
+            self.assertIn(">.returns_none", str(f))
+            self.assertIn("'not None' is not None", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -199,8 +199,8 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('takes_remoteinterface', 12)
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("RITypes.takes_remoteinterface(a=))", str(f))
-            self.failUnlessIn("'12' is not a Referenceable", str(f))
+            self.assertIn("RITypes.takes_remoteinterface(a=))", str(f))
+            self.assertIn("'12' is not a Referenceable", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -210,9 +210,9 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('takes_remoteinterface', TypesTarget())
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("RITypes.takes_remoteinterface(a=))", str(f))
-            self.failUnlessIn(" does not provide RemoteInterface ", str(f))
-            self.failUnlessIn("foolscap.test.common.RIDummy", str(f))
+            self.assertIn("RITypes.takes_remoteinterface(a=))", str(f))
+            self.assertIn(" does not provide RemoteInterface ", str(f))
+            self.assertIn("foolscap.test.common.RIDummy", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -241,9 +241,9 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('returns_remoteinterface', 0)
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
-            self.failUnlessIn(">.returns_remoteinterface)", str(f))
-            self.failUnlessIn("'15' is not a Referenceable", str(f))
+            self.assertIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
+            self.assertIn(">.returns_remoteinterface)", str(f))
+            self.assertIn("'15' is not a Referenceable", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -253,12 +253,12 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('returns_remoteinterface', -1)
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
-            self.failUnlessIn(">.returns_remoteinterface)", str(f))
-            self.failUnlessIn("<foolscap.test.common.TypesTarget object ",
+            self.assertIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
+            self.assertIn(">.returns_remoteinterface)", str(f))
+            self.assertIn("<foolscap.test.common.TypesTarget object ",
                               str(f))
-            self.failUnlessIn(" does not provide RemoteInterface ", str(f))
-            self.failUnlessIn("foolscap.test.common.RIDummy", str(f))
+            self.assertIn(" does not provide RemoteInterface ", str(f))
+            self.assertIn("foolscap.test.common.RIDummy", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 

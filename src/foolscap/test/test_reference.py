@@ -21,7 +21,7 @@ class LocalReference(unittest.TestCase, ShouldFailMixin):
     def test_remoteReference(self):
         r = Remote()
         rref = IRemoteReference(r)
-        self.failUnlessIdentical(r, rref)
+        self.assertIs(r, rref)
 
     def test_callRemote(self):
         t = HelperTarget()

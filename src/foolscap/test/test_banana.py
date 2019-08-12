@@ -525,7 +525,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
                        tCLOSE(0)])
         self.failIfBananaFailure(res)
         self.assertEqual(res, [[1,2], [1,2]])
-        self.failUnlessIdentical(res[0], res[1])
+        self.assertIs(res[0], res[1])
 
     def test_ref2(self):
         res = self.do([tOPEN(0),'list',
@@ -540,7 +540,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         # python2.4 is not, so we do it by hand
         self.assertEqual(len(res), len(wanted))
         self.assertEqual(res[0], wanted[0])
-        self.failUnlessIdentical(res, res[1])
+        self.assertIs(res, res[1])
 
     def test_ref3(self):
         res = self.do([tOPEN(0),'list',
@@ -551,7 +551,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         wanted = [(1,2)]
         wanted.append(wanted[0])
         self.assertEqual(res, wanted)
-        self.failUnlessIdentical(res[0], res[1])
+        self.assertIs(res[0], res[1])
 
     def test_ref4(self):
         res = self.do([tOPEN(0),'list',
@@ -562,7 +562,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         wanted = [{"a":1}]
         wanted.append(wanted[0])
         self.assertEqual(res, wanted)
-        self.failUnlessIdentical(res[0], res[1])
+        self.assertIs(res[0], res[1])
 
     def test_ref5(self):
         # The Droste Effect: a list that contains itself
@@ -579,7 +579,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         #self.failUnlessEqual(res, wanted)
         self.assertEqual(len(res), len(wanted))
         self.assertEqual(res[0:2], wanted[0:2])
-        self.failUnlessIdentical(res[2], res)
+        self.assertIs(res[2], res)
         self.assertEqual(res[3], wanted[3])
 
     def test_ref6(self):
@@ -606,7 +606,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         self.assertTrue(len(res[0]) == 1)
         self.assertTrue(type(res[0][0]) is tuple)
         self.assertTrue(len(res[0][0]) == 1)
-        self.failUnlessIdentical(res[0][0][0], res)
+        self.assertIs(res[0][0][0], res)
 
         # TODO: need a test where tuple[0] and [1] are deferred, but
         # tuple[0] becomes available before tuple[2] is inserted. Not sure
@@ -980,7 +980,7 @@ class EncodeFailureTest(unittest.TestCase):
     def _test4_1(self, e, s):
         e.trap(Violation)
         self.assertEqual(e.value.where, "<RootSlicer>.ErrorfulSlicer[1]")
-        self.failUnlessSubstring("cannot serialize <open file",
+        self.assertIn("cannot serialize <open file",
                                  e.value.args[0])
         self.assertTrue(s.childDied)
         self.assertEqual(self.banana.tokens,

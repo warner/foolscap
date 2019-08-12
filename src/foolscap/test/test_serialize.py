@@ -39,7 +39,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         data = serialize(obj)
         obj2 = unserialize(data)
         self.assertEqual(obj2[1], 3)
-        self.failUnlessIdentical(obj2[3], obj2)
+        self.assertIs(obj2[3], obj2)
 
     def test_data(self):
         obj = ["simple graph", 3, True]
@@ -57,7 +57,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
             self.assertEqual(obj2[1], 3)
-            self.failUnlessIdentical(obj2[3], obj2)
+            self.assertIs(obj2[3], obj2)
         d.addCallback(_check)
         return d
 
@@ -77,13 +77,13 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         b = StringIO()
         d = serialize(obj, outstream=b)
         def _out(res):
-            self.failUnlessIdentical(res, b)
+            self.assertIs(res, b)
             return b.getvalue()
         d.addCallback(_out)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
             self.assertEqual(obj2[1], 3)
-            self.failUnlessIdentical(obj2[3], obj2)
+            self.assertIs(obj2[3], obj2)
         d.addCallback(_check)
         return d
 

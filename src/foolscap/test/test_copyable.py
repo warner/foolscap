@@ -243,7 +243,7 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy4_2(self, why, obj):
         why.trap(Violation)
-        self.failUnlessSubstring("unknown attribute 'bad'", str(why))
+        self.assertIn("unknown attribute 'bad'", str(why))
         del obj.bad
 
         obj.foo = "not a number"
@@ -253,8 +253,8 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy4_3(self, why, obj):
         why.trap(Violation)
-        self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
-                                 str(why))
+        self.assertIn("STRING token rejected by IntegerConstraint",
+                      str(why))
 
         obj.foo = 12
         obj.bar = "very long " * 1000
@@ -266,7 +266,7 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy4_4(self, why):
         why.trap(Violation)
-        self.failUnlessSubstring("token too large", str(why))
+        self.assertIn("token too large", str(why))
 
 class Registration(unittest.TestCase):
     def testRegistration(self):
@@ -274,8 +274,8 @@ class Registration(unittest.TestCase):
         copyable_classes = rc_classes.values()
         self.assertTrue(MyRemoteCopy1 in copyable_classes)
         self.assertTrue(MyRemoteCopy2 in copyable_classes)
-        self.failUnlessIdentical(rc_classes["MyCopyable2name"],
-                                 MyRemoteCopy2)
+        self.assertIs(rc_classes["MyCopyable2name"],
+                      MyRemoteCopy2)
         self.assertFalse(MyRemoteCopy5 in copyable_classes)
 
 
