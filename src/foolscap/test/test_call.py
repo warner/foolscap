@@ -41,7 +41,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         return d
     def _testCall1_1(self, res, rr):
         # the caller still holds the RemoteReference
-        self.failUnless(self.callingBroker.yourReferenceByCLID.has_key(1))
+        self.failUnless(1 in self.callingBroker.yourReferenceByCLID)
 
         # release the RemoteReference. This does two things: 1) the
         # callingBroker will forget about it. 2) they will send a decref to
@@ -52,15 +52,15 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # we need to give it a moment to deliver the DecRef message and act
         # on it. Poll until the caller has received it.
         def _check():
-            if self.callingBroker.yourReferenceByCLID.has_key(1):
+            if 1 in self.callingBroker.yourReferenceByCLID:
                 return False
             return True
         d = self.poll(_check)
         d.addCallback(self._testCall1_2)
         return d
     def _testCall1_2(self, res):
-        self.failIf(self.callingBroker.yourReferenceByCLID.has_key(1))
-        self.failIf(self.targetBroker.myReferenceByCLID.has_key(1))
+        self.failIf(1 in self.callingBroker.yourReferenceByCLID)
+        self.failIf(1 in self.targetBroker.myReferenceByCLID)
 
     def testCall1a(self):
         # no interfaces, but use positional args

@@ -121,10 +121,10 @@ class Banana(protocol.Protocol):
         contents of this table.
         """
 
-        out_vocabDict = dict(zip(vocabStrings, range(len(vocabStrings))))
+        out_vocabDict = dict(list(zip(vocabStrings, list(range(len(vocabStrings))))))
         self.outgoingVocabTableWasReplaced(out_vocabDict)
 
-        in_vocabDict = dict(zip(range(len(vocabStrings)), vocabStrings))
+        in_vocabDict = dict(list(zip(list(range(len(vocabStrings))), vocabStrings)))
         self.replaceIncomingVocabulary(in_vocabDict)
 
     ### connection setup
@@ -180,7 +180,7 @@ class Banana(protocol.Protocol):
         assert tokens.IRootSlicer.providedBy(self.rootSlicer)
 
         itr = self.rootSlicer.slice()
-        next = iter(itr).next
+        next = iter(itr).__next__
         top = (self.rootSlicer, next, None)
         self.slicerStack = [top]
 
@@ -346,6 +346,7 @@ class Banana(protocol.Protocol):
         # methods which are *not* generators.
 
         itr = slicer.slice(topSlicer.streamable, self)
+        
         next = iter(itr).next
 
         # we are now committed to sending the OPEN token, meaning that
@@ -405,7 +406,7 @@ class Banana(protocol.Protocol):
         assert isinstance(vocabStrings, (list, tuple))
         for s in vocabStrings:
             assert isinstance(s, str)
-        vocabDict = dict(zip(vocabStrings, range(len(vocabStrings))))
+        vocabDict = dict(list(zip(vocabStrings, list(range(len(vocabStrings))))))
         s = ReplaceVocabSlicer(vocabDict)
         # the ReplaceVocabSlicer does some magic to insure the VOCAB message
         # does not use vocab tokens itself. This would be legal (sort of a
@@ -509,7 +510,7 @@ class Banana(protocol.Protocol):
             write(FLOAT)
             write(struct.pack("!d", obj))
         elif isinstance(obj, str):
-            if self.outgoingVocabulary.has_key(obj):
+            if obj in self.outgoingVocabulary:
                 symbolID = self.outgoingVocabulary[obj]
                 int2b128(symbolID, write)
                 write(VOCAB)

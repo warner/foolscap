@@ -132,7 +132,7 @@ BananaUnslicerRegistry = {}
 def registerUnslicer(opentype, factory, registry=None):
     if registry is None:
         registry = UnslicerRegistry
-    assert not registry.has_key(opentype)
+    assert opentype not in registry
     registry[opentype] = factory
 
 class UnslicerClass(type):

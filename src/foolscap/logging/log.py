@@ -65,6 +65,9 @@ class Count:
         self.n = firstval - 1
 
     def next(self):
+        return self.__next__()
+    
+    def __next__(self):
         self.n += 1
         return self.n
 

@@ -137,7 +137,7 @@ class RemoteCopyUnslicer(slicer.BaseUnslicer):
         assert ready_deferred is None
         if self.attrname == None:
             attrname = obj
-            if self.d.has_key(attrname):
+            if attrname in self.d:
                 raise BananaError("duplicate attribute name '%s'" % attrname)
             s = self.schema
             if s:
@@ -248,7 +248,7 @@ def registerRemoteCopyUnslicerFactory(typename, unslicerfactory,
 
     if registry == None:
         registry = CopyableRegistry
-    assert not registry.has_key(typename)
+    assert typename not in registry
     registry[typename] = unslicerfactory
 
 # this keeps track of everything submitted to registerRemoteCopyFactory

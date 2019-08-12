@@ -85,7 +85,7 @@ class ReplaceVocabUnslicer(LeafUnslicer):
         assert not isinstance(token, Deferred)
         assert ready_deferred is None
         if self.key is None:
-            if self.d.has_key(token):
+            if token in self.d:
                 raise BananaError("duplicate key '%s'" % token)
             self.key = token
         else:

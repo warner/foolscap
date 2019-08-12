@@ -91,7 +91,7 @@ class DictUnslicer(BaseUnslicer):
         if isinstance(key, Deferred):
             raise BananaError("incomplete object as dictionary key")
         try:
-            if self.d.has_key(key):
+            if key in self.d:
                 raise BananaError("duplicate key '%s'" % key)
         except TypeError:
             raise BananaError("unhashable key '%s'" % key)

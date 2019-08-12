@@ -684,7 +684,7 @@ class Tub(service.MultiService):
         if not self.locationHints:
             # without a location, there is no point in giving it a name
             return None
-        if self.referenceToName.has_key(ref):
+        if ref in self.referenceToName:
             return self.referenceToName[ref]
         name = preferred_name
         if not name:

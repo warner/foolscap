@@ -856,8 +856,9 @@ class ErrorfulSlicer(slicer.BaseSlicer):
         if self.mode == "slice":
             raise Violation("slice failed")
         return self
-
     def next(self):
+        return self.__next__()
+    def __next__(self):
         self.counter += 1
         if not self.items:
             raise StopIteration
@@ -1927,7 +1928,7 @@ class VocabTest2(TestBananaMixin, unittest.TestCase):
     def test_loop(self):
         strings = ["list", "tuple", "dict"]
         vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
-        self.invdict = dict(zip(vdict.values(), vdict.keys()))
+        self.invdict = dict(list(zip(vdict.values(), vdict.keys())))
 
         self.banana.setOutgoingVocabulary(strings)
         # this next check only happens to work because there is nothing to
