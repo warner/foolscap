@@ -346,8 +346,11 @@ class Banana(protocol.Protocol):
         # methods which are *not* generators.
 
         itr = slicer.slice(topSlicer.streamable, self)
-        next = iter(itr).next
-
+        if six.PY2:
+            next = iter(itr).next
+        else:
+            next = iter(itr).__next__
+            
         # we are now committed to sending the OPEN token, meaning that
         # failures after this point will cause an ABORT/CLOSE to be sent
 
