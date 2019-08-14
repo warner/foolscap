@@ -141,7 +141,7 @@ class CLI(unittest.TestCase):
             # windows where those concepts are pretty fuzzy. Do this by
             # making sure the mode doesn't change when we chmod it again.
             mode1 = os.stat(serverdir).st_mode
-            os.chmod(serverdir, 0700)
+            os.chmod(serverdir, 0o700)
             mode2 = os.stat(serverdir).st_mode
             self.assertEqual("%o" % mode1, "%o" % mode2)
         d.addCallback(_check)
