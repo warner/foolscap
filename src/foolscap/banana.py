@@ -121,12 +121,12 @@ class Banana(protocol.Protocol):
         contents of this table.
         """
 
-        out_vocabDict = dict(list(zip(vocabStrings, list(range(len(vocabStrings))))))
+        out_vocabDict = dict([(v,k) for k,v in enumerate(vocabStrings)])
         self.outgoingVocabTableWasReplaced(out_vocabDict)
 
-        in_vocabDict = dict(list(zip(list(range(len(vocabStrings))), vocabStrings)))
+        in_vocabDict = dict(enumerate(vocabStrings))
         self.replaceIncomingVocabulary(in_vocabDict)
-
+        
     ### connection setup
 
     def connectionMade(self):
