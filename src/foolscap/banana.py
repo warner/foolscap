@@ -126,7 +126,7 @@ class Banana(protocol.Protocol):
 
         in_vocabDict = dict(enumerate(vocabStrings))
         self.replaceIncomingVocabulary(in_vocabDict)
-        
+
     ### connection setup
 
     def connectionMade(self):
