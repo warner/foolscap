@@ -166,14 +166,14 @@ class Parallel(BaseMixin, unittest.TestCase):
     def checkConnectedToFirstListener(self, rr, targetPhases):
         # verify that we connected to the first listener, and not the second
         self.assertEqual(rr.tracker.broker.transport.getPeer().port,
-                             self.p1)
+                         self.p1)
         # then pause a moment for the other connection to finish giving up
         d = self.stall(rr, 0.5)
         # and verify that we finished during the phase that we meant to test
         d.addCallback(lambda res:
                       self.assertEqual(self.clientPhases, targetPhases,
-                                           "negotiation was abandoned in "
-                                           "the wrong phase"))
+                                       "negotiation was abandoned in "
+                                       "the wrong phase"))
         return d
 
     def test1(self):
@@ -395,7 +395,7 @@ class CrossfireMixin(BaseMixin, PollMixin):
         # Therefore tub1's Broker (as used by its RemoteReference) will have
         # a far-end port number that should match tub2's Listener.
         self.assertEqual(rref.tracker.broker.transport.getPeer().port,
-                             self.portnum2)
+                         self.portnum2)
         # in addition, connection[1] should have been abandoned during a
         # specific phase.
         self.assertEqual(self.tub2phases, targetPhases)
