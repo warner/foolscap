@@ -64,6 +64,6 @@ class TubID(unittest.TestCase):
                                                             0, good_furl, ri)
         del good_tracker
         self.assertRaises(api.BananaError,
-                              referenceable.RemoteReferenceTracker,
-                              good_broker, 0, bad_furl, ri)
+                          referenceable.RemoteReferenceTracker,
+                          good_broker, 0, bad_furl, ri)
 
