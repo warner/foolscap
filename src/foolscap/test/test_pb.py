@@ -432,7 +432,7 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
             self.assertEqual(rref.getRemoteTubID(), self.tubB.getTubID())
             self.assertEqual(rref.isConnected(), True)
             self.assertEqual(rref.getLocationHints(),
-                                 ['tcp:127.0.0.1:%d' % self.tub_ports[1]])
+                             ['tcp:127.0.0.1:%d' % self.tub_ports[1]])
         d.addCallback(_check)
         return d
 
