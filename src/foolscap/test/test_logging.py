@@ -121,9 +121,9 @@ class Advanced(unittest.TestCase):
                 events.append(json.loads(line))
             self.assertEqual(len(events), 3)
             self.assertEqual(events[0]["header"]["type"],
-                                 "log-file-observer")
+                             "log-file-observer")
             self.assertEqual(events[0]["header"]["threshold"],
-                                 log.OPERATIONAL)
+                             log.OPERATIONAL)
             self.assertEqual(events[1]["from"], "local")
             self.assertEqual(events[2]["d"]["message"], "two")
         d.addCallback(_check)
@@ -411,7 +411,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l.setLogDir("logging/Incidents/basic") # this should be idempotent
         got_logdir = l.logdir
         self.assertEqual(got_logdir,
-                             os.path.abspath("logging/Incidents/basic"))
+                         os.path.abspath("logging/Incidents/basic"))
         # qualifiers should be run now
         l.msg("two")
         l.msg("3-trigger", level=log.BAD)
@@ -433,9 +433,9 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             #header = events[0]
             self.assertTrue("header" in events[0])
             self.assertEqual(events[0]["header"]["trigger"]["message"],
-                                 "3-trigger")
+                             "3-trigger")
             self.assertEqual(events[0]["header"]["versions"]["foolscap"],
-                                 foolscap.__version__)
+                             foolscap.__version__)
             self.assertEqual(events[3]["d"]["message"], "3-trigger")
 
         l.msg("4-trailing")
@@ -448,9 +448,9 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             self.assertEqual(len(events), 1+4)
             self.assertTrue("header" in events[0])
             self.assertEqual(events[0]["header"]["trigger"]["message"],
-                                 "3-trigger")
+                             "3-trigger")
             self.assertEqual(events[0]["header"]["versions"]["foolscap"],
-                                 foolscap.__version__)
+                             foolscap.__version__)
             self.assertEqual(events[3]["d"]["message"], "3-trigger")
             self.assertEqual(events[4]["d"]["message"], "4-trailing")
 
@@ -479,7 +479,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         # you set the reporter *class*, not an instance
         bad_ir = ImpatientReporter("basedir", "logger", "tubid")
         self.assertRaises((AssertionError, TypeError),
-                              l.setIncidentReporterFactory, bad_ir)
+                          l.setIncidentReporterFactory, bad_ir)
         l.setIncidentReporterFactory(ImpatientReporter)
         l.msg("1", level=log.BAD)
         self.assertEqual(l.incidents_declared, 0)
@@ -505,7 +505,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l.setLogDir("logging/Incidents/overlapping")
         got_logdir = l.logdir
         self.assertEqual(got_logdir,
-                             os.path.abspath("logging/Incidents/overlapping"))
+                         os.path.abspath("logging/Incidents/overlapping"))
         d = defer.Deferred()
         def _go(name, trigger):
             d.callback( (name, trigger) )
@@ -531,7 +531,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
 
             self.assertEqual(len(events), 1+3)
             self.assertEqual(events[0]["header"]["trigger"]["message"],
-                                 "2-trigger")
+                             "2-trigger")
             self.assertEqual(events[1]["d"]["message"], "1")
             self.assertEqual(events[2]["d"]["message"], "2-trigger")
             self.assertEqual(events[3]["d"]["message"], "3-trigger")
@@ -691,7 +691,7 @@ class Publish(PollMixin, unittest.TestCase):
             d = logport.callRemote("get_versions")
             def _check(versions):
                 self.assertEqual(versions["foolscap"],
-                                     foolscap.__version__)
+                                 foolscap.__version__)
             d.addCallback(_check)
             # note: catch_up=False, so this message won't be sent
             log.msg("message 0 here, before your time")
@@ -848,7 +848,7 @@ class Publish(PollMixin, unittest.TestCase):
             d = logport.callRemote("get_versions")
             def _check_versions(versions):
                 self.assertEqual(versions["foolscap"],
-                                     foolscap.__version__)
+                                 foolscap.__version__)
             d.addCallback(_check_versions)
             d.addCallback(lambda res: logport.callRemote("get_pid"))
             def _check_pid(pid):
@@ -1452,7 +1452,7 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         # create a LogGatherer with an unspecified basedir: it should look
         # for a .tac file in the current directory, not see it, and complain
         e = self.assertRaises(RuntimeError,
-                                  gatherer.GathererService, None, True, None)
+                              gatherer.GathererService, None, True, None)
         self.assertTrue("running in the wrong directory" in str(e))
 
     def test_log_gatherer(self):
@@ -1901,14 +1901,14 @@ class CLI(unittest.TestCase):
         #basedir = "logging/CLI/create_gatherer"
         argv = ["flogtool", "create-gatherer", "--bogus-arg"]
         self.assertRaises(usage.UsageError,
-                              cli.run_flogtool, argv[1:], run_by_human=False)
+                          cli.run_flogtool, argv[1:], run_by_human=False)
 
     def test_create_gatherer_no_location(self):
         basedir = "logging/CLI/create_gatherer_no_location"
         argv = ["flogtool", "create-gatherer", basedir]
         e = self.assertRaises(usage.UsageError,
-                                  cli.run_flogtool, argv[1:],
-                                  run_by_human=False)
+                              cli.run_flogtool, argv[1:],
+                              run_by_human=False)
         self.assertIn("--location= is mandatory", str(e))
 
     def test_wrapper(self):
@@ -2075,7 +2075,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             lines = list(StringIO(out).readlines())
             self.assertEqual(len(lines), 8)
             self.assertEqual(lines[0].strip(),
-                                 "Application versions (embedded in logfile):")
+                             "Application versions (embedded in logfile):")
             self.assertTrue(lines[1].strip().startswith("foolscap:"), lines[1])
             self.assertTrue(lines[2].strip().startswith("twisted:"), lines[2])
             mypid = os.getpid()
@@ -2275,8 +2275,8 @@ class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             self.assertTrue("copied 5 of 5 events into new file" in out, out)
             lines = [l.strip() for l in StringIO(out).readlines()]
             self.assertEqual(lines,
-                                 ["HEADER", "0", "1", "2", "3",
-                                  "copied 5 of 5 events into new file"])
+                             ["HEADER", "0", "1", "2", "3",
+                              "copied 5 of 5 events into new file"])
             self.compare_events(events, self._read_logfile(fn2))
 
             # --from . This normally takes a base32 tubid prefix, but the
@@ -2459,7 +2459,7 @@ class Bridge(unittest.TestCase):
             self.assertTrue(fl_out[1]["from-twisted"])
             # str(unserializable) is like "<function <lambda> at 0xblahblah>"
             self.assertEqual(fl_out[2]["message"],
-                                 "three is " + str(unserializable))
+                             "three is " + str(unserializable))
             self.assertTrue(fl_out[2]["from-twisted"])
 
         d.addCallback(_check)
@@ -2500,7 +2500,7 @@ class Bridge(unittest.TestCase):
             self.assertTrue(fl_out[1]["from-twisted"])
             # str(unserializable) is like "<function <lambda> at 0xblahblah>"
             self.assertEqual(fl_out[2]["message"],
-                                 "three is " + str(unserializable))
+                             "three is " + str(unserializable))
             self.assertTrue(fl_out[2]["from-twisted"])
 
         d.addCallback(_check)
