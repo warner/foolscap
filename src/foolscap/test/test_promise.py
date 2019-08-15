@@ -77,8 +77,8 @@ class Send(unittest.TestCase):
         when(p2).addCallback(_check2)
         def _check3(res):
             self.assertEqual(t.calls, [("one", 1),
-                                           ("two", 3, 2, {"k": "extra"}),
-                                           ])
+                                       ("two", 3, 2, {"k": "extra"}),
+                                       ])
         fireEventually().addCallback(_check3)
 
     def testFailure(self):
