@@ -51,7 +51,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
         iname = getRemoteInterfaceName(target)
         self.assertEqual(iname, "RIMyTarget")
         self.assertIs(RemoteInterfaceRegistry["RIMyTarget"],
-                                 RIMyTarget)
+                      RIMyTarget)
 
         rr, target = self.setupTarget(Target2())
         iname = getRemoteInterfaceName(target)
@@ -74,7 +74,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
         self.assertTrue(isinstance(s2, schema.IntegerConstraint))
         self.assertTrue(s2.checkObject(12, False) == None)
         self.assertRaises(schema.Violation,
-                              s2.checkObject, "string", False)
+                          s2.checkObject, "string", False)
         s3 = s1.getResponseConstraint()
         self.assertTrue(isinstance(s3, schema.IntegerConstraint))
 
@@ -86,7 +86,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
         self.assertTrue(isinstance(s2, schema.IntegerConstraint))
         self.assertTrue(s2.checkObject(12, False) == None)
         self.assertRaises(schema.Violation,
-                              s2.checkObject, "string", False)
+                          s2.checkObject, "string", False)
         s3 = s1.getResponseConstraint()
         self.assertTrue(isinstance(s3, schema.IntegerConstraint))
 
@@ -256,7 +256,7 @@ class Types(TargetMixin, unittest.TestCase):
             self.assertIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
             self.assertIn(">.returns_remoteinterface)", str(f))
             self.assertIn("<foolscap.test.common.TypesTarget object ",
-                              str(f))
+                          str(f))
             self.assertIn(" does not provide RemoteInterface ", str(f))
             self.assertIn("foolscap.test.common.RIDummy", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
