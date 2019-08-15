@@ -184,8 +184,8 @@ class UnbananaTestMixin:
         self.assertTrue(obj is None, "object was produced: %s" % obj)
         self.assertTrue(self.banana.violation, "didn't fail, ret=%s" % obj)
         self.assertFalse(self.banana.disconnectReason,
-                    "connection was dropped: %s" % \
-                    self.banana.disconnectReason)
+                         "connection was dropped: %s" % \
+                         self.banana.disconnectReason)
         return self.banana.violation
 
     def shouldDropConnection(self, tokens):
@@ -276,8 +276,8 @@ class TestBananaMixin:
         # will set b.violation, which we can examine afterwards
         self.assertEqual(obj, None)
         self.assertFalse(self.banana.disconnectReason,
-                    "connection was dropped: %s" % \
-                    self.banana.disconnectReason)
+                         "connection was dropped: %s" % \
+                         self.banana.disconnectReason)
         self.assertEqual(len(self.banana.receiveStack), 1)
         f = self.banana.violation
         if not f:
