@@ -104,7 +104,7 @@ class SetLocation(unittest.TestCase):
         # we call neither .listenOn nor .setLocation
         self.assertEqual(t.locationHints, [])
         self.assertRaises(NoLocationError,
-                              t.registerReference, Referenceable())
+                          t.registerReference, Referenceable())
 
 
 
@@ -169,7 +169,7 @@ class FurlFile(unittest.TestCase):
             t2.setLocation("127.0.0.1:%d" % portnum)
             r2 = Referenceable()
             self.assertRaises(WrongTubIdError,
-                                  t2.registerReference, r2, furlFile=ffn)
+                              t2.registerReference, r2, furlFile=ffn)
             return t2.disownServiceParent()
         d.addCallback(_take2)
         return d
