@@ -50,18 +50,18 @@ class Convert(unittest.TestCase):
 
     def testConvertLegacyHint(self):
         self.assertEqual(tcp.convert_legacy_hint("127.0.0.1:9900"),
-                             "tcp:127.0.0.1:9900")
+                         "tcp:127.0.0.1:9900")
         self.assertEqual(tcp.convert_legacy_hint("tcp:127.0.0.1:9900"),
-                             "tcp:127.0.0.1:9900")
+                         "tcp:127.0.0.1:9900")
         self.assertEqual(tcp.convert_legacy_hint("other:127.0.0.1:9900"),
-                             "other:127.0.0.1:9900")
+                         "other:127.0.0.1:9900")
         # this is unfortunate
         self.assertEqual(tcp.convert_legacy_hint("unix:1"), "tcp:unix:1")
         # so new hints should do one of these:
         self.assertEqual(tcp.convert_legacy_hint("tor:host:1234"),
-                             "tor:host:1234") # multiple colons
+                         "tor:host:1234") # multiple colons
         self.assertEqual(tcp.convert_legacy_hint("unix:fd=1"),
-                             "unix:fd=1") # equals signs, key=value -style
+                         "unix:fd=1") # equals signs, key=value -style
 
     def testTCP(self):
         self.checkTCPEndpoint("tcp:127.0.0.1:9900", "127.0.0.1", 9900)
