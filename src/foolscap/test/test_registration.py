@@ -65,7 +65,7 @@ class Registration(unittest.TestCase):
         u2 = tub.registerReference(t1, "name", furlFile=ff)
         self.assertEqual(u1, u2)
         self.assertRaises(WrongNameError,
-                              tub.registerReference, t1, "newname", furlFile=ff)
+                          tub.registerReference, t1, "newname", furlFile=ff)
 
 
 
