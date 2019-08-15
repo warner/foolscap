@@ -17,8 +17,8 @@ class URL(unittest.TestCase):
         sr = SturdyRef("pb://%s,otherstuff@127.0.0.1:9900/name" % TUB1)
         self.assertEqual(sr.tubID, TUB1)
         self.assertRaises(BadFURLError,
-                              SturdyRef,
-                              "pb://badstuff,%s@127.0.0.1:9900/name" % TUB1)
+                          SturdyRef,
+                          "pb://badstuff,%s@127.0.0.1:9900/name" % TUB1)
 
     def testCompare(self):
         sr1 = SturdyRef("pb://%s@127.0.0.1:9900/name" % TUB1)
@@ -37,7 +37,7 @@ class URL(unittest.TestCase):
         sr = SturdyRef(url)
         self.assertEqual(sr.tubID, TUB1)
         self.assertEqual(sr.locationHints,
-                             ["127.0.0.1:9900", "remote:8899"])
+                         ["127.0.0.1:9900", "remote:8899"])
         self.assertEqual(sr.name, "name")
 
     def testBrokenHints(self):
