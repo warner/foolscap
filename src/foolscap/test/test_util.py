@@ -104,9 +104,9 @@ class Time(unittest.TestCase):
     def test_format(self):
         when = 1339286175.7071271
         self.assertEqual(util.format_time(when, "utc"),
-                             "2012-06-09_23:56:15.707127Z")
+                         "2012-06-09_23:56:15.707127Z")
         self.assertEqual(util.format_time(when, "epoch"),
-                             "1339286175.707")
+                         "1339286175.707")
         self.assertTrue(":" in util.format_time(when, "short-local"))
         self.assertTrue(":" in util.format_time(when, "long-local"))
 
