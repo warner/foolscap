@@ -111,7 +111,7 @@ class ServiceData(unittest.TestCase):
         json.dump(orig, f)
         f.close()
         e = self.assertRaises(server.UnknownVersion,
-                                  server.load_service_data, basedir)
+                              server.load_service_data, basedir)
         self.assertIn("unable to handle version 99", str(e))
 
     def test_save(self):
@@ -222,7 +222,7 @@ class CLI(unittest.TestCase):
             servicedir2 = os.path.join(serverdir,
                                        data["services"][swiss]["relative_basedir"])
             self.assertEqual(os.path.abspath(servicedir),
-                                 os.path.abspath(servicedir2))
+                             os.path.abspath(servicedir2))
             self.assertEqual(data["services"][swiss]["comment"], None)
         d.addCallback(_check_add)
         return d
@@ -250,7 +250,7 @@ class CLI(unittest.TestCase):
             servicedir1b = os.path.join(serverdir,
                                         data["services"][swiss1]["relative_basedir"])
             self.assertEqual(os.path.abspath(servicedir1a),
-                                 os.path.abspath(servicedir1b))
+                             os.path.abspath(servicedir1b))
 
             # add a second service, to make sure the "find the next-highest
             # available servicedir" logic works from both empty and non-empty
@@ -266,7 +266,7 @@ class CLI(unittest.TestCase):
             servicedir2b = os.path.join(serverdir,
                                         data["services"][swiss2]["relative_basedir"])
             self.assertEqual(os.path.abspath(servicedir2a),
-                                 os.path.abspath(servicedir2b))
+                             os.path.abspath(servicedir2b))
         d.addCallback(_check_add)
         return d
 
@@ -297,9 +297,9 @@ class CLI(unittest.TestCase):
             servicedir2 = os.path.join(serverdir,
                                        data["services"][swiss]["relative_basedir"])
             self.assertEqual(os.path.abspath(servicedir),
-                                 os.path.abspath(servicedir2))
+                             os.path.abspath(servicedir2))
             self.assertEqual(data["services"][swiss]["comment"],
-                                 "commentary here")
+                             "commentary here")
         d.addCallback(_check_add)
         return d
 
@@ -754,7 +754,7 @@ class RunCommand(unittest.TestCase, StallMixin):
             self.assertNotEqual(rc, 0)
             self.assertEqual(out, "")
             self.assertEqual(err.strip(),
-                                 "cat: foo.txt: No such file or directory")
+                             "cat: foo.txt: No such file or directory")
         d.addCallback(_check_client2)
 
         d.addCallback(lambda ign:
@@ -830,7 +830,7 @@ class RunCommand(unittest.TestCase, StallMixin):
             self.assertNotEqual(rc, 0)
             self.assertEqual(out, "") # --no-stdout
             self.assertEqual(err.strip(),
-                                 "cat: foo.txt: No such file or directory")
+                             "cat: foo.txt: No such file or directory")
         d.addCallback(_check_client7)
 
         return d
