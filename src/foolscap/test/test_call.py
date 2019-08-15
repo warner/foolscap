@@ -330,7 +330,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def _testFailWrongArgsRemote1_1(self, f):
         self.assertTrue(f.check(Violation))
         self.assertIn("STRING token rejected by IntegerConstraint",
-                                 f.value)
+                      f.value)
         self.assertIn("<RootUnslicer>.<methodcall", f.value)
         self.assertIn(" methodname=add", f.value)
         self.assertIn("<arguments arg[b]>", f.value)
@@ -364,7 +364,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def _testFailWrongReturnLocal_1(self, f):
         self.assertTrue(f.check(Violation))
         self.assertIn("INT token rejected by ByteStringConstraint",
-                                 str(f))
+                      str(f))
         self.assertIn("in inbound method results", str(f))
         self.assertIn("<RootUnslicer>.Answer(req=1)", str(f))
 
@@ -476,7 +476,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         def _check(res):
             self.assertTrue(self.lost)
             self.assertEqual(self.lost_args, (("arg",),
-                                                  {"foo": "kwarg"}))
+                                              {"foo": "kwarg"}))
         d.addCallback(_check)
         return d
 
@@ -581,7 +581,7 @@ class ExamineFailuresMixin:
         self.assertTrue(isinstance(f2, CopiedFailure))
         self.assertTrue(f2.check(Violation))
         self.assertIn("STRING token rejected by IntegerConstraint",
-                                 f2.value)
+                      f2.value)
         self.assertIn("<RootUnslicer>.<methodcall", f2.value)
         self.assertIn(" methodname=add", f2.value)
         self.assertIn("<arguments arg[b]>", f2.value)
@@ -606,7 +606,7 @@ class ExamineFailuresMixin:
         f = r[0]
         self.assertTrue(f.check(Violation))
         self.assertIn("INT token rejected by ByteStringConstraint",
-                                 str(f))
+                      str(f))
         self.assertIn("in inbound method results", str(f))
         self.assertIn("<RootUnslicer>.Answer(req=1)", str(f))
         self.assertFalse(f.check(RemoteException))
