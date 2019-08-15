@@ -360,26 +360,26 @@ class Arguments(unittest.TestCase):
         except schema.Violation:
             self.fail("that shouldn't have raised a Violation")
         self.assertRaises(schema.Violation, # 2 is not bool
-                              r.checkAllArgs, (1,2,3), {}, False)
+                          r.checkAllArgs, (1,2,3), {}, False)
         self.assertRaises(schema.Violation, # too many
-                              r.checkAllArgs, (1,True,3,4), {}, False)
+                          r.checkAllArgs, (1,True,3,4), {}, False)
         self.assertRaises(schema.Violation, # double "a"
-                              r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3},
+                          r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3},
                               False)
         self.assertRaises(schema.Violation, # missing required "b"
-                              r.checkAllArgs, (1,), {"c": 3}, False)
+                          r.checkAllArgs, (1,), {"c": 3}, False)
         self.assertRaises(schema.Violation, # missing required "a"
-                              r.checkAllArgs, (), {"b":True, "c": 3}, False)
+                          r.checkAllArgs, (), {"b":True, "c": 3}, False)
         self.assertRaises(schema.Violation,
-                              r.checkResults, 12, False)
+                          r.checkResults, 12, False)
 
     def test_bad_arguments(self):
         def foo(nodefault): return str
         self.assertRaises(InvalidRemoteInterface,
-                              RemoteMethodSchema, method=foo)
+                          RemoteMethodSchema, method=foo)
         def bar(nodefault, a=int): return str
         self.assertRaises(InvalidRemoteInterface,
-                              RemoteMethodSchema, method=bar)
+                          RemoteMethodSchema, method=bar)
 
 
 class Interfaces(unittest.TestCase):
