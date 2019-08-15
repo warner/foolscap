@@ -481,7 +481,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         f = self.shouldDropConnection(tokens)
         self.assertEqual(f.value.where, "<RootUnslicer>.<Foo>.c.<??>")
         self.assertEqual(f.value.args[0],
-                             "InstanceUnslicer classname must be string")
+                         "InstanceUnslicer classname must be string")
 
     def test_instance_bad2(self):
         "subinstance with numeric attribute name"
@@ -495,9 +495,9 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
                   tCLOSE(0)]
         f = self.shouldDropConnection(tokens)
         self.assertEqual(f.value.where,
-                             "<RootUnslicer>.<Foo>.c.<Bar>.attrname??")
+                         "<RootUnslicer>.<Foo>.c.<Bar>.attrname??")
         self.assertEqual(f.value.args[0],
-                             "InstanceUnslicer keys must be STRINGs")
+                         "InstanceUnslicer keys must be STRINGs")
 
     def test_instance_unsafe1(self):
 
@@ -516,7 +516,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         f = self.shouldFail(tokens)
         self.assertEqual(f.value.where, "<RootUnslicer>")
         self.assertEqual(f.value.args[0],
-                             "unknown top-level OPEN type ('instance',)")
+                         "unknown top-level OPEN type ('instance',)")
 
     def test_ref1(self):
         res = self.do([tOPEN(0),'list',
@@ -953,7 +953,7 @@ class EncodeFailureTest(unittest.TestCase):
         self.assertEqual(e.value.where, "<RootSlicer>.ErrorfulSlicer[1]")
         self.assertEqual(e.value.args, ("next failed",))
         self.assertEqual(self.banana.tokens,
-                             [('OPEN', 0), 1, ('ABORT',), ('CLOSE', 0)])
+                         [('OPEN', 0), 1, ('ABORT',), ('CLOSE', 0)])
 
     def test3(self):
         # .slice.next returning Deferred when streaming isn't allowed
@@ -968,7 +968,7 @@ class EncodeFailureTest(unittest.TestCase):
         self.assertEqual(e.value.where, "<RootSlicer>.ErrorfulSlicer[1]")
         self.assertEqual(e.value.args, ("parent not streamable",))
         self.assertEqual(self.banana.tokens,
-                             [('OPEN', 0), 1, ('ABORT',), ('CLOSE', 0)])
+                         [('OPEN', 0), 1, ('ABORT',), ('CLOSE', 0)])
 
     def test4(self):
         # .newSlicerFor (no ISlicer adapter), parent propagates upwards
@@ -981,10 +981,10 @@ class EncodeFailureTest(unittest.TestCase):
         e.trap(Violation)
         self.assertEqual(e.value.where, "<RootSlicer>.ErrorfulSlicer[1]")
         self.assertIn("cannot serialize <open file",
-                                 e.value.args[0])
+                      e.value.args[0])
         self.assertTrue(s.childDied)
         self.assertEqual(self.banana.tokens,
-                             [('OPEN', 0), 1, ('ABORT',), ('CLOSE', 0)])
+                         [('OPEN', 0), 1, ('ABORT',), ('CLOSE', 0)])
 
     def test5(self):
         # .newSlicerFor (no ISlicer adapter), parent ignores
@@ -994,7 +994,7 @@ class EncodeFailureTest(unittest.TestCase):
                       self.assertTrue(s.childDied)) # noticed but ignored
         d.addCallback(lambda res:
                       self.assertEqual(self.banana.tokens,
-                                           [('OPEN', 0), 1, 3, ('CLOSE', 0)]))
+                                       [('OPEN', 0), 1, 3, ('CLOSE', 0)]))
         return d
 
     def test_instance_unsafe(self):
@@ -1621,7 +1621,7 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                                             bSTR("vrai"),
                                            bCLOSE(1)))
         self.assertEqual(f.value.args[0],
-                             "BooleanUnslicer only accepts an INT token")
+                         "BooleanUnslicer only accepts an INT token")
 
         # but true/false is a constraint, and is reported with Violation
         self.violate2(self.TRUE(),
