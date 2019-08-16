@@ -408,7 +408,7 @@ class Banana(protocol.Protocol):
         assert isinstance(vocabStrings, (list, tuple))
         for s in vocabStrings:
             assert isinstance(s, str)
-        vocabDict = dict(list(zip(vocabStrings, list(range(len(vocabStrings))))))
+        vocabDict = dict([(v,k) for k,v in enumerate(vocabStrings)])
         s = ReplaceVocabSlicer(vocabDict)
         # the ReplaceVocabSlicer does some magic to insure the VOCAB message
         # does not use vocab tokens itself. This would be legal (sort of a
