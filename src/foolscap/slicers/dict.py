@@ -91,7 +91,7 @@ class DictUnslicer(BaseUnslicer):
         if isinstance(key, Deferred):
             raise BananaError("incomplete object as dictionary key")
         try:
-            if self.d.has_key(key):
+            if key in self.d:
                 raise BananaError("duplicate key '%s'" % key)
         except TypeError:
             raise BananaError("unhashable key '%s'" % key)
@@ -119,9 +119,7 @@ class DictUnslicer(BaseUnslicer):
 class OrderedDictSlicer(DictSlicer):
     slices = dict
     def sliceBody(self, streamable, banana):
-        keys = self.obj.keys()
-        keys.sort()
-        for key in keys:
+        for key in sorted(self.obj.keys()):
             value = self.obj[key]
             yield key
             yield value
@@ -142,6 +140,6 @@ class DictConstraint(OpenerConstraint):
         if self.maxKeys != None and len(obj) > self.maxKeys:
             raise Violation("Dict keys=%d > maxKeys=%d" % (len(obj),
                                                            self.maxKeys))
-        for key, value in obj.iteritems():
+        for key, value in obj.items():
             self.keyConstraint.checkObject(key, inbound)
             self.valueConstraint.checkObject(value, inbound)

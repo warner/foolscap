@@ -65,6 +65,9 @@ class Count:
         self.n = firstval - 1
 
     def next(self):
+        return self.__next__()
+    
+    def __next__(self):
         self.n += 1
         return self.n
 
@@ -309,8 +312,8 @@ class FoolscapLogger:
         # iterates over all current log events in no particular order. The
         # caller should sort them by event number. If this isn't iterated
         # quickly enough, more events may arrive.
-        for facility,b1 in self.buffers.iteritems():
-            for level,q in b1.iteritems():
+        for facility,b1 in self.buffers.items():
+            for level,q in b1.items():
                 for event in q:
                     yield event
 

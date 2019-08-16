@@ -171,7 +171,7 @@ class Summary(resource.Resource):
 
     def getChild(self, path, req):
         if "-" in path:
-            lfnum,levelnum = map(int, path.split("-"))
+            lfnum,levelnum = [int(x) for x in path.split("-")]
             lf = self._viewer.logfiles[lfnum]
             (first, last, num_events, levels,
              pid, versions) = self._viewer.summaries[lf]

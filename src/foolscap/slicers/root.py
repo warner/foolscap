@@ -70,6 +70,8 @@ class RootSlicer:
     def __iter__(self):
         return self # we are our own iterator
     def next(self):
+        return self.__next__()  
+    def __next__(self):
         if self.objectSentDeferred:
             self.objectSentDeferred.callback(None)
             self.objectSentDeferred = None
