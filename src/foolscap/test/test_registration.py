@@ -19,13 +19,13 @@ class Registration(unittest.TestCase):
         del t1
         gc.collect()
         # t1 should still be alive
-        self.failUnless(w1())
-        self.failUnlessEqual(results, [])
+        self.assertTrue(w1())
+        self.assertEqual(results, [])
         tub.unregisterReference(w1())
         gc.collect()
         # now it should be dead
-        self.failIf(w1())
-        self.failUnlessEqual(len(results), 1)
+        self.assertFalse(w1())
+        self.assertEqual(len(results), 1)
 
     def testWeak(self):
         t1 = HelperTarget()
@@ -39,8 +39,8 @@ class Registration(unittest.TestCase):
         del t1
         gc.collect()
         # t1 should be dead
-        self.failIf(w1())
-        self.failUnlessEqual(len(results), 1)
+        self.assertFalse(w1())
+        self.assertEqual(len(results), 1)
 
     def TODO_testNonweakrefable(self):
         # what happens when we register a non-Referenceable? We don't really
@@ -63,9 +63,9 @@ class Registration(unittest.TestCase):
         tub.setLocation("bogus:1234567")
         u1 = tub.registerReference(t1, "name", furlFile=ff)
         u2 = tub.registerReference(t1, "name", furlFile=ff)
-        self.failUnlessEqual(u1, u2)
-        self.failUnlessRaises(WrongNameError,
-                              tub.registerReference, t1, "newname", furlFile=ff)
+        self.assertEqual(u1, u2)
+        self.assertRaises(WrongNameError,
+                          tub.registerReference, t1, "newname", furlFile=ff)
 
 
 

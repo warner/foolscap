@@ -25,7 +25,7 @@ class ConnectToSelf(MakeTubsMixin, unittest.TestCase):
             return ref.callRemote("set", 12)
         d.addCallback(_connected)
         def _check(res):
-            self.failUnlessEqual(target.obj, 12)
+            self.assertEqual(target.obj, 12)
         d.addCallback(_check)
         def _connect_again(res):
             target.obj = None

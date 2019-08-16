@@ -393,7 +393,7 @@ class ShouldFailMixin:
                     self.fail("got failure %s, was expecting %s"
                               % (res, expected_failure))
                 if substring:
-                    self.failUnless(substring in str(res),
+                    self.assertTrue(substring in str(res),
                                     "%s: substring '%s' not in '%s'"
                                     % (which, substring, str(res)))
                 # make the Failure available to a subsequent callback, but

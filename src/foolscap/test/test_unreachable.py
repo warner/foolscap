@@ -46,13 +46,13 @@ class References(ShouldFailMixin, unittest.TestCase):
 
         d = client_tub.getReference(furl)
         d.addCallback(lambda rref: rref.callRemote("call", s))
-        d.addCallback(lambda res: self.failUnlessEqual(res, 1))
-        d.addCallback(lambda _: self.failIfEqual(r.obj, None))
+        d.addCallback(lambda res: self.assertEqual(res, 1))
+        d.addCallback(lambda _: self.assertNotEqual(r.obj, None))
         def _inspect_obj(_):
-            self.failUnlessEqual(r.obj.getSturdyRef().getURL(), None)
+            self.assertEqual(r.obj.getSturdyRef().getURL(), None)
         d.addCallback(_inspect_obj)
         d.addCallback(lambda _: r.obj.callRemote("call", 2))
-        d.addCallback(lambda _: self.failUnlessEqual(s.obj, 2))
+        d.addCallback(lambda _: self.assertEqual(s.obj, 2))
         return d
 
     def test_unreachable_gift(self):
@@ -72,7 +72,7 @@ class References(ShouldFailMixin, unittest.TestCase):
 
         d = client_tub.getReference(furl)
         d.addCallback(lambda rref: rref.callRemote("call", s))
-        d.addCallback(lambda res: self.failUnlessEqual(res, 1))
+        d.addCallback(lambda res: self.assertEqual(res, 1))
         d.addCallback(lambda _: recipient_tub.getReference(furl))
         # when server_tub tries to send the lame 's' rref to recipient_tub,
         # the RemoteReferenceTracker won't have a FURL, so it will be
@@ -97,7 +97,7 @@ class References(ShouldFailMixin, unittest.TestCase):
         # setOption before setServiceParent
         t.setOption("logport-furlfile", furlfile)
         t.setServiceParent(self.s)
-        self.failUnlessRaises(NoLocationError, t.getLogPort)
-        self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
-        self.failIf(os.path.exists(furlfile))
+        self.assertRaises(NoLocationError, t.getLogPort)
+        self.assertRaises(NoLocationError, t.getLogPortFURL)
+        self.assertFalse(os.path.exists(furlfile))
         # without .setLocation, the furlfile will never be created

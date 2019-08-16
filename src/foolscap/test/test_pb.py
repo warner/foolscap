@@ -60,22 +60,22 @@ class TestReferenceUnslicer(unittest.TestCase):
 
     def testReject(self):
         u = self.newUnslicer()
-        self.failUnlessRaises(BananaError, u.checkToken, STRING, 10)
+        self.assertRaises(BananaError, u.checkToken, STRING, 10)
         u = self.newUnslicer()
-        self.failUnlessRaises(BananaError, u.checkToken, OPEN, 0)
+        self.assertRaises(BananaError, u.checkToken, OPEN, 0)
 
     def testNoInterfaces(self):
         u = self.newUnslicer()
         u.checkToken(INT, 0)
         u.receiveChild(12)
         rr1,rr1d = u.receiveClose()
-        self.failUnless(rr1d is None)
+        self.assertTrue(rr1d is None)
         rr2 = self.broker.getTrackerForYourReference(12).getRef()
-        self.failUnless(rr2)
-        self.failUnless(isinstance(rr2, referenceable.RemoteReference))
-        self.failUnlessEqual(rr2.tracker.broker, self.broker)
-        self.failUnlessEqual(rr2.tracker.clid, 12)
-        self.failUnlessEqual(rr2.tracker.interfaceName, None)
+        self.assertTrue(rr2)
+        self.assertTrue(isinstance(rr2, referenceable.RemoteReference))
+        self.assertEqual(rr2.tracker.broker, self.broker)
+        self.assertEqual(rr2.tracker.clid, 12)
+        self.assertEqual(rr2.tracker.interfaceName, None)
 
     def testInterfaces(self):
         u = self.newUnslicer()
@@ -83,14 +83,14 @@ class TestReferenceUnslicer(unittest.TestCase):
         u.receiveChild(12)
         u.receiveChild("IBar")
         rr1,rr1d = u.receiveClose()
-        self.failUnless(rr1d is None)
+        self.assertTrue(rr1d is None)
         rr2 = self.broker.getTrackerForYourReference(12).getRef()
-        self.failUnless(rr2)
-        self.failUnlessIdentical(rr1, rr2)
-        self.failUnless(isinstance(rr2, referenceable.RemoteReference))
-        self.failUnlessEqual(rr2.tracker.broker, self.broker)
-        self.failUnlessEqual(rr2.tracker.clid, 12)
-        self.failUnlessEqual(rr2.tracker.interfaceName, "IBar")
+        self.assertTrue(rr2)
+        self.assertIs(rr1, rr2)
+        self.assertTrue(isinstance(rr2, referenceable.RemoteReference))
+        self.assertEqual(rr2.tracker.broker, self.broker)
+        self.assertEqual(rr2.tracker.clid, 12)
+        self.assertEqual(rr2.tracker.interfaceName, "IBar")
 
 class TestAnswer(unittest.TestCase):
     # OPEN(answer), INT(reqID), [answer], CLOSE
@@ -118,9 +118,9 @@ class TestAnswer(unittest.TestCase):
         u.receiveChild(12) # causes broker.getRequest
         u.checkToken(STRING, 8)
         u.receiveChild("results")
-        self.failIf(req.answers)
+        self.assertFalse(req.answers)
         u.receiveClose() # causes broker.gotAnswer
-        self.failUnlessEqual(req.answers, [(True, "results")])
+        self.assertEqual(req.answers, [(True, "results")])
 
     def testAccept2(self):
         req = TestRequest(12)
@@ -132,9 +132,9 @@ class TestAnswer(unittest.TestCase):
         u.receiveChild(12) # causes broker.getRequest
         u.checkToken(STRING, 15)
         u.receiveChild("results")
-        self.failIf(req.answers)
+        self.assertFalse(req.answers)
         u.receiveClose() # causes broker.gotAnswer
-        self.failUnlessEqual(req.answers, [(True, "results")])
+        self.assertEqual(req.answers, [(True, "results")])
 
 
     def testReject1(self):
@@ -143,7 +143,7 @@ class TestAnswer(unittest.TestCase):
         self.broker.addRequest(req)
         u = self.newUnslicer()
         u.checkToken(INT, 0)
-        self.failUnlessRaises(Violation, u.receiveChild, 13)
+        self.assertRaises(Violation, u.receiveChild, 13)
 
     def testReject2(self):
         # answer a request with a result that violates the constraint
@@ -153,18 +153,18 @@ class TestAnswer(unittest.TestCase):
         u = self.newUnslicer()
         u.checkToken(INT, 0)
         u.receiveChild(12)
-        self.failUnlessRaises(Violation, u.checkToken, STRING, 42)
+        self.assertRaises(Violation, u.checkToken, STRING, 42)
         # this does not yet errback the request
-        self.failIf(req.answers)
+        self.assertFalse(req.answers)
         # it gets errbacked when banana reports the violation
         v = Violation("icky")
         v.setLocation("here")
         u.reportViolation(BananaFailure(v))
-        self.failUnlessEqual(len(req.answers), 1)
+        self.assertEqual(len(req.answers), 1)
         err = req.answers[0]
-        self.failIf(err[0])
+        self.assertFalse(err[0])
         f = err[1]
-        self.failUnless(f.check(Violation))
+        self.assertTrue(f.check(Violation))
 
 
 
@@ -185,14 +185,14 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
     def send(self, arg):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("set", obj=arg)
-        d.addCallback(self.failUnless)
+        d.addCallback(self.assertTrue)
         d.addCallback(lambda res: target.obj)
         return d
 
     def send2(self, arg1, arg2):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("set2", obj1=arg1, obj2=arg2)
-        d.addCallback(self.failUnless)
+        d.addCallback(self.assertTrue)
         d.addCallback(lambda res: (target.obj1, target.obj2))
         return d
 
@@ -208,19 +208,19 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         d.addCallback(self._testRef1_1, r)
         return d
     def _testRef1_1(self, res, r):
-        self.failUnless(isinstance(res, referenceable.RemoteReference))
+        self.assertTrue(isinstance(res, referenceable.RemoteReference))
         rref = res
-        self.failUnless(isinstance(rref.getPeer(), broker.LoopbackAddress))
-        self.failUnlessEqual(rref.isConnected(), True)
-        self.failUnlessEqual(rref.getLocationHints(), []) # loopback
-        self.failUnlessEqual(rref.getSturdyRef().getURL(), None)
+        self.assertTrue(isinstance(rref.getPeer(), broker.LoopbackAddress))
+        self.assertEqual(rref.isConnected(), True)
+        self.assertEqual(rref.getLocationHints(), []) # loopback
+        self.assertEqual(rref.getSturdyRef().getURL(), None)
         # keepalives are disabled
-        self.failUnlessEqual(rref.getDataLastReceivedAt(), None)
+        self.assertEqual(rref.getDataLastReceivedAt(), None)
         t = rref.tracker
-        self.failUnlessEqual(t.broker, self.targetBroker)
-        self.failUnless(type(t.clid) is int)
-        self.failUnless(self.callingBroker.getMyReferenceByCLID(t.clid) is r)
-        self.failUnlessEqual(t.interfaceName, 'RIMyTarget')
+        self.assertEqual(t.broker, self.targetBroker)
+        self.assertTrue(type(t.clid) is int)
+        self.assertTrue(self.callingBroker.getMyReferenceByCLID(t.clid) is r)
+        self.assertEqual(t.interfaceName, 'RIMyTarget')
 
     def testRef2(self):
         # sending a Referenceable over the wire multiple times should result
@@ -234,8 +234,8 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         d.addCallback(self._testRef2_2, res1)
         return d
     def _testRef2_2(self, res2, res1):
-        self.failUnless(res1 == res2)
-        self.failUnless(res1 is res2) # newpb does this, oldpb didn't
+        self.assertTrue(res1 == res2)
+        self.assertTrue(res1 is res2) # newpb does this, oldpb didn't
 
     def testRef3(self):
         # sending the same Referenceable in multiple arguments should result
@@ -246,8 +246,8 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         return d
     def _testRef3_1(self, res):
         res1, res2 = res
-        self.failUnless(res1 == res2)
-        self.failUnless(res1 is res2)
+        self.assertTrue(res1 == res2)
+        self.assertTrue(res1 is res2)
 
     def testRef4(self):
         # sending the same Referenceable in multiple calls will result in
@@ -264,8 +264,8 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         return d
     def _testRef4_2(self, res, target, res1):
         res2 = target.obj
-        self.failUnless(res1 == res2)
-        self.failUnless(res1 is res2)
+        self.assertTrue(res1 == res2)
+        self.assertTrue(res1 is res2)
 
     def testRef5(self):
         # those RemoteReferences can be used to invoke methods on the sender.
@@ -277,14 +277,14 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         r.name = "ernie"
         d = self.send(r)
         d.addCallback(lambda rr: rr.callRemote("getName"))
-        d.addCallback(self.failUnlessEqual, "ernie")
+        d.addCallback(self.assertEqual, "ernie")
         return d
 
     def testRef6(self):
         # Referenceables survive round-trips
         r = Target()
         d = self.echo(r)
-        d.addCallback(self.failUnlessIdentical, r)
+        d.addCallback(self.assertIs, r)
         return d
 
 ##     def NOTtestRemoteRef1(self):
@@ -332,8 +332,8 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         return d
     def _testArgs1_2(self, res, target, res1):
         res2 = target.obj
-        self.failUnless(res1 == res2)
-        self.failIf(res1 is res2)
+        self.assertTrue(res1 == res2)
+        self.assertFalse(res1 is res2)
 
     def testArgs2(self):
         # but sending them as multiple arguments of the *same* method call
@@ -344,7 +344,7 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         d.addCallback(self._testArgs2_1, rr, target)
         return d
     def _testArgs2_1(self, res, rr, target):
-        self.failUnlessIdentical(target.obj1, target.obj2)
+        self.assertIs(target.obj1, target.obj2)
 
     def testAnswer1(self):
         # also, shared objects in a return value should be shared
@@ -352,7 +352,7 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         rr, target = self.setupTarget(HelperTarget())
         target.obj = (r,r)
         d = rr.callRemote("get")
-        d.addCallback(lambda res: self.failUnlessIdentical(res[0], res[1]))
+        d.addCallback(lambda res: self.assertIs(res[0], res[1]))
         return d
 
     def testAnswer2(self):
@@ -368,8 +368,8 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         d.addCallback(self._testAnswer2_2, res1)
         return d
     def _testAnswer2_2(self, res2, res1):
-        self.failUnless(res1 == res2)
-        self.failIf(res1 is res2)
+        self.assertTrue(res1 == res2)
+        self.assertFalse(res1 is res2)
 
 
 class TestFactory(unittest.TestCase):
@@ -413,8 +413,8 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
         swiss = url[url.rindex("/")+1:]
         d = self.tubA.getReference(badurl)
         def _check(f):
-            self.failIf(swiss in str(f), "swissnum revealed")
-            self.failUnless(swiss[:2] in str(f), "swissnum hint not given")
+            self.assertFalse(swiss in str(f), "swissnum revealed")
+            self.assertTrue(swiss[:2] in str(f), "swissnum hint not given")
         d.addErrback(_check)
         return d
 
@@ -424,15 +424,15 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
         d = self.tubA.getReference(url)
         def _check(rref):
             sr = rref.getSturdyRef()
-            self.failUnlessEqual(sr.getURL(), url)
+            self.assertEqual(sr.getURL(), url)
             peer = rref.getPeer()
-            self.failUnless(IAddress.providedBy(peer))
-            self.failUnlessEqual(peer.type, "TCP")
-            self.failUnlessEqual(peer.host, "127.0.0.1")
-            self.failUnlessEqual(rref.getRemoteTubID(), self.tubB.getTubID())
-            self.failUnlessEqual(rref.isConnected(), True)
-            self.failUnlessEqual(rref.getLocationHints(),
-                                 ['tcp:127.0.0.1:%d' % self.tub_ports[1]])
+            self.assertTrue(IAddress.providedBy(peer))
+            self.assertEqual(peer.type, "TCP")
+            self.assertEqual(peer.host, "127.0.0.1")
+            self.assertEqual(rref.getRemoteTubID(), self.tubB.getTubID())
+            self.assertEqual(rref.isConnected(), True)
+            self.assertEqual(rref.getLocationHints(),
+                             ['tcp:127.0.0.1:%d' % self.tub_ports[1]])
         d.addCallback(_check)
         return d
 
@@ -447,7 +447,7 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
         # this will cause some text to be logged with log.msg. TODO: capture
         # this text and look at it more closely.
         def _check(res):
-            self.failUnless(isinstance(res, failure.Failure))
+            self.assertTrue(isinstance(res, failure.Failure))
             res.trap(ValueError)
             messages = [log.format_message(e) for e in logs]
             failures = [e['failure'] for e in logs if "failure" in e]
@@ -455,20 +455,20 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
             msg = ("an inbound callRemote that we [%s] executed (on behalf of "
                    "someone else, TubID %s) failed\n"
                    % (self.tubB.getShortTubID(), self.tubA.getShortTubID()))
-            self.failUnless(msg in text,
+            self.assertTrue(msg in text,
                             "msg '%s' not in text '%s'" % (msg, text))
-            self.failUnless("\n reqID=2, rref=<foolscap.test.common.Target object at "
+            self.assertTrue("\n reqID=2, rref=<foolscap.test.common.Target object at "
                             in text)
-            self.failUnless(", methname=RIMyTarget.fail\n" in text)
-            self.failUnless("\n args=[]\n" in text)
-            self.failUnless("\n kwargs={}\n" in text)
-            self.failUnless("\n the LOCAL failure was:" in text)
-            self.failUnlessEqual(len(failures), 1)
+            self.assertTrue(", methname=RIMyTarget.fail\n" in text)
+            self.assertTrue("\n args=[]\n" in text)
+            self.assertTrue("\n kwargs={}\n" in text)
+            self.assertTrue("\n the LOCAL failure was:" in text)
+            self.assertEqual(len(failures), 1)
             f = failures[0]
-            self.failUnless(isinstance(f, failure.Failure))
-            self.failUnlessIn("Traceback:", str(f))
-            self.failUnlessIn("exceptions.ValueError", str(f))
-            self.failUnlessIn(": you asked me to fail\n", str(f))
+            self.assertTrue(isinstance(f, failure.Failure))
+            self.assertIn("Traceback:", str(f))
+            self.assertIn("exceptions.ValueError", str(f))
+            self.assertIn(": you asked me to fail\n", str(f))
         d.addBoth(_check)
         return d
     testLogLocalFailure.timeout = 2
@@ -487,7 +487,7 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
         # event a chance to be put into the list.
         d.addBoth(fireEventually)
         def _check(res):
-            self.failUnless(isinstance(res, failure.Failure))
+            self.assertTrue(isinstance(res, failure.Failure))
             res.trap(ValueError)
             messages = [log.format_message(e) for e in logs]
             failures = [e['failure'] for e in logs if "failure" in e]
@@ -495,18 +495,18 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
             msg = ("an outbound callRemote (that we [%s] sent to someone "
                    "else [%s]) failed on the far end\n"
                    % (self.tubA.getShortTubID(), self.tubB.getShortTubID()))
-            self.failUnless(msg in text)
-            self.failUnless("\n reqID=2, rref=<RemoteReference at "
+            self.assertTrue(msg in text)
+            self.assertTrue("\n reqID=2, rref=<RemoteReference at "
                             in text)
-            self.failUnless((" [%s]>, methname=RIMyTarget.fail\n" % url)
+            self.assertTrue((" [%s]>, methname=RIMyTarget.fail\n" % url)
                             in text)
             #self.failUnless("\n args=[]\n" in text) # TODO: log these too
             #self.failUnless("\n kwargs={}\n" in text)
-            self.failUnlessEqual(len(failures), 1)
+            self.assertEqual(len(failures), 1)
             f = failures[0]
-            self.failUnless("Traceback (most recent call last):\n"
+            self.assertTrue("Traceback (most recent call last):\n"
                             in str(f))
-            self.failUnless("\nexceptions.ValueError: you asked me to fail\n"
+            self.assertTrue("\nexceptions.ValueError: you asked me to fail\n"
                             in str(f))
         d.addBoth(_check)
         return d
@@ -520,11 +520,11 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
         return d
     testBoundMethod.timeout = 5
     def _testBoundMethod_1(self, ref):
-        self.failUnless(isinstance(ref, referenceable.RemoteMethodReference))
+        self.assertTrue(isinstance(ref, referenceable.RemoteMethodReference))
         #self.failUnlessEqual(ref.getSchemaName(),
         #                     RIMyTarget.__remote_name__ + "/remote_add")
         d = ref.callRemote(a=1, b=2)
-        d.addCallback(lambda res: self.failUnlessEqual(res, 3))
+        d.addCallback(lambda res: self.assertEqual(res, 3))
         return d
 
     def testFunction(self):
@@ -538,9 +538,9 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
         return d
     testFunction.timeout = 5
     def _testFunction_1(self, ref, l):
-        self.failUnless(isinstance(ref, referenceable.RemoteMethodReference))
+        self.assertTrue(isinstance(ref, referenceable.RemoteMethodReference))
         d = ref.callRemote(what=12)
-        d.addCallback(lambda res: self.failUnlessEqual(l, [12]))
+        d.addCallback(lambda res: self.assertEqual(l, [12]))
         return d
 
 
@@ -587,20 +587,20 @@ class TestService(unittest.TestCase):
         s.setLocation("127.0.0.1:%d" % portnum)
         t1 = Target()
         public_url = s.registerReference(t1, "target")
-        self.failUnless(public_url.startswith("pb://"))
-        self.failUnless(public_url.endswith("@127.0.0.1:%d/target" % portnum))
-        self.failUnlessEqual(s.registerReference(t1, "target"), public_url)
-        self.failUnlessIdentical(s.getReferenceForURL(public_url), t1)
+        self.assertTrue(public_url.startswith("pb://"))
+        self.assertTrue(public_url.endswith("@127.0.0.1:%d/target" % portnum))
+        self.assertEqual(s.registerReference(t1, "target"), public_url)
+        self.assertIs(s.getReferenceForURL(public_url), t1)
         t2 = Target()
         private_url = s.registerReference(t2)
-        self.failUnlessEqual(s.registerReference(t2), private_url)
-        self.failUnlessIdentical(s.getReferenceForURL(private_url), t2)
+        self.assertEqual(s.registerReference(t2), private_url)
+        self.assertIs(s.getReferenceForURL(private_url), t2)
 
         s.unregisterURL(public_url)
-        self.failUnlessRaises(KeyError, s.getReferenceForURL, public_url)
+        self.assertRaises(KeyError, s.getReferenceForURL, public_url)
 
         s.unregisterReference(t2)
-        self.failUnlessRaises(KeyError, s.getReferenceForURL, private_url)
+        self.assertRaises(KeyError, s.getReferenceForURL, private_url)
 
         # TODO: check what happens when you register the same referenceable
         # under multiple URLs
@@ -626,8 +626,8 @@ class TestService(unittest.TestCase):
         return d
     testConnect1.timeout = 5
     def _testConnect1(self, res, t1):
-        self.failUnlessEqual(t1.calls, [(2,3)])
-        self.failUnlessEqual(res, 5)
+        self.assertEqual(t1.calls, [(2,3)])
+        self.assertEqual(res, 5)
 
     def testConnect2(self):
         t1 = Target()
@@ -637,8 +637,8 @@ class TestService(unittest.TestCase):
         return d
     testConnect2.timeout = 5
     def _testConnect2(self, res, t1):
-        self.failUnlessEqual(t1.calls, [(2,3)])
-        self.failUnlessEqual(res, 5)
+        self.assertEqual(t1.calls, [(2,3)])
+        self.assertEqual(res, 5)
 
 
     def testConnect3(self):
@@ -647,16 +647,16 @@ class TestService(unittest.TestCase):
         d = self.getRef(t1)
         d.addCallback(lambda ref: ref.callRemote('add', a=2, b=3))
         def _check(res):
-            self.failUnlessEqual(t1.calls, [(2,3)])
-            self.failUnlessEqual(res, 5)
+            self.assertEqual(t1.calls, [(2,3)])
+            self.assertEqual(res, 5)
             t1.calls = []
         d.addCallback(_check)
         d.addCallback(lambda res:
                       self.services[1].getReference(self.public_url))
         d.addCallback(lambda ref: ref.callRemote('add', a=5, b=6))
         def _check2(res):
-            self.failUnlessEqual(t1.calls, [(5,6)])
-            self.failUnlessEqual(res, 11)
+            self.assertEqual(t1.calls, [(5,6)])
+            self.assertEqual(res, 11)
         d.addCallback(_check2)
         return d
     testConnect3.timeout = 5
@@ -665,7 +665,7 @@ class TestService(unittest.TestCase):
         # make sure we can register static data too, at least hashable ones
         t1 = (1,2,3)
         d = self.getRef(t1)
-        d.addCallback(lambda ref: self.failUnlessEqual(ref, (1,2,3)))
+        d.addCallback(lambda ref: self.assertEqual(ref, (1,2,3)))
         return d
     #testStatic.timeout = 2
 
@@ -680,8 +680,8 @@ class TestService(unittest.TestCase):
         self.fail("method wasn't supposed to work")
     def _testBadMethod_eb(self, f):
         #self.failUnlessEqual(f.type, 'foolscap.tokens.Violation')
-        self.failUnlessEqual(f.type, Violation)
-        self.failUnless(re.search(r'RIMyTarget\(.*\) does not offer missing',
+        self.assertEqual(f.type, Violation)
+        self.assertTrue(re.search(r'RIMyTarget\(.*\) does not offer missing',
                                   str(f)))
 
     def testBadMethod2(self):
@@ -692,9 +692,9 @@ class TestService(unittest.TestCase):
         return d
     testBadMethod2.timeout = 5
     def _testBadMethod2_eb(self, f):
-        self.failUnlessEqual(reflect.qual(f.type), 'exceptions.AttributeError')
-        self.failUnlessSubstring("TargetWithoutInterfaces", f.value)
-        self.failUnlessSubstring(" has no attribute 'remote_missing'", f.value)
+        self.assertEqual(reflect.qual(f.type), 'exceptions.AttributeError')
+        self.assertIn("TargetWithoutInterfaces", f.value)
+        self.assertIn(" has no attribute 'remote_missing'", f.value)
 
 
 
