@@ -257,8 +257,8 @@ class Negotiation(protocol.Protocol):
         self.transport.write("\r\n") # end block
 
     def debug_doTimer(self, name, timeout, call, *args):
-        if ("debug_slow_%s" % name in self._test_options and
-            name not in self.debugTimers):
+        if ("debug_slow_%s" % name in self._test_options) and \
+            (name not in self.debugTimers):
             self.log("debug_doTimer(%s)" % name)
             t = reactor.callLater(timeout, self.debug_fireTimer, name)
             self.debugTimers[name] = (t, [(call, args)])
