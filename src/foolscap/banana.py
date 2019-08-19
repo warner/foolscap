@@ -121,7 +121,7 @@ class Banana(protocol.Protocol):
         contents of this table.
         """
 
-        out_vocabDict = dict([(v,k) for k,v in enumerate(vocabStrings)])
+        out_vocabDict = dict([(v, k) for k, v in enumerate(vocabStrings)])
         self.outgoingVocabTableWasReplaced(out_vocabDict)
 
         in_vocabDict = dict(enumerate(vocabStrings))
@@ -180,8 +180,8 @@ class Banana(protocol.Protocol):
         assert tokens.IRootSlicer.providedBy(self.rootSlicer)
 
         itr = self.rootSlicer.slice()
-        next = iter(itr).__next__
-        top = (self.rootSlicer, next, None)
+        next_itr = iter(itr).__next__
+        top = (self.rootSlicer, next_itr, None)
         self.slicerStack = [top]
 
     def send(self, obj):
@@ -345,11 +345,12 @@ class Banana(protocol.Protocol):
         # slicer has been pushed. This check is only useful for .slice
         # methods which are *not* generators.
 
-        itr = slicer.slice(topSlicer.streamable, self)
+        itr = iter(slicer.slice(topSlicer.streamable, self))
+        
         if six.PY2:
-            next = iter(itr).next
+            next_itr = itr.next
         else:
-            next = iter(itr).__next__
+            next_itr = itr.__next__
             
         # we are now committed to sending the OPEN token, meaning that
         # failures after this point will cause an ABORT/CLOSE to be sent
@@ -363,7 +364,7 @@ class Banana(protocol.Protocol):
             # the debug/optional copy in the CLOSE token. Consider ripping
             # this code out if we decide to stop sending that copy.
 
-        slicertuple = (slicer, next, openID)
+        slicertuple = (slicer, next_itr, openID)
         self.slicerStack.append(slicertuple)
 
     def popSlicer(self):
@@ -408,7 +409,7 @@ class Banana(protocol.Protocol):
         assert isinstance(vocabStrings, (list, tuple))
         for s in vocabStrings:
             assert isinstance(s, str)
-        vocabDict = dict([(v,k) for k,v in enumerate(vocabStrings)])
+        vocabDict = dict([(v, k) for k, v in enumerate(vocabStrings)])
         s = ReplaceVocabSlicer(vocabDict)
         # the ReplaceVocabSlicer does some magic to insure the VOCAB message
         # does not use vocab tokens itself. This would be legal (sort of a
