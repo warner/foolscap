@@ -32,9 +32,7 @@ class ReplaceVocabSlicer(BaseSlicer):
         stringToIndex = self.obj
         indexToString = dict([(stringToIndex[s],s) for s in stringToIndex])
         assert len(stringToIndex) == len(indexToString) # catch duplicates
-        indices = indexToString.keys()
-        indices.sort()
-        for index in indices:
+        for index in sorted(indexToString.keys()):
             string = indexToString[index]
             yield index
             yield string
@@ -85,7 +83,7 @@ class ReplaceVocabUnslicer(LeafUnslicer):
         assert not isinstance(token, Deferred)
         assert ready_deferred is None
         if self.key is None:
-            if self.d.has_key(token):
+            if token in self.d:
                 raise BananaError("duplicate key '%s'" % token)
             self.key = token
         else:

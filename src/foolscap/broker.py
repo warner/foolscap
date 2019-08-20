@@ -422,9 +422,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def freeYourReferenceTracker(self, res, tracker):
         if tracker.received_count != 0:
             return
-        if self.yourReferenceByCLID.has_key(tracker.clid):
+        if tracker.clid in self.yourReferenceByCLID:
             del self.yourReferenceByCLID[tracker.clid]
-        if tracker.url and self.yourReferenceByURL.has_key(tracker.url):
+        if tracker.url and tracker.url in self.yourReferenceByURL:
             del self.yourReferenceByURL[tracker.url]
 
 

@@ -116,9 +116,7 @@ class ArgumentSlicer(slicer.ScopedSlicer):
         for i,arg in enumerate(self.args):
             self.which = "arg[%d]-of-%s" % (i, self.methodname)
             yield arg
-        keys = self.kwargs.keys()
-        keys.sort()
-        for argname in keys:
+        for argname in sorted(self.kwargs.keys()):
             self.which = "arg[%s]-of-%s" % (argname, self.methodname)
             yield argname
             yield self.kwargs[argname]
@@ -322,7 +320,7 @@ class ArgumentUnslicer(slicer.ScopedUnslicer):
                 accept, self.argConstraint = \
                         ms.getKeywordArgConstraint(self.argname,
                                                    self.numargs,
-                                                   self.kwargs.keys())
+                                                   list(self.kwargs.keys()))
                 assert accept
             return
 
@@ -777,7 +775,7 @@ class FailureSlicer(slicer.BaseSlicer):
         yield 'copyable'
         yield self.classname
         state = self.getStateToCopy(self.obj, banana)
-        for k,v in state.iteritems():
+        for k,v in state.items():
             yield k
             yield v
     def describe(self):

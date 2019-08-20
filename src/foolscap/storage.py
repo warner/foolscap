@@ -170,7 +170,7 @@ class InstanceUnslicer(slicer.BaseUnslicer):
                 # be possible to remove it, but I need to think through
                 # it carefully first
                 raise BananaError("unreferenceable object in attribute")
-            if self.d.has_key(self.attrname):
+            if self.attrname in self.d:
                 raise BananaError("duplicate attribute name '%s'" %
                                   self.attrname)
             self.setAttribute(self.attrname, obj)

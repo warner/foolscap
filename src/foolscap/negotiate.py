@@ -252,15 +252,13 @@ class Negotiation(protocol.Protocol):
         return block
 
     def sendBlock(self, block):
-        keys = block.keys()
-        keys.sort()
-        for k in keys:
+        for k in sorted(block.keys()):
             self.transport.write("%s: %s\r\n" % (k.lower(), block[k]))
         self.transport.write("\r\n") # end block
 
     def debug_doTimer(self, name, timeout, call, *args):
-        if (self._test_options.has_key("debug_slow_%s" % name) and
-            not self.debugTimers.has_key(name)):
+        if ("debug_slow_%s" % name in self._test_options) and \
+            (name not in self.debugTimers):
             self.log("debug_doTimer(%s)" % name)
             t = reactor.callLater(timeout, self.debug_fireTimer, name)
             self.debugTimers[name] = (t, [(call, args)])
@@ -274,7 +272,7 @@ class Negotiation(protocol.Protocol):
         cb = self._test_options.get("debug_pause_%s" % name, None)
         if not cb:
             return False
-        if self.debugPauses.has_key(name):
+        if name in self.debugPauses:
             return False
         self.log("debug_doPause(%s)" % name)
         self.debugPauses[name] = d = defer.Deferred()
@@ -594,7 +592,7 @@ class Negotiation(protocol.Protocol):
             self.theirCertificate = them
 
         hello = self.parseLines(header)
-        if hello.has_key("error"):
+        if "error" in hello:
             raise RemoteNegotiationError(hello["error"])
         self.evaluateHello(hello)
 
@@ -618,8 +616,8 @@ class Negotiation(protocol.Protocol):
 
         self.log("evaluateHello(isClient=%s): offer=%s" %
                  (self.isClient, offer))
-        if not offer.has_key('banana-negotiation-range'):
-            if offer.has_key('banana-negotiation-version'):
+        if 'banana-negotiation-range' not in offer:
+            if 'banana-negotiation-version' in offer:
                 msg = ("Peer is speaking foolscap-0.0.5 or earlier, "
                        "which is not compatible with this version. "
                        "Please upgrade the peer.")
@@ -1004,7 +1002,7 @@ class Negotiation(protocol.Protocol):
         return acceptfunc(decision)
 
     def acceptDecisionVersion1(self, decision):
-        if decision.has_key("error"):
+        if "error" in decision:
             error = decision["error"]
             raise RemoteNegotiationError("Banana negotiation failed: %s"
                                          % error)

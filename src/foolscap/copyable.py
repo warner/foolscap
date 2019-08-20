@@ -51,7 +51,7 @@ class CopyableSlicer(slicer.BaseSlicer):
         assert isinstance(copytype, str)
         yield copytype
         state = self.obj.getStateToCopy()
-        for k,v in state.iteritems():
+        for k,v in state.items():
             yield k
             yield v
     def describe(self):
@@ -137,7 +137,7 @@ class RemoteCopyUnslicer(slicer.BaseUnslicer):
         assert ready_deferred is None
         if self.attrname == None:
             attrname = obj
-            if self.d.has_key(attrname):
+            if attrname in self.d:
                 raise BananaError("duplicate attribute name '%s'" % attrname)
             s = self.schema
             if s:
@@ -248,7 +248,7 @@ def registerRemoteCopyUnslicerFactory(typename, unslicerfactory,
 
     if registry == None:
         registry = CopyableRegistry
-    assert not registry.has_key(typename)
+    assert typename not in registry
     registry[typename] = unslicerfactory
 
 # this keeps track of everything submitted to registerRemoteCopyFactory
@@ -368,7 +368,7 @@ class AttributeDictConstraint(OpenerConstraint):
         self.acceptUnknown = kwargs.get('acceptUnknown', False)
         self.keys = {}
         for name, constraint in (list(attrTuples) +
-                                 kwargs.get('attributes', {}).items()):
+                                 list(kwargs.get('attributes', {}).items())):
             assert name not in self.keys.keys()
             self.keys[name] = IConstraint(constraint)
 

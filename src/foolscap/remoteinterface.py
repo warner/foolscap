@@ -68,7 +68,7 @@ class RemoteInterfaceClass(interface.InterfaceClass):
 
         # and see if there is a __remote_name__ . We delete it because
         # InterfaceClass doesn't like arbitrary attributes
-        if attrs.has_key("__remote_name__"):
+        if "__remote_name__" in attrs:
             del attrs["__remote_name__"]
 
         # determine all remotely-callable methods
@@ -120,7 +120,7 @@ def registerRemoteInterface(iface, name=None):
     if not name:
         name = iface.__remote_name__
     assert isinstance(iface, RemoteInterfaceClass)
-    if RemoteInterfaceRegistry.has_key(name):
+    if name in RemoteInterfaceRegistry:
         old = RemoteInterfaceRegistry[name]
         msg = "remote interface %s was registered with the same name (%s) as %s, please use __remote_name__ to provide a unique name" % (old, name, iface)
         raise DuplicateRemoteInterfaceError(msg)
@@ -175,10 +175,10 @@ class RemoteMethodSchema(object):
             self.responseConstraint = IConstraint(_response)
         self.options = {} # return, wait, reliable, etc
 
-        if kwargs.has_key("__ignoreUnknown__"):
+        if "__ignoreUnknown__" in kwargs:
             self.ignoreUnknown = kwargs["__ignoreUnknown__"]
             del kwargs["__ignoreUnknown__"]
-        if kwargs.has_key("__acceptUnknown__"):
+        if "__acceptUnknown__" in kwargs:
             self.acceptUnknown = kwargs["__acceptUnknown__"]
             del kwargs["__acceptUnknown__"]
 
