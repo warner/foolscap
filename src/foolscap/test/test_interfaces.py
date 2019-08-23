@@ -56,8 +56,7 @@ class TestInterface(TargetMixin, unittest.TestCase):
         rr, target = self.setupTarget(Target2())
         iname = getRemoteInterfaceName(target)
         self.assertEqual(iname, "RIMyTargetInterface2")
-        self.assertIs(\
-            RemoteInterfaceRegistry["RIMyTargetInterface2"], RIMyTarget2)
+        self.assertIs(RemoteInterfaceRegistry["RIMyTargetInterface2"], RIMyTarget2)
 
 
     def testInterface2(self):
