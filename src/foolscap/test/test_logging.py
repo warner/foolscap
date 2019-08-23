@@ -94,9 +94,9 @@ class Advanced(unittest.TestCase):
         l.msg("ignored", level=log.NOISY)
         d = fireEventually()
         def _check(res):
-            self.failUnlessEqual(len(out), 2)
-            self.failUnlessEqual(out[0]["message"], "one")
-            self.failUnlessEqual(out[1]["message"], "two")
+            self.assertEqual(len(out), 2)
+            self.assertEqual(out[0]["message"], "one")
+            self.assertEqual(out[1]["message"], "two")
         d.addCallback(_check)
         return d
 
@@ -115,17 +115,17 @@ class Advanced(unittest.TestCase):
             ob._logFile.close()
             f = open(fn, "rb")
             expected_magic = f.read(len(flogfile.MAGIC))
-            self.failUnlessEqual(expected_magic, flogfile.MAGIC)
+            self.assertEqual(expected_magic, flogfile.MAGIC)
             events = []
             for line in f:
                 events.append(json.loads(line))
-            self.failUnlessEqual(len(events), 3)
-            self.failUnlessEqual(events[0]["header"]["type"],
-                                 "log-file-observer")
-            self.failUnlessEqual(events[0]["header"]["threshold"],
-                                 log.OPERATIONAL)
-            self.failUnlessEqual(events[1]["from"], "local")
-            self.failUnlessEqual(events[2]["d"]["message"], "two")
+            self.assertEqual(len(events), 3)
+            self.assertEqual(events[0]["header"]["type"],
+                             "log-file-observer")
+            self.assertEqual(events[0]["header"]["threshold"],
+                             log.OPERATIONAL)
+            self.assertEqual(events[1]["from"], "local")
+            self.assertEqual(events[2]["d"]["message"], "two")
         d.addCallback(_check)
         return d
 
@@ -136,13 +136,13 @@ class Advanced(unittest.TestCase):
         l.msg("two")
         l.msg("three")
         items = l.buffers[None][log.OPERATIONAL]
-        self.failUnlessEqual(len(items), 3)
+        self.assertEqual(len(items), 3)
         l.msg("four") # should displace "one"
-        self.failUnlessEqual(len(items), 3)
+        self.assertEqual(len(items), 3)
         m0 = items[0]
-        self.failUnlessEqual(type(m0), dict)
-        self.failUnlessEqual(m0['message'], "two")
-        self.failUnlessEqual(items[-1]['message'], "four")
+        self.assertEqual(type(m0), dict)
+        self.assertEqual(m0['message'], "two")
+        self.assertEqual(items[-1]['message'], "four")
 
     def testFacilities(self):
         l = log.FoolscapLogger()
@@ -151,8 +151,8 @@ class Advanced(unittest.TestCase):
         l.msg("two")
 
         items = l.buffers["ui"][log.OPERATIONAL]
-        self.failUnlessEqual(len(items), 1)
-        self.failUnlessEqual(items[0]["message"], "one")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["message"], "one")
 
     def testOnePriority(self):
         l = log.FoolscapLogger()
@@ -161,13 +161,13 @@ class Advanced(unittest.TestCase):
         l.msg("three", level=log.NOISY)
 
         items = l.buffers[None][log.NOISY]
-        self.failUnlessEqual(len(items), 2)
-        self.failUnlessEqual(items[0]['message'], "one")
-        self.failUnlessEqual(items[1]['message'], "three")
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0]['message'], "one")
+        self.assertEqual(items[1]['message'], "three")
 
         items = l.buffers[None][log.WEIRD]
-        self.failUnlessEqual(len(items), 1)
-        self.failUnlessEqual(items[0]['message'], "two")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['message'], "two")
 
     def testPriorities(self):
         l = log.FoolscapLogger()
@@ -184,14 +184,14 @@ class Advanced(unittest.TestCase):
         l.msg("seven", level=log.NOISY)
 
         items = l.buffers[None][log.NOISY]
-        self.failUnlessEqual(len(items), 3)
-        self.failUnlessEqual(items[0]['message'], "five")
-        self.failUnlessEqual(items[-1]['message'], "seven")
+        self.assertEqual(len(items), 3)
+        self.assertEqual(items[0]['message'], "five")
+        self.assertEqual(items[-1]['message'], "seven")
 
         items = l.buffers[None][log.WEIRD]
-        self.failUnlessEqual(len(items), 2)
-        self.failUnlessEqual(items[0]['message'], "one")
-        self.failUnlessEqual(items[-1]['message'], "four")
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0]['message'], "one")
+        self.assertEqual(items[-1]['message'], "four")
 
     def testHierarchy(self):
         l = log.FoolscapLogger()
@@ -236,8 +236,8 @@ class NoStdio(unittest.TestCase):
         sys.stderr = self.orig_stderr
 
     def check_stdio(self):
-        self.failUnlessEqual(self.mock_stdout.getvalue(), "")
-        self.failUnlessEqual(self.mock_stderr.getvalue(), "")
+        self.assertEqual(self.mock_stdout.getvalue(), "")
+        self.assertEqual(self.mock_stderr.getvalue(), "")
 
     def test_unformattable(self):
         self.fl.msg(format="one=%(unformattable)s") # missing format key
@@ -251,7 +251,7 @@ class NoStdio(unittest.TestCase):
         self.fl.setIncidentQualifier(ErrorfulQualifier())
         self.fl.activate_incident_qualifier()
         # make sure we set it up correctly
-        self.failUnless(self.fl.active_incident_qualifier)
+        self.assertTrue(self.fl.active_incident_qualifier)
         self.fl.msg("oops", arg=lambda : "lambdas are unserializable",
                     level=log.BAD)
         self.check_stdio()
@@ -265,7 +265,7 @@ class NoStdio(unittest.TestCase):
         self.assertEqual(len(events), 1)
         m = events[0]["message"]
         expected = "internal error in log._msg, args=('oops',)"
-        self.assert_(m.startswith(expected), m)
+        self.assertTrue(m.startswith(expected), m)
         self.assertIn("ValueError('oops'", m)
 
 def ser(what):
@@ -291,7 +291,7 @@ class Serialization(unittest.TestCase):
         fl.msg("one", arg=mutable)
         mutable["key"] = "new"
         events = list(fl.get_buffered_events())
-        self.failUnless(events[0]["arg"]["key"], "new")
+        self.assertTrue(events[0]["arg"]["key"], "new")
 
     def test_failure(self):
         try:
@@ -367,19 +367,19 @@ class Serialization(unittest.TestCase):
         d = flushEventualQueue()
         def _check(_):
             files = os.listdir(basedir)
-            self.failUnlessEqual(len(files), 1)
+            self.assertEqual(len(files), 1)
             fn = os.path.join(basedir, files[0])
             events = list(flogfile.get_events(fn))
-            self.failUnlessEqual(events[0]["header"]["type"], "incident")
-            self.failUnlessEqual(events[1]["d"]["message"], "first")
-            self.failUnlessEqual(len(events), 5)
+            self.assertEqual(events[0]["header"]["type"], "incident")
+            self.assertEqual(events[1]["d"]["message"], "first")
+            self.assertEqual(len(events), 5)
             # actually this should record 5 events: both unrecordable events
             # should be replaced with error messages that *are* recordable
-            self.failUnlessEqual(events[2]["d"]["message"], "unjsonable")
-            self.failUnlessEqual(events[2]["d"]["arg"][0]["@"], "UnJSONable")
-            self.failUnlessEqual(events[3]["d"]["message"], "unserializable")
-            self.failUnlessEqual(events[3]["d"]["arg"][0]["@"], "UnJSONable")
-            self.failUnlessEqual(events[4]["d"]["message"], "last")
+            self.assertEqual(events[2]["d"]["message"], "unjsonable")
+            self.assertEqual(events[2]["d"]["arg"][0]["@"], "UnJSONable")
+            self.assertEqual(events[3]["d"]["message"], "unserializable")
+            self.assertEqual(events[3]["d"]["arg"][0]["@"], "UnJSONable")
+            self.assertEqual(events[4]["d"]["message"], "last")
         d.addCallback(_check)
         return d
 
@@ -403,56 +403,56 @@ class LogfileReaderMixin:
 class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
     def test_basic(self):
         l = log.FoolscapLogger()
-        self.failUnlessEqual(l.incidents_declared, 0)
+        self.assertEqual(l.incidents_declared, 0)
         # no qualifiers are run until a logdir is provided
         l.msg("one", level=log.BAD)
-        self.failUnlessEqual(l.incidents_declared, 0)
+        self.assertEqual(l.incidents_declared, 0)
         l.setLogDir("logging/Incidents/basic")
         l.setLogDir("logging/Incidents/basic") # this should be idempotent
         got_logdir = l.logdir
-        self.failUnlessEqual(got_logdir,
-                             os.path.abspath("logging/Incidents/basic"))
+        self.assertEqual(got_logdir,
+                         os.path.abspath("logging/Incidents/basic"))
         # qualifiers should be run now
         l.msg("two")
         l.msg("3-trigger", level=log.BAD)
-        self.failUnlessEqual(l.incidents_declared, 1)
-        self.failUnless(l.get_active_incident_reporter())
+        self.assertEqual(l.incidents_declared, 1)
+        self.assertTrue(l.get_active_incident_reporter())
         # at this point, the uncompressed logfile should be present, and it
         # should contain all the events up to and including the trigger
         files = os.listdir(got_logdir)
-        self.failUnlessEqual(len(files), 2)
+        self.assertEqual(len(files), 2)
         # the uncompressed one will sort earlier, since it lacks the .bz2
         # extension
         files.sort()
-        self.failUnlessEqual(files[0] + ".bz2.tmp", files[1])
+        self.assertEqual(files[0] + ".bz2.tmp", files[1])
         # unix systems let us look inside the uncompressed file while it's
         # still being written to by the recorder
         if runtime.platformType == "posix":
             events = self._read_logfile(os.path.join(got_logdir, files[0]))
-            self.failUnlessEqual(len(events), 1+3)
+            self.assertEqual(len(events), 1+3)
             #header = events[0]
-            self.failUnless("header" in events[0])
-            self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
-                                 "3-trigger")
-            self.failUnlessEqual(events[0]["header"]["versions"]["foolscap"],
-                                 foolscap.__version__)
-            self.failUnlessEqual(events[3]["d"]["message"], "3-trigger")
+            self.assertTrue("header" in events[0])
+            self.assertEqual(events[0]["header"]["trigger"]["message"],
+                             "3-trigger")
+            self.assertEqual(events[0]["header"]["versions"]["foolscap"],
+                             foolscap.__version__)
+            self.assertEqual(events[3]["d"]["message"], "3-trigger")
 
         l.msg("4-trailing")
         # this will take 5 seconds to finish trailing events
         d = self.poll(lambda: bool(l.incidents_recorded), 1.0)
         def _check(res):
-            self.failUnlessEqual(len(l.recent_recorded_incidents), 1)
+            self.assertEqual(len(l.recent_recorded_incidents), 1)
             fn = l.recent_recorded_incidents[0]
             events = self._read_logfile(fn)
-            self.failUnlessEqual(len(events), 1+4)
-            self.failUnless("header" in events[0])
-            self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
-                                 "3-trigger")
-            self.failUnlessEqual(events[0]["header"]["versions"]["foolscap"],
-                                 foolscap.__version__)
-            self.failUnlessEqual(events[3]["d"]["message"], "3-trigger")
-            self.failUnlessEqual(events[4]["d"]["message"], "4-trailing")
+            self.assertEqual(len(events), 1+4)
+            self.assertTrue("header" in events[0])
+            self.assertEqual(events[0]["header"]["trigger"]["message"],
+                             "3-trigger")
+            self.assertEqual(events[0]["header"]["versions"]["foolscap"],
+                             foolscap.__version__)
+            self.assertEqual(events[3]["d"]["message"], "3-trigger")
+            self.assertEqual(events[4]["d"]["message"], "4-trailing")
 
         d.addCallback(_check)
         return d
@@ -462,7 +462,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l.setIncidentQualifier(SuperstitiousQualifier())
         l.setLogDir("logging/Incidents/qualifier1")
         l.msg("1", level=log.BAD)
-        self.failUnlessEqual(l.incidents_declared, 0)
+        self.assertEqual(l.incidents_declared, 0)
 
     def test_qualifier2(self):
         l = log.FoolscapLogger()
@@ -470,7 +470,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l.setLogDir("logging/Incidents/qualifier2")
         l.setIncidentQualifier(SuperstitiousQualifier())
         l.msg("1", level=log.BAD)
-        self.failUnlessEqual(l.incidents_declared, 0)
+        self.assertEqual(l.incidents_declared, 0)
 
     def test_customize(self):
         l = log.FoolscapLogger()
@@ -478,25 +478,25 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l.setLogDir("logging/Incidents/customize")
         # you set the reporter *class*, not an instance
         bad_ir = ImpatientReporter("basedir", "logger", "tubid")
-        self.failUnlessRaises((AssertionError, TypeError),
-                              l.setIncidentReporterFactory, bad_ir)
+        self.assertRaises((AssertionError, TypeError),
+                          l.setIncidentReporterFactory, bad_ir)
         l.setIncidentReporterFactory(ImpatientReporter)
         l.msg("1", level=log.BAD)
-        self.failUnlessEqual(l.incidents_declared, 0)
+        self.assertEqual(l.incidents_declared, 0)
         l.msg("2")
         l.msg("thirteen is scary")
-        self.failUnlessEqual(l.incidents_declared, 1)
+        self.assertEqual(l.incidents_declared, 1)
         l.msg("4")
         l.msg("5")
         l.msg("6") # this should hit the trailing event limit
         l.msg("7") # this should not be recorded
         d = self.poll(lambda: bool(l.incidents_recorded), 1.0)
         def _check(res):
-            self.failUnlessEqual(len(l.recent_recorded_incidents), 1)
+            self.assertEqual(len(l.recent_recorded_incidents), 1)
             fn = l.recent_recorded_incidents[0]
             events = self._read_logfile(fn)
-            self.failUnlessEqual(len(events), 1+6)
-            self.failUnlessEqual(events[-1]["d"]["message"], "6")
+            self.assertEqual(len(events), 1+6)
+            self.assertEqual(events[-1]["d"]["message"], "6")
         d.addCallback(_check)
         return d
 
@@ -504,8 +504,8 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l = log.FoolscapLogger()
         l.setLogDir("logging/Incidents/overlapping")
         got_logdir = l.logdir
-        self.failUnlessEqual(got_logdir,
-                             os.path.abspath("logging/Incidents/overlapping"))
+        self.assertEqual(got_logdir,
+                         os.path.abspath("logging/Incidents/overlapping"))
         d = defer.Deferred()
         def _go(name, trigger):
             d.callback( (name, trigger) )
@@ -513,28 +513,28 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         l.setIncidentReporterFactory(ImpatientReporter)
         l.msg("1")
         l.msg("2-trigger", level=log.BAD)
-        self.failUnlessEqual(l.incidents_declared, 1)
-        self.failUnless(l.get_active_incident_reporter())
+        self.assertEqual(l.incidents_declared, 1)
+        self.assertTrue(l.get_active_incident_reporter())
         l.msg("3-trigger", level=log.BAD)
-        self.failUnlessEqual(l.incidents_declared, 2)
-        self.failUnless(l.get_active_incident_reporter())
+        self.assertEqual(l.incidents_declared, 2)
+        self.assertTrue(l.get_active_incident_reporter())
 
         def _check(res):
-            self.failUnlessEqual(l.incidents_recorded, 1)
-            self.failUnlessEqual(len(l.recent_recorded_incidents), 1)
+            self.assertEqual(l.incidents_recorded, 1)
+            self.assertEqual(len(l.recent_recorded_incidents), 1)
             # at this point, the logfile should be present, and it should
             # contain all the events up to and including both triggers
 
             files = os.listdir(got_logdir)
-            self.failUnlessEqual(len(files), 1)
+            self.assertEqual(len(files), 1)
             events = self._read_logfile(os.path.join(got_logdir, files[0]))
 
-            self.failUnlessEqual(len(events), 1+3)
-            self.failUnlessEqual(events[0]["header"]["trigger"]["message"],
-                                 "2-trigger")
-            self.failUnlessEqual(events[1]["d"]["message"], "1")
-            self.failUnlessEqual(events[2]["d"]["message"], "2-trigger")
-            self.failUnlessEqual(events[3]["d"]["message"], "3-trigger")
+            self.assertEqual(len(events), 1+3)
+            self.assertEqual(events[0]["header"]["trigger"]["message"],
+                             "2-trigger")
+            self.assertEqual(events[1]["d"]["message"], "1")
+            self.assertEqual(events[2]["d"]["message"], "2-trigger")
+            self.assertEqual(events[3]["d"]["message"], "3-trigger")
         d.addCallback(_check)
 
         return d
@@ -548,7 +548,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
         d = fireEventually()
         def _check(res):
             files = [fn for fn in os.listdir(got_logdir) if fn.endswith(".bz2")]
-            self.failUnlessEqual(len(files), 1)
+            self.assertEqual(len(files), 1)
 
             ic = incident.IncidentClassifier()
             def classify_foom(trigger):
@@ -560,7 +560,7 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             options.stdout = StringIO()
             ic.run(options)
             out = options.stdout.getvalue()
-            self.failUnless(out.strip().endswith(": foom"), out)
+            self.assertTrue(out.strip().endswith(": foom"), out)
 
             ic2 = incident.IncidentClassifier()
             options = incident.ClassifyOptions()
@@ -569,11 +569,11 @@ class Incidents(unittest.TestCase, PollMixin, LogfileReaderMixin):
             options.stdout = StringIO()
             ic2.run(options)
             out = options.stdout.getvalue()
-            self.failUnlessIn(".flog.bz2: unknown\n", out)
+            self.assertIn(".flog.bz2: unknown\n", out)
             # this should have a pprinted trigger dictionary
-            self.failUnless(re.search(r"u?'message': u?'foom',", out), out)
-            self.failUnlessIn("'num': 0,", out)
-            self.failUnlessIn("RuntimeError", out)
+            self.assertTrue(re.search(r"u?'message': u?'foom',", out), out)
+            self.assertIn("'num': 0,", out)
+            self.assertIn("RuntimeError", out)
 
         d.addCallback(_check)
         return d
@@ -637,14 +637,14 @@ class Publish(PollMixin, unittest.TestCase):
         # setOption before setServiceParent
         t.setOption("logport-furlfile", furlfile)
         t.setServiceParent(self.parent)
-        self.failUnlessRaises(NoLocationError, t.getLogPort)
-        self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
+        self.assertRaises(NoLocationError, t.getLogPort)
+        self.assertRaises(NoLocationError, t.getLogPortFURL)
         portnum = allocate_tcp_port()
         t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
-        self.failIf(os.path.exists(furlfile))
+        self.assertFalse(os.path.exists(furlfile))
         t.setLocation("127.0.0.1:%d" % portnum)
         logport_furl = open(furlfile, "r").read().strip()
-        self.failUnlessEqual(logport_furl, t.getLogPortFURL())
+        self.assertEqual(logport_furl, t.getLogPortFURL())
 
     def test_logport_furlfile2(self):
         basedir = "logging/Publish/logport_furlfile2"
@@ -653,15 +653,15 @@ class Publish(PollMixin, unittest.TestCase):
         t = Tub()
         # setServiceParent before setOption
         t.setServiceParent(self.parent)
-        self.failUnlessRaises(NoLocationError, t.getLogPort)
-        self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
+        self.assertRaises(NoLocationError, t.getLogPort)
+        self.assertRaises(NoLocationError, t.getLogPortFURL)
         portnum = allocate_tcp_port()
         t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
         t.setOption("logport-furlfile", furlfile)
-        self.failIf(os.path.exists(furlfile))
+        self.assertFalse(os.path.exists(furlfile))
         t.setLocation("127.0.0.1:%d" % portnum)
         logport_furl = open(furlfile, "r").read().strip()
-        self.failUnlessEqual(logport_furl, t.getLogPortFURL())
+        self.assertEqual(logport_furl, t.getLogPortFURL())
 
     def test_logpublisher(self):
         basedir = "logging/Publish/logpublisher"
@@ -671,14 +671,14 @@ class Publish(PollMixin, unittest.TestCase):
         t.setServiceParent(self.parent)
         portnum = allocate_tcp_port()
         t.listenOn("tcp:%d:interface=127.0.0.1" % portnum)
-        self.failUnlessRaises(NoLocationError, t.getLogPort)
-        self.failUnlessRaises(NoLocationError, t.getLogPortFURL)
+        self.assertRaises(NoLocationError, t.getLogPort)
+        self.assertRaises(NoLocationError, t.getLogPortFURL)
 
         t.setLocation("127.0.0.1:%d" % portnum)
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
         logport_furl2 = open(furlfile, "r").read().strip()
-        self.failUnlessEqual(logport_furl, logport_furl2)
+        self.assertEqual(logport_furl, logport_furl2)
         tw_log = twisted_log.LogPublisher()
         tlb = t.setOption("bridge-twisted-logs", tw_log)
 
@@ -690,8 +690,8 @@ class Publish(PollMixin, unittest.TestCase):
         def _got_logport(logport):
             d = logport.callRemote("get_versions")
             def _check(versions):
-                self.failUnlessEqual(versions["foolscap"],
-                                     foolscap.__version__)
+                self.assertEqual(versions["foolscap"],
+                                 foolscap.__version__)
             d.addCallback(_check)
             # note: catch_up=False, so this message won't be sent
             log.msg("message 0 here, before your time")
@@ -725,39 +725,39 @@ class Publish(PollMixin, unittest.TestCase):
             d.addCallback(lambda res: self.poll(lambda: len(ob.messages) >= 8))
             def _check_observer(res):
                 msgs = ob.messages
-                self.failUnlessEqual(len(msgs), 8)
-                self.failUnlessEqual(msgs[0]["message"], "message 1 here")
-                self.failUnlessEqual(msgs[1]["from-twisted"], True)
-                self.failUnlessEqual(msgs[1]["message"], "message 2 here")
-                self.failUnlessEqual(msgs[1]["tubID"], t.tubID)
-                self.failUnlessEqual(msgs[2]["from-twisted"], True)
-                self.failUnlessEqual(msgs[2]["message"], "message 3 here")
-                self.failUnlessEqual(msgs[2]["tubID"], None)
-                self.failUnlessEqual(msgs[3]["from-twisted"], True)
-                self.failUnlessEqual(msgs[3]["message"], "foo is foo")
+                self.assertEqual(len(msgs), 8)
+                self.assertEqual(msgs[0]["message"], "message 1 here")
+                self.assertEqual(msgs[1]["from-twisted"], True)
+                self.assertEqual(msgs[1]["message"], "message 2 here")
+                self.assertEqual(msgs[1]["tubID"], t.tubID)
+                self.assertEqual(msgs[2]["from-twisted"], True)
+                self.assertEqual(msgs[2]["message"], "message 3 here")
+                self.assertEqual(msgs[2]["tubID"], None)
+                self.assertEqual(msgs[3]["from-twisted"], True)
+                self.assertEqual(msgs[3]["message"], "foo is foo")
 
                 # check the errors
-                self.failUnlessEqual(msgs[4]["message"], "")
-                self.failUnless(msgs[4]["isError"])
-                self.failUnless("failure" in msgs[4])
-                self.failUnless(msgs[4]["failure"].check(SampleError))
-                self.failUnless("err1" in str(msgs[4]["failure"]))
-                self.failUnlessEqual(msgs[5]["message"], "")
-                self.failUnless(msgs[5]["isError"])
-                self.failUnless("failure" in msgs[5])
-                self.failUnless(msgs[5]["failure"].check(SampleError))
-                self.failUnless("err2" in str(msgs[5]["failure"]))
+                self.assertEqual(msgs[4]["message"], "")
+                self.assertTrue(msgs[4]["isError"])
+                self.assertTrue("failure" in msgs[4])
+                self.assertTrue(msgs[4]["failure"].check(SampleError))
+                self.assertTrue("err1" in str(msgs[4]["failure"]))
+                self.assertEqual(msgs[5]["message"], "")
+                self.assertTrue(msgs[5]["isError"])
+                self.assertTrue("failure" in msgs[5])
+                self.assertTrue(msgs[5]["failure"].check(SampleError))
+                self.assertTrue("err2" in str(msgs[5]["failure"]))
 
                 # errors coming from twisted are stringified
-                self.failUnlessEqual(msgs[6]["from-twisted"], True)
-                self.failUnless("Unhandled Error" in msgs[6]["message"])
-                self.failUnless("SampleError: err3" in msgs[6]["message"])
-                self.failUnless(msgs[6]["isError"])
+                self.assertEqual(msgs[6]["from-twisted"], True)
+                self.assertTrue("Unhandled Error" in msgs[6]["message"])
+                self.assertTrue("SampleError: err3" in msgs[6]["message"])
+                self.assertTrue(msgs[6]["isError"])
 
-                self.failUnlessEqual(msgs[7]["from-twisted"], True)
-                self.failUnless("Unhandled Error" in msgs[7]["message"])
-                self.failUnless("SampleError: err4" in msgs[7]["message"])
-                self.failUnless(msgs[7]["isError"])
+                self.assertEqual(msgs[7]["from-twisted"], True)
+                self.assertTrue("Unhandled Error" in msgs[7]["message"])
+                self.assertTrue("SampleError: err4" in msgs[7]["message"])
+                self.assertTrue(msgs[7]["isError"])
 
             d.addCallback(_check_observer)
             def _done(res):
@@ -780,7 +780,7 @@ class Publish(PollMixin, unittest.TestCase):
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
         logport_furl2 = open(furlfile, "r").read().strip()
-        self.failUnlessEqual(logport_furl, logport_furl2)
+        self.assertEqual(logport_furl, logport_furl2)
 
         t2 = Tub()
         t2.setServiceParent(self.parent)
@@ -807,7 +807,7 @@ class Publish(PollMixin, unittest.TestCase):
             #d.addCallback(fireEventually)
             def _check_observer(res):
                 msgs = ob.messages
-                self.failUnlessEqual(len(msgs), expected)
+                self.assertEqual(len(msgs), expected)
                 # since we discard new messages during overload (and preserve
                 # old ones), we should see 0..MAX_QUEUE_SIZE-1.
                 got = []
@@ -815,8 +815,8 @@ class Publish(PollMixin, unittest.TestCase):
                     ignored1, number_s, ignored2 = m["message"].split()
                     number = int(number_s)
                     got.append(number)
-                self.failUnlessEqual(got, sorted(got))
-                self.failUnlessEqual(got, range(expected))
+                self.assertEqual(got, sorted(got))
+                self.assertEqual(got, list(range(expected)))
 
             d.addCallback(_check_observer)
             def _done(res):
@@ -847,12 +847,12 @@ class Publish(PollMixin, unittest.TestCase):
         def _got_logport(logport):
             d = logport.callRemote("get_versions")
             def _check_versions(versions):
-                self.failUnlessEqual(versions["foolscap"],
-                                     foolscap.__version__)
+                self.assertEqual(versions["foolscap"],
+                                 foolscap.__version__)
             d.addCallback(_check_versions)
             d.addCallback(lambda res: logport.callRemote("get_pid"))
             def _check_pid(pid):
-                self.failUnlessEqual(pid, os.getpid())
+                self.assertEqual(pid, os.getpid())
             d.addCallback(_check_pid)
             # note: catch_up=True, so this message *will* be sent. Also note
             # that we need this message to be unique, since our logger will
@@ -881,7 +881,7 @@ class Publish(PollMixin, unittest.TestCase):
                 # actually care about. So what we verify is that both of our
                 # messages appear *somewhere*, and that they show up in the
                 # correct order.
-                self.failUnless(len(msgs) >= 2, len(msgs))
+                self.assertTrue(len(msgs) >= 2, len(msgs))
                 first = None
                 second = None
                 for i,m in enumerate(msgs):
@@ -889,9 +889,9 @@ class Publish(PollMixin, unittest.TestCase):
                         first = i
                     if m.get("message") == "this is a later message":
                         second = i
-                self.failUnless(first is not None)
-                self.failUnless(second is not None)
-                self.failUnless(first < second,
+                self.assertTrue(first is not None)
+                self.assertTrue(second is not None)
+                self.assertTrue(first < second,
                                 "%d is not before %d" % (first, second))
             d.addCallback(_check_observer)
             def _done(res):
@@ -939,13 +939,13 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         self._write_to(logdir, I2 + ".flog.bz2")
 
         all = list(p.list_incident_names())
-        self.failUnlessEqual(set([name for (name,fn) in all]), set([I1, I2]))
+        self.assertEqual(set([name for (name,fn) in all]), set([I1, I2]))
         imap = dict(all)
-        self.failUnlessEqual(imap[I1], I1_abs)
-        self.failUnlessEqual(imap[I2], I2_abs)
+        self.assertEqual(imap[I1], I1_abs)
+        self.assertEqual(imap[I2], I2_abs)
 
         new = list(p.list_incident_names(since=I1))
-        self.failUnlessEqual(set([name for (name,fn) in new]), set([I2]))
+        self.assertEqual(set([name for (name,fn) in new]), set([I2]))
 
 
     def test_get_incidents(self):
@@ -982,7 +982,7 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         t.setOption("logport-furlfile", furlfile)
         logport_furl = t.getLogPortFURL()
         logport_furl2 = open(furlfile, "r").read().strip()
-        self.failUnlessEqual(logport_furl, logport_furl2)
+        self.assertEqual(logport_furl, logport_furl2)
 
         t2 = Tub()
         t2.setServiceParent(self.parent)
@@ -1020,19 +1020,19 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         return d
 
     def _check_listed(self, incidents):
-        self.failUnless(isinstance(incidents, dict))
-        self.failUnlessEqual(len(incidents), 1)
-        self.i_name = i_name = incidents.keys()[0]
-        self.failUnless(i_name.startswith("incident"))
-        self.failIf(i_name.endswith(".flog") or i_name.endswith(".bz2"))
+        self.assertTrue(isinstance(incidents, dict))
+        self.assertEqual(len(incidents), 1)
+        self.i_name = i_name = list(incidents.keys())[0]
+        self.assertTrue(i_name.startswith("incident"))
+        self.assertFalse(i_name.endswith(".flog") or i_name.endswith(".bz2"))
         trigger = incidents[i_name]
-        self.failUnlessEqual(trigger["message"], "three")
+        self.assertEqual(trigger["message"], "three")
     def _check_incident(self, args):
         header, events = args
-        self.failUnlessEqual(header["type"], "incident")
-        self.failUnlessEqual(header["trigger"]["message"], "three")
-        self.failUnlessEqual(len(events), 3)
-        self.failUnlessEqual(events[0]["message"], "one")
+        self.assertEqual(header["type"], "incident")
+        self.assertEqual(header["trigger"]["message"], "three")
+        self.assertEqual(len(events), 3)
+        self.assertEqual(events[0]["message"], "one")
 
     def test_subscribe(self):
         basedir = "logging/IncidentPublisher/subscribe"
@@ -1080,8 +1080,8 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
             (name, trigger) = incident
             return trigger["message"]
         def _check_new(res):
-            self.failUnlessEqual(len(ob.incidents), 1)
-            self.failUnlessEqual(_triggerof(ob.incidents[0]), "two")
+            self.assertEqual(len(ob.incidents), 1)
+            self.assertEqual(_triggerof(ob.incidents[0]), "two")
         d.addCallback(_check_new)
         d.addCallback(lambda res: self._subscription.callRemote("unsubscribe"))
 
@@ -1094,9 +1094,9 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         d.addCallback(lambda res:
                       self.poll(lambda: ob2.done_with_incidents, 0.1))
         def _check_all(res):
-            self.failUnlessEqual(len(ob2.incidents), 2)
-            self.failUnlessEqual(_triggerof(ob2.incidents[0]), "one")
-            self.failUnlessEqual(_triggerof(ob2.incidents[1]), "two")
+            self.assertEqual(len(ob2.incidents), 2)
+            self.assertEqual(_triggerof(ob2.incidents[0]), "one")
+            self.assertEqual(_triggerof(ob2.incidents[1]), "two")
         d.addCallback(_check_all)
 
         d.addCallback(lambda res: time.sleep(2))
@@ -1104,10 +1104,10 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         d.addCallback(lambda res:
                       self.poll(lambda: len(ob2.incidents) >= 3, 0.1))
         def _check_all2(res):
-            self.failUnlessEqual(len(ob2.incidents), 3)
-            self.failUnlessEqual(_triggerof(ob2.incidents[0]), "one")
-            self.failUnlessEqual(_triggerof(ob2.incidents[1]), "two")
-            self.failUnlessEqual(_triggerof(ob2.incidents[2]), "three")
+            self.assertEqual(len(ob2.incidents), 3)
+            self.assertEqual(_triggerof(ob2.incidents[0]), "one")
+            self.assertEqual(_triggerof(ob2.incidents[1]), "two")
+            self.assertEqual(_triggerof(ob2.incidents[2]), "three")
         d.addCallback(_check_all2)
         d.addCallback(lambda res: self._subscription.callRemote("unsubscribe"))
 
@@ -1121,17 +1121,17 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         d.addCallback(lambda res:
                       self.poll(lambda: ob3.done_with_incidents, 0.1))
         def _check_since(res):
-            self.failUnlessEqual(len(ob3.incidents), 1)
-            self.failUnlessEqual(_triggerof(ob3.incidents[0]), "three")
+            self.assertEqual(len(ob3.incidents), 1)
+            self.assertEqual(_triggerof(ob3.incidents[0]), "three")
         d.addCallback(_check_since)
         d.addCallback(lambda res: time.sleep(2))
         d.addCallback(lambda res: t.logger.msg("four", level=log.WEIRD))
         d.addCallback(lambda res:
                       self.poll(lambda: len(ob3.incidents) >= 2, 0.1))
         def _check_since2(res):
-            self.failUnlessEqual(len(ob3.incidents), 2)
-            self.failUnlessEqual(_triggerof(ob3.incidents[0]), "three")
-            self.failUnlessEqual(_triggerof(ob3.incidents[1]), "four")
+            self.assertEqual(len(ob3.incidents), 2)
+            self.assertEqual(_triggerof(ob3.incidents[0]), "three")
+            self.assertEqual(_triggerof(ob3.incidents[1]), "four")
         d.addCallback(_check_since2)
         d.addCallback(lambda res: self._subscription.callRemote("unsubscribe"))
 
@@ -1226,16 +1226,16 @@ class IncidentGatherer(unittest.TestCase,
             abs_fn, rel_fn = args
             events = self._read_logfile(abs_fn)
             header = events[0]["header"]
-            self.failUnless("trigger" in header)
-            self.failUnlessEqual(header["trigger"]["message"], "boom")
+            self.assertTrue("trigger" in header)
+            self.assertEqual(header["trigger"]["message"], "boom")
             e = events[1]["d"]
-            self.failUnlessEqual(e["message"], "boom")
+            self.assertEqual(e["message"], "boom")
 
             # it should have been classified as "unknown"
             unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
             unknowns = [fn.strip() for fn in open(unknowns_fn,"r").readlines()]
-            self.failUnlessEqual(len(unknowns), 1)
-            self.failUnlessEqual(unknowns[0], rel_fn)
+            self.assertEqual(len(unknowns), 1)
+            self.assertEqual(unknowns[0], rel_fn)
         d.addCallback(_new_incident)
 
         # now shut down the gatherer, create a new one with the same basedir
@@ -1275,12 +1275,12 @@ def classify_incident(trigger):
 
             # incidents should be classified in startService
             unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
-            self.failIf(os.path.exists(unknowns_fn))
+            self.assertFalse(os.path.exists(unknowns_fn))
             booms_fn = os.path.join(ig.basedir, "classified", "boom")
             booms = [fn.strip() for fn in open(booms_fn,"r").readlines()]
-            self.failUnlessEqual(len(booms), 1)
+            self.assertEqual(len(booms), 1)
             fooms_fn = os.path.join(ig.basedir, "classified", "foom")
-            self.failIf(os.path.exists(fooms_fn))
+            self.assertFalse(os.path.exists(fooms_fn))
 
             ig2.cb_new_incident = incident_d2.callback
 
@@ -1294,10 +1294,10 @@ def classify_incident(trigger):
             # it should have been classified as "unknown"
             fooms_fn = os.path.join(ig.basedir, "classified", "foom")
             fooms = [fn.strip() for fn in open(fooms_fn,"r").readlines()]
-            self.failUnlessEqual(len(fooms), 1)
-            self.failUnlessEqual(fooms[0], rel_fn)
+            self.assertEqual(len(fooms), 1)
+            self.assertEqual(fooms[0], rel_fn)
             unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
-            self.failIf(os.path.exists(unknowns_fn))
+            self.assertFalse(os.path.exists(unknowns_fn))
         d.addCallback(_new_incident2)
         d.addCallback(lambda res: self.ig2.disownServiceParent())
 
@@ -1316,7 +1316,7 @@ def classify_incident(trigger):
             # now classified/boom should be back, and the other files should
             # have been left untouched
             booms = [fn.strip() for fn in open(booms_fn,"r").readlines()]
-            self.failUnlessEqual(len(booms), 1)
+            self.assertEqual(len(booms), 1)
         d.addCallback(_remove_boom_incidents)
         d.addCallback(lambda res: self.ig2a.disownServiceParent())
 
@@ -1330,13 +1330,13 @@ def classify_incident(trigger):
             self.ig3 = ig3
 
             unknowns_fn = os.path.join(ig.basedir, "classified", "unknown")
-            self.failIf(os.path.exists(unknowns_fn))
+            self.assertFalse(os.path.exists(unknowns_fn))
             booms_fn = os.path.join(ig.basedir, "classified", "boom")
             booms = [fn.strip() for fn in open(booms_fn,"r").readlines()]
-            self.failUnlessEqual(len(booms), 1)
+            self.assertEqual(len(booms), 1)
             fooms_fn = os.path.join(ig.basedir, "classified", "foom")
             fooms = [fn.strip() for fn in open(fooms_fn,"r").readlines()]
-            self.failUnlessEqual(len(fooms), 1)
+            self.assertEqual(len(fooms), 1)
             return ig3.d
         d.addCallback(_update_classifiers_again)
 
@@ -1410,40 +1410,40 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
         if len(events) != 4:
             from pprint import pprint
             pprint(events)
-        self.failUnlessEqual(len(events), 4)
+        self.assertEqual(len(events), 4)
 
         # header
         data = events.pop(0)
-        self.failUnless(isinstance(data, dict))
-        self.failUnless("header" in data)
-        self.failUnlessEqual(data["header"]["type"], "gatherer")
-        self.failUnlessEqual(data["header"]["start"], starting_timestamp)
+        self.assertTrue(isinstance(data, dict))
+        self.assertTrue("header" in data)
+        self.assertEqual(data["header"]["type"], "gatherer")
+        self.assertEqual(data["header"]["start"], starting_timestamp)
 
         # grab the first event from the log
         data = events.pop(0)
-        self.failUnless(isinstance(data, dict))
-        self.failUnlessEqual(data['from'], expected_tubid)
-        self.failUnlessEqual(data['d']['message'], "gathered message here")
+        self.assertTrue(isinstance(data, dict))
+        self.assertEqual(data['from'], expected_tubid)
+        self.assertEqual(data['d']['message'], "gathered message here")
 
         # grab the second event from the log
         data = events.pop(0)
-        self.failUnless(isinstance(data, dict))
-        self.failUnlessEqual(data['from'], expected_tubid)
-        self.failUnlessEqual(data['d']['message'], "")
-        self.failUnless(data['d']["isError"])
-        self.failUnless("failure" in data['d'])
-        self.failUnlessIn("SampleError", data['d']["failure"]["repr"])
-        self.failUnlessIn("whoops1", data['d']["failure"]["repr"])
+        self.assertTrue(isinstance(data, dict))
+        self.assertEqual(data['from'], expected_tubid)
+        self.assertEqual(data['d']['message'], "")
+        self.assertTrue(data['d']["isError"])
+        self.assertTrue("failure" in data['d'])
+        self.assertIn("SampleError", data['d']["failure"]["repr"])
+        self.assertIn("whoops1", data['d']["failure"]["repr"])
 
         # grab the third event from the log
         data = events.pop(0)
-        self.failUnless(isinstance(data, dict))
-        self.failUnlessEqual(data['from'], expected_tubid)
-        self.failUnlessEqual(data['d']['message'], "")
-        self.failUnless(data['d']["isError"])
-        self.failUnless("failure" in data['d'])
-        self.failUnlessIn("SampleError", data['d']["failure"]["repr"])
-        self.failUnlessIn("whoops2", data['d']["failure"]["repr"])
+        self.assertTrue(isinstance(data, dict))
+        self.assertEqual(data['from'], expected_tubid)
+        self.assertEqual(data['d']['message'], "")
+        self.assertTrue(data['d']["isError"])
+        self.assertTrue("failure" in data['d'])
+        self.assertIn("SampleError", data['d']["failure"]["repr"])
+        self.assertIn("whoops2", data['d']["failure"]["repr"])
 
     def test_wrongdir(self):
         basedir = "logging/Gatherer/wrongdir"
@@ -1451,9 +1451,9 @@ class Gatherer(unittest.TestCase, LogfileReaderMixin, StallMixin, PollMixin):
 
         # create a LogGatherer with an unspecified basedir: it should look
         # for a .tac file in the current directory, not see it, and complain
-        e = self.failUnlessRaises(RuntimeError,
-                                  gatherer.GathererService, None, True, None)
-        self.failUnless("running in the wrong directory" in str(e))
+        e = self.assertRaises(RuntimeError,
+                              gatherer.GathererService, None, True, None)
+        self.assertTrue("running in the wrong directory" in str(e))
 
     def test_log_gatherer(self):
         # setLocation, then set log-gatherer-furl. Also, use bzip=True for
@@ -1747,7 +1747,7 @@ class Tail(unittest.TestCase):
                        })
         outmsg = out.getvalue()
         # this contains a localtime string, so don't check the hour
-        self.failUnless(":06.527 L25 []#123 howdy" in outmsg)
+        self.assertTrue(":06.527 L25 []#123 howdy" in outmsg)
 
         lp.remote_msg({"time": 1207005907.527782,
                        "level": 25,
@@ -1757,7 +1757,7 @@ class Tail(unittest.TestCase):
                        })
         outmsg = out.getvalue()
         # this contains a localtime string, so don't check the hour
-        self.failUnless(":07.527 L25 []#124 howdy pardner" in outmsg)
+        self.assertTrue(":07.527 L25 []#124 howdy pardner" in outmsg)
 
         try:
             raise RuntimeError("fake error")
@@ -1772,11 +1772,11 @@ class Tail(unittest.TestCase):
                        })
         outmsg = out.getvalue()
 
-        self.failUnless(":50.002 L30 []#125 oops\n FAILURE:\n" in outmsg,
+        self.assertTrue(":50.002 L30 []#125 oops\n FAILURE:\n" in outmsg,
                         outmsg)
-        self.failUnless("exceptions.RuntimeError" in outmsg, outmsg)
-        self.failUnless(": fake error" in outmsg, outmsg)
-        self.failUnless("--- <exception caught here> ---\n" in outmsg, outmsg)
+        self.assertTrue("exceptions.RuntimeError" in outmsg, outmsg)
+        self.assertTrue(": fake error" in outmsg, outmsg)
+        self.assertTrue("--- <exception caught here> ---\n" in outmsg, outmsg)
 
     def test_logprinter_verbose(self):
         target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
@@ -1792,10 +1792,10 @@ class Tail(unittest.TestCase):
                        "message": "howdy",
                        })
         outmsg = out.getvalue()
-        self.failUnless("'message': 'howdy'" in outmsg, outmsg)
-        self.failUnless("'time': 1207005906.527782" in outmsg, outmsg)
-        self.failUnless("'level': 25" in outmsg, outmsg)
-        self.failUnless("{" in outmsg, outmsg)
+        self.assertTrue("'message': 'howdy'" in outmsg, outmsg)
+        self.assertTrue("'time': 1207005906.527782" in outmsg, outmsg)
+        self.assertTrue("'level': 25" in outmsg, outmsg)
+        self.assertTrue("{" in outmsg, outmsg)
 
     def test_logprinter_saveto(self):
         target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
@@ -1816,13 +1816,13 @@ class Tail(unittest.TestCase):
         lp.saver.disconnected() # cause the file to be closed
         f = open(saveto_filename, "rb")
         expected_magic = f.read(len(flogfile.MAGIC))
-        self.failUnlessEqual(expected_magic, flogfile.MAGIC)
+        self.assertEqual(expected_magic, flogfile.MAGIC)
         data = json.loads(f.readline()) # header
-        self.failUnlessEqual(data["header"]["type"], "tail")
+        self.assertEqual(data["header"]["type"], "tail")
         data = json.loads(f.readline()) # event
-        self.failUnlessEqual(data["from"], "jiijpvbg")
-        self.failUnlessEqual(data["d"]["message"], "howdy")
-        self.failUnlessEqual(data["d"]["num"], 123)
+        self.assertEqual(data["from"], "jiijpvbg")
+        self.assertEqual(data["d"]["message"], "howdy")
+        self.assertEqual(data["d"]["num"], 123)
 
     def test_options(self):
         basedir = "logging/Tail/options"
@@ -1837,25 +1837,25 @@ class Tail(unittest.TestCase):
 
         to = tail.TailOptions()
         to.parseOptions(["pb:pretend-furl"])
-        self.failIf(to["verbose"])
-        self.failIf(to["catch-up"])
-        self.failUnlessEqual(to.target_furl, "pb:pretend-furl")
+        self.assertFalse(to["verbose"])
+        self.assertFalse(to["catch-up"])
+        self.assertEqual(to.target_furl, "pb:pretend-furl")
 
         to = tail.TailOptions()
         to.parseOptions(["--verbose", "--catch-up", basedir])
-        self.failUnless(to["verbose"])
-        self.failUnless(to["catch-up"])
-        self.failUnlessEqual(to.target_furl, "this too")
+        self.assertTrue(to["verbose"])
+        self.assertTrue(to["catch-up"])
+        self.assertEqual(to.target_furl, "this too")
 
         to = tail.TailOptions()
         to.parseOptions(["--save-to", "save.flog", fn])
-        self.failIf(to["verbose"])
-        self.failIf(to["catch-up"])
-        self.failUnlessEqual(to["save-to"], "save.flog")
-        self.failUnlessEqual(to.target_furl, "pretend this is a furl")
+        self.assertFalse(to["verbose"])
+        self.assertFalse(to["catch-up"])
+        self.assertEqual(to["save-to"], "save.flog")
+        self.assertEqual(to.target_furl, "pretend this is a furl")
 
         to = tail.TailOptions()
-        self.failUnlessRaises(RuntimeError, to.parseOptions, ["bogus.txt"])
+        self.assertRaises(RuntimeError, to.parseOptions, ["bogus.txt"])
 
 # applications that provide a command-line tool may find it useful to include
 # a "flogtool" subcommand, using something like this:
@@ -1877,39 +1877,39 @@ class CLI(unittest.TestCase):
                 "--port", "tcp:3117", "--location", "tcp:localhost:3117",
                 "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnless(os.path.exists(basedir))
+        self.assertTrue(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_gatherer2"
         argv = ["flogtool", "create-gatherer", "--rotate", "3600",
                 "--port", "tcp:3117", "--location", "tcp:localhost:3117",
                 "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnless(os.path.exists(basedir))
+        self.assertTrue(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_gatherer3"
         argv = ["flogtool", "create-gatherer",
                 "--port", "tcp:3117", "--location", "tcp:localhost:3117",
                 basedir]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnless(os.path.exists(basedir))
-        self.failUnless(("Gatherer created in directory %s" % basedir)
+        self.assertTrue(os.path.exists(basedir))
+        self.assertTrue(("Gatherer created in directory %s" % basedir)
                         in out, out)
-        self.failUnless("Now run" in out, out)
-        self.failUnless("to launch the daemon" in out, out)
+        self.assertTrue("Now run" in out, out)
+        self.assertTrue("to launch the daemon" in out, out)
 
     def test_create_gatherer_badly(self):
         #basedir = "logging/CLI/create_gatherer"
         argv = ["flogtool", "create-gatherer", "--bogus-arg"]
-        self.failUnlessRaises(usage.UsageError,
-                              cli.run_flogtool, argv[1:], run_by_human=False)
+        self.assertRaises(usage.UsageError,
+                          cli.run_flogtool, argv[1:], run_by_human=False)
 
     def test_create_gatherer_no_location(self):
         basedir = "logging/CLI/create_gatherer_no_location"
         argv = ["flogtool", "create-gatherer", basedir]
-        e = self.failUnlessRaises(usage.UsageError,
-                                  cli.run_flogtool, argv[1:],
-                                  run_by_human=False)
-        self.failUnlessIn("--location= is mandatory", str(e))
+        e = self.assertRaises(usage.UsageError,
+                              cli.run_flogtool, argv[1:],
+                              run_by_human=False)
+        self.assertIn("--location= is mandatory", str(e))
 
     def test_wrapper(self):
         basedir = "logging/CLI/wrapper"
@@ -1917,7 +1917,7 @@ class CLI(unittest.TestCase):
                 "--port", "tcp:3117", "--location", "tcp:localhost:3117",
                 "--quiet", basedir]
         run_wrapper(argv[1:])
-        self.failUnless(os.path.exists(basedir))
+        self.assertTrue(os.path.exists(basedir))
 
     def test_create_incident_gatherer(self):
         basedir = "logging/CLI/create_incident_gatherer"
@@ -1925,18 +1925,18 @@ class CLI(unittest.TestCase):
                 "--port", "tcp:3118", "--location", "tcp:localhost:3118",
                 "--quiet", basedir]
         cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnless(os.path.exists(basedir))
+        self.assertTrue(os.path.exists(basedir))
 
         basedir = "logging/CLI/create_incident_gatherer2"
         argv = ["flogtool", "create-incident-gatherer",
                 "--port", "tcp:3118", "--location", "tcp:localhost:3118",
                 basedir]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnless(os.path.exists(basedir))
-        self.failUnless(("Incident Gatherer created in directory %s" % basedir)
+        self.assertTrue(os.path.exists(basedir))
+        self.assertTrue(("Incident Gatherer created in directory %s" % basedir)
                         in out, out)
-        self.failUnless("Now run" in out, out)
-        self.failUnless("to launch the daemon" in out, out)
+        self.assertTrue("Now run" in out, out)
+        self.assertTrue("to launch the daemon" in out, out)
 
 class LogfileWriterMixin:
 
@@ -2004,58 +2004,58 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
             argv = ["flogtool", "dump", fn]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnlessEqual(err, "")
+            self.assertEqual(err, "")
             lines = list(StringIO(out).readlines())
-            self.failUnless(lines[0].strip().startswith("Application versions"),
+            self.assertTrue(lines[0].strip().startswith("Application versions"),
                             lines[0])
             mypid = os.getpid()
-            self.failUnlessEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
+            self.assertEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
             lines = lines[5:]
             line0 = "local#%d %s: one" % (events[1]["d"]["num"],
                                           format_time(events[1]["d"]["time"],
                                                       tmode))
-            self.failUnlessEqual(lines[0].strip(), line0)
-            self.failUnless("FAILURE:" in lines[3])
-            self.failUnlessIn("test_logging.SampleError", lines[4])
-            self.failUnlessIn(": whoops1", lines[4])
-            self.failUnless(lines[-1].startswith("local#3 "))
+            self.assertEqual(lines[0].strip(), line0)
+            self.assertTrue("FAILURE:" in lines[3])
+            self.assertIn("test_logging.SampleError", lines[4])
+            self.assertIn(": whoops1", lines[4])
+            self.assertTrue(lines[-1].startswith("local#3 "))
 
             argv = ["flogtool", "dump", "--just-numbers", fn]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnlessEqual(err, "")
+            self.assertEqual(err, "")
             lines = list(StringIO(out).readlines())
             line0 = "%s %d" % (format_time(events[1]["d"]["time"], tmode),
                                events[1]["d"]["num"])
-            self.failUnlessEqual(lines[0].strip(), line0)
-            self.failUnless(lines[1].strip().endswith(" 1"))
-            self.failUnless(lines[-1].strip().endswith(" 3"))
+            self.assertEqual(lines[0].strip(), line0)
+            self.assertTrue(lines[1].strip().endswith(" 1"))
+            self.assertTrue(lines[-1].strip().endswith(" 3"))
             # failures are not dumped in --just-numbers
-            self.failUnlessEqual(len(lines), 1+3)
+            self.assertEqual(len(lines), 1+3)
 
             argv = ["flogtool", "dump", "--rx-time", fn]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnlessEqual(err, "")
+            self.assertEqual(err, "")
             lines = list(StringIO(out).readlines())
-            self.failUnless(lines[0].strip().startswith("Application versions"),
+            self.assertTrue(lines[0].strip().startswith("Application versions"),
                             lines[0])
             mypid = os.getpid()
-            self.failUnlessEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
+            self.assertEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
             lines = lines[5:]
             line0 = "local#%d rx(%s) emit(%s): one" % \
                     (events[1]["d"]["num"],
                      format_time(events[1]["rx_time"], tmode),
                      format_time(events[1]["d"]["time"], tmode))
-            self.failUnlessEqual(lines[0].strip(), line0)
-            self.failUnless(lines[-1].strip().endswith(" four"))
+            self.assertEqual(lines[0].strip(), line0)
+            self.assertTrue(lines[-1].strip().endswith(" four"))
 
             argv = ["flogtool", "dump", "--verbose", fn]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnlessEqual(err, "")
+            self.assertEqual(err, "")
             lines = list(StringIO(out).readlines())
-            self.failUnless("header" in lines[0])
-            self.failUnless(re.search(r"u?'message': u?'one'", lines[1]), lines[1])
-            self.failUnless("'level': 20" in lines[1])
-            self.failUnless(": four: {" in lines[-1])
+            self.assertTrue("header" in lines[0])
+            self.assertTrue(re.search(r"u?'message': u?'one'", lines[1]), lines[1])
+            self.assertTrue("'level': 20" in lines[1])
+            self.assertTrue(": four: {" in lines[-1])
 
         d.addCallback(_check)
         return d
@@ -2071,19 +2071,19 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
             argv = ["flogtool", "dump", fn]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnlessEqual(err, "")
+            self.assertEqual(err, "")
             lines = list(StringIO(out).readlines())
-            self.failUnlessEqual(len(lines), 8)
-            self.failUnlessEqual(lines[0].strip(),
-                                 "Application versions (embedded in logfile):")
-            self.failUnless(lines[1].strip().startswith("foolscap:"), lines[1])
-            self.failUnless(lines[2].strip().startswith("twisted:"), lines[2])
+            self.assertEqual(len(lines), 8)
+            self.assertEqual(lines[0].strip(),
+                             "Application versions (embedded in logfile):")
+            self.assertTrue(lines[1].strip().startswith("foolscap:"), lines[1])
+            self.assertTrue(lines[2].strip().startswith("twisted:"), lines[2])
             mypid = os.getpid()
-            self.failUnlessEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
-            self.failUnlessEqual(lines[4].strip(), "")
-            self.failIf("[INCIDENT-TRIGGER]" in lines[5])
-            self.failIf("[INCIDENT-TRIGGER]" in lines[6])
-            self.failUnless(lines[7].strip().endswith(": boom [INCIDENT-TRIGGER]"))
+            self.assertEqual(lines[3].strip(), "PID: %s" % mypid, lines[3])
+            self.assertEqual(lines[4].strip(), "")
+            self.assertFalse("[INCIDENT-TRIGGER]" in lines[5])
+            self.assertFalse("[INCIDENT-TRIGGER]" in lines[6])
+            self.assertTrue(lines[7].strip().endswith(": boom [INCIDENT-TRIGGER]"))
         d.addCallback(_check)
         return d
 
@@ -2102,7 +2102,7 @@ class Dumper(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
         d.options.parseOptions([fn])
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnlessEqual(err, "Error: %s appears to be a FURL file.\nPerhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?\n" % fn)
+        self.assertEqual(err, "Error: %s appears to be a FURL file.\nPerhaps you meant to run 'flogtool tail' instead of 'flogtool dump'?\n" % fn)
 
 PICKLE_DUMPFILE_B64 = """
 KGRwMApTJ2hlYWRlcicKcDEKKGRwMgpTJ3RocmVzaG9sZCcKcDMKSTAKc1MncGlkJwpwNA
@@ -2168,8 +2168,8 @@ class OldPickleDumper(unittest.TestCase):
 
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnlessEqual(out, "")
-        self.failUnlessIn("which cannot be loaded safely", err)
+        self.assertEqual(out, "")
+        self.assertIn("which cannot be loaded safely", err)
 
     def test_incident(self):
         self.basedir = "logging/OldPickleDumper/incident"
@@ -2182,8 +2182,8 @@ class OldPickleDumper(unittest.TestCase):
 
         argv = ["flogtool", "dump", fn]
         (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-        self.failUnlessEqual(out, "")
-        self.failUnlessIn("which cannot be loaded safely", err)
+        self.assertEqual(out, "")
+        self.assertIn("which cannot be loaded safely", err)
 
 class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
@@ -2193,7 +2193,7 @@ class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 
         # in fact we no longer create CopiedFailure instances in logs, so a
         # simple failUnlessEqual will now suffice
-        self.failUnlessEqual(a, b)
+        self.assertEqual(a, b)
 
 
     def test_basic(self):
@@ -2210,38 +2210,38 @@ class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             # pass-through
             argv = ["flogtool", "filter", fn, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("copied 5 of 5 events into new file" in out, out)
+            self.assertTrue("copied 5 of 5 events into new file" in out, out)
             self.compare_events(events, self._read_logfile(fn2))
 
             # convert to .bz2 while we're at it
             fn2bz2 = fn2 + ".bz2"
             argv = ["flogtool", "filter", fn, fn2bz2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("copied 5 of 5 events into new file" in out, out)
+            self.assertTrue("copied 5 of 5 events into new file" in out, out)
             self.compare_events(events, self._read_logfile(fn2bz2))
 
             # modify the file in place
             argv = ["flogtool", "filter", "--above", "20", fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("modifying event file in place" in out, out)
-            self.failUnless("--above: removing events below level 20" in out, out)
-            self.failUnless("copied 4 of 5 events into new file" in out, out)
+            self.assertTrue("modifying event file in place" in out, out)
+            self.assertTrue("--above: removing events below level 20" in out, out)
+            self.assertTrue("copied 4 of 5 events into new file" in out, out)
             self.compare_events([events[0], events[1], events[3], events[4]],
                                 self._read_logfile(fn2))
 
             # modify the file in place, two-argument version
             argv = ["flogtool", "filter", fn2, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("modifying event file in place" in out, out)
-            self.failUnless("copied 4 of 4 events into new file" in out, out)
+            self.assertTrue("modifying event file in place" in out, out)
+            self.assertTrue("copied 4 of 4 events into new file" in out, out)
             self.compare_events([events[0], events[1], events[3], events[4]],
                                 self._read_logfile(fn2))
 
             # --above with a string argument
             argv = ["flogtool", "filter", "--above", "OPERATIONAL", fn, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("--above: removing events below level 20" in out, out)
-            self.failUnless("copied 4 of 5 events into new file" in out, out)
+            self.assertTrue("--above: removing events below level 20" in out, out)
+            self.assertTrue("copied 4 of 5 events into new file" in out, out)
             self.compare_events([events[0], events[1], events[3], events[4]],
                                 self._read_logfile(fn2))
 
@@ -2251,32 +2251,32 @@ class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             argv = ["flogtool", "filter", "--before", str(int(t_one - 10)),
                     fn, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("copied 1 of 5 events into new file" in out, out)
+            self.assertTrue("copied 1 of 5 events into new file" in out, out)
             # we always get the header, so it's 1 instead of 0
             self.compare_events(events[:1], self._read_logfile(fn2))
 
             argv = ["flogtool", "filter", "--after", str(int(t_one + 10)),
                     fn, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("copied 1 of 5 events into new file" in out, out)
+            self.assertTrue("copied 1 of 5 events into new file" in out, out)
             self.compare_events(events[:1], self._read_logfile(fn2))
 
             # --facility
             argv = ["flogtool", "filter", "--strip-facility", "big", fn, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("--strip-facility: removing events for big and children" in out, out)
-            self.failUnless("copied 4 of 5 events into new file" in out, out)
+            self.assertTrue("--strip-facility: removing events for big and children" in out, out)
+            self.assertTrue("copied 4 of 5 events into new file" in out, out)
             self.compare_events([events[0],events[2],events[3],events[4]],
                                 self._read_logfile(fn2))
 
             # pass-through, --verbose, read from .bz2
             argv = ["flogtool", "filter", "--verbose", fn2bz2, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("copied 5 of 5 events into new file" in out, out)
+            self.assertTrue("copied 5 of 5 events into new file" in out, out)
             lines = [l.strip() for l in StringIO(out).readlines()]
-            self.failUnlessEqual(lines,
-                                 ["HEADER", "0", "1", "2", "3",
-                                  "copied 5 of 5 events into new file"])
+            self.assertEqual(lines,
+                             ["HEADER", "0", "1", "2", "3",
+                              "copied 5 of 5 events into new file"])
             self.compare_events(events, self._read_logfile(fn2))
 
             # --from . This normally takes a base32 tubid prefix, but the
@@ -2284,14 +2284,14 @@ class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
             # all-or-nothing.
             argv = ["flogtool", "filter", "--from", "local", fn, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("--from: retaining events only from tubid prefix local" in out, out)
-            self.failUnless("copied 5 of 5 events into new file" in out, out)
+            self.assertTrue("--from: retaining events only from tubid prefix local" in out, out)
+            self.assertTrue("copied 5 of 5 events into new file" in out, out)
             self.compare_events(events, self._read_logfile(fn2))
 
             argv = ["flogtool", "filter", "--from", "NOTlocal", fn, fn2]
             (out,err) = cli.run_flogtool(argv[1:], run_by_human=False)
-            self.failUnless("--from: retaining events only from tubid prefix NOTlocal" in out, out)
-            self.failUnless("copied 1 of 5 events into new file" in out, out)
+            self.assertTrue("--from: retaining events only from tubid prefix NOTlocal" in out, out)
+            self.assertTrue("copied 1 of 5 events into new file" in out, out)
             self.compare_events(events[:1], self._read_logfile(fn2))
 
 
@@ -2352,25 +2352,25 @@ class Web(unittest.TestCase):
 
         page = yield getPage(self.url)
         mypid = os.getpid()
-        self.failUnless("PID %s" % mypid in page,
+        self.assertTrue("PID %s" % mypid in page,
                         "didn't see 'PID %s' in '%s'" % (mypid, page))
-        self.failUnless("Application Versions:" in page, page)
-        self.failUnless("foolscap: %s" % foolscap.__version__ in page, page)
-        self.failUnless("4 events covering" in page)
-        self.failUnless('href="summary/0-20">3 events</a> at level 20'
+        self.assertTrue("Application Versions:" in page, page)
+        self.assertTrue("foolscap: %s" % foolscap.__version__ in page, page)
+        self.assertTrue("4 events covering" in page)
+        self.assertTrue('href="summary/0-20">3 events</a> at level 20'
                         in page)
 
         page = yield getPage(self.baseurl + "summary/0-20")
-        self.failUnless("Events at level 20" in page)
-        self.failUnless(": two" in page)
-        self.failIf("four" in page)
+        self.assertTrue("Events at level 20" in page)
+        self.assertTrue(": two" in page)
+        self.assertFalse("four" in page)
 
         def check_all_events(page):
-            self.failUnless("3 root events" in page)
-            self.failUnless(": one</span>" in page)
-            self.failUnless(": two</span>" in page)
-            self.failUnless(": three FAILURE:" in page)
-            self.failUnless(": UNUSUAL four</span>" in page)
+            self.assertTrue("3 root events" in page)
+            self.assertTrue(": one</span>" in page)
+            self.assertTrue(": two</span>" in page)
+            self.assertTrue(": three FAILURE:" in page)
+            self.assertTrue(": UNUSUAL four</span>" in page)
 
         page = yield getPage(self.baseurl + "all-events")
         check_all_events(page)
@@ -2407,16 +2407,16 @@ class Bridge(unittest.TestCase):
         fl.msg("three", level=log.NOISY) # should be removed
         d = flushEventualQueue()
         def _check(res):
-            self.failUnlessEqual(len(fl_out), 3)
-            self.failUnlessEqual(fl_out[0]["message"], "one")
-            self.failUnlessEqual(fl_out[1]["format"], "two %(two)d")
-            self.failUnlessEqual(fl_out[2]["message"], "three")
+            self.assertEqual(len(fl_out), 3)
+            self.assertEqual(fl_out[0]["message"], "one")
+            self.assertEqual(fl_out[1]["format"], "two %(two)d")
+            self.assertEqual(fl_out[2]["message"], "three")
 
-            self.failUnlessEqual(len(tw_out), 2)
-            self.failUnlessEqual(tw_out[0]["message"], ("one",))
-            self.failUnless(tw_out[0]["from-foolscap"])
-            self.failUnlessEqual(tw_out[1]["message"], ("two 2",))
-            self.failUnless(tw_out[1]["from-foolscap"])
+            self.assertEqual(len(tw_out), 2)
+            self.assertEqual(tw_out[0]["message"], ("one",))
+            self.assertTrue(tw_out[0]["from-foolscap"])
+            self.assertEqual(tw_out[1]["message"], ("two 2",))
+            self.assertTrue(tw_out[1]["from-foolscap"])
 
         d.addCallback(_check)
         return d
@@ -2446,21 +2446,21 @@ class Bridge(unittest.TestCase):
 
         d = flushEventualQueue()
         def _check(res):
-            self.failUnlessEqual(len(tw_out), 3)
-            self.failUnlessEqual(tw_out[0]["message"], ("one",))
-            self.failUnlessEqual(tw_out[1]["format"], "two %(two)d")
-            self.failUnlessEqual(tw_out[1]["two"], 2)
-            self.failUnlessEqual(tw_out[2]["format"], "three is %(evil)s")
-            self.failUnlessEqual(tw_out[2]["evil"], unserializable)
-            self.failUnlessEqual(len(fl_out), 3)
-            self.failUnlessEqual(fl_out[0]["message"], "one")
-            self.failUnless(fl_out[0]["from-twisted"])
-            self.failUnlessEqual(fl_out[1]["message"], "two 2")
-            self.failUnless(fl_out[1]["from-twisted"])
+            self.assertEqual(len(tw_out), 3)
+            self.assertEqual(tw_out[0]["message"], ("one",))
+            self.assertEqual(tw_out[1]["format"], "two %(two)d")
+            self.assertEqual(tw_out[1]["two"], 2)
+            self.assertEqual(tw_out[2]["format"], "three is %(evil)s")
+            self.assertEqual(tw_out[2]["evil"], unserializable)
+            self.assertEqual(len(fl_out), 3)
+            self.assertEqual(fl_out[0]["message"], "one")
+            self.assertTrue(fl_out[0]["from-twisted"])
+            self.assertEqual(fl_out[1]["message"], "two 2")
+            self.assertTrue(fl_out[1]["from-twisted"])
             # str(unserializable) is like "<function <lambda> at 0xblahblah>"
-            self.failUnlessEqual(fl_out[2]["message"],
-                                 "three is " + str(unserializable))
-            self.failUnless(fl_out[2]["from-twisted"])
+            self.assertEqual(fl_out[2]["message"],
+                             "three is " + str(unserializable))
+            self.assertTrue(fl_out[2]["from-twisted"])
 
         d.addCallback(_check)
         return d
@@ -2492,16 +2492,16 @@ class Bridge(unittest.TestCase):
 
         d = flushEventualQueue()
         def _check(res):
-            self.failUnlessEqual(len(fl_out), 3)
-            self.failUnlessEqual(fl_out[0]["message"], "one")
-            self.failUnless(fl_out[0]["from-twisted"])
-            self.failUnlessEqual(fl_out[1]["message"], "two 2")
-            self.failIf("two" in fl_out[1])
-            self.failUnless(fl_out[1]["from-twisted"])
+            self.assertEqual(len(fl_out), 3)
+            self.assertEqual(fl_out[0]["message"], "one")
+            self.assertTrue(fl_out[0]["from-twisted"])
+            self.assertEqual(fl_out[1]["message"], "two 2")
+            self.assertFalse("two" in fl_out[1])
+            self.assertTrue(fl_out[1]["from-twisted"])
             # str(unserializable) is like "<function <lambda> at 0xblahblah>"
-            self.failUnlessEqual(fl_out[2]["message"],
-                                 "three is " + str(unserializable))
-            self.failUnless(fl_out[2]["from-twisted"])
+            self.assertEqual(fl_out[2]["message"],
+                             "three is " + str(unserializable))
+            self.assertTrue(fl_out[2]["from-twisted"])
 
         d.addCallback(_check)
         return d
@@ -2521,13 +2521,13 @@ class Bridge(unittest.TestCase):
 
         d = flushEventualQueue()
         def _check(res):
-            self.failUnlessEqual(len(tw_out), 2)
-            self.failUnlessEqual(tw_out[0]["message"], ("one",))
-            self.failUnlessEqual(tw_out[1]["message"], ("two",))
+            self.assertEqual(len(tw_out), 2)
+            self.assertEqual(tw_out[0]["message"], ("one",))
+            self.assertEqual(tw_out[1]["message"], ("two",))
 
-            self.failUnlessEqual(len(fl_out), 2)
-            self.failUnlessEqual(fl_out[0]["message"], "one")
-            self.failUnlessEqual(fl_out[1]["message"], "two")
+            self.assertEqual(len(fl_out), 2)
+            self.assertEqual(fl_out[0]["message"], "one")
+            self.assertEqual(fl_out[1]["message"], "two")
 
         d.addCallback(_check)
         return d

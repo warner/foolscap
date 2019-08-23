@@ -11,12 +11,12 @@ class TestEventual(unittest.TestCase):
     def testSend(self):
         results = []
         eventually(results.append, 1)
-        self.failIf(results)
+        self.assertFalse(results)
         def _check():
-            self.failUnlessEqual(results, [1])
+            self.assertEqual(results, [1])
         eventually(_check)
         def _check2():
-            self.failUnlessEqual(results, [1,2])
+            self.assertEqual(results, [1,2])
         eventually(results.append, 2)
         eventually(_check2)
 
@@ -26,7 +26,7 @@ class TestEventual(unittest.TestCase):
         eventually(results.append, 2)
         d = flushEventualQueue()
         def _check(res):
-            self.failUnlessEqual(results, [1,2])
+            self.assertEqual(results, [1,2])
         d.addCallback(_check)
         return d
 
@@ -34,9 +34,9 @@ class TestEventual(unittest.TestCase):
         results = []
         fireEventually(1).addCallback(results.append)
         fireEventually(2).addCallback(results.append)
-        self.failIf(results)
+        self.assertFalse(results)
         def _check(res):
-            self.failUnlessEqual(results, [1,2])
+            self.assertEqual(results, [1,2])
         d = flushEventualQueue()
         d.addCallback(_check)
         return d

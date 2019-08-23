@@ -43,7 +43,7 @@ class MyCopyable3Slicer(copyable.CopyableSlicer):
         yield 'copyable'
         yield "MyCopyable3name"
         state = self.obj.getAlternateCopyableState()
-        for k,v in state.iteritems():
+        for k,v in state.items():
             yield k
             yield v
 
@@ -100,7 +100,7 @@ class Copyable(TargetMixin, unittest.TestCase):
     def send(self, arg):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("set", obj=arg)
-        d.addCallback(self.failUnless)
+        d.addCallback(self.assertTrue)
         # some of these tests require that we return a Failure object, so we
         # have to wrap this in a tuple to survive the Deferred.
         d.addCallback(lambda res: (target.obj,))
@@ -108,7 +108,7 @@ class Copyable(TargetMixin, unittest.TestCase):
 
     def testCopy0(self):
         d = self.send(1)
-        d.addCallback(self.failUnlessEqual, (1,))
+        d.addCallback(self.assertEqual, (1,))
         return d
 
     def testFailure1(self):
@@ -124,14 +124,14 @@ class Copyable(TargetMixin, unittest.TestCase):
         f = args[0] 
         #print "CopiedFailure is:", f
         #print f.__dict__
-        self.failUnlessEqual(reflect.qual(f.type), "exceptions.RuntimeError")
-        self.failUnless(f.check, RuntimeError)
-        self.failUnlessEqual(f.value, "message here")
-        self.failUnlessEqual(f.frames, [])
-        self.failUnlessEqual(f.tb, None)
-        self.failUnlessEqual(f.stack, [])
+        self.assertEqual(reflect.qual(f.type), "exceptions.RuntimeError")
+        self.assertTrue(f.check, RuntimeError)
+        self.assertEqual(f.value, "message here")
+        self.assertEqual(f.frames, [])
+        self.assertEqual(f.tb, None)
+        self.assertEqual(f.stack, [])
         # there should be a traceback
-        self.failUnless(f.traceback.find("raise RuntimeError") != -1,
+        self.assertTrue(f.traceback.find("raise RuntimeError") != -1,
                         "no 'raise RuntimeError' in '%s'" % (f.traceback,))
         # older Twisted (before 17.9.0) used a Failure class that could be
         # pickled, so our derived CopiedFailure class could be round-tripped
@@ -161,14 +161,14 @@ class Copyable(TargetMixin, unittest.TestCase):
         f = args[0]
         #print "CopiedFailure is:", f
         #print f.__dict__
-        self.failUnlessEqual(reflect.qual(f.type), "exceptions.RuntimeError")
-        self.failUnless(f.check, RuntimeError)
-        self.failUnlessEqual(f.value, "message here")
-        self.failUnlessEqual(f.frames, [])
-        self.failUnlessEqual(f.tb, None)
-        self.failUnlessEqual(f.stack, [])
+        self.assertEqual(reflect.qual(f.type), "exceptions.RuntimeError")
+        self.assertTrue(f.check, RuntimeError)
+        self.assertEqual(f.value, "message here")
+        self.assertEqual(f.frames, [])
+        self.assertEqual(f.tb, None)
+        self.assertEqual(f.stack, [])
         # there should not be a traceback
-        self.failUnlessEqual(f.traceback, "Traceback unavailable\n")
+        self.assertEqual(f.traceback, "Traceback unavailable\n")
 
         ## # we should be able to pickle CopiedFailures, and when we restore
         ## # them, they should look like the original
@@ -191,9 +191,9 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy1_1(self, args):
         res = args[0]
-        self.failUnless(isinstance(res, MyRemoteCopy1))
-        self.failUnlessEqual(res.a, 12)
-        self.failUnlessEqual(res.b, "foo")
+        self.assertTrue(isinstance(res, MyRemoteCopy1))
+        self.assertEqual(res.a, 12)
+        self.assertEqual(res.b, "foo")
 
     def testCopy2(self):
         obj = MyCopyable2() # has a custom getStateToCopy
@@ -204,10 +204,10 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy2_1(self, args):
         res = args[0]
-        self.failUnless(isinstance(res, MyRemoteCopy2))
-        self.failUnlessEqual(res.c, 1)
-        self.failUnlessEqual(res.d, "foo")
-        self.failIf(hasattr(res, "a"))
+        self.assertTrue(isinstance(res, MyRemoteCopy2))
+        self.assertEqual(res.c, 1)
+        self.assertEqual(res.d, "foo")
+        self.assertFalse(hasattr(res, "a"))
 
     def testCopy3(self):
         obj = MyCopyable3() # has a custom Slicer
@@ -218,10 +218,10 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy3_1(self, args):
         res = args[0]
-        self.failUnless(isinstance(res, MyRemoteCopy3))
-        self.failUnlessEqual(res.e, 2)
-        self.failUnlessEqual(res.f, "yes")
-        self.failIf(hasattr(res, "a"))
+        self.assertTrue(isinstance(res, MyRemoteCopy3))
+        self.assertEqual(res.e, 2)
+        self.assertEqual(res.f, "yes")
+        self.assertFalse(hasattr(res, "a"))
 
     def testCopy4(self):
         obj = MyCopyable4()
@@ -232,9 +232,9 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy4_1(self, args, obj):
         res = args[0]
-        self.failUnless(isinstance(res, MyRemoteCopy4))
-        self.failUnlessEqual(res.foo, 12)
-        self.failUnlessEqual(res.bar, "bar")
+        self.assertTrue(isinstance(res, MyRemoteCopy4))
+        self.assertEqual(res.foo, 12)
+        self.assertEqual(res.bar, "bar")
 
         obj.bad = "unwanted attribute"
         d = self.send(obj)
@@ -243,7 +243,7 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy4_2(self, why, obj):
         why.trap(Violation)
-        self.failUnlessSubstring("unknown attribute 'bad'", str(why))
+        self.assertIn("unknown attribute 'bad'", str(why))
         del obj.bad
 
         obj.foo = "not a number"
@@ -253,8 +253,8 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy4_3(self, why, obj):
         why.trap(Violation)
-        self.failUnlessSubstring("STRING token rejected by IntegerConstraint",
-                                 str(why))
+        self.assertIn("STRING token rejected by IntegerConstraint",
+                      str(why))
 
         obj.foo = 12
         obj.bar = "very long " * 1000
@@ -266,17 +266,17 @@ class Copyable(TargetMixin, unittest.TestCase):
         return d
     def _testCopy4_4(self, why):
         why.trap(Violation)
-        self.failUnlessSubstring("token too large", str(why))
+        self.assertIn("token too large", str(why))
 
 class Registration(unittest.TestCase):
     def testRegistration(self):
         rc_classes = copyable.debug_RemoteCopyClasses
         copyable_classes = rc_classes.values()
-        self.failUnless(MyRemoteCopy1 in copyable_classes)
-        self.failUnless(MyRemoteCopy2 in copyable_classes)
-        self.failUnlessIdentical(rc_classes["MyCopyable2name"],
-                                 MyRemoteCopy2)
-        self.failIf(MyRemoteCopy5 in copyable_classes)
+        self.assertTrue(MyRemoteCopy1 in copyable_classes)
+        self.assertTrue(MyRemoteCopy2 in copyable_classes)
+        self.assertIs(rc_classes["MyCopyable2name"],
+                      MyRemoteCopy2)
+        self.assertFalse(MyRemoteCopy5 in copyable_classes)
 
 
 ##############
@@ -312,7 +312,7 @@ class Adaptation(TargetMixin, unittest.TestCase):
     def send(self, arg):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("set", obj=arg)
-        d.addCallback(self.failUnless)
+        d.addCallback(self.assertTrue)
         # some of these tests require that we return a Failure object, so we
         # have to wrap this in a tuple to survive the Deferred.
         d.addCallback(lambda res: (target.obj,))
@@ -325,7 +325,7 @@ class Adaptation(TargetMixin, unittest.TestCase):
         return d
     def _testAdaptation_1(self, args):
         res = args[0]
-        self.failUnless(isinstance(res, TheThirdPartyClassThatIWantToCopy))
-        self.failUnlessEqual(res.a, 45)
-        self.failUnlessEqual(res.b, 91)
+        self.assertTrue(isinstance(res, TheThirdPartyClassThatIWantToCopy))
+        self.assertEqual(res.a, 45)
+        self.assertEqual(res.b, 91)
 

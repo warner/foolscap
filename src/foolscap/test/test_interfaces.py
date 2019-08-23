@@ -22,15 +22,15 @@ class Target2(Target):
 class TestInterface(TargetMixin, unittest.TestCase):
 
     def testTypes(self):
-        self.failUnless(isinstance(RIMyTarget,
+        self.assertTrue(isinstance(RIMyTarget,
                                    remoteinterface.RemoteInterfaceClass))
-        self.failUnless(isinstance(RIMyTarget2,
+        self.assertTrue(isinstance(RIMyTarget2,
                                    remoteinterface.RemoteInterfaceClass))
 
     def testRegister(self):
         reg = RemoteInterfaceRegistry
-        self.failUnlessEqual(reg["RIMyTarget"], RIMyTarget)
-        self.failUnlessEqual(reg["RIMyTargetInterface2"], RIMyTarget2)
+        self.assertEqual(reg["RIMyTarget"], RIMyTarget)
+        self.assertEqual(reg["RIMyTargetInterface2"], RIMyTarget2)
 
     def testDuplicateRegistry(self):
         try:
@@ -47,68 +47,67 @@ class TestInterface(TargetMixin, unittest.TestCase):
         self.setupBrokers()
         rr, target = self.setupTarget(Target())
         iface = getRemoteInterface(target)
-        self.failUnlessEqual(iface, RIMyTarget)
+        self.assertEqual(iface, RIMyTarget)
         iname = getRemoteInterfaceName(target)
-        self.failUnlessEqual(iname, "RIMyTarget")
-        self.failUnlessIdentical(RemoteInterfaceRegistry["RIMyTarget"],
-                                 RIMyTarget)
+        self.assertEqual(iname, "RIMyTarget")
+        self.assertIs(RemoteInterfaceRegistry["RIMyTarget"],
+                      RIMyTarget)
 
         rr, target = self.setupTarget(Target2())
         iname = getRemoteInterfaceName(target)
-        self.failUnlessEqual(iname, "RIMyTargetInterface2")
-        self.failUnlessIdentical(\
-            RemoteInterfaceRegistry["RIMyTargetInterface2"], RIMyTarget2)
+        self.assertEqual(iname, "RIMyTargetInterface2")
+        self.assertIs(RemoteInterfaceRegistry["RIMyTargetInterface2"], RIMyTarget2)
 
 
     def testInterface2(self):
         # verify that RemoteInterfaces have the right attributes
         t = Target()
         iface = getRemoteInterface(t)
-        self.failUnlessEqual(iface, RIMyTarget)
+        self.assertEqual(iface, RIMyTarget)
 
         # 'add' is defined with 'def'
         s1 = RIMyTarget['add']
-        self.failUnless(isinstance(s1, RemoteMethodSchema))
+        self.assertTrue(isinstance(s1, RemoteMethodSchema))
         ok, s2 = s1.getKeywordArgConstraint("a")
-        self.failUnless(ok)
-        self.failUnless(isinstance(s2, schema.IntegerConstraint))
-        self.failUnless(s2.checkObject(12, False) == None)
-        self.failUnlessRaises(schema.Violation,
-                              s2.checkObject, "string", False)
+        self.assertTrue(ok)
+        self.assertTrue(isinstance(s2, schema.IntegerConstraint))
+        self.assertTrue(s2.checkObject(12, False) == None)
+        self.assertRaises(schema.Violation,
+                          s2.checkObject, "string", False)
         s3 = s1.getResponseConstraint()
-        self.failUnless(isinstance(s3, schema.IntegerConstraint))
+        self.assertTrue(isinstance(s3, schema.IntegerConstraint))
 
         # 'add1' is defined as a class attribute
         s1 = RIMyTarget['add1']
-        self.failUnless(isinstance(s1, RemoteMethodSchema))
+        self.assertTrue(isinstance(s1, RemoteMethodSchema))
         ok, s2 = s1.getKeywordArgConstraint("a")
-        self.failUnless(ok)
-        self.failUnless(isinstance(s2, schema.IntegerConstraint))
-        self.failUnless(s2.checkObject(12, False) == None)
-        self.failUnlessRaises(schema.Violation,
-                              s2.checkObject, "string", False)
+        self.assertTrue(ok)
+        self.assertTrue(isinstance(s2, schema.IntegerConstraint))
+        self.assertTrue(s2.checkObject(12, False) == None)
+        self.assertRaises(schema.Violation,
+                          s2.checkObject, "string", False)
         s3 = s1.getResponseConstraint()
-        self.failUnless(isinstance(s3, schema.IntegerConstraint))
+        self.assertTrue(isinstance(s3, schema.IntegerConstraint))
 
         s1 = RIMyTarget['join']
-        self.failUnless(isinstance(s1.getKeywordArgConstraint("a")[1],
+        self.assertTrue(isinstance(s1.getKeywordArgConstraint("a")[1],
                                    schema.StringConstraint))
-        self.failUnless(isinstance(s1.getKeywordArgConstraint("c")[1],
+        self.assertTrue(isinstance(s1.getKeywordArgConstraint("c")[1],
                                    schema.IntegerConstraint))
         s3 = RIMyTarget['join'].getResponseConstraint()
-        self.failUnless(isinstance(s3, schema.StringConstraint))
+        self.assertTrue(isinstance(s3, schema.StringConstraint))
 
         s1 = RIMyTarget['disputed']
-        self.failUnless(isinstance(s1.getKeywordArgConstraint("a")[1],
+        self.assertTrue(isinstance(s1.getKeywordArgConstraint("a")[1],
                                    schema.IntegerConstraint))
         s3 = s1.getResponseConstraint()
-        self.failUnless(isinstance(s3, schema.IntegerConstraint))
+        self.assertTrue(isinstance(s3, schema.IntegerConstraint))
 
 
     def testInterface3(self):
         t = TargetWithoutInterfaces()
         iface = getRemoteInterface(t)
-        self.failIf(iface)
+        self.assertFalse(iface)
 
     def testStack(self):
         # when you violate your outbound schema, the Failure you get should
@@ -160,7 +159,7 @@ class Types(TargetMixin, unittest.TestCase):
     def testCall(self):
         rr, target = self.setupTarget(Target(), True)
         d = rr.callRemote('add', 3, 4) # enforces schemas
-        d.addCallback(lambda res: self.failUnlessEqual(res, 7))
+        d.addCallback(lambda res: self.assertEqual(res, 7))
         return d
 
     def testFail(self):
@@ -173,7 +172,7 @@ class Types(TargetMixin, unittest.TestCase):
     def testNoneGood(self):
         rr, target = self.setupTarget(TypesTarget(), True)
         d = rr.callRemote('returns_none', True)
-        d.addCallback(lambda res: self.failUnlessEqual(res, None))
+        d.addCallback(lambda res: self.assertEqual(res, None))
         return d
 
     def testNoneBad(self):
@@ -181,16 +180,16 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('returns_none', False)
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object", str(f))
-            self.failUnlessIn(">.returns_none", str(f))
-            self.failUnlessIn("'not None' is not None", str(f))
+            self.assertIn("(in return value of <foolscap.test.common.TypesTarget object", str(f))
+            self.assertIn(">.returns_none", str(f))
+            self.assertIn("'not None' is not None", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
     def testTakesRemoteInterfaceGood(self):
         rr, target = self.setupTarget(TypesTarget(), True)
         d = rr.callRemote('takes_remoteinterface', DummyTarget())
-        d.addCallback(lambda res: self.failUnlessEqual(res, "good"))
+        d.addCallback(lambda res: self.assertEqual(res, "good"))
         return d
 
     def testTakesRemoteInterfaceBad(self):
@@ -199,8 +198,8 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('takes_remoteinterface', 12)
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("RITypes.takes_remoteinterface(a=))", str(f))
-            self.failUnlessIn("'12' is not a Referenceable", str(f))
+            self.assertIn("RITypes.takes_remoteinterface(a=))", str(f))
+            self.assertIn("'12' is not a Referenceable", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -210,9 +209,9 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('takes_remoteinterface', TypesTarget())
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("RITypes.takes_remoteinterface(a=))", str(f))
-            self.failUnlessIn(" does not provide RemoteInterface ", str(f))
-            self.failUnlessIn("foolscap.test.common.RIDummy", str(f))
+            self.assertIn("RITypes.takes_remoteinterface(a=))", str(f))
+            self.assertIn(" does not provide RemoteInterface ", str(f))
+            self.assertIn("foolscap.test.common.RIDummy", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -229,7 +228,7 @@ class Types(TargetMixin, unittest.TestCase):
         rr, target = self.setupTarget(TypesTarget(), True)
         d = rr.callRemote('returns_remoteinterface', 1)
         def _check(res):
-            self.failUnless(isinstance(res, RemoteReference))
+            self.assertTrue(isinstance(res, RemoteReference))
             #self.failUnless(RIDummy.providedBy(res))
             self.failUnlessRemoteProvides(res, RIDummy)
         d.addCallback(_check)
@@ -241,9 +240,9 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('returns_remoteinterface', 0)
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
-            self.failUnlessIn(">.returns_remoteinterface)", str(f))
-            self.failUnlessIn("'15' is not a Referenceable", str(f))
+            self.assertIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
+            self.assertIn(">.returns_remoteinterface)", str(f))
+            self.assertIn("'15' is not a Referenceable", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -253,12 +252,12 @@ class Types(TargetMixin, unittest.TestCase):
         d = rr.callRemote('returns_remoteinterface', -1)
         def _check_failure(f):
             f.trap(Violation)
-            self.failUnlessIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
-            self.failUnlessIn(">.returns_remoteinterface)", str(f))
-            self.failUnlessIn("<foolscap.test.common.TypesTarget object ",
-                              str(f))
-            self.failUnlessIn(" does not provide RemoteInterface ", str(f))
-            self.failUnlessIn("foolscap.test.common.RIDummy", str(f))
+            self.assertIn("(in return value of <foolscap.test.common.TypesTarget object at ", str(f))
+            self.assertIn(">.returns_remoteinterface)", str(f))
+            self.assertIn("<foolscap.test.common.TypesTarget object ",
+                          str(f))
+            self.assertIn(" does not provide RemoteInterface ", str(f))
+            self.assertIn("foolscap.test.common.RIDummy", str(f))
         self.deferredShouldFail(d, checker=_check_failure)
         return d
 
@@ -270,7 +269,7 @@ class LocalTypes(TargetMixin, unittest.TestCase):
     def testTakesInterfaceGood(self):
         rr, target = self.setupTarget(TypesTarget(), True)
         d = rr.callRemote('takes_interface', DummyTarget())
-        d.addCallback(lambda res: self.failUnlessEqual(res, "good"))
+        d.addCallback(lambda res: self.assertEqual(res, "good"))
         return d
 
     def testTakesInterfaceBad(self):
@@ -287,7 +286,7 @@ class LocalTypes(TargetMixin, unittest.TestCase):
         d = rr.callRemote('returns_interface', True)
         def _check(res):
             #self.failUnless(isinstance(res, RemoteReference))
-            self.failUnless(IFoo.providedBy(res))
+            self.assertTrue(IFoo.providedBy(res))
         d.addCallback(_check)
         return d
 
