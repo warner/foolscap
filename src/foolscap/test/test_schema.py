@@ -156,13 +156,13 @@ class ConformTest(unittest.TestCase):
                                        inner)
 
         self.conforms(inner, common.map_bytes(("hi", 2)))
-        self.conforms(outer, common.map_bytes_r(("long string here", ("short", 3))))
-        self.violates(outer, common.map_bytes_r(("long string here", ("short", 3, "extra"))))
-        self.violates(outer, common.map_bytes_r(("long string here", ("too long string", 3))))
+        self.conforms(outer, common.map_bytes(("long string here", ("short", 3))))
+        self.violates(outer, common.map_bytes(("long string here", ("short", 3, "extra"))))
+        self.violates(outer, common.map_bytes(("long string here", ("too long string", 3))))
 
         outer2 = schema.TupleConstraint(inner, inner)
-        self.conforms(outer2, common.map_bytes_r((("hi", 1), ("there", 2))) )       
-        self.violates(outer2, common.map_bytes_r(("hi", 1, "flat", 2) ))
+        self.conforms(outer2, common.map_bytes((("hi", 1), ("there", 2))) )       
+        self.violates(outer2, common.map_bytes(("hi", 1, "flat", 2) ))
 
     def testRecursion(self):
         # we have to fiddle with PolyConstraint's innards
@@ -183,9 +183,9 @@ class ConformTest(unittest.TestCase):
         # but note that the constraint can still be applied
         self.conforms(mapping, common.map_bytes(("name", 123)))
         self.conforms(mapping, common.map_bytes(("name", "key")))
-        self.conforms(mapping, common.map_bytes_r(("name", ("key", "value"))))
-        self.conforms(mapping, common.map_bytes_r(("name", ("key", 123))))
-        self.violates(mapping, common.map_bytes_r(("name", ("key", []))))
+        self.conforms(mapping, common.map_bytes(("name", ("key", "value"))))
+        self.conforms(mapping, common.map_bytes(("name", ("key", 123))))
+        self.violates(mapping, common.map_bytes(("name", ("key", []))))
         l = []
         l.append(l)
         self.violates(mapping, ("name", l))
