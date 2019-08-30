@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+from past.builtins import unicode
 import re
 from twisted.internet.defer import Deferred
 from foolscap.tokens import BananaError, STRING, VOCAB, Violation
