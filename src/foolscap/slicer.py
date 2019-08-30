@@ -6,8 +6,8 @@ from twisted.python.components import registerAdapter
 from twisted.python import log
 from zope.interface import implementer
 from twisted.internet.defer import Deferred
-import tokens
-from tokens import Violation, BananaError
+from . import tokens
+from .tokens import Violation, BananaError
 from foolscap.ipb import IBroker
 
 class SlicerClass(type):
