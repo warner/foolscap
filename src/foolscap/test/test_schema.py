@@ -1,5 +1,7 @@
 
+import six
 import re
+from past.builtins import unicode
 from twisted.trial import unittest
 from foolscap import schema, copyable, broker
 from foolscap.tokens import Violation, InvalidRemoteInterface
@@ -53,30 +55,30 @@ class ConformTest(unittest.TestCase):
 
     def testByteString(self):
         c = schema.ByteStringConstraint(10)
-        self.conforms(c, "I'm short")
-        self.violates(c, "I am too long")
-        self.conforms(c, "a" * 10)
-        self.violates(c, "a" * 11)
+        self.conforms(c, six.b("I'm short"))
+        self.violates(c, six.b("I am too long"))
+        self.conforms(c, six.b("a") * 10)
+        self.violates(c, six.b("a") * 11)
         self.violates(c, 123)
         self.violates(c, Dummy())
         self.violates(c, None)
 
         c2 = schema.ByteStringConstraint(15, 10)
-        self.violates(c2, "too short")
-        self.conforms(c2, "long enough")
-        self.violates(c2, "this is too long")
+        self.violates(c2, six.b("too short"))
+        self.conforms(c2, six.b("long enough"))
+        self.violates(c2, six.b("this is too long"))
         self.violates(c2, u"I am unicode")
 
-        c3 = schema.ByteStringConstraint(regexp="needle")
-        self.violates(c3, "no present")
-        self.conforms(c3, "needle in a haystack")
-        c4 = schema.ByteStringConstraint(regexp="[abc]+")
-        self.violates(c4, "spelled entirely without those letters")
-        self.conforms(c4, "add better cases")
-        c5 = schema.ByteStringConstraint(regexp=re.compile("\d+\s\w+"))
-        self.conforms(c5, ": 123 boo")
-        self.violates(c5, "more than 1  spaces")
-        self.violates(c5, "letters first 123")
+        c3 = schema.ByteStringConstraint(regexp=six.b("needle"))
+        self.violates(c3, six.b("no present"))
+        self.conforms(c3, six.b("needle in a haystack"))
+        c4 = schema.ByteStringConstraint(regexp=six.b("[abc]+"))
+        self.violates(c4, six.b("spelled entirely without those letters"))
+        self.conforms(c4, six.b("add better cases"))
+        c5 = schema.ByteStringConstraint(regexp=re.compile(six.b(r'\d+\s\w+')))
+        self.conforms(c5, six.b(": 123 boo"))
+        self.violates(c5, six.b("more than 1  spaces"))
+        self.violates(c5, six.b("letters first 123"))
 
     def testString(self):
         # this test will change once the definition of "StringConstraint"
@@ -84,12 +86,12 @@ class ConformTest(unittest.TestCase):
         # ByteStringConstraint.
 
         c = schema.StringConstraint(20)
-        self.conforms(c, "I'm short")
+        self.conforms(c, six.b("I'm short"))
         self.violates(c, u"I am unicode")
 
     def testUnicode(self):
         c = schema.UnicodeConstraint(10)
-        self.violates(c, "I'm a bytestring")
+        self.violates(c, six.b("I'm a bytestring"))
         self.conforms(c, u"I'm short")
         self.violates(c, u"I am too long")
         self.conforms(c, u"a" * 10)
@@ -99,21 +101,21 @@ class ConformTest(unittest.TestCase):
         self.violates(c, None)
 
         c2 = schema.UnicodeConstraint(15, 10)
-        self.violates(c2, "I'm a bytestring")
+        self.violates(c2, six.b("I'm a bytestring"))
         self.violates(c2, u"too short")
         self.conforms(c2, u"long enough")
         self.violates(c2, u"this is too long")
 
         c3 = schema.UnicodeConstraint(regexp="needle")
-        self.violates(c3, "I'm a bytestring")
+        self.violates(c3, six.b("I'm a bytestring"))
         self.violates(c3, u"no present")
         self.conforms(c3, u"needle in a haystack")
         c4 = schema.UnicodeConstraint(regexp="[abc]+")
-        self.violates(c4, "I'm a bytestring")
+        self.violates(c4, six.b("I'm a bytestring"))
         self.violates(c4, u"spelled entirely without those letters")
         self.conforms(c4, u"add better cases")
-        c5 = schema.UnicodeConstraint(regexp=re.compile("\d+\s\w+"))
-        self.violates(c5, "I'm a bytestring")
+        c5 = schema.UnicodeConstraint(regexp=re.compile(r'\d+\s\w+'))
+        self.violates(c5, six.b("I'm a bytestring"))
         self.conforms(c5, u": 123 boo")
         self.violates(c5, u"more than 1  spaces")
         self.violates(c5, u"letters first 123")
@@ -131,7 +133,7 @@ class ConformTest(unittest.TestCase):
     def testPoly(self):
         c = schema.PolyConstraint(schema.ByteStringConstraint(100),
                                   schema.IntegerConstraint())
-        self.conforms(c, "string")
+        self.conforms(c, six.b("string"))
         self.conforms(c, 123)
         self.violates(c, u"unicode")
         self.violates(c, 123.4)
@@ -141,7 +143,7 @@ class ConformTest(unittest.TestCase):
         c = schema.TupleConstraint(schema.ByteStringConstraint(10),
                                    schema.ByteStringConstraint(100),
                                    schema.IntegerConstraint() )
-        self.conforms(c, ("hi", "there buddy, you're number", 1))
+        self.conforms(c, common.map_bytes(("hi", "there buddy, you're number", 1)))     
         self.violates(c, "nope")
         self.violates(c, ("string", "string", "NaN"))
         self.violates(c, ("string that is too long", "string", 1))
@@ -153,14 +155,14 @@ class ConformTest(unittest.TestCase):
         outer = schema.TupleConstraint(schema.ByteStringConstraint(100),
                                        inner)
 
-        self.conforms(inner, ("hi", 2))
-        self.conforms(outer, ("long string here", ("short", 3)))
-        self.violates(outer, (("long string here", ("short", 3, "extra"))))
-        self.violates(outer, (("long string here", ("too long string", 3))))
+        self.conforms(inner, common.map_bytes(("hi", 2)))
+        self.conforms(outer, common.map_bytes_r(("long string here", ("short", 3))))
+        self.violates(outer, common.map_bytes_r(("long string here", ("short", 3, "extra"))))
+        self.violates(outer, common.map_bytes_r(("long string here", ("too long string", 3))))
 
         outer2 = schema.TupleConstraint(inner, inner)
-        self.conforms(outer2, (("hi", 1), ("there", 2)) )
-        self.violates(outer2, ("hi", 1, "flat", 2) )
+        self.conforms(outer2, common.map_bytes_r((("hi", 1), ("there", 2))) )       
+        self.violates(outer2, common.map_bytes_r(("hi", 1, "flat", 2) ))
 
     def testRecursion(self):
         # we have to fiddle with PolyConstraint's innards
@@ -168,46 +170,46 @@ class ConformTest(unittest.TestCase):
                                 schema.IntegerConstraint(),
                                 # will add 'value' here
                                 )
-        self.conforms(value, "key")
+        self.conforms(value, six.b("key"))
         self.conforms(value, 123)
         self.violates(value, [])
 
         mapping = schema.TupleConstraint(schema.ByteStringConstraint(10),
                                          value)
-        self.conforms(mapping, ("name", "key"))
-        self.conforms(mapping, ("name", 123))
+        self.conforms(mapping, common.map_bytes(("name", "key")))
+        self.conforms(mapping, common.map_bytes(("name", 123)))
         value.alternatives = value.alternatives + (mapping,)
 
         # but note that the constraint can still be applied
-        self.conforms(mapping, ("name", 123))
-        self.conforms(mapping, ("name", "key"))
-        self.conforms(mapping, ("name", ("key", "value")))
-        self.conforms(mapping, ("name", ("key", 123)))
-        self.violates(mapping, ("name", ("key", [])))
+        self.conforms(mapping, common.map_bytes(("name", 123)))
+        self.conforms(mapping, common.map_bytes(("name", "key")))
+        self.conforms(mapping, common.map_bytes_r(("name", ("key", "value"))))
+        self.conforms(mapping, common.map_bytes_r(("name", ("key", 123))))
+        self.violates(mapping, common.map_bytes_r(("name", ("key", []))))
         l = []
         l.append(l)
         self.violates(mapping, ("name", l))
 
     def testList(self):
         l = schema.ListOf(schema.ByteStringConstraint(10))
-        self.conforms(l, ["one", "two", "three"])
-        self.violates(l, ("can't", "fool", "me"))
-        self.violates(l, ["but", "perspicacity", "is too long"])
-        self.violates(l, [0, "numbers", "allowed"])
-        self.conforms(l, ["short", "sweet"])
+        self.conforms(l, common.map_bytes(["one", "two", "three"]))
+        self.violates(l, common.map_bytes(("can't", "fool", "me")))
+        self.violates(l, common.map_bytes(["but", "perspicacity", "is too long"]))
+        self.violates(l, common.map_bytes([0, "numbers", "allowed"]))
+        self.conforms(l, common.map_bytes(["short", "sweet"]))
 
         l2 = schema.ListOf(schema.ByteStringConstraint(10), 3)
-        self.conforms(l2, ["the number", "shall be", "three"])
-        self.violates(l2, ["five", "is", "...", "right", "out"])
+        self.conforms(l2, common.map_bytes(["the number", "shall be", "three"]))
+        self.violates(l2, common.map_bytes(["five", "is", "...", "right", "out"]))
 
         l3 = schema.ListOf(schema.ByteStringConstraint(10), None)
-        self.conforms(l3, ["long"] * 35)
-        self.violates(l3, ["number", 1, "rule", "is", 0, "numbers"])
+        self.conforms(l3, common.map_bytes(["long"] * 35))
+        self.violates(l3, common.map_bytes(["number", 1, "rule", "is", 0, "numbers"]))
 
         l4 = schema.ListOf(schema.ByteStringConstraint(10), 3, 3)
-        self.conforms(l4, ["three", "is", "good"])
-        self.violates(l4, ["but", "four", "is", "bad"])
-        self.violates(l4, ["two", "too"])
+        self.conforms(l4, common.map_bytes(["three", "is", "good"]))
+        self.violates(l4, common.map_bytes(["but", "four", "is", "bad"]))
+        self.violates(l4, common.map_bytes(["two", "too"]))
 
     def testSet(self):
         l = schema.SetOf(schema.IntegerConstraint(), 3)
@@ -252,15 +254,15 @@ class ConformTest(unittest.TestCase):
                           schema.IntegerConstraint(),
                           maxKeys=4)
 
-        self.conforms(d, {"a": 1, "b": 2})
-        self.conforms(d, {"foo": 123, "bar": 345, "blah": 456, "yar": 789})
+        self.conforms(d, common.map_bytes({"a": 1, "b": 2}))
+        self.conforms(d, common.map_bytes({"foo": 123, "bar": 345, "blah": 456, "yar": 789}))
         self.violates(d, None)
         self.violates(d, 12)
-        self.violates(d, ["nope"])
-        self.violates(d, ("nice", "try"))
+        self.violates(d, common.map_bytes(["nope"]))
+        self.violates(d, common.map_bytes(("nice", "try")))
         self.violates(d, {1:2, 3:4})
-        self.violates(d, {"a": "b"})
-        self.violates(d, {"a": 1, "b": 2, "c": 3, "d": 4, "toomuch": 5})
+        self.violates(d, common.map_bytes({"a": "b"}))
+        self.violates(d, common.map_bytes({"a": 1, "b": 2, "c": 3, "d": 4, "toomuch": 5}))
 
     def testAttrDict(self):
         d = copyable.AttributeDictConstraint(('a', int), ('b', str))
@@ -282,73 +284,73 @@ class ConformTest(unittest.TestCase):
 
 class CreateTest(unittest.TestCase):
     def check(self, obj, expected):
-        self.failUnless(isinstance(obj, expected))
+        self.assertTrue(isinstance(obj, expected))
 
     def testMakeConstraint(self):
         make = IConstraint
         c = make(int)
         self.check(c, schema.IntegerConstraint)
-        self.failUnlessEqual(c.maxBytes, -1)
+        self.assertEqual(c.maxBytes, schema.maxBytesMap[int])       
 
-        c = make(str)
+        c = make(six.binary_type)
         self.check(c, schema.ByteStringConstraint)
-        self.failUnlessEqual(c.maxLength, None)
+        self.assertEqual(c.maxLength, None)
 
         c = make(schema.ByteStringConstraint(2000))
         self.check(c, schema.ByteStringConstraint)
-        self.failUnlessEqual(c.maxLength, 2000)
+        self.assertEqual(c.maxLength, 2000)
 
         c = make(unicode)
         self.check(c, schema.UnicodeConstraint)
-        self.failUnlessEqual(c.maxLength, None)
+        self.assertEqual(c.maxLength, None)
 
         self.check(make(bool), schema.BooleanConstraint)
         self.check(make(float), schema.NumberConstraint)
 
         self.check(make(schema.NumberConstraint()), schema.NumberConstraint)
-        c = make((int, str))
+        c = make((int, six.binary_type))
         self.check(c, schema.TupleConstraint)
         self.check(c.constraints[0], schema.IntegerConstraint)
         self.check(c.constraints[1], schema.ByteStringConstraint)
 
         c = make(common.RIHelper)
         self.check(c, RemoteInterfaceConstraint)
-        self.failUnlessEqual(c.interface, common.RIHelper)
+        self.assertEqual(c.interface, common.RIHelper)
 
         c = make(common.IFoo)
         self.check(c, LocalInterfaceConstraint)
-        self.failUnlessEqual(c.interface, common.IFoo)
+        self.assertEqual(c.interface, common.IFoo)
 
         c = make(Referenceable)
         self.check(c, RemoteInterfaceConstraint)
-        self.failUnlessEqual(c.interface, None)
+        self.assertEqual(c.interface, None)
 
 
 class Arguments(unittest.TestCase):
     def test_arguments(self):
-        def foo(a=int, b=bool, c=int): return str
+        def foo(a=int, b=bool, c=int): return six.binary_type
         r = RemoteMethodSchema(method=foo)
         getpos = r.getPositionalArgConstraint
         getkw = r.getKeywordArgConstraint
-        self.failUnless(isinstance(getpos(0)[1], schema.IntegerConstraint))
-        self.failUnless(isinstance(getpos(1)[1], schema.BooleanConstraint))
-        self.failUnless(isinstance(getpos(2)[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getpos(0)[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getpos(1)[1], schema.BooleanConstraint))
+        self.assertTrue(isinstance(getpos(2)[1], schema.IntegerConstraint))
 
-        self.failUnless(isinstance(getkw("a")[1], schema.IntegerConstraint))
-        self.failUnless(isinstance(getkw("b")[1], schema.BooleanConstraint))
-        self.failUnless(isinstance(getkw("c")[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getkw("a")[1], schema.IntegerConstraint))
+        self.assertTrue(isinstance(getkw("b")[1], schema.BooleanConstraint))
+        self.assertTrue(isinstance(getkw("c")[1], schema.IntegerConstraint))
 
-        self.failUnless(isinstance(r.getResponseConstraint(),
+        self.assertTrue(isinstance(r.getResponseConstraint(),
                                    schema.ByteStringConstraint))
 
-        self.failUnless(isinstance(getkw("c", 1, [])[1],
+        self.assertTrue(isinstance(getkw("c", 1, [])[1],
                                    schema.IntegerConstraint))
-        self.failUnlessRaises(schema.Violation, getkw, "a", 1, [])
-        self.failUnlessRaises(schema.Violation, getkw, "b", 1, ["b"])
-        self.failUnlessRaises(schema.Violation, getkw, "a", 2, [])
-        self.failUnless(isinstance(getkw("c", 2, [])[1],
+        self.assertRaises(schema.Violation, getkw, "a", 1, [])
+        self.assertRaises(schema.Violation, getkw, "b", 1, ["b"])
+        self.assertRaises(schema.Violation, getkw, "a", 2, [])
+        self.assertTrue(isinstance(getkw("c", 2, [])[1],
                                    schema.IntegerConstraint))
-        self.failUnless(isinstance(getkw("c", 0, ["a", "b"])[1],
+        self.assertTrue(isinstance(getkw("c", 0, ["a", "b"])[1],
                                    schema.IntegerConstraint))
 
         try:
@@ -356,30 +358,30 @@ class Arguments(unittest.TestCase):
             r.checkAllArgs((), {"a":1, "b":False, "c":2}, False)
             r.checkAllArgs((1,), {"b":False, "c":2}, False)
             r.checkAllArgs((1,True), {"c":3}, False)
-            r.checkResults("good", False)
+            r.checkResults(six.b("good"), False)
         except schema.Violation:
             self.fail("that shouldn't have raised a Violation")
-        self.failUnlessRaises(schema.Violation, # 2 is not bool
-                              r.checkAllArgs, (1,2,3), {}, False)
-        self.failUnlessRaises(schema.Violation, # too many
-                              r.checkAllArgs, (1,True,3,4), {}, False)
-        self.failUnlessRaises(schema.Violation, # double "a"
-                              r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3},
+        self.assertRaises(schema.Violation, # 2 is not bool
+                          r.checkAllArgs, (1,2,3), {}, False)
+        self.assertRaises(schema.Violation, # too many
+                          r.checkAllArgs, (1,True,3,4), {}, False)
+        self.assertRaises(schema.Violation, # double "a"
+                          r.checkAllArgs, (1,), {"a":1, "b":True, "c": 3},
                               False)
-        self.failUnlessRaises(schema.Violation, # missing required "b"
-                              r.checkAllArgs, (1,), {"c": 3}, False)
-        self.failUnlessRaises(schema.Violation, # missing required "a"
-                              r.checkAllArgs, (), {"b":True, "c": 3}, False)
-        self.failUnlessRaises(schema.Violation,
-                              r.checkResults, 12, False)
+        self.assertRaises(schema.Violation, # missing required "b"
+                          r.checkAllArgs, (1,), {"c": 3}, False)
+        self.assertRaises(schema.Violation, # missing required "a"
+                          r.checkAllArgs, (), {"b":True, "c": 3}, False)
+        self.assertRaises(schema.Violation,
+                          r.checkResults, 12, False)
 
     def test_bad_arguments(self):
         def foo(nodefault): return str
-        self.failUnlessRaises(InvalidRemoteInterface,
-                              RemoteMethodSchema, method=foo)
+        self.assertRaises(InvalidRemoteInterface,
+                          RemoteMethodSchema, method=foo)
         def bar(nodefault, a=int): return str
-        self.failUnlessRaises(InvalidRemoteInterface,
-                              RemoteMethodSchema, method=bar)
+        self.assertRaises(InvalidRemoteInterface,
+                          RemoteMethodSchema, method=bar)
 
 
 class Interfaces(unittest.TestCase):
