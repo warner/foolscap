@@ -1,5 +1,7 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
+import six
+from past.builtins import long
 import re, time
 from zope.interface import implementer, implementer_only, implementedBy, Interface
 from twisted.python import log
@@ -20,6 +22,28 @@ from foolscap.util import allocate_tcp_port
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
 
+def convert_byte(x):
+    """ Convert to bytes type if x is a text type, else return as such """
+    # unicode -> str: Py2
+    # str -> bytes: Py3
+    if type(x) is six.text_type:
+        return six.ensure_binary(x)
+    return x
+
+def map_bytes(seq):
+    """ Map a sequence of strings to bytes type (recursive) """
+    seq_type = type(seq)
+    if seq_type in (list, tuple):
+        mapped = []
+        for item in seq:
+            item = map_bytes(item)
+            mapped.extend(seq_type([item]))
+        return seq_type(mapped)
+    elif seq_type is dict:
+        return {convert_byte(k):v for k,v in seq.items()}   
+    else:
+        return convert_byte(seq)
+    
 def getRemoteInterfaceName(obj):
     i = getRemoteInterface(obj)
     return i.__remote_name__
@@ -393,7 +417,7 @@ class ShouldFailMixin:
                     self.fail("got failure %s, was expecting %s"
                               % (res, expected_failure))
                 if substring:
-                    self.failUnless(substring in str(res),
+                    self.assertTrue(substring in str(res),
                                     "%s: substring '%s' not in '%s'"
                                     % (which, substring, str(res)))
                 # make the Failure available to a subsequent callback, but
