@@ -5,9 +5,10 @@
 
 # This imports foolscap.tokens, but no other Foolscap modules.
 
+import six
 import re
 from zope.interface import implementer, Interface
-
+from past.builtins import long
 from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
      STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, \
      tokenNames
@@ -216,7 +217,7 @@ class ByteStringConstraint(Constraint):
                        VOCAB: None}
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, str):
+        if not isinstance(obj, six.binary_type):
             raise Violation("'%r' is not a bytestring" % (obj,))
         if self.maxLength != None and len(obj) > self.maxLength:
             raise Violation("string too long (%d > %d)" %
