@@ -6,7 +6,7 @@ from foolscap import copyable, slicer, tokens
 from foolscap.copyable import AttributeDictConstraint
 from foolscap.constraint import ByteStringConstraint
 from foolscap.slicers.list import ListConstraint
-from tokens import BananaError, Violation
+from .tokens import BananaError, Violation
 from foolscap.util import AsyncAND
 from foolscap.logging import log
 
