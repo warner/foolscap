@@ -66,17 +66,17 @@ class Keepalives(MakeTubsMixin, unittest.TestCase):
             # message per side is being generated. If we have no scheduling
             # latency and high-resolution clocks, we expect to see about 10
             # or 20 ping+pongs.
-            self.failUnless(b.pings + b.pongs > 4,
+            self.assertTrue(b.pings + b.pongs > 4,
                             "b.pings=%d, b.pongs=%d" % (b.pings, b.pongs))
             # getDataLastReceivedAt() should be active
             last = rref.getDataLastReceivedAt()
             now = time.time()
-            self.failUnless(-10 < now-last < 10, now-last)
+            self.assertTrue(-10 < now-last < 10, now-last)
             # and the connection should still be alive and usable
             return rref.callRemote("add", 1, 2)
         d.addCallback(_count_pings)
         def _check_add(res):
-            self.failUnlessEqual(res, 3)
+            self.assertEqual(res, 3)
         d.addCallback(_check_add)
 
         return d
@@ -95,8 +95,8 @@ class Keepalives(MakeTubsMixin, unittest.TestCase):
         def _check_ref(rref):
             d2 = rref.callRemote("add", 1, 2)
             def _check(res):
-                self.failUnless(isinstance(res, Failure))
-                self.failUnless(res.check(DeadReferenceError), res.type)
+                self.assertTrue(isinstance(res, Failure))
+                self.assertTrue(res.check(DeadReferenceError), res.type)
             d2.addBoth(_check)
             return d2
         d.addCallback(_check_ref)
@@ -125,7 +125,7 @@ class Keepalives(MakeTubsMixin, unittest.TestCase):
             return rref.callRemote("add", 1, 2)
         d.addCallback(_check)
         def _check_add(res):
-            self.failUnlessEqual(res, 3)
+            self.assertEqual(res, 3)
         d.addCallback(_check_add)
 
         return d

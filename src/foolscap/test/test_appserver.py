@@ -50,7 +50,7 @@ class ServiceData(unittest.TestCase):
         json.dump(orig_service_data, f)
         f.close()
         data = server.load_service_data(basedir)
-        self.failUnlessEqual(orig_service_data, data)
+        self.assertEqual(orig_service_data, data)
 
     def test_parse_files_and_upgrade(self):
         # create a structure with individual files, and make sure we parse it
@@ -90,7 +90,7 @@ class ServiceData(unittest.TestCase):
                                         "comment": "comment3",
                                         },
                         }}
-        self.failUnlessEqual(data, expected)
+        self.assertEqual(data, expected)
 
         s4 = {"relative_basedir": J("services","4"),
               "type": "type4",
@@ -101,7 +101,7 @@ class ServiceData(unittest.TestCase):
         server.save_service_data(basedir, data) # this upgrades to JSON
         data2 = server.load_service_data(basedir) # reads JSON, not files
         expected["services"]["swiss4"] = s4
-        self.failUnlessEqual(data2, expected)
+        self.assertEqual(data2, expected)
 
     def test_bad_version(self):
         basedir = "appserver/ServiceData/bad_version"
@@ -110,9 +110,9 @@ class ServiceData(unittest.TestCase):
         f = open(os.path.join(basedir, "services.json"), "wb")
         json.dump(orig, f)
         f.close()
-        e = self.failUnlessRaises(server.UnknownVersion,
-                                  server.load_service_data, basedir)
-        self.failUnlessIn("unable to handle version 99", str(e))
+        e = self.assertRaises(server.UnknownVersion,
+                              server.load_service_data, basedir)
+        self.assertIn("unable to handle version 99", str(e))
 
     def test_save(self):
         basedir = "appserver/ServiceData/save"
@@ -120,7 +120,7 @@ class ServiceData(unittest.TestCase):
         server.save_service_data(basedir, orig_service_data)
 
         data = server.load_service_data(basedir)
-        self.failUnlessEqual(orig_service_data, data)
+        self.assertEqual(orig_service_data, data)
 
 
 class CLI(unittest.TestCase):
@@ -135,15 +135,15 @@ class CLI(unittest.TestCase):
         serverdir = os.path.join(basedir, "fl")
         d = self.run_cli("create", "--location", "localhost:1234", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
             # check that the directory is group/world-inaccessible, even on
             # windows where those concepts are pretty fuzzy. Do this by
             # making sure the mode doesn't change when we chmod it again.
             mode1 = os.stat(serverdir).st_mode
-            os.chmod(serverdir, 0700)
+            os.chmod(serverdir, 0o700)
             mode2 = os.stat(serverdir).st_mode
-            self.failUnlessEqual("%o" % mode1, "%o" % mode2)
+            self.assertEqual("%o" % mode1, "%o" % mode2)
         d.addCallback(_check)
         return d
 
@@ -154,10 +154,10 @@ class CLI(unittest.TestCase):
         os.mkdir(serverdir)
         d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 1)
-            self.failUnlessIn("Refusing to touch pre-existing directory", err)
-            self.failIf(os.path.exists(os.path.join(serverdir, "port")))
-            self.failIf(os.path.exists(os.path.join(serverdir, "services")))
+            self.assertEqual(rc, 1)
+            self.assertIn("Refusing to touch pre-existing directory", err)
+            self.assertFalse(os.path.exists(os.path.join(serverdir, "port")))
+            self.assertFalse(os.path.exists(os.path.join(serverdir, "services")))
         d.addCallback(_check)
         return d
 
@@ -171,14 +171,14 @@ class CLI(unittest.TestCase):
                          "--port", "tcp:%d" % portnum,
                          "--umask", "022", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
             got_port = open(os.path.join(serverdir, "port"), "r").read().strip()
-            self.failUnlessEqual(got_port, "tcp:%d" % portnum)
+            self.assertEqual(got_port, "tcp:%d" % portnum)
             prefix = open(os.path.join(serverdir, "furl_prefix"), "r").read().strip()
-            self.failUnless(prefix.endswith(":%d/" % portnum), prefix)
+            self.assertTrue(prefix.endswith(":%d/" % portnum), prefix)
             umask = open(os.path.join(serverdir, "umask")).read().strip()
-            self.failUnlessEqual(umask, "0022")
+            self.assertEqual(umask, "0022")
         d.addCallback(_check)
         return d
 
@@ -189,11 +189,11 @@ class CLI(unittest.TestCase):
         d = self.run_cli("create", "--location", "proxy.example.com:12345",
                          serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
             # pick an arbitrary port, but FURLs should reference the proxy
             prefix = open(os.path.join(serverdir, "furl_prefix"), "r").read().strip()
-            self.failUnless(prefix.endswith("@proxy.example.com:12345/"), prefix)
+            self.assertTrue(prefix.endswith("@proxy.example.com:12345/"), prefix)
         d.addCallback(_check)
         return d
 
@@ -205,25 +205,25 @@ class CLI(unittest.TestCase):
         os.mkdir(incomingdir)
         d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add", serverdir,
                                                "upload-file", incomingdir))
         def _check_add((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
             lines = out.splitlines()
-            self.failUnless(lines[0].startswith("Service added in "))
+            self.assertTrue(lines[0].startswith("Service added in "))
             servicedir = lines[0].split()[-1]
-            self.failUnless(lines[1].startswith("FURL is pb://"))
+            self.assertTrue(lines[1].startswith("FURL is pb://"))
             furl = lines[1].split()[-1]
             swiss = furl[furl.rfind("/")+1:]
             data = server.load_service_data(serverdir)
             servicedir2 = os.path.join(serverdir,
                                        data["services"][swiss]["relative_basedir"])
-            self.failUnlessEqual(os.path.abspath(servicedir),
-                                 os.path.abspath(servicedir2))
-            self.failUnlessEqual(data["services"][swiss]["comment"], None)
+            self.assertEqual(os.path.abspath(servicedir),
+                             os.path.abspath(servicedir2))
+            self.assertEqual(data["services"][swiss]["comment"], None)
         d.addCallback(_check_add)
         return d
 
@@ -235,22 +235,22 @@ class CLI(unittest.TestCase):
         os.mkdir(incomingdir)
         d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         def _check_add(ign):
             furl1,servicedir1a = cli.add_service(serverdir,
                                                  "upload-file", (incomingdir,),
                                                  None)
-            self.failUnless(os.path.isdir(servicedir1a))
+            self.assertTrue(os.path.isdir(servicedir1a))
             asd1 = os.path.abspath(servicedir1a)
-            self.failUnless(asd1.startswith(os.path.abspath(basedir)))
+            self.assertTrue(asd1.startswith(os.path.abspath(basedir)))
             swiss1 = furl1[furl1.rfind("/")+1:]
             data = server.load_service_data(serverdir)
             servicedir1b = os.path.join(serverdir,
                                         data["services"][swiss1]["relative_basedir"])
-            self.failUnlessEqual(os.path.abspath(servicedir1a),
-                                 os.path.abspath(servicedir1b))
+            self.assertEqual(os.path.abspath(servicedir1a),
+                             os.path.abspath(servicedir1b))
 
             # add a second service, to make sure the "find the next-highest
             # available servicedir" logic works from both empty and non-empty
@@ -258,15 +258,15 @@ class CLI(unittest.TestCase):
             furl2,servicedir2a = cli.add_service(serverdir,
                                                  "run-command", ("dummy",),
                                                  None)
-            self.failUnless(os.path.isdir(servicedir2a))
+            self.assertTrue(os.path.isdir(servicedir2a))
             asd2 = os.path.abspath(servicedir2a)
-            self.failUnless(asd2.startswith(os.path.abspath(basedir)))
+            self.assertTrue(asd2.startswith(os.path.abspath(basedir)))
             swiss2 = furl2[furl2.rfind("/")+1:]
             data = server.load_service_data(serverdir)
             servicedir2b = os.path.join(serverdir,
                                         data["services"][swiss2]["relative_basedir"])
-            self.failUnlessEqual(os.path.abspath(servicedir2a),
-                                 os.path.abspath(servicedir2b))
+            self.assertEqual(os.path.abspath(servicedir2a),
+                             os.path.abspath(servicedir2b))
         d.addCallback(_check_add)
         return d
 
@@ -278,28 +278,28 @@ class CLI(unittest.TestCase):
         os.mkdir(incomingdir)
         d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add",
                                                "--comment", "commentary here",
                                                serverdir,
                                                "upload-file", incomingdir))
         def _check_add((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
             lines = out.splitlines()
-            self.failUnless(lines[0].startswith("Service added in "))
+            self.assertTrue(lines[0].startswith("Service added in "))
             servicedir = lines[0].split()[-1]
-            self.failUnless(lines[1].startswith("FURL is pb://"))
+            self.assertTrue(lines[1].startswith("FURL is pb://"))
             furl = lines[1].split()[-1]
             swiss = furl[furl.rfind("/")+1:]
             data = server.load_service_data(serverdir)
             servicedir2 = os.path.join(serverdir,
                                        data["services"][swiss]["relative_basedir"])
-            self.failUnlessEqual(os.path.abspath(servicedir),
-                                 os.path.abspath(servicedir2))
-            self.failUnlessEqual(data["services"][swiss]["comment"],
-                                 "commentary here")
+            self.assertEqual(os.path.abspath(servicedir),
+                             os.path.abspath(servicedir2))
+            self.assertEqual(data["services"][swiss]["comment"],
+                             "commentary here")
         d.addCallback(_check_add)
         return d
 
@@ -312,8 +312,8 @@ class CLI(unittest.TestCase):
         os.mkdir(incomingdir)
         d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add",
                                                serverdir,
@@ -321,10 +321,10 @@ class CLI(unittest.TestCase):
                                                # missing targetdir
                                                ))
         def _check_add((rc,out,err)):
-            self.failIfEqual(rc, 0)
-            self.failUnlessIn("Error", err)
-            self.failUnlessIn("Wrong number of arguments", err)
-            self.failUnlessEqual(os.listdir(servicesdir), [])
+            self.assertNotEqual(rc, 0)
+            self.assertIn("Error", err)
+            self.assertIn("Wrong number of arguments", err)
+            self.assertEqual(os.listdir(servicesdir), [])
         d.addCallback(_check_add)
 
         d.addCallback(lambda ign: self.run_cli("add",
@@ -333,11 +333,11 @@ class CLI(unittest.TestCase):
                                                "nonexistent-targetdir",
                                                ))
         def _check_add2((rc,out,err)):
-            self.failIfEqual(rc, 0)
-            self.failUnlessIn("Error", err)
-            self.failUnlessIn("targetdir ", err)
-            self.failUnlessIn(" must already exist", err)
-            self.failUnlessEqual(os.listdir(servicesdir), [])
+            self.assertNotEqual(rc, 0)
+            self.assertIn("Error", err)
+            self.assertIn("targetdir ", err)
+            self.assertIn(" must already exist", err)
+            self.assertEqual(os.listdir(servicesdir), [])
         d.addCallback(_check_add2)
         return d
 
@@ -349,33 +349,33 @@ class CLI(unittest.TestCase):
         os.mkdir(incomingdir)
         d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add", serverdir,
                                                "upload-file", incomingdir))
         def _check_add((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
         d.addCallback(_check_add)
 
         def _check_list_services(ign):
             services = cli.list_services(serverdir)
-            self.failUnlessEqual(len(services), 1)
+            self.assertEqual(len(services), 1)
             s = services[0]
-            self.failUnlessEqual(s.service_type, "upload-file")
-            self.failUnlessEqual(s.service_args, [incomingdir] )
+            self.assertEqual(s.service_type, "upload-file")
+            self.assertEqual(s.service_args, [incomingdir] )
         d.addCallback(_check_list_services)
 
         d.addCallback(lambda ign: self.run_cli("list", serverdir))
         def _check_list((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
             s = cli.list_services(serverdir)[0]
             lines = out.splitlines()
-            self.failUnlessEqual(lines[0], "")
-            self.failUnlessEqual(lines[1], s.swissnum+":")
-            self.failUnlessEqual(lines[2], " upload-file %s" % incomingdir)
-            self.failUnlessEqual(lines[3], " " + s.furl)
-            self.failUnlessEqual(lines[4], " " + s.service_basedir)
+            self.assertEqual(lines[0], "")
+            self.assertEqual(lines[1], s.swissnum+":")
+            self.assertEqual(lines[2], " upload-file %s" % incomingdir)
+            self.assertEqual(lines[3], " " + s.furl)
+            self.assertEqual(lines[4], " " + s.service_basedir)
         d.addCallback(_check_list)
         return d
 
@@ -387,27 +387,27 @@ class CLI(unittest.TestCase):
         os.mkdir(incomingdir)
         d = self.run_cli("create", "--location", "localhost:3116", serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add",
                                                "--comment", "commentary here",
                                                serverdir,
                                                "upload-file", incomingdir))
         def _check_add((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
         d.addCallback(_check_add)
         d.addCallback(lambda ign: self.run_cli("list", serverdir))
         def _check_list((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
             s = cli.list_services(serverdir)[0]
             lines = out.splitlines()
-            self.failUnlessEqual(lines[0], "")
-            self.failUnlessEqual(lines[1], s.swissnum+":")
-            self.failUnlessEqual(lines[2], " upload-file %s" % incomingdir)
-            self.failUnlessEqual(lines[3], " # commentary here")
-            self.failUnlessEqual(lines[4], " " + s.furl)
-            self.failUnlessEqual(lines[5], " " + s.service_basedir)
+            self.assertEqual(lines[0], "")
+            self.assertEqual(lines[1], s.swissnum+":")
+            self.assertEqual(lines[2], " upload-file %s" % incomingdir)
+            self.assertEqual(lines[3], " # commentary here")
+            self.assertEqual(lines[4], " " + s.furl)
+            self.assertEqual(lines[5], " " + s.service_basedir)
         d.addCallback(_check_list)
         return d
 
@@ -437,15 +437,15 @@ class Server(unittest.TestCase, ShouldFailMixin):
                          "--port", "tcp:%d" % portnum,
                          serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add", serverdir,
                                                "upload-file", incomingdir))
         def _check_add((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
             lines = out.splitlines()
-            self.failUnless(lines[1].startswith("FURL is pb://"))
+            self.assertTrue(lines[1].startswith("FURL is pb://"))
             self.furl = lines[1].split()[-1]
         d.addCallback(_check_add)
         stdout = StringIO()
@@ -496,15 +496,15 @@ class Upload(unittest.TestCase, ShouldFailMixin):
                          "--port", "tcp:%d" % portnum,
                          serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         d.addCallback(lambda ign: self.run_cli("add", serverdir,
                                                "upload-file", incomingdir))
         def _check_add((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
             lines = out.splitlines()
-            self.failUnless(lines[1].startswith("FURL is pb://"))
+            self.assertTrue(lines[1].startswith("FURL is pb://"))
             self.furl = lines[1].split()[-1]
             f = open(furlfile,"w")
             f.write("\n") # it should ignore blank lines
@@ -529,13 +529,13 @@ class Upload(unittest.TestCase, ShouldFailMixin):
                                                    "upload-file",
                                                    sourcefile))
         def _check_client((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out.strip(), "foo.txt: uploaded")
-            self.failUnlessEqual(err.strip(), "")
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.strip(), "foo.txt: uploaded")
+            self.assertEqual(err.strip(), "")
             fn = os.path.join(incomingdir, "foo.txt")
-            self.failUnless(os.path.exists(fn))
+            self.assertTrue(os.path.exists(fn))
             contents = open(fn,"rb").read()
-            self.failUnlessEqual(contents, DATA)
+            self.assertEqual(contents, DATA)
         d.addCallback(_check_client)
 
         sourcefile2 = os.path.join(basedir, "bar.txt")
@@ -547,13 +547,13 @@ class Upload(unittest.TestCase, ShouldFailMixin):
                                                    "upload-file",
                                                    sourcefile2))
         def _check_client2((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out.strip(), "bar.txt: uploaded")
-            self.failUnlessEqual(err.strip(), "")
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.strip(), "bar.txt: uploaded")
+            self.assertEqual(err.strip(), "")
             fn = os.path.join(incomingdir, "bar.txt")
-            self.failUnless(os.path.exists(fn))
+            self.assertTrue(os.path.exists(fn))
             contents = open(fn,"rb").read()
-            self.failUnlessEqual(contents, DATA2)
+            self.assertEqual(contents, DATA2)
         d.addCallback(_check_client2)
 
         empty_furlfile = furlfile + ".empty"
@@ -562,8 +562,8 @@ class Upload(unittest.TestCase, ShouldFailMixin):
                                                    "upload-file",
                                                    sourcefile2))
         def _check_client3((rc,out,err)):
-            self.failIfEqual(rc, 0)
-            self.failUnlessIn("must provide --furl or --furlfile", err.strip())
+            self.assertNotEqual(rc, 0)
+            self.assertIn("must provide --furl or --furlfile", err.strip())
         d.addCallback(_check_client3)
 
         sourcefile3 = os.path.join(basedir, "file3.txt")
@@ -588,26 +588,26 @@ class Upload(unittest.TestCase, ShouldFailMixin):
                       self.run_client("--furl", self.furl, "upload-file",
                                       sourcefile3, sourcefile4, sourcefile5))
         def _check_client4((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnlessIn("file3.txt: uploaded", out)
-            self.failUnlessIn("file4.txt: uploaded", out)
-            self.failUnlessIn("file5.txt: uploaded", out)
-            self.failUnlessEqual(err.strip(), "")
+            self.assertEqual(rc, 0)
+            self.assertIn("file3.txt: uploaded", out)
+            self.assertIn("file4.txt: uploaded", out)
+            self.assertIn("file5.txt: uploaded", out)
+            self.assertEqual(err.strip(), "")
 
             fn = os.path.join(incomingdir, "file3.txt")
-            self.failUnless(os.path.exists(fn))
+            self.assertTrue(os.path.exists(fn))
             contents = open(fn,"rb").read()
-            self.failUnlessEqual(contents, DATA3)
+            self.assertEqual(contents, DATA3)
 
             fn = os.path.join(incomingdir, "file4.txt")
-            self.failUnless(os.path.exists(fn))
+            self.assertTrue(os.path.exists(fn))
             contents = open(fn,"rb").read()
-            self.failUnlessEqual(contents, DATA4)
+            self.assertEqual(contents, DATA4)
 
             fn = os.path.join(incomingdir, "file5.txt")
-            self.failUnless(os.path.exists(fn))
+            self.assertTrue(os.path.exists(fn))
             contents = open(fn,"rb").read()
-            self.failUnlessEqual(contents, DATA5)
+            self.assertEqual(contents, DATA5)
 
         d.addCallback(_check_client4)
 
@@ -623,32 +623,32 @@ class Client(unittest.TestCase):
     def test_no_command(self):
         d = self.run_client()
         def _check_client1((rc,out,err)):
-            self.failIfEqual(rc, 0)
-            self.failUnlessIn("must provide --furl or --furlfile", err)
+            self.assertNotEqual(rc, 0)
+            self.assertIn("must provide --furl or --furlfile", err)
         d.addCallback(_check_client1)
 
         d.addCallback(lambda _ign: self.run_client("--furl", "foo"))
         def _check_client2((rc,out,err)):
-            self.failIfEqual(rc, 0)
-            self.failUnlessIn("must specify a command", err)
+            self.assertNotEqual(rc, 0)
+            self.assertIn("must specify a command", err)
         d.addCallback(_check_client2)
         return d
 
     def test_help(self):
         d = self.run_client("--help")
         def _check_client((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnlessIn("Usage: flappclient [--furl=|--furlfile=] ", out)
-            self.failUnlessEqual("", err.strip())
+            self.assertEqual(rc, 0)
+            self.assertIn("Usage: flappclient [--furl=|--furlfile=] ", out)
+            self.assertEqual("", err.strip())
         d.addCallback(_check_client)
         return d
 
     def test_version(self):
         d = self.run_client("--version")
         def _check_client((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnlessIn("Foolscap version:", out)
-            self.failUnlessEqual("", err.strip())
+            self.assertEqual(rc, 0)
+            self.assertIn("Foolscap version:", out)
+            self.assertEqual("", err.strip())
         d.addCallback(_check_client)
         return d
 
@@ -685,9 +685,9 @@ class RunCommand(unittest.TestCase, StallMixin):
     def add(self, serverdir, *args):
         d = self.run_cli("add", serverdir, *args)
         def _get_furl((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
             lines = out.splitlines()
-            self.failUnless(lines[1].startswith("FURL is pb://"))
+            self.assertTrue(lines[1].startswith("FURL is pb://"))
             furl = lines[1].split()[-1]
             return furl
         d.addCallback(_get_furl)
@@ -709,8 +709,8 @@ class RunCommand(unittest.TestCase, StallMixin):
                          "--port", "tcp:%d" % portnum,
                          serverdir)
         def _check((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnless(os.path.isdir(serverdir))
+            self.assertEqual(rc, 0)
+            self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         targetfile = os.path.join(incomingdir, "foo.txt")
         DATA = "Contents of foo.txt.\n"
@@ -739,9 +739,9 @@ class RunCommand(unittest.TestCase, StallMixin):
         d.addCallback(lambda _ign:
                       self.run_client("--furl", self.furls[0], "run-command"))
         def _check_client((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out.strip(), DATA.strip())
-            self.failUnlessEqual(err.strip(), "")
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.strip(), DATA.strip())
+            self.assertEqual(err.strip(), "")
         d.addCallback(_check_client)
 
         def _delete_foo(ign):
@@ -751,10 +751,10 @@ class RunCommand(unittest.TestCase, StallMixin):
         d.addCallback(lambda _ign:
                       self.run_client("--furl", self.furls[0], "run-command"))
         def _check_client2((rc,out,err)):
-            self.failIfEqual(rc, 0)
-            self.failUnlessEqual(out, "")
-            self.failUnlessEqual(err.strip(),
-                                 "cat: foo.txt: No such file or directory")
+            self.assertNotEqual(rc, 0)
+            self.assertEqual(out, "")
+            self.assertEqual(err.strip(),
+                             "cat: foo.txt: No such file or directory")
         d.addCallback(_check_client2)
 
         d.addCallback(lambda ign:
@@ -771,12 +771,12 @@ class RunCommand(unittest.TestCase, StallMixin):
                       self.run_client_with_stdin(DATA2,
                                                  "--furl", self.furls[1], "run-command"))
         def _check_client3((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
+            self.assertEqual(rc, 0)
             bardata = open(barfile,"rb").read()
-            self.failUnlessEqual(bardata, DATA2)
+            self.assertEqual(bardata, DATA2)
             # we use a script instead of the real dd; we know how it behaves
-            self.failUnlessEqual(out, "")
-            self.failUnlessIn("records in", err.strip())
+            self.assertEqual(out, "")
+            self.assertIn("records in", err.strip())
         d.addCallback(_check_client3)
 
         # exercise some more options
@@ -802,35 +802,35 @@ class RunCommand(unittest.TestCase, StallMixin):
         d.addCallback(lambda _ign:
                       self.run_client("--furl", self.furls[2], "run-command"))
         def _check_client4((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out.strip(), DATA.strip())
-            self.failUnlessEqual(err, "")
+            self.assertEqual(rc, 0)
+            self.assertEqual(out.strip(), DATA.strip())
+            self.assertEqual(err, "")
         d.addCallback(_check_client4)
 
         d.addCallback(lambda _ign:
                       self.run_client("--furl", self.furls[3], "run-command"))
         def _check_client5((rc,out,err)):
-            self.failUnlessEqual(rc, 0)
-            self.failUnlessEqual(out, "") # --no-stdout
-            self.failUnlessEqual(err, "")
+            self.assertEqual(rc, 0)
+            self.assertEqual(out, "") # --no-stdout
+            self.assertEqual(err, "")
         d.addCallback(_check_client5)
 
         d.addCallback(_delete_foo)
         d.addCallback(lambda _ign:
                       self.run_client("--furl", self.furls[2], "run-command"))
         def _check_client6((rc,out,err)):
-            self.failIfEqual(rc, 0)
-            self.failUnlessEqual(out, "")
-            self.failUnlessEqual(err, "") # --no-stderr
+            self.assertNotEqual(rc, 0)
+            self.assertEqual(out, "")
+            self.assertEqual(err, "") # --no-stderr
         d.addCallback(_check_client6)
 
         d.addCallback(lambda _ign:
                       self.run_client("--furl", self.furls[3], "run-command"))
         def _check_client7((rc,out,err)):
-            self.failIfEqual(rc, 0)
-            self.failUnlessEqual(out, "") # --no-stdout
-            self.failUnlessEqual(err.strip(),
-                                 "cat: foo.txt: No such file or directory")
+            self.assertNotEqual(rc, 0)
+            self.assertEqual(out, "") # --no-stdout
+            self.assertEqual(err.strip(),
+                             "cat: foo.txt: No such file or directory")
         d.addCallback(_check_client7)
 
         return d

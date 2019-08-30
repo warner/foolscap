@@ -61,5 +61,5 @@ class Versions(unittest.TestCase):
         log.msg("platform: %s" % platform.version())
 
     def test_not_unicode(self):
-        self.failUnlessEqual(type(foolscap.__version__), str)
-        self.failUnlessEqual(type(__version__), str)
+        self.assertEqual(type(foolscap.__version__), str)
+        self.assertEqual(type(__version__), str)
