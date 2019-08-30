@@ -21,7 +21,7 @@ class LocalReference(unittest.TestCase, ShouldFailMixin):
     def test_remoteReference(self):
         r = Remote()
         rref = IRemoteReference(r)
-        self.failUnlessIdentical(r, rref)
+        self.assertIs(r, rref)
 
     def test_callRemote(self):
         t = HelperTarget()
@@ -31,10 +31,10 @@ class LocalReference(unittest.TestCase, ShouldFailMixin):
         rref.dontNotifyOnDisconnect(marker)
         d = rref.callRemote("set", 12)
         # the callRemote should be put behind an eventual-send
-        self.failUnlessEqual(t.obj, None)
+        self.assertEqual(t.obj, None)
         def _check(res):
-            self.failUnlessEqual(t.obj, 12)
-            self.failUnlessEqual(res, True)
+            self.assertEqual(t.obj, 12)
+            self.assertEqual(res, True)
         d.addCallback(_check)
         return d
 
@@ -43,7 +43,7 @@ class LocalReference(unittest.TestCase, ShouldFailMixin):
         t.obj = None
         rref = IRemoteReference(t)
         rc = rref.callRemoteOnly("set", 12)
-        self.failUnlessEqual(rc, None)
+        self.assertEqual(rc, None)
 
     def test_fail(self):
         t = Target()
@@ -63,7 +63,7 @@ class TubID(unittest.TestCase):
         good_tracker = referenceable.RemoteReferenceTracker(good_broker,
                                                             0, good_furl, ri)
         del good_tracker
-        self.failUnlessRaises(api.BananaError,
-                              referenceable.RemoteReferenceTracker,
-                              good_broker, 0, bad_furl, ri)
+        self.assertRaises(api.BananaError,
+                          referenceable.RemoteReferenceTracker,
+                          good_broker, 0, bad_furl, ri)
 

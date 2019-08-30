@@ -29,7 +29,7 @@ class Basic(BaseMixin, unittest.TestCase):
 
     def testOptions(self):
         url, portnum = self.makeServer({'opt': 12})
-        self.failUnlessEqual(self.tub._test_options['opt'], 12)
+        self.assertEqual(self.tub._test_options['opt'], 12)
 
     def testAuthenticated(self):
         url, portnum = self.makeServer()
@@ -83,7 +83,7 @@ class Versus(BaseMixin, unittest.TestCase):
         return d
     def _testNoConnection_fail(self, why):
         from twisted.internet import error
-        self.failUnless(why.check(error.ConnectionRefusedError))
+        self.assertTrue(why.check(error.ConnectionRefusedError))
 
     def testClientTimeout(self):
         portnum = self.makeNullServer()
@@ -120,8 +120,8 @@ class Versus(BaseMixin, unittest.TestCase):
         return d
     testServerTimeout.timeout = 10
     def _testServerTimeout_1(self, f):
-        self.failUnless(f.check(tokens.NegotiationError))
-        self.failUnlessEqual(f.value.args[0], "negotiation timeout")
+        self.assertTrue(f.check(tokens.NegotiationError))
+        self.assertEqual(f.value.args[0], "negotiation timeout")
 
 
 class Parallel(BaseMixin, unittest.TestCase):
@@ -165,15 +165,15 @@ class Parallel(BaseMixin, unittest.TestCase):
 
     def checkConnectedToFirstListener(self, rr, targetPhases):
         # verify that we connected to the first listener, and not the second
-        self.failUnlessEqual(rr.tracker.broker.transport.getPeer().port,
-                             self.p1)
+        self.assertEqual(rr.tracker.broker.transport.getPeer().port,
+                         self.p1)
         # then pause a moment for the other connection to finish giving up
         d = self.stall(rr, 0.5)
         # and verify that we finished during the phase that we meant to test
         d.addCallback(lambda res:
-                      self.failUnlessEqual(self.clientPhases, targetPhases,
-                                           "negotiation was abandoned in "
-                                           "the wrong phase"))
+                      self.assertEqual(self.clientPhases, targetPhases,
+                                       "negotiation was abandoned in "
+                                       "the wrong phase"))
         return d
 
     def test1(self):
@@ -304,8 +304,8 @@ class SharedConnections(BaseMixin, unittest.TestCase):
         d.addCallback(lambda _: client.getReference(furl2))
         d.addCallback(rrefs.append)
         def _check(_):
-            self.failUnlessIdentical(rrefs[0].tracker.broker,
-                                     rrefs[1].tracker.broker)
+            self.assertIs(rrefs[0].tracker.broker,
+                          rrefs[1].tracker.broker)
         d.addCallback(_check)
         return d
 
@@ -394,11 +394,11 @@ class CrossfireMixin(BaseMixin, PollMixin):
         # tub1 side, and the tub2 Listener's port for the tub2 side.
         # Therefore tub1's Broker (as used by its RemoteReference) will have
         # a far-end port number that should match tub2's Listener.
-        self.failUnlessEqual(rref.tracker.broker.transport.getPeer().port,
-                             self.portnum2)
+        self.assertEqual(rref.tracker.broker.transport.getPeer().port,
+                         self.portnum2)
         # in addition, connection[1] should have been abandoned during a
         # specific phase.
-        self.failUnlessEqual(self.tub2phases, targetPhases)
+        self.assertEqual(self.tub2phases, targetPhases)
 
 
 class CrossfireReverse(CrossfireMixin, unittest.TestCase):
@@ -424,7 +424,7 @@ class CrossfireReverse(CrossfireMixin, unittest.TestCase):
         return d
     def _test1_2(self, why, d1):
         from twisted.internet import error
-        self.failUnless(why.check(error.ConnectionRefusedError))
+        self.assertTrue(why.check(error.ConnectionRefusedError))
         # but now the other getReference should succeed
         return d1
     test1.timeout = 10
@@ -506,8 +506,8 @@ class Existing(CrossfireMixin, unittest.TestCase):
     def checkNumBrokers(self, res, expected, dummy):
         if type(expected) not in (tuple,list):
             expected = [expected]
-        self.failUnless(len(self.tub1.brokers) in expected)
-        self.failUnless(len(self.tub2.brokers) in expected)
+        self.assertTrue(len(self.tub1.brokers) in expected)
+        self.assertTrue(len(self.tub2.brokers) in expected)
 
     def testAuthenticated(self):
         # When two Tubs connect, that connection should be used in the
@@ -558,7 +558,7 @@ class Future(BaseMixin, unittest.TestCase):
         d = client.getReference(url)
         def _check_version(rref):
             ver = rref.tracker.broker._banana_decision_version
-            self.failUnlessEqual(ver, MAX_HANDLED_VERSION)
+            self.assertEqual(ver, MAX_HANDLED_VERSION)
         d.addCallback(_check_version)
         return d
     testFuture1.timeout = 10
@@ -575,7 +575,7 @@ class Future(BaseMixin, unittest.TestCase):
         d = client.getReference(url)
         def _check_version(rref):
             ver = rref.tracker.broker._banana_decision_version
-            self.failUnlessEqual(ver, MAX_HANDLED_VERSION)
+            self.assertEqual(ver, MAX_HANDLED_VERSION)
         d.addCallback(_check_version)
         return d
     testFuture2.timeout = 10
@@ -590,7 +590,7 @@ class Future(BaseMixin, unittest.TestCase):
         d = client.getReference(url)
         def _check_version(rref):
             ver = rref.tracker.broker._banana_decision_version
-            self.failUnlessEqual(ver, MAX_HANDLED_VERSION)
+            self.assertEqual(ver, MAX_HANDLED_VERSION)
         d.addCallback(_check_version)
         return d
     testFuture3.timeout = 10
@@ -606,7 +606,7 @@ class Future(BaseMixin, unittest.TestCase):
         d = client.getReference(url)
         def _check_version(rref):
             ver = rref.tracker.broker._banana_decision_version
-            self.failUnlessEqual(ver, MAX_HANDLED_VERSION)
+            self.assertEqual(ver, MAX_HANDLED_VERSION)
         d.addCallback(_check_version)
         return d
     testFuture4.timeout = 10
@@ -754,7 +754,7 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(_connected)
         d.addCallback(self.insert_turns, 1)
         def _check(res):
-            self.failIf(disconnects)
+            self.assertFalse(disconnects)
         d.addCallback(_check)
         return d
 
@@ -782,7 +782,7 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(_connected)
         d.addCallback(self.insert_turns, 1)
         def _check(res):
-            self.failIf(disconnects)
+            self.assertFalse(disconnects)
         d.addCallback(_check)
 
         # now we tweak the connection-is-old threshold to allow the third
@@ -859,7 +859,7 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(_connect2)
         d.addCallback(self.insert_turns, 1)
         def _check(res):
-            self.failIf(disconnects)
+            self.assertFalse(disconnects)
         d.addCallback(_check)
         return d
 
@@ -886,7 +886,7 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(_connected)
         d.addCallback(self.insert_turns, 1)
         def _check(res):
-            self.failIf(disconnects)
+            self.assertFalse(disconnects)
         d.addCallback(_check)
         return d
 
@@ -933,7 +933,7 @@ class Replacement(BaseMixin, unittest.TestCase):
         d.addCallback(_connected)
         d.addCallback(self.insert_turns, 1)
         def _check(res):
-            self.failIf(disconnects)
+            self.assertFalse(disconnects)
         d.addCallback(_check)
         return d
 
