@@ -13,9 +13,9 @@ from foolscap.slicers.allslicers import ReplaceVocabSlicer, AddVocabSlicer
 
 from . import stringchain
 from . import tokens
-from .tokens import (SIZE_LIMIT, STRING, LIST, INT, NEG, 
-     LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR, 
-     PING, PONG, 
+from .tokens import (SIZE_LIMIT, STRING, LIST, INT, NEG,
+     LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR,
+     PING, PONG,
      BananaError, BananaFailure, Violation)
 
 EPSILON = 0.1
