@@ -4,7 +4,7 @@
 import six
 import types, time
 from itertools import count
-
+from functools import partial
 from zope.interface import implementer
 from twisted.python import failure
 from twisted.internet import defer, error
@@ -174,7 +174,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
         # tracking Referenceables
         # sending side uses these
-        self.nextCLID = count(1) # 0 is for the broker
+        self.nextCLID = partial(six.advance_iterator, count(1)) # 0 is for the broker
         self.myReferenceByPUID = {} # maps ref.processUniqueID to a tracker
         self.myReferenceByCLID = {} # maps CLID to a tracker
         # receiving side uses these
@@ -182,13 +182,13 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.yourReferenceByURL = {}
 
         # tracking Gifts
-        self.nextGiftID = count(1)
+        self.nextGiftID = partial(six.advance_iterator, count(1))
         self.myGifts = {} # maps (broker,clid) to (rref, giftID, count)
         self.myGiftsByGiftID = {} # maps giftID to (broker,clid)
 
         # remote calls
         # sending side uses these
-        self.nextReqID = count(1) # 0 means "we don't want a response"
+        self.nextReqID = partial(six.advance_iterator, count(1)) # 0 means "we don't want a response"
         self.waitingForAnswers = {} # we wait for the other side to answer
         self.disconnectWatchers = []
 
@@ -329,7 +329,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         tracker = self.myReferenceByPUID.get(puid)
         if not tracker:
             # need to add one
-            clid = six.advance_iterator(self.nextCLID)
+            clid = self.nextCLID()
             tracker = referenceable.ReferenceableTracker(self.tub,
                                                          obj, puid, clid)
             self.myReferenceByPUID[puid] = tracker
@@ -341,7 +341,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         tracker = self.myReferenceByPUID.get(puid)
         if not tracker:
             # need to add one
-            clid = six.advance_iterator(self.nextCLID)
+            clid = self.nextCLID()
             clid = -clid
             tracker = referenceable.ReferenceableTracker(self.tub,
                                                          obj, puid, clid)
@@ -469,7 +469,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             rref, giftID, count = old
             self.myGifts[i] = (rref, giftID, count+1)
         else:
-            giftID = six.advance_iterator(self.nextGiftID)
+            giftID = self.nextGiftID()
             self.myGiftsByGiftID[giftID] = i
             self.myGifts[i] = (rref, giftID, 1)
         return giftID
@@ -499,7 +499,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def newRequestID(self):
         if self.disconnected:
             raise DeadReferenceError("Calling Stale Broker")
-        return six.advance_iterator(self.nextReqID)
+        return self.nextReqID()
 
     def addRequest(self, req):
         req.broker = self
