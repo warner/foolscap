@@ -1,5 +1,4 @@
 
-import six
 import re
 from past.builtins import unicode
 from twisted.trial import unittest
@@ -290,9 +289,9 @@ class CreateTest(unittest.TestCase):
         make = IConstraint
         c = make(int)
         self.check(c, schema.IntegerConstraint)
-        self.assertEqual(c.maxBytes, schema.maxBytesMap[int])       
+        self.assertIn(c.maxBytes, (-1, 1024))
 
-        c = make(six.binary_type)
+        c = make(bytes)
         self.check(c, schema.ByteStringConstraint)
         self.assertEqual(c.maxLength, None)
 
@@ -308,7 +307,7 @@ class CreateTest(unittest.TestCase):
         self.check(make(float), schema.NumberConstraint)
 
         self.check(make(schema.NumberConstraint()), schema.NumberConstraint)
-        c = make((int, six.binary_type))
+        c = make((int, bytes))
         self.check(c, schema.TupleConstraint)
         self.check(c.constraints[0], schema.IntegerConstraint)
         self.check(c.constraints[1], schema.ByteStringConstraint)
@@ -328,7 +327,7 @@ class CreateTest(unittest.TestCase):
 
 class Arguments(unittest.TestCase):
     def test_arguments(self):
-        def foo(a=int, b=bool, c=int): return six.binary_type
+        def foo(a=int, b=bool, c=int): return bytes
         r = RemoteMethodSchema(method=foo)
         getpos = r.getPositionalArgConstraint
         getkw = r.getKeywordArgConstraint
