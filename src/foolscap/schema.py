@@ -53,7 +53,6 @@ modifiers:
             Only valid inside DictOf and AttributeDict.
 
 """
-import six
 from past.builtins import long, unicode
 from foolscap.tokens import Violation, UnknownSchemaType, BananaError, \
      tokenNames
@@ -134,17 +133,12 @@ def AnyStringConstraint(*args, **kwargs):
 # AnyStringConstraint
 StringConstraint = ByteStringConstraint
 
-maxBytesMap = {
-    int: -1,
-    long: 1024
-    }
-
 constraintMap = {
-    six.binary_type: ByteStringConstraint(),
+    bytes: ByteStringConstraint(),
     unicode: UnicodeConstraint(),
     bool: BooleanConstraint(),
     int: IntegerConstraint(),
-    long: IntegerConstraint(maxBytes=maxBytesMap[long]),
+    long: IntegerConstraint(maxBytes=1024),
     float: NumberConstraint(),
     None: Nothing(),
     }
