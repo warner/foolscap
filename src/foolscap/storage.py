@@ -16,6 +16,7 @@ over network connections.
 """
 
 import six
+import io
 import types
 from pickle import whichmodule  # used by FunctionSlicer
 
@@ -26,9 +27,7 @@ from twisted.python import reflect
 from foolscap.slicers.dict import OrderedDictSlicer
 from foolscap.slicers.root import ScopedRootSlicer, ScopedRootUnslicer
 
-# In Py2 this is 'classobj' and in Py3 'type'
-ClassType = six.class_types[-1]
-# There is no clean way to do this using six
+ClassType = getattr(types, 'ClassType', type)
 InstanceType = getattr(types, 'InstanceType', object)
 
 ################## Slicers for "unsafe" things
@@ -418,7 +417,7 @@ def serialize(obj, outstream=None, root_class=StorageRootSlicer, banana=None):
         b = StorageBanana()
         b.slicerClass = root_class
     if outstream is None:
-        sio = six.StringIO()
+        sio = io.BytesIO()
     else:
         sio = outstream
     b.transport = SerializerTransport(sio)
