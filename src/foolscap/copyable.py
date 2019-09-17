@@ -7,8 +7,8 @@ from twisted.python import reflect, log
 from twisted.python.components import registerAdapter
 from twisted.internet import defer
 
-import slicer, tokens
-from tokens import BananaError, Violation
+from . import slicer, tokens
+from .tokens import BananaError, Violation
 from foolscap.constraint import OpenerConstraint, IConstraint, Optional
 
 Interface = interface.Interface
@@ -389,7 +389,7 @@ class AttributeDictConstraint(OpenerConstraint):
         if type(obj) != type({}):
             raise Violation("'%s' (%s) is not a Dictionary" % (obj,
                                                                type(obj)))
-        allkeys = self.keys.keys()
+        allkeys = list(self.keys.keys())
         for k in obj.keys():
             try:
                 constraint = self.keys[k]

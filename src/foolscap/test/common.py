@@ -1,6 +1,7 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
 import re, time
+from past.builtins import long
 from zope.interface import implementer, implementer_only, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer, reactor, task, protocol
@@ -393,7 +394,7 @@ class ShouldFailMixin:
                     self.fail("got failure %s, was expecting %s"
                               % (res, expected_failure))
                 if substring:
-                    self.assertTrue(substring in str(res),
+                    self.failUnless(substring in str(res),
                                     "%s: substring '%s' not in '%s'"
                                     % (which, substring, str(res)))
                 # make the Failure available to a subsequent callback, but

@@ -53,7 +53,7 @@ modifiers:
             Only valid inside DictOf and AttributeDict.
 
 """
-
+from past.builtins import long, unicode
 from foolscap.tokens import Violation, UnknownSchemaType, BananaError, \
      tokenNames
 
@@ -134,7 +134,7 @@ def AnyStringConstraint(*args, **kwargs):
 StringConstraint = ByteStringConstraint
 
 constraintMap = {
-    str: ByteStringConstraint(),
+    bytes: ByteStringConstraint(),
     unicode: UnicodeConstraint(),
     bool: BooleanConstraint(),
     int: IntegerConstraint(),

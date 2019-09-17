@@ -1,7 +1,7 @@
 
 import six
 import struct, time
-
+from past.builtins import long
 from twisted.internet import protocol, defer, reactor
 from twisted.python.failure import Failure
 from twisted.python import log
@@ -11,17 +11,14 @@ from twisted.python import log
 from foolscap.slicers.allslicers import RootSlicer, RootUnslicer
 from foolscap.slicers.allslicers import ReplaceVocabSlicer, AddVocabSlicer
 
-import stringchain
-import tokens
-from tokens import SIZE_LIMIT, STRING, LIST, INT, NEG, \
-     LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR, \
-     PING, PONG, \
-     BananaError, BananaFailure, Violation
+from . import stringchain
+from . import tokens
+from .tokens import (SIZE_LIMIT, STRING, LIST, INT, NEG,
+     LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, CLOSE, ABORT, ERROR,
+     PING, PONG,
+     BananaError, BananaFailure, Violation)
 
 EPSILON = 0.1
-
-if six.PY3:
-    long = int
     
 def int2b128(integer, stream):
     if integer == 0:

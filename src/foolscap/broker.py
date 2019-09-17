@@ -1,10 +1,10 @@
 
 
 # This module is responsible for the per-connection Broker object
-
+import six
 import types, time
 from itertools import count
-
+from functools import partial
 from zope.interface import implementer
 from twisted.python import failure
 from twisted.internet import defer, error
@@ -174,7 +174,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
         # tracking Referenceables
         # sending side uses these
-        self.nextCLID = count(1).next # 0 is for the broker
+        self.nextCLID = partial(next, count(1)) # 0 is for the broker
         self.myReferenceByPUID = {} # maps ref.processUniqueID to a tracker
         self.myReferenceByCLID = {} # maps CLID to a tracker
         # receiving side uses these
@@ -182,13 +182,13 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.yourReferenceByURL = {}
 
         # tracking Gifts
-        self.nextGiftID = count(1).next
+        self.nextGiftID = partial(next, count(1))
         self.myGifts = {} # maps (broker,clid) to (rref, giftID, count)
         self.myGiftsByGiftID = {} # maps giftID to (broker,clid)
 
         # remote calls
         # sending side uses these
-        self.nextReqID = count(1).next # 0 means "we don't want a response"
+        self.nextReqID = partial(next, count(1)) # 0 means "we don't want a response"
         self.waitingForAnswers = {} # we wait for the other side to answer
         self.disconnectWatchers = []
 
@@ -438,7 +438,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         was registered with our Factory.
         """
 
-        assert isinstance(clid, (int, long))
+        assert isinstance(clid, six.integer_types)
         if clid == 0:
             return self
         return self.myReferenceByCLID[clid].obj
@@ -448,7 +448,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def remote_decref(self, clid, count):
         # invoked when the other side sends us a decref message
-        assert isinstance(clid, (int, long))
+        assert isinstance(clid, six.integer_types)
         assert clid != 0
         tracker = self.myReferenceByCLID.get(clid, None)
         if not tracker:

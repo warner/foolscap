@@ -15,9 +15,9 @@ This functionality is isolated here because it is never used for data coming
 over network connections.
 """
 
-from six import StringIO
+import six
+import io
 import types
-from new import instance, instancemethod
 from pickle import whichmodule  # used by FunctionSlicer
 
 from foolscap import slicer, banana, tokens
@@ -27,6 +27,8 @@ from twisted.python import reflect
 from foolscap.slicers.dict import OrderedDictSlicer
 from foolscap.slicers.root import ScopedRootSlicer, ScopedRootUnslicer
 
+ClassType = getattr(types, 'ClassType', type)
+InstanceType = getattr(types, 'InstanceType', object)
 
 ################## Slicers for "unsafe" things
 
@@ -86,9 +88,9 @@ class FunctionSlicer(slicer.BaseSlicer):
 
 UnsafeSlicerTable = {}
 UnsafeSlicerTable.update({
-    types.InstanceType: InstanceSlicer,
+    InstanceType: InstanceSlicer,
     types.ModuleType: ModuleSlicer,
-    types.ClassType: ClassSlicer,
+    ClassType: ClassSlicer,
     types.MethodType: MethodSlicer,
     types.FunctionType: FunctionSlicer,
     #types.TypeType: NewstyleClassSlicer,
@@ -186,7 +188,7 @@ class InstanceUnslicer(slicer.BaseUnslicer):
         #obj = Dummy()
         klass = reflect.namedObject(self.classname)
         assert type(klass) == types.ClassType # TODO: new-style classes
-        obj = instance(klass, {})
+        obj = klass()
 
         setInstanceState(obj, self.d)
 
@@ -297,11 +299,11 @@ class MethodUnslicer(slicer.BaseUnslicer):
             self.im_func = obj
             self.state = 1
         elif self.state == 1:
-            assert type(obj) in (types.InstanceType, types.NoneType)
+            assert type(obj) in (InstanceType, type(None))
             self.im_self = obj
             self.state = 2
         elif self.state == 2:
-            assert type(obj) == types.ClassType # TODO: new-style classes?
+            assert type(obj) == ClassType # TODO: new-style classes?
             self.im_class = obj
             self.state = 3
         else:
@@ -320,7 +322,7 @@ class MethodUnslicer(slicer.BaseUnslicer):
         #    return im
         meth = self.im_class.__dict__[self.im_func]
         # whereas __dict__ gives us a function
-        im = instancemethod(meth, self.im_self, self.im_class)
+        im = six.create_bound_method(meth, self.im_self)
         return im, None
 
 
@@ -415,7 +417,7 @@ def serialize(obj, outstream=None, root_class=StorageRootSlicer, banana=None):
         b = StorageBanana()
         b.slicerClass = root_class
     if outstream is None:
-        sio = StringIO()
+        sio = io.BytesIO()
     else:
         sio = outstream
     b.transport = SerializerTransport(sio)
