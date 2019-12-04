@@ -496,6 +496,23 @@ class Tor(unittest.TestCase):
         self.assertEqual(h._socks_desc, "tcp:127.0.0.1:1234")
 
     @inlineCallbacks
+    def test_control_endpoint_nested_list(self):
+        control_ep = FakeHostnameEndpoint(reactor, "localhost", 9051)
+        h = tor.control_endpoint(control_ep)
+        config = Empty()
+        config.SocksPort = [["unix:var/run/tor/socks WorldWritable", "1234"]]
+        with mock.patch("txtorcon.build_tor_connection",
+                        return_value=None):
+            with mock.patch("txtorcon.TorConfig.from_protocol",
+                            return_value=config):
+                res = yield h.hint_to_endpoint("tor:foo.onion:29212", reactor,
+                                               discard_status)
+        ep, host = res
+        self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
+        self.assertEqual(host, "foo.onion")
+        self.assertEqual(h._socks_desc, "tcp:127.0.0.1:1234")
+
+    @inlineCallbacks
     def test_control_endpoint_no_port(self):
         control_ep = FakeHostnameEndpoint(reactor, "localhost", 9051)
         h = tor.control_endpoint(control_ep)
