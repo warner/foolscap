@@ -1,9 +1,7 @@
-
 from twisted.trial import unittest
 from twisted.internet import reactor, defer, protocol, endpoints
 from twisted.python import failure
 from foolscap import util, eventual, base32
-
 
 class AsyncAND(unittest.TestCase):
     def setUp(self):
@@ -92,13 +90,13 @@ class AsyncAND(unittest.TestCase):
 
 class Base32(unittest.TestCase):
     def test_is_base32(self):
-        self.assertTrue(base32.is_base32("abc456"))
-        self.assertTrue(base32.is_base32("456"))
-        self.assertTrue(base32.is_base32(""))
-        self.assertFalse(base32.is_base32("123")) # 1 is not in rfc4648 base32
-        self.assertFalse(base32.is_base32(".123"))
-        self.assertFalse(base32.is_base32("_"))
-        self.assertFalse(base32.is_base32("a b c"))
+        self.assertTrue(base32.is_base32(b"abc456"))
+        self.assertTrue(base32.is_base32(b"456"))
+        self.assertTrue(base32.is_base32(b""))
+        self.assertFalse(base32.is_base32(b"123")) # 1 is not in rfc4648 base32
+        self.assertFalse(base32.is_base32(b".123"))
+        self.assertFalse(base32.is_base32(b"_"))
+        self.assertFalse(base32.is_base32(b"a b c"))
 
 class Time(unittest.TestCase):
     def test_format(self):
