@@ -1,7 +1,7 @@
 from twisted.trial import unittest
 from twisted.internet import reactor, defer, protocol, endpoints
 from twisted.python import failure
-from foolscap import util, eventual, base32
+from foolscap import util, eventual, base32, crypto
 
 class AsyncAND(unittest.TestCase):
     def setUp(self):
@@ -97,6 +97,11 @@ class Base32(unittest.TestCase):
         self.assertFalse(base32.is_base32(b".123"))
         self.assertFalse(base32.is_base32(b"_"))
         self.assertFalse(base32.is_base32(b"a b c"))
+
+    def test_digest32(self):
+        colondigest = b'0F:E6:23:51:58:EA:66:A1:69:52:21:30:01:CA:7D:36:E0:EF:6C:46'
+        d32 = crypto.digest32(colondigest)
+        self.failUnlessEqual(d32, b"b7tcguky5jtkc2kseeyadst5g3qo63cg")
 
 class Time(unittest.TestCase):
     def test_format(self):
