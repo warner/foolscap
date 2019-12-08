@@ -56,7 +56,13 @@ class FoolscapContextFactory(CertificateOptions):
         return ctx
 
 def digest32(colondigest):
-    digest = "".join([chr(int(c,16)) for c in colondigest.split(":")])
+    # we get e.g. b'D9:C8:C9:9C:99:FC:6A:6A:E0:E9:BE:9B:D5:0D:3F:60:B0:08:EF:13'
+    assert isinstance(colondigest, bytes), (type(colondigest), colondigest)
+    # I didn't find a pleasant conversion function that works under both py2
+    # and py3, so this is py3-only
+    digest = bytes([int(c,16) for c in colondigest.split(b":")])
+    # under py2, we get a string like "[15, 230, 35, ..]", so catch that here
+    assert len(digest) == (len(colondigest)+1)/3, "py3 only, sorry"
     digest = base32.encode(digest)
     return digest
 
