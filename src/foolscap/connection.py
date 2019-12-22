@@ -64,7 +64,14 @@ def get_endpoint(location, connectionPlugins, connectionInfo):
         connectionInfo._describe_connection_handler(location,
                                                     describe_handler(plugin))
         _update_status("resolving hint")
-        return plugin.hint_to_endpoint(hint, reactor, _update_status)
+        d = defer.maybeDeferred(plugin.hint_to_endpoint, hint, reactor, _update_status)
+        def problem(f):
+            log.err(f, "error in hint_to_endpoint", level=UNUSUAL,
+                    facility="foolscap.connection", umid="Fxtg6A")
+            # this hint will be ignored
+            return f
+        d.addErrback(problem)
+        return d
     return defer.maybeDeferred(_try)
 
 class TubConnector(object):
