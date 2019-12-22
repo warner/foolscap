@@ -150,6 +150,24 @@ def launch(data_directory=None, tor_binary=None):
     return _LaunchedTor(data_directory, tor_binary)
 
 
+def find_port(reactor, ports):
+    if isinstance(ports, list):
+        for port in ports:
+            for p in find_port(reactor, port):
+                yield p
+        return
+    pieces = ports.split()
+    p = pieces[0]
+    if p == txtorcon.DEFAULT_VALUE:
+        p = "9050"
+    try:
+        portnum = int(p)
+        socks_desc = "tcp:127.0.0.1:%d" % portnum
+        socks_endpoint = clientFromString(reactor, socks_desc)
+        yield (socks_endpoint, socks_desc)
+    except ValueError:
+        pass
+
 @implementer(IConnectionHintHandler)
 class _ConnectedTor(_Common):
     def __init__(self, tor_control_endpoint_maker):
@@ -170,20 +188,13 @@ class _ConnectedTor(_Common):
             config = yield txtorcon.TorConfig.from_protocol(tproto)
         ports = list(config.SocksPort)
         # I've seen "9050", and "unix:/var/run/tor/socks WorldWritable"
-        for port in ports:
-            pieces = port.split()
-            p = pieces[0]
-            if p == txtorcon.DEFAULT_VALUE:
-                p = "9050"
-            try:
-                portnum = int(p)
-                socks_desc = "tcp:127.0.0.1:%d" % portnum
-                self._socks_desc = socks_desc # stash for tests
-                socks_endpoint = clientFromString(reactor, socks_desc)
-                returnValue(socks_endpoint)
-            except ValueError:
-                pass
-        raise ValueError("could not use config.SocksPort: %r" % (ports,))
+        # and recently [["9050", "unix:.."]] which is weird
+        try:
+            (socks_endpoint, socks_desc) = find_port(reactor, ports).next()
+            self._socks_desc = socks_desc # stash for tests
+            returnValue(socks_endpoint)
+        except StopIteration:
+            raise ValueError("could not use config.SocksPort: %r" % (ports,))
 
 
 def control_endpoint_maker(tor_control_endpoint_maker, takes_status=False):
