@@ -56,7 +56,7 @@ class FoolscapContextFactory(CertificateOptions):
                        alwaysValidate)
         return ctx
 
-def digest32(colondigest):
+def digest32(colondigest): # takes bytes, returns native string
     # we get e.g. b'D9:C8:C9:9C:99:FC:6A:6A:E0:E9:BE:9B:D5:0D:3F:60:B0:08:EF:13'
     assert isinstance(colondigest, bytes), (type(colondigest), colondigest)
     if sys.version_info.major == 2:
