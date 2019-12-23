@@ -177,9 +177,8 @@ class Banana(protocol.Protocol):
         assert tokens.ISlicer.providedBy(self.rootSlicer)
         assert tokens.IRootSlicer.providedBy(self.rootSlicer)
 
-        itr = self.rootSlicer.slice()
-        next = iter(itr).next
-        top = (self.rootSlicer, next, None)
+        slices = iter(self.rootSlicer.slice())
+        top = (self.rootSlicer, slices, None)
         self.slicerStack = [top]
 
     def send(self, obj):
@@ -196,11 +195,11 @@ class Banana(protocol.Protocol):
         while self.slicerStack and not self.paused:
             if self.debugSend: print("produce.loop")
             try:
-                slicer, next, openID = self.slicerStack[-1]
-                obj = next()
+                slicer, slices, openID = self.slicerStack[-1]
+                obj = next(slices)
                 if self.debugSend: print(" produce.obj=%s" % (obj,))
                 if isinstance(obj, defer.Deferred):
-                    for s,n,o in self.slicerStack:
+                    for s,_,_ in self.slicerStack:
                         if not s.streamable:
                             raise Violation("parent not streamable")
                     obj.addCallback(self.produce)
@@ -344,7 +343,7 @@ class Banana(protocol.Protocol):
         # methods which are *not* generators.
 
         itr = slicer.slice(topSlicer.streamable, self)
-        next = iter(itr).next
+        slices = iter(itr)
 
         # we are now committed to sending the OPEN token, meaning that
         # failures after this point will cause an ABORT/CLOSE to be sent
@@ -358,11 +357,11 @@ class Banana(protocol.Protocol):
             # the debug/optional copy in the CLOSE token. Consider ripping
             # this code out if we decide to stop sending that copy.
 
-        slicertuple = (slicer, next, openID)
+        slicertuple = (slicer, slices, openID)
         self.slicerStack.append(slicertuple)
 
     def popSlicer(self):
-        slicer, next, openID = self.slicerStack.pop()
+        slicer, slices, openID = self.slicerStack.pop()
         if openID is not None:
             self.sendClose(openID)
         if self.debugSend: print("pop", slicer)
