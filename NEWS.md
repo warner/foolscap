@@ -879,7 +879,7 @@ peers. A status web page can loop over the peer RemoteReferences and display
 location information for each one without needing to look deep inside the
 hidden RemoteReferenceTracker instance to find it.
 
-### giving up on resource-consumtion defenses
+### giving up on resource-consumption defenses
 
 Ticket #127 contains more detail, but beginning with this release, Foolscap
 will be slowly removing the code that attempted to prevent memory-exhaustion
