@@ -1,7 +1,7 @@
 # -*- test-case-name: foolscap.test.test_copyable -*-
 
 # this module is responsible for all copy-by-value objects
-
+import six
 from zope.interface import interface, implementer
 from twisted.python import reflect, log
 from twisted.python.components import registerAdapter
@@ -340,13 +340,12 @@ class RemoteCopyOldStyle(_RemoteCopyBase):
     # classes do not do metaclass magic
     copytype = None
 
+@six.add_metaclass(RemoteCopyClass)
 class RemoteCopy(_RemoteCopyBase, object):
     # Set 'copytype' to a unique string that is shared between the
     # sender-side Copyable and the receiver-side RemoteCopy. This RemoteCopy
     # subclass will be auto-registered using the 'copytype' name. Set
     # copytype to None to disable auto-registration.
-
-    __metaclass__ = RemoteCopyClass
     pass
 
 

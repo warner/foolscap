@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 from twisted.python.components import registerAdapter
 from twisted.python import log
 from zope.interface import implementer
@@ -17,10 +18,9 @@ class SlicerClass(type):
         if typ:
             registerAdapter(self, typ, tokens.ISlicer)
 
+@six.add_metaclass(SlicerClass)
 @implementer(tokens.ISlicer)
 class BaseSlicer(object):
-    __metaclass__ = SlicerClass
-
     slices = None
 
     parent = None
@@ -142,9 +142,9 @@ class UnslicerClass(type):
         if opentype:
             registerUnslicer(opentype, self, reg)
 
+@six.add_metaclass(UnslicerClass)
 @implementer(tokens.IUnslicer)
 class BaseUnslicer(object):
-    __metaclass__ = UnslicerClass
     opentype = None
 
     def __init__(self):
