@@ -90,18 +90,18 @@ class AsyncAND(unittest.TestCase):
 
 class Base32(unittest.TestCase):
     def test_is_base32(self):
-        self.assertTrue(base32.is_base32(b"abc456"))
-        self.assertTrue(base32.is_base32(b"456"))
-        self.assertTrue(base32.is_base32(b""))
-        self.assertFalse(base32.is_base32(b"123")) # 1 is not in rfc4648 base32
-        self.assertFalse(base32.is_base32(b".123"))
-        self.assertFalse(base32.is_base32(b"_"))
-        self.assertFalse(base32.is_base32(b"a b c"))
+        self.assertTrue(base32.is_base32("abc456"))
+        self.assertTrue(base32.is_base32("456"))
+        self.assertTrue(base32.is_base32(""))
+        self.assertFalse(base32.is_base32("123")) # 1 is not in rfc4648 base32
+        self.assertFalse(base32.is_base32(".123"))
+        self.assertFalse(base32.is_base32("_"))
+        self.assertFalse(base32.is_base32("a b c"))
 
     def test_digest32(self):
         colondigest = b'0F:E6:23:51:58:EA:66:A1:69:52:21:30:01:CA:7D:36:E0:EF:6C:46'
         d32 = crypto.digest32(colondigest)
-        self.failUnlessEqual(d32, b"b7tcguky5jtkc2kseeyadst5g3qo63cg")
+        self.failUnlessEqual(d32, "b7tcguky5jtkc2kseeyadst5g3qo63cg")
 
 class Time(unittest.TestCase):
     def test_format(self):
