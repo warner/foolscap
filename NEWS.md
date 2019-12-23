@@ -1,5 +1,24 @@
 User visible changes in Foolscap
 
+## Release 0.13.2 (22-Dec-2019)
+
+NOTE: This is the last release to support Python-2.x. The Python3 porting
+effort is underway, and the next release will only support Python3.
+
+As the official end-of-life date for Python 2.7 is January 1st 2020, you have
+nine days to use this release. Enjoy!
+
+Other fixes:
+
+Allow connection attempts to take up to 120s, since some connectors (Tor/I2P)
+require spinning up a daemon and letting it connect to the network first.
+
+Tolerate the latest Twisted and txtorcon dependencies.
+
+The `flappserver --help` command now recommends the correct syntax for the
+`--location` option (`tcp:example.org:3116` rather than `example.org:3116`).
+
+
 ## Release 0.13.1 (20-Nov-2017)
 
 This release adds a minor feature to "flappclient": it now pays attention to
