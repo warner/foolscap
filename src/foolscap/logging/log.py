@@ -95,6 +95,10 @@ class FoolscapLogger:
 
     def get_incarnation(self):
         unique = binascii.b2a_hex(os.urandom(8))
+        # b2a_hex yields bytes on both py2/py3
+        if sys.version_info.major != 2:
+            unique = unique.decode("ascii")
+        # 'unique' is native string
         sequential = None
         return (unique, sequential)
 

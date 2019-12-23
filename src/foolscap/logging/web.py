@@ -283,7 +283,7 @@ class LogEvent:
         self.children = []
         self.index = None
         self.anchor_index = "no-number"
-        self.incarnation = base32.encode(e['d']['incarnation'][0])
+        self.incarnation = base32.encode(e['d']['incarnation'][0].encode("utf-8"))
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
             self.anchor_index = "%s_%s_%d" % (urllib.quote(e['from'].encode("utf-8")),
