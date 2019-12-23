@@ -1,11 +1,9 @@
-import sys, base64
+import six, base64
 
 def encode(b): # takes bytes, returns native string
     assert isinstance(b, bytes), (type(b), b)
     out = base64.b32encode(b).lower().rstrip(b"=")
-    if sys.version_info.major == 2:
-        return out
-    return out.decode("ascii")
+    return six.ensure_str(out)
 
 # we use the rfc4648 base32 alphabet, in lowercase
 BASE32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567'

@@ -7,6 +7,7 @@
 from __future__ import print_function
 import weakref
 from functools import total_ordering
+import six
 from zope.interface import interface
 from zope.interface import implementer
 from twisted.python.components import registerAdapter
@@ -800,6 +801,7 @@ class SturdyRef(Copyable, RemoteCopy):
         self.locationHints = [] # list of strings
         self.url = url
         if url:
+            self.url = six.ensure_str(self.url)
             self.tubID, self.locationHints, self.name = decode_furl(url)
 
     def getTubRef(self):
@@ -842,7 +844,7 @@ class TubRef(object):
         assert isinstance(locationHints, list), locationHints
         assert all([isinstance(hint, str) for hint in locationHints]), \
                locationHints
-        self.tubID = tubID
+        self.tubID = tubID and six.ensure_str(tubID)
         self.locationHints = locationHints
 
     def getLocations(self):
