@@ -612,6 +612,8 @@ class Tub(service.MultiService):
         # host:port
         hints = ",".join(self.locationHints)
         return "pb://" + self.tubID + "@" + hints + "/" + name
+        #hints = b",".join(self.locationHints)
+        #return b"pb://" + self.tubID + b"@" + hints + b"/" + name
 
     def registerReference(self, ref, name=None, furlFile=None):
         """Make a Referenceable available to the outside world. A URL is
