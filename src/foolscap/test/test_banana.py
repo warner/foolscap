@@ -749,15 +749,17 @@ class ErrorfulSlicer(slicer.BaseSlicer):
         self.childDied = False
         self.ignoreChildDeath = ignoreChildDeath
 
-    def __iter__(self):
-        return self
     def slice(self, streamable, banana):
         self.streamable = streamable
         if self.mode == "slice":
             raise Violation("slice failed")
-        return self
+        return self.doSlice()
 
-    def next(self):
+    def doSlice(self):
+        while True:
+            yield self.getNext()
+
+    def getNext(self):
         self.counter += 1
         if not self.items:
             raise StopIteration
