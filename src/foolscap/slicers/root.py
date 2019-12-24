@@ -66,11 +66,14 @@ class RootSlicer:
         if self.debug: log.msg("cannot serialize %s (%s)" % (obj, name))
         raise Violation("cannot serialize %s (%s)" % (obj, name))
 
+    sliceAlreadyCalled = False
     def slice(self):
-        return self
-    def __iter__(self):
-        return self # we are our own iterator
-    def next(self):
+        # this may only be called once
+        assert not self.sliceAlreadyCalled
+        self.sliceAlreadyCalled = True
+        while True:
+            yield self.getNext()
+    def getNext(self):
         if self.objectSentDeferred:
             self.objectSentDeferred.callback(None)
             self.objectSentDeferred = None
