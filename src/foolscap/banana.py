@@ -23,11 +23,11 @@ EPSILON = 0.1
 
 def int2b128(integer, stream):
     if integer == 0:
-        stream(chr(0))
+        stream(six.int2byte(0))
         return
     assert integer > 0, "can only encode positive integers"
     while integer:
-        stream(chr(integer & 0x7f))
+        stream(six.int2byte(integer & 0x7f))
         integer = integer >> 7
 
 def b1282int(st):
@@ -35,8 +35,7 @@ def b1282int(st):
     oneHundredAndTwentyEight = 128
     i = 0
     place = 0
-    for char in st:
-        num = ord(char)
+    for num in six.iterbytes(st):
         i = i + (num * (oneHundredAndTwentyEight ** place))
         place = place + 1
     return i
@@ -84,13 +83,13 @@ def bytes_to_long(s):
     length = len(s)
     if length % 4:
         extra = (4 - length % 4)
-        s = '\000' * extra + s
+        s = b'\x00' * extra + s
         length = length + extra
     for i in range(0, length, 4):
         acc = (acc << 32) + unpack('>I', s[i:i+4])[0]
     return acc
 
-HIGH_BIT_SET = chr(0x80)
+HIGH_BIT_SET = b"\x80"
 
 SIMPLE_TOKENS = six.integer_types + (float, six.binary_type)
 
@@ -727,8 +726,8 @@ class Banana(protocol.Protocol):
         while len(self.buffer):
             first65 = self.buffer.popleft(65)
             pos = 0
-            for ch in first65:
-                if ch >= HIGH_BIT_SET:
+            for ch in six.iterbytes(first65):
+                if ch >= 0x80:
                     break
                 pos = pos + 1
                 if pos > 64:
@@ -748,7 +747,7 @@ class Banana(protocol.Protocol):
             # At this point, the header and type byte have been received.
             # The body may or may not be complete.
 
-            typebyte = first65[pos]
+            typebyte = first65[pos:pos+1] # byte
             if pos:
                 header = b1282int(first65[:pos])
             else:
@@ -980,7 +979,7 @@ class Banana(protocol.Protocol):
                 continue # otherwise ignored
 
             else:
-                raise BananaError("Invalid Type Byte 0x%x" % ord(typebyte))
+                raise BananaError("Invalid Type Byte 0x%x" % six.byte2int(typebyte))
 
             if not rejected:
                 if self.inOpen:

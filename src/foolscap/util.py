@@ -206,3 +206,6 @@ if len(six.integer_types) > 1:
     long_type = [t for t in six.integer_types if t is not int][0]
 else:
     long_type = int
+
+def ensure_tuple_str(input_tuple):
+    return tuple([six.ensure_str(s) for s in input_tuple])

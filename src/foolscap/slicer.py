@@ -8,6 +8,7 @@ from twisted.internet.defer import Deferred
 from . import tokens
 from .tokens import Violation, BananaError
 from foolscap.ipb import IBroker
+from foolscap.util import ensure_tuple_str
 
 class SlicerClass(type):
     # auto-register Slicers
@@ -50,7 +51,9 @@ class BaseSlicer(object):
         self.streamable = streamable
         assert self.opentype
         for o in self.opentype:
-            yield o
+            # our wire protocol, which originated in py2, uses bytes for the
+            # index tokens
+            yield six.ensure_binary(o)
         for t in self.sliceBody(streamable, banana):
             yield t
     def sliceBody(self, streamable, banana):
@@ -128,6 +131,7 @@ UnslicerRegistry = {}
 BananaUnslicerRegistry = {}
 
 def registerUnslicer(opentype, factory, registry=None):
+    opentype = ensure_tuple_str(opentype)
     if registry is None:
         registry = UnslicerRegistry
     assert opentype not in registry

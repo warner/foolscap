@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import types
+import six
 from zope.interface import implementer
 from twisted.internet.defer import Deferred
 from foolscap import tokens
@@ -9,6 +10,7 @@ from foolscap.tokens import Violation, BananaError
 from foolscap.slicer import BaseUnslicer, ReferenceSlicer
 from foolscap.slicer import UnslicerRegistry, BananaUnslicerRegistry
 from foolscap.slicers.vocab import ReplaceVocabularyTable, AddToVocabularyTable
+from foolscap.util import ensure_tuple_str
 from foolscap import copyable # does this create a cycle?
 from twisted.python import log
 from functools import reduce
@@ -188,15 +190,16 @@ class RootUnslicer(BaseUnslicer):
         else:
             # TODO: hack for testing
             raise Violation("index token 0x%02x not STRING or VOCAB" % \
-                              ord(typebyte))
+                              six.byte2int(typebyte))
             raise BananaError("index token 0x%02x not STRING or VOCAB" % \
-                              ord(typebyte))
+                              six.byte2int(typebyte))
 
     def open(self, opentype):
         # called (by delegation) by the top Unslicer on the stack, regardless
         # of what kind of unslicer it is. This is only used for "internal"
         # objects: non-top-level nodes
         assert len(self.protocol.receiveStack) > 1
+        opentype = ensure_tuple_str(opentype)
 
         if opentype[0] == 'copyable':
             if len(opentype) > 1:
@@ -221,6 +224,7 @@ class RootUnslicer(BaseUnslicer):
     def doOpen(self, opentype):
         # this is only called for top-level objects
         assert len(self.protocol.receiveStack) == 1
+        opentype = ensure_tuple_str(opentype)
         if self.constraint:
             self.constraint.checkOpentype(opentype)
         for reg in self.topRegistries:

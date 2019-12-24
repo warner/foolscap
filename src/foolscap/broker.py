@@ -78,9 +78,9 @@ class PBRootUnslicer(RootUnslicer):
         else:
             # TODO: hack for testing
             raise Violation("index token 0x%02x not STRING or VOCAB" % \
-                              ord(typebyte))
+                              six.byte2int(typebyte))
             raise BananaError("index token 0x%02x not STRING or VOCAB" % \
-                              ord(typebyte))
+                              six.byte2int(typebyte))
 
     def open(self, opentype):
         # used for lower-level objects, delegated up from childunslicer.open

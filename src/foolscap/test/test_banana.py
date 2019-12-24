@@ -24,27 +24,30 @@ from decimal import Decimal
 # some utility functions to manually assemble bytestreams
 
 def bOPEN(opentype, count):
+    opentype = six.ensure_binary(opentype)
     assert count < 128
-    return chr(count) + "\x88" + chr(len(opentype)) + "\x82" + opentype
+    return six.int2byte(count) + b"\x88" + six.int2byte(len(opentype)) + b"\x82" + opentype
 def bCLOSE(count):
     assert count < 128
-    return chr(count) + "\x89"
+    return six.int2byte(count) + b"\x89"
 def bINT(num):
     if num >=0:
         assert num < 128
-        return chr(num) + "\x81"
+        return six.int2byte(num) + b"\x81"
     num = -num
     assert num < 128
-    return chr(num) + "\x83"
-def bSTR(str):
-    assert len(str) < 128
-    return chr(len(str)) + "\x82" + str
-def bERROR(str):
-    assert len(str) < 128
-    return chr(len(str)) + "\x8d" + str
+    return six.int2byte(num) + b"\x83"
+def bSTR(b):
+    b = six.ensure_binary(b)
+    assert len(b) < 128
+    return six.int2byte(len(b)) + b"\x82" + b
+def bERROR(b):
+    assert isinstance(b, bytes)
+    assert len(b) < 128
+    return six.int2byte(len(b)) + b"\x8d" + b
 def bABORT(count):
     assert count < 128
-    return chr(count) + "\x8A"
+    return six.int2byte(count) + b"\x8A"
 # DecodeTest (24): turns tokens into objects, tests objects and UFs
 # EncodeTest (13): turns objects/instance into tokens, tests tokens
 # FailedInstanceTests (2): 1:turn instances into tokens and fail, 2:reverse
@@ -329,7 +332,7 @@ class TestBananaMixin:
         self.assertEqual(type(obj2), type(newvalue))
 
 def join(*args):
-    return "".join(args)
+    return b"".join(args)
 
 
 
@@ -981,19 +984,19 @@ class FailingUnslicer(TupleUnslicer):
         return "failing"
 
 class DecodeFailureTest(TestBananaMixin, unittest.TestCase):
-    listStream = join(bOPEN("errorful", 0), bINT(1), bINT(2), bCLOSE(0))
-    nestedStream = join(bOPEN("errorful", 0), bINT(1),
-                        bOPEN("list", 1), bINT(2), bINT(3), bCLOSE(1),
+    listStream = join(bOPEN(b"errorful", 0), bINT(1), bINT(2), bCLOSE(0))
+    nestedStream = join(bOPEN(b"errorful", 0), bINT(1),
+                        bOPEN(b"list", 1), bINT(2), bINT(3), bCLOSE(1),
                         bCLOSE(0))
-    nestedStream2 = join(bOPEN("failing", 0), bSTR("a"),
-                          bOPEN("errorful", 1), bINT(1),
-                           bOPEN("list", 2), bINT(2), bINT(3), bCLOSE(2),
+    nestedStream2 = join(bOPEN(b"failing", 0), bSTR(b"a"),
+                          bOPEN(b"errorful", 1), bINT(1),
+                           bOPEN(b"list", 2), bINT(2), bINT(3), bCLOSE(2),
                           bCLOSE(1),
-                          bSTR("b"),
+                          bSTR(b"b"),
                           bCLOSE(0),
                          )
-    abortStream = join(bOPEN("errorful", 0), bINT(1),
-                        bOPEN("list", 1),
+    abortStream = join(bOPEN(b"errorful", 0), bINT(1),
+                        bOPEN(b"list", 1),
                          bINT(2), bABORT(1), bINT(3),
                         bCLOSE(1),
                        bCLOSE(0))
@@ -1194,10 +1197,10 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
         self.assertEqual(obj, obj2)
 
     def testInt(self):
-        self.check(1, "\x01\x81")
-        self.check(130, "\x02\x01\x81")
-        self.check(-1, "\x01\x83")
-        self.check(-130, "\x02\x01\x83")
+        self.check(1, b"\x01\x81")
+        self.check(130, b"\x02\x01\x81")
+        self.check(-1, b"\x01\x83")
+        self.check(-130, b"\x02\x01\x83")
         self.check(0, bINT(0))
         self.check(1, bINT(1))
         self.check(127, bINT(127))
@@ -1205,30 +1208,30 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
         self.check(-127, bINT(-127))
 
     def testLong(self):
-        self.check(long_type(258), "\x02\x85\x01\x02") # TODO: 0x85 for LONGINT??
-        self.check(long_type(-258), "\x02\x86\x01\x02") # TODO: 0x85 for LONGINT??
-        self.check(long_type(0), "\x85")
-        self.check(long_type(0), "\x00\x85")
-        self.check(long_type(0), "\x86")
-        self.check(long_type(0), "\x00\x86")
+        self.check(long_type(258), b"\x02\x85\x01\x02") # TODO: 0x85 for LONGINT??
+        self.check(long_type(-258), b"\x02\x86\x01\x02") # TODO: 0x85 for LONGINT??
+        self.check(long_type(0), b"\x85")
+        self.check(long_type(0), b"\x00\x85")
+        self.check(long_type(0), b"\x86")
+        self.check(long_type(0), b"\x00\x86")
 
     def testString(self):
-        self.check("", "\x82")
-        self.check("", "\x00\x82")
-        self.check("", "\x00\x00\x82")
-        self.check("", "\x00" * 64 + "\x82")
+        self.check(b"", b"\x82")
+        self.check(b"", b"\x00\x82")
+        self.check(b"", b"\x00\x00\x82")
+        self.check(b"", b"\x00" * 64 + b"\x82")
 
-        f = self.shouldDropConnection("\x00" * 65)
+        f = self.shouldDropConnection(b"\x00" * 65)
         self.assertEqual(f.value.where, "<RootUnslicer>")
         self.assertTrue(f.value.args[0].startswith("token prefix is limited to 64 bytes"))
-        f = self.shouldDropConnection("\x00" * 65 + "\x82")
+        f = self.shouldDropConnection(b"\x00" * 65 + b"\x82")
         self.assertEqual(f.value.where, "<RootUnslicer>")
         self.assertTrue(f.value.args[0].startswith("token prefix is limited to 64 bytes"))
 
-        self.check("a", "\x01\x82a")
-        self.check("b"*130, "\x02\x01\x82" + "b"*130 + "extra")
-        self.check("c"*1025, "\x01\x08\x82" + "c" * 1025 + "extra")
-        self.check("fluuber", bSTR("fluuber"))
+        self.check(b"a", b"\x01\x82a")
+        self.check(b"b"*130, b"\x02\x01\x82" + b"b"*130 + b"extra")
+        self.check(b"c"*1025, b"\x01\x08\x82" + b"c" * 1025 + b"extra")
+        self.check(b"fluuber", bSTR("fluuber"))
 
 
     def testList(self):
@@ -1236,9 +1239,9 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
                    join(bOPEN('list',1),
                         bINT(1), bINT(2),
                         bCLOSE(1)))
-        self.check([1,"b"],
+        self.check([1,b"b"],
                    join(bOPEN('list',1), bINT(1),
-                        "\x01\x82b",
+                        b"\x01\x82b",
                         bCLOSE(1)))
         self.check([1,2,[3,4]],
                    join(bOPEN('list',1), bINT(1), bINT(2),
@@ -1252,7 +1255,7 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
                         bCLOSE(1)))
 
     def testDict(self):
-        self.check({1:"a", 2:["b","c"]},
+        self.check({1:b"a", 2:[b"b",b"c"]},
                    join(bOPEN('dict',1),
                         bINT(1), bSTR("a"),
                         bINT(2), bOPEN('list',2),
@@ -1305,8 +1308,8 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
 
     def NOTtestFoo(self):
         if 0:
-            a100 = chr(100) + "\x82" + "a"*100
-            b100 = chr(100) + "\x82" + "b"*100
+            a100 = six.int2byte(100) + "\x82" + "a"*100
+            b100 = six.int2byte(100) + "\x82" + "b"*100
             self.violate2(join(bOPEN('list',1),
                                bOPEN('list',2), a100, b100, bCLOSE(2),
                                bCLOSE(1)),
@@ -1315,7 +1318,7 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                 schema.ListOf(schema.StringConstraint(99), 2), 2))
 
         def OPENweird(count, weird):
-            return chr(count) + "\x88" + weird
+            return six.int2byte(count) + "\x88" + weird
 
         self.violate2(join(bOPEN('list',1),
                            bOPEN('list',2),
@@ -1346,8 +1349,8 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                            bCLOSE(1)),
                       "<RootUnslicer>.[3]",
                       schema.ListOf(int, maxLength=3))
-        a100 = chr(100) + "\x82" + "a"*100
-        b100 = chr(100) + "\x82" + "b"*100
+        a100 = six.int2byte(100) + "\x82" + "a"*100
+        b100 = six.int2byte(100) + "\x82" + "b"*100
         self.conform2(join(bOPEN('list',1), a100, b100, bCLOSE(1)),
                       ["a"*100, "b"*100],
                       schema.ListOf(schema.StringConstraint(100), 2))
@@ -1712,7 +1715,7 @@ class VocabTest1(unittest.TestCase):
 class VocabTest2(TestBananaMixin, unittest.TestCase):
     def vbOPEN(self, count, opentype):
         num = self.invdict[opentype]
-        return chr(count) + "\x88" + chr(num) + "\x87"
+        return six.int2byte(count) + "\x88" + six.int2byte(num) + "\x87"
 
     def test_loop(self):
         strings = ["list", "tuple", "dict"]
