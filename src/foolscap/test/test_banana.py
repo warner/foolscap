@@ -630,39 +630,39 @@ class EncodeTest(unittest.TestCase):
     def testList(self):
         d = self.do([1,2])
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'list', 1, 2, tCLOSE(0)])
+                      [tOPEN(0),b'list', 1, 2, tCLOSE(0)])
         return d
 
     def testTuple(self):
         d = self.do((1,2))
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'tuple', 1, 2, tCLOSE(0)])
+                      [tOPEN(0),b'tuple', 1, 2, tCLOSE(0)])
         return d
 
     def testNestedList(self):
         d = self.do([1,2,[3,4]])
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'list', 1, 2,
-                        tOPEN(1),'list', 3, 4, tCLOSE(1),
+                      [tOPEN(0),b'list', 1, 2,
+                        tOPEN(1),b'list', 3, 4, tCLOSE(1),
                        tCLOSE(0)])
         return d
 
     def testNestedList2(self):
-        d = self.do([1,2,(3,4,[5, "hi"])])
+        d = self.do([1,2,(3,4,[5, b"hi"])])
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'list', 1, 2,
-                        tOPEN(1),'tuple', 3, 4,
-                         tOPEN(2),'list', 5, "hi", tCLOSE(2),
+                      [tOPEN(0),b'list', 1, 2,
+                        tOPEN(1),b'tuple', 3, 4,
+                         tOPEN(2),b'list', 5, b"hi", tCLOSE(2),
                         tCLOSE(1),
                        tCLOSE(0)])
         return d
 
     def testDict(self):
-        d = self.do({'a': 1, 'b': 2})
+        d = self.do({b'a': 1, b'b': 2})
         d.addCallback(lambda res:
                       self.assertTrue(
-            res == [tOPEN(0),'dict', 'a', 1, 'b', 2, tCLOSE(0)] or
-            res == [tOPEN(0),'dict', 'b', 2, 'a', 1, tCLOSE(0)]))
+            res == [tOPEN(0),b'dict', b'a', 1, b'b', 2, tCLOSE(0)] or
+            res == [tOPEN(0),b'dict', b'b', 2, b'a', 1, tCLOSE(0)]))
         return d
 
     def test_ref1(self):
@@ -670,9 +670,9 @@ class EncodeTest(unittest.TestCase):
         obj = [l,l]
         d = self.do(obj)
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'list',
-                        tOPEN(1),'list', 1, 2, tCLOSE(1),
-                        tOPEN(2),'reference', 1, tCLOSE(2),
+                      [tOPEN(0),b'list',
+                        tOPEN(1),b'list', 1, 2, tCLOSE(1),
+                        tOPEN(2),b'reference', 1, tCLOSE(2),
                        tCLOSE(0)])
         return d
 
@@ -681,9 +681,9 @@ class EncodeTest(unittest.TestCase):
         obj.append(obj)
         d = self.do(obj)
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'list',
-                        tOPEN(1),'list', 1, 2, tCLOSE(1),
-                        tOPEN(2),'reference', 0, tCLOSE(2),
+                      [tOPEN(0),b'list',
+                        tOPEN(1),b'list', 1, 2, tCLOSE(1),
+                        tOPEN(2),b'reference', 0, tCLOSE(2),
                        tCLOSE(0)])
         return d
 
@@ -692,20 +692,20 @@ class EncodeTest(unittest.TestCase):
         obj.append(obj[0])
         d = self.do(obj)
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'list',
-                        tOPEN(1),'tuple', 1, 2, tCLOSE(1),
-                        tOPEN(2),'reference', 1, tCLOSE(2),
+                      [tOPEN(0),b'list',
+                        tOPEN(1),b'tuple', 1, 2, tCLOSE(1),
+                        tOPEN(2),b'reference', 1, tCLOSE(2),
                        tCLOSE(0)])
         return d
 
     def test_ref4(self):
-        obj = [{"a":1}]
+        obj = [{b"a":1}]
         obj.append(obj[0])
         d = self.do(obj)
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'list',
-                        tOPEN(1),'dict', "a", 1, tCLOSE(1),
-                        tOPEN(2),'reference', 1, tCLOSE(2),
+                      [tOPEN(0),b'list',
+                        tOPEN(1),b'dict', b"a", 1, tCLOSE(1),
+                        tOPEN(2),b'reference', 1, tCLOSE(2),
                        tCLOSE(0)])
         return d
 
@@ -715,10 +715,10 @@ class EncodeTest(unittest.TestCase):
         obj[0].append((obj,))
         d = self.do(obj)
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'tuple',
-                        tOPEN(1),'list',
-                         tOPEN(2),'tuple',
-                          tOPEN(3),'reference', 0, tCLOSE(3),
+                      [tOPEN(0),b'tuple',
+                        tOPEN(1),b'list',
+                         tOPEN(2),b'tuple',
+                          tOPEN(3),b'reference', 0, tCLOSE(3),
                          tCLOSE(2),
                         tCLOSE(1),
                        tCLOSE(0)])
@@ -726,15 +726,15 @@ class EncodeTest(unittest.TestCase):
 
     def test_refdict1(self):
         # a dictionary with a value that isn't available right away
-        d0 = {1: "a"}
+        d0 = {1: b"a"}
         t = (d0,)
         d0[2] = t
         d = self.do(d0)
         d.addCallback(self.assertEqual,
-                      [tOPEN(0),'dict',
-                        1, "a",
-                        2, tOPEN(1),'tuple',
-                            tOPEN(2),'reference', 0, tCLOSE(2),
+                      [tOPEN(0),b'dict',
+                        1, b"a",
+                        2, tOPEN(1),b'tuple',
+                            tOPEN(2),b'reference', 0, tCLOSE(2),
                            tCLOSE(1),
                        tCLOSE(0)])
         return d
