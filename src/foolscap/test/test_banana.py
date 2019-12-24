@@ -142,13 +142,14 @@ def untokenize(tokens):
             elif isinstance(t, float):
                 data.append(FLOAT)
                 data.append(struct.pack("!d", t))
-            elif isinstance(t, str):
+            elif isinstance(t, six.string_types):
+                t = six.ensure_binary(t)
                 int2b128(len(t), data.append)
                 data.append(STRING)
                 data.append(t)
             else:
                 raise BananaError("could not send object: %s" % repr(t))
-    return "".join(data)
+    return b"".join(data)
 
 class UnbananaTestMixin:
     def setUp(self):
@@ -340,14 +341,14 @@ class BrokenDictUnslicer(DictUnslicer):
     dieInFinish = 0
 
     def receiveKey(self, key):
-        if key == "die":
+        if key == b"die":
             raise Violation("aaagh")
-        if key == "please_die_in_finish":
+        if key == b"please_die_in_finish":
             self.dieInFinish = 1
         DictUnslicer.receiveKey(self, key)
 
     def receiveValue(self, value):
-        if value == "die":
+        if value == b"die":
             raise Violation("aaaaaaaaargh")
         DictUnslicer.receiveValue(self, value)
 
@@ -375,7 +376,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
     def test_simple_list(self):
         "simple list"
         res = self.do([tOPEN(0),'list',1,2,3,"a","b",tCLOSE(0)])
-        self.assertEqual(res, [1,2,3,'a','b'])
+        self.assertEqual(res, [1,2,3,b'a',b'b'])
 
     def test_aborted_list(self):
         "aborted list"
@@ -424,15 +425,15 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
     def test_dict(self):
         "dict"
         res = self.do([tOPEN(0),'dict',"a",1,"b",2,tCLOSE(0)])
-        self.assertEqual(res, {'a':1, 'b':2})
+        self.assertEqual(res, {b'a':1, b'b':2})
 
     def test_dict_with_duplicate_keys(self):
         "dict with duplicate keys"
         f = self.shouldDropConnection([tOPEN(0),'dict',
-                                       "a",1,"a",2,
+                                       1,"a",1,"b",
                                        tCLOSE(0)])
         self.assertEqual(f.value.where, "<RootUnslicer>.{}")
-        self.assertEqual(f.value.args[0], "duplicate key 'a'")
+        self.assertEqual(f.value.args[0], "duplicate key '1'")
 
     def test_dict_with_list(self):
         "dict with list"
@@ -440,14 +441,14 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
                         "a",1,
                         "b", tOPEN(1),'list', 2, 3, tCLOSE(1),
                        tCLOSE(0)])
-        self.assertEqual(res, {'a':1, 'b':[2,3]})
+        self.assertEqual(res, {b'a':1, b'b':[2,3]})
 
     def test_dict_with_tuple_as_key(self):
         "dict with tuple as key"
         res = self.do([tOPEN(0),'dict',
                         tOPEN(1),'tuple', 1, 2, tCLOSE(1), "a",
                        tCLOSE(0)])
-        self.assertEqual(res, {(1,2):'a'})
+        self.assertEqual(res, {(1,2):b'a'})
 
     def test_dict_with_mutable_key(self):
         "dict with mutable key"
@@ -498,7 +499,7 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
                         tOPEN(2),'reference', 1, tCLOSE(2),
                        tCLOSE(0)])
         self.failIfBananaFailure(res)
-        wanted = [{"a":1}]
+        wanted = [{b"a":1}]
         wanted.append(wanted[0])
         self.assertEqual(res, wanted)
         self.failUnlessIdentical(res[0], res[1])
@@ -593,12 +594,12 @@ class DecodeTest(UnbananaTestMixin, unittest.TestCase):
         f = self.shouldFail([tOPEN(0),'list', 1,
                               tOPEN(1),'dict1',
                                "a", 2,
-                               "b", "die",
+                               3, "die",
                               tCLOSE(1),
                              tCLOSE(0)])
         self.assertTrue(isinstance(f, BananaFailure))
         self.assertTrue(f.check(Violation))
-        self.assertEqual(f.value.where, "<RootUnslicer>.[1].{}[b]")
+        self.assertEqual(f.value.where, "<RootUnslicer>.[1].{}[3]")
         self.assertEqual(f.value.args[0], "aaaaaaaaargh")
 
     def test_failed_dict5(self):
