@@ -61,10 +61,7 @@ class RootSlicer:
         if slicerFactory:
             if self.debug: log.msg(" got slicerFactory %s" % slicerFactory)
             return slicerFactory(obj)
-        if issubclass(type(obj), types.InstanceType):
-            name = str(obj.__class__)
-        else:
-            name = str(type(obj))
+        name = str(type(obj))
         if self.debug: log.msg("cannot serialize %s (%s)" % (obj, name))
         raise Violation("cannot serialize %s (%s)" % (obj, name))
 
@@ -73,9 +70,12 @@ class RootSlicer:
         # this may only be called once
         assert not self.sliceAlreadyCalled
         self.sliceAlreadyCalled = True
-        while True:
-            yield self.getNext()
-    def getNext(self):
+        return iter(self)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
         if self.objectSentDeferred:
             self.objectSentDeferred.callback(None)
             self.objectSentDeferred = None
@@ -88,6 +88,7 @@ class RootSlicer:
         self.producingDeferred = Deferred()
         self.streamable = True
         return self.producingDeferred
+    next = __next__
 
     def childAborted(self, f):
         assert self.objectSentDeferred
