@@ -40,53 +40,30 @@ def b1282int(st):
         place = place + 1
     return i
 
-# long_to_bytes and bytes_to_long taken from PyCrypto: Crypto/Util/number.py
+# we used to have a clever 32bit-word-at-a-time algorithm, but this is rarely
+# used for large numbers so simpler is better
 
-def long_to_bytes(n, blocksize=0):
-    """long_to_bytes(n:long, blocksize:int) : string
-    Convert a long integer to a byte string.
-
-    If optional blocksize is given and greater than zero, pad the front of
-    the byte string with binary zeros so that the length is a multiple of
-    blocksize.
+def long_to_bytes(n):
+    """long_to_bytes(n:long) : bytes
+    Convert a long integer to a big-endian byte string .
     """
-    # after much testing, this algorithm was deemed to be the fastest
-    s = ''
-    n = int(n)
-    pack = struct.pack
-    while n > 0:
-        s = pack('>I', n & 0xffffffff) + s
-        n = n >> 32
-    # strip off leading zeros
-    for i in range(len(s)):
-        if s[i] != '\000':
-            break
-    else:
-        # only happens when n == 0
-        s = '\000'
-        i = 0
-    s = s[i:]
-    # add back some pad bytes. this could be done more efficiently w.r.t. the
-    # de-padding being done above, but sigh...
-    if blocksize > 0 and len(s) % blocksize:
-        s = (blocksize - len(s) % blocksize) * '\000' + s
-    return s
+    assert n >= 0
+    out = []
+    while n:
+        out.append(six.int2byte(n & 0xff))
+        n >>= 8
+    return b"".join(reversed(out))
 
 def bytes_to_long(s):
-    """bytes_to_long(string) : long
+    """bytes_to_long(bytes) : long
     Convert a byte string to a long integer.
 
     This is (essentially) the inverse of long_to_bytes().
     """
     acc = long_type(0)
-    unpack = struct.unpack
-    length = len(s)
-    if length % 4:
-        extra = (4 - length % 4)
-        s = b'\x00' * extra + s
-        length = length + extra
-    for i in range(0, length, 4):
-        acc = (acc << 32) + unpack('>I', s[i:i+4])[0]
+    for i in six.iterbytes(s):
+        acc <<= 8
+        acc += i
     return acc
 
 HIGH_BIT_SET = b"\x80"
