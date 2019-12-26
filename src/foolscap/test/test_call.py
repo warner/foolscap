@@ -203,7 +203,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         rr, target = self.setupTarget(HelperTarget())
         d = rr.callRemote("choice1", 4)
         d.addCallback(lambda res: self.assertEqual(res, None))
-        d.addCallback(lambda res: rr.callRemote("choice1", "a"*2000))
+        d.addCallback(lambda res: rr.callRemote("choice1", b"a"*2000))
         d.addCallback(lambda res: self.assertEqual(res, None))
         # False does not conform
         d.addCallback(lambda res:
@@ -217,13 +217,12 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         t = (set([1, 2, 3]),
              b"str", True, 12, long_type(12), 19.3, None,
              u"unicode",
-             "bytestring",
+             b"bytestring",
              "any", 14.3,
              15,
-             "a"*95,
-             "1234567890",
-              )
-        obj1 = {"key": [t]}
+             b"a"*95,
+             )
+        obj1 = {b"key": [t]}
         obj2 = (set([1,2,3]), [1,2,3], {1:"two"})
         d = rr.callRemote("megaschema", obj1, obj2)
         d.addCallback(lambda res: self.assertEqual(res, None))
@@ -322,7 +321,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # the sender thinks they're ok but the recipient catches the
         # violation
         rr, target = self.setupTarget(Target(), True)
-        d = rr.callRemote("add", a=1, b="foo", _useSchema=False)
+        d = rr.callRemote("add", a=1, b=b"foo", _useSchema=False)
         d.addCallbacks(lambda res: self.fail("should have failed"),
                        self._testFailWrongArgsRemote1_1)
         d.addCallbacks(lambda res: self.assertFalse(target.calls))
@@ -352,7 +351,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
     def testFailWrongReturnLocal(self):
         # the target returns a value which violates our _resultConstraint
         rr, target = self.setupTarget(Target(), True)
-        d = rr.callRemote("add", a=1, b=2, _resultConstraint=str)
+        d = rr.callRemote("add", a=1, b=2, _resultConstraint=bytes)
         # The target returns an int, which matches the schema they're using,
         # so they think they're ok. We've overridden our expectations to
         # require a string.

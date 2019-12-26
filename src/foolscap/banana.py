@@ -989,6 +989,7 @@ class Banana(protocol.Protocol):
 
 
     def handleOpen(self, openCount, objectCount, indexToken):
+        indexToken = six.ensure_str(indexToken)
         self.opentype.append(indexToken)
         opentype = tuple(self.opentype)
         if self.debugReceive:

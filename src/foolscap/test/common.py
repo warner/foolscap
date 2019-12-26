@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 import six
-import re, time
+import time
 from zope.interface import implementer, implementer_only, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer, reactor, task, protocol
@@ -70,8 +70,7 @@ class Loopback:
     def getHost(self):
         return broker.LoopbackAddress()
 
-Digits = re.compile("\d*")
-MegaSchema1 = DictOf(str,
+MegaSchema1 = DictOf(ByteStringConstraint(),
                      ListOf(TupleOf(SetOf(int, maxLength=10, mutable=True),
                                     six.binary_type, bool, int, long_type, float, None,
                                     UnicodeConstraint(),
@@ -79,9 +78,7 @@ MegaSchema1 = DictOf(str,
                                     Any(), NumberConstraint(),
                                     IntegerConstraint(),
                                     ByteStringConstraint(maxLength=100,
-                                                         minLength=90,
-                                                         regexp="\w+"),
-                                    ByteStringConstraint(regexp=Digits),
+                                                         minLength=90),
                                     ),
                             maxLength=20),
                      maxKeys=5)

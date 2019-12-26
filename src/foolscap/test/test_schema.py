@@ -67,17 +67,6 @@ class ConformTest(unittest.TestCase):
         self.violates(c2, "this is too long")
         self.violates(c2, u"I am unicode")
 
-        c3 = schema.ByteStringConstraint(regexp="needle")
-        self.violates(c3, "no present")
-        self.conforms(c3, "needle in a haystack")
-        c4 = schema.ByteStringConstraint(regexp="[abc]+")
-        self.violates(c4, "spelled entirely without those letters")
-        self.conforms(c4, "add better cases")
-        c5 = schema.ByteStringConstraint(regexp=re.compile("\d+\s\w+"))
-        self.conforms(c5, ": 123 boo")
-        self.violates(c5, "more than 1  spaces")
-        self.violates(c5, "letters first 123")
-
     def testString(self):
         # this test will change once the definition of "StringConstraint"
         # changes. For now, we assert that StringConstraint is the same as

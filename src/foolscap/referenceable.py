@@ -124,21 +124,18 @@ class ReferenceableSlicer(slicer.BaseSlicer):
         tracker = broker.getTrackerForMyReference(puid, self.obj)
         if broker.remote_broker:
             # emit a my-reference sequence
-            yield 'my-reference'
+            yield b'my-reference'
             yield tracker.clid
             firstTime = tracker.send()
             if firstTime:
                 # this is the first time the Referenceable has crossed this
                 # wire. In addition to the clid, send the interface name (if
                 # any), and any URL this reference might be known by
-                iname = ipb.IRemotelyCallable(self.obj).getInterfaceName()
-                if iname:
-                    yield iname
-                else:
-                    yield ""
+                iname = ipb.IRemotelyCallable(self.obj).getInterfaceName() or ""
+                yield six.ensure_binary(iname)
                 url = tracker.getURL()
                 if url:
-                    yield url
+                    yield six.ensure_binary(url)
         else:
             # when we're serializing to data, rather than to a live
             # connection, all of my Referenceables are turned into
@@ -150,9 +147,9 @@ class ReferenceableSlicer(slicer.BaseSlicer):
             # Referenceable that you want to include in the serialized data,
             # and take steps to make sure that later incarnations of this Tub
             # will do the same.
-            yield 'their-reference'
+            yield b'their-reference'
             yield 0 # giftID==0 tells the recipient to not try to ack it
-            yield tracker.getURL()
+            yield six.ensure_binary(tracker.getURL())
 
 
 registerAdapter(ReferenceableSlicer, Referenceable, ipb.ISlicer)
@@ -175,14 +172,11 @@ class CallableSlicer(slicer.BaseSlicer):
             # this is the first time the Call has crossed this wire. In
             # addition to the clid, send the schema name and any URL this
             # reference might be known by
-            schema = self.getSchema()
-            if schema:
-                yield schema
-            else:
-                yield ""
+            schema = self.getSchema() or ""
+            yield six.ensure_binary(schema)
             url = tracker.getURL()
             if url:
-                yield url
+                yield six.ensure_binary(url)
 
     def getSchema(self):
         return None # TODO: not quite ready yet
@@ -231,13 +225,11 @@ class ReferenceUnslicer(slicer.BaseUnslicer):
             self.state = 1
         elif self.state == 1:
             # must be the interface name
-            self.interfaceName = obj
-            if obj == "":
-                self.interfaceName = None
+            self.interfaceName = six.ensure_str(obj) or None
             self.state = 2
         elif self.state == 2:
             # URL
-            self.url = obj
+            self.url = six.ensure_str(obj)
             self.state = 3
         else:
             raise BananaError("Too many my-reference parameters")
@@ -427,7 +419,7 @@ class RemoteReference(RemoteReferenceOnly):
     def _callRemote(self, _name, *args, **kwargs):
         req = None
         broker = self.tracker.broker
-        _name = _name.encode("ascii")
+        _name = six.ensure_str(_name)
 
         # remember that "none" is not a valid constraint, so we use it to
         # mean "not set by the caller", which means we fall back to whatever
@@ -463,6 +455,7 @@ class RemoteReference(RemoteReferenceOnly):
         (interfaceName,
          methodName,
          methodSchema) = self._getMethodInfo(_name)
+        methodName = six.ensure_str(methodName)
 
         req = call.PendingRequest(reqID, self, interfaceName, methodName)
         # TODO: consider adding a stringified stack trace to that
@@ -647,7 +640,7 @@ class YourReferenceSlicer(slicer.BaseSlicer):
         tracker = self.obj.tracker
         if tracker.broker == broker:
             # sending back to home broker
-            yield 'your-reference'
+            yield b'your-reference'
             yield tracker.clid
         else:
             # sending somewhere else
@@ -657,9 +650,9 @@ class YourReferenceSlicer(slicer.BaseSlicer):
                 furl = ""
             assert isinstance(furl, str)
             giftID = broker.makeGift(self.obj)
-            yield 'their-reference'
+            yield b'their-reference'
             yield giftID
-            yield furl
+            yield six.ensure_binary(furl)
 
     def describe(self):
         return "<your-ref-%s>" % self.obj.tracker.clid
@@ -720,7 +713,7 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
             self.state = 1
         elif self.state == 1:
             # URL
-            self.url = obj
+            self.url = six.ensure_str(obj)
             self.state = 2
         else:
             raise BananaError("Too many their-reference parameters")

@@ -46,13 +46,13 @@ class CopyableSlicer(slicer.BaseSlicer):
     """I handle ICopyable objects (things which are copied by value)."""
     def slice(self, streamable, banana):
         self.streamable = streamable
-        yield 'copyable'
+        yield b'copyable'
         copytype = self.obj.getTypeToCopy()
         assert isinstance(copytype, str)
-        yield copytype
+        yield six.ensure_binary(copytype)
         state = self.obj.getStateToCopy()
         for k,v in state.items():
-            yield k
+            yield six.ensure_binary(k)
             yield v
     def describe(self):
         return "<%s>" % self.obj.getTypeToCopy()
@@ -69,8 +69,8 @@ class Copyable2(slicer.BaseSlicer):
         return self.__dict__
     def slice(self, streamable, banana):
         self.streamable = streamable
-        yield 'instance'
-        yield self.getTypeToCopy()
+        yield b'instance'
+        yield six.ensure_binary(self.getTypeToCopy())
         yield self.getStateToCopy()
     def describe(self):
         return "<%s>" % self.getTypeToCopy()
@@ -136,7 +136,7 @@ class RemoteCopyUnslicer(slicer.BaseUnslicer):
         assert not isinstance(obj, defer.Deferred)
         assert ready_deferred is None
         if self.attrname == None:
-            attrname = obj
+            attrname = six.ensure_str(obj)
             if attrname in self.d:
                 raise BananaError("duplicate attribute name '%s'" % attrname)
             s = self.schema

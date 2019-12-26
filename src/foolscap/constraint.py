@@ -5,7 +5,7 @@
 
 # This imports foolscap.tokens, but no other Foolscap modules.
 
-import six, re
+import six
 from zope.interface import implementer, Interface
 
 from foolscap.util import ensure_tuple_str
@@ -204,20 +204,14 @@ class ByteStringConstraint(Constraint):
     opentypes = [] # redundant, as taster doesn't accept OPEN
     name = "ByteStringConstraint"
 
-    def __init__(self, maxLength=None, minLength=0, regexp=None):
+    def __init__(self, maxLength=None, minLength=0):
         self.maxLength = maxLength
         self.minLength = minLength
-        # regexp can either be a string or a compiled SRE_Match object..
-        # re.compile appears to notice SRE_Match objects and pass them
-        # through unchanged.
-        self.regexp = None
-        if regexp:
-            self.regexp = re.compile(regexp)
         self.taster = {STRING: self.maxLength,
                        VOCAB: None}
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, str):
+        if not isinstance(obj, six.binary_type):
             raise Violation("'%r' is not a bytestring" % (obj,))
         if self.maxLength != None and len(obj) > self.maxLength:
             raise Violation("string too long (%d > %d)" %
@@ -225,9 +219,6 @@ class ByteStringConstraint(Constraint):
         if len(obj) < self.minLength:
             raise Violation("string too short (%d < %d)" %
                             (len(obj), self.minLength))
-        if self.regexp:
-            if not self.regexp.search(obj):
-                raise Violation("regexp failed to match")
 
 class IntegerConstraint(Constraint):
     opentypes = [] # redundant

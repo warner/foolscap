@@ -1,4 +1,4 @@
-
+import six
 from twisted.python import failure, reflect, log as twlog
 from twisted.internet import defer
 
@@ -120,7 +120,7 @@ class ArgumentSlicer(slicer.ScopedSlicer):
         keys.sort()
         for argname in keys:
             self.which = "arg[%s]-of-%s" % (argname, self.methodname)
-            yield argname
+            yield six.ensure_binary(argname)
             yield self.kwargs[argname]
 
     def describe(self):
@@ -141,7 +141,7 @@ class CallSlicer(slicer.ScopedSlicer):
     def sliceBody(self, streamable, banana):
         yield self.reqID
         yield self.clid
-        yield self.methodname
+        yield six.ensure_binary(self.methodname)
         yield ArgumentSlicer(self.args, self.kwargs, self.methodname)
 
     def describe(self):
@@ -315,7 +315,7 @@ class ArgumentUnslicer(slicer.ScopedUnslicer):
         if self.argname is None:
             # this token is the name of a keyword argument
             assert ready_deferred is None
-            self.argname = token
+            self.argname = six.ensure_str(token)
             # if the argname is invalid, this may raise Violation
             ms = self.methodSchema
             if ms:
@@ -516,7 +516,7 @@ class CallUnslicer(slicer.ScopedUnslicer):
                     raise Violation(why)
                 return
 
-            self.methodname = token
+            self.methodname = six.ensure_str(token)
 
             if self.interface:
                 # they are calling an interface+method pair
@@ -774,11 +774,11 @@ class FailureSlicer(slicer.BaseSlicer):
 
     def slice(self, streamable, banana):
         self.streamable = streamable
-        yield 'copyable'
-        yield self.classname
+        yield b'copyable'
+        yield six.ensure_binary(self.classname)
         state = self.getStateToCopy(self.obj, banana)
         for k,v in state.items():
-            yield k
+            yield six.ensure_binary(k)
             yield v
     def describe(self):
         return "<%s>" % self.classname
@@ -809,8 +809,8 @@ class FailureSlicer(slicer.BaseSlicer):
         # traceback, because I've seen it be 1819 bytes at one point. I had
         # assumed that it was just the exception name plus args: whatever
         # Exception.__repr__ returns.
-        state['value'] = truncate(state['value'], 1000)
-        state['type'] = truncate(state['type'], 200)
+        state['value'] = six.ensure_binary(truncate(state['value'], 1000))
+        state['type'] = six.ensure_binary(truncate(state['type'], 200))
 
         if broker.unsafeTracebacks:
             if isinstance(obj.type, str):
@@ -830,11 +830,11 @@ class FailureSlicer(slicer.BaseSlicer):
             state['traceback'] = (state['traceback'][:700] +
                                   "\n\n-- TRACEBACK ELIDED --\n\n"
                                   + state['traceback'][-1200:])
+        state['traceback'] = six.ensure_binary(state['traceback'])
 
         parents = obj.parents[:]
-        if parents:
-            for i,value in enumerate(parents):
-                parents[i] = truncate(value, 200)
+        for i,value in enumerate(parents):
+            parents[i] = six.ensure_binary(truncate(value, 200))
         state['parents'] = parents
 
         return state
@@ -877,13 +877,11 @@ class CopiedFailure(failure.Failure, copyable.RemoteCopyOldStyle):
         self.setCopyableState(state)
 
     def setCopyableState(self, state):
-        #self.__dict__.update(state)
-        self.__dict__ = state
         # state includes: type, value, traceback, parents
-        #self.type = state['type']
-        #self.value = state['value']
-        #self.traceback = state['traceback']
-        #self.parents = state['parents']
+        self.type = six.ensure_str(state['type'])
+        self.value = six.ensure_str(state['value'])
+        self.traceback = six.ensure_str(state['traceback'])
+        self.parents = [six.ensure_str(p) for p in state['parents']]
         self.tb = None
         self.frames = []
         self.stack = []
@@ -932,12 +930,14 @@ class CopiedFailureSlicer(FailureSlicer):
 
     def getStateToCopy(self, obj, broker):
         state = {}
-        for k in ('value', 'type', 'parents'):
-            state[k] = getattr(obj, k)
-        if broker.unsafeTracebacks:
-            state['traceback'] = obj.traceback
-        else:
-            state['traceback'] = "Traceback unavailable\n"
+        state['type'] = obj.type
         if not isinstance(state['type'], str):
             state['type'] = reflect.qual(state['type']) # Exception class
+        state['type'] = six.ensure_binary(state['type'])
+        state['value'] = six.ensure_binary(obj.value)
+        state['parents'] = [six.ensure_binary(p) for p in obj.parents]
+        if broker.unsafeTracebacks:
+            state['traceback'] = six.ensure_binary(obj.traceback)
+        else:
+            state['traceback'] = b"Traceback unavailable\n"
         return state
