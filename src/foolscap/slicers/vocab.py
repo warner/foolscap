@@ -1,5 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 from twisted.internet.defer import Deferred
 from foolscap.constraint import Any, ByteStringConstraint
 from foolscap.tokens import Violation, BananaError, INT, STRING
@@ -25,11 +26,13 @@ class ReplaceVocabSlicer(BaseSlicer):
         self.streamable = streamable
         self.start(banana)
         for o in self.opentype:
-            yield o
+            yield six.ensure_binary(o)
         # the vocabDict maps strings to index numbers. The far end needs the
         # opposite mapping, from index numbers to strings. We perform the
         # flip here at the sending end.
         stringToIndex = self.obj
+        for s in stringToIndex.keys():
+            assert isinstance(s, six.binary_type), "%r %s" % (s, type(s))
         indexToString = dict([(stringToIndex[s],s) for s in stringToIndex])
         assert len(stringToIndex) == len(indexToString) # catch duplicates
         indices = list(indexToString.keys())
@@ -37,7 +40,7 @@ class ReplaceVocabSlicer(BaseSlicer):
         for index in indices:
             string = indexToString[index]
             yield index
-            yield string
+            yield six.ensure_binary(string)
         self.finish(banana)
 
     def start(self, banana):
@@ -122,7 +125,7 @@ class AddVocabSlicer(BaseSlicer):
         self.streamable = streamable
         self.start(banana)
         for o in self.opentype:
-            yield o
+            yield six.ensure_binary(o)
         yield self.index
         yield self.value
         self.finish(banana)

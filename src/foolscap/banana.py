@@ -143,9 +143,9 @@ class Banana(protocol.Protocol):
 
     def initSend(self):
         self.openCount = 0
-        self.outgoingVocabulary = {}
+        self.outgoingVocabulary = {} # bytes->int
         self.nextAvailableOutgoingVocabularyIndex = 0
-        self.pendingVocabAdditions = set()
+        self.pendingVocabAdditions = set() # bytes
 
     def initSlicer(self):
         self.rootSlicer = self.slicerClass(self)
@@ -376,8 +376,7 @@ class Banana(protocol.Protocol):
         # build a VOCAB message, send it, then set our outgoingVocabulary
         # dictionary to start using the new table
         assert isinstance(vocabStrings, (list, tuple))
-        for s in vocabStrings:
-            assert isinstance(s, str)
+        vocabStrings = [six.ensure_binary(s) for s in vocabStrings]
         vocabDict = dict(list(zip(vocabStrings, list(range(len(vocabStrings))))))
         s = ReplaceVocabSlicer(vocabDict)
         # the ReplaceVocabSlicer does some magic to insure the VOCAB message
@@ -403,18 +402,20 @@ class Banana(protocol.Protocol):
         condition?) The string will not actually be added to the table until
         the outbound serialization queue has been serviced.
         """
-        assert isinstance(value, str)
+        value = six.ensure_binary(value)
         if value in self.outgoingVocabulary:
             return
         if value in self.pendingVocabAdditions:
             return
-        self.pendingVocabAdditions.add(str)
+        self.pendingVocabAdditions.add(value)
         s = AddVocabSlicer(value)
         self.send(s)
 
     def outgoingVocabTableWasReplaced(self, newTable):
         # this is called by the ReplaceVocabSlicer to manipulate our table.
         # It must certainly *not* be called by higher-level user code.
+        for k in newTable.keys():
+            assert isinstance(k, six.binary_type)
         self.outgoingVocabulary = newTable
         if newTable:
             maxIndex = max(newTable.values()) + 1
@@ -422,8 +423,9 @@ class Banana(protocol.Protocol):
         else:
             self.nextAvailableOutgoingVocabularyIndex = 0
 
-    def allocateEntryInOutgoingVocabTable(self, string):
-        assert string not in self.outgoingVocabulary
+    def allocateEntryInOutgoingVocabTable(self, value):
+        value = six.ensure_binary(value)
+        assert value not in self.outgoingVocabulary
         # TODO: a softer failure more for this assert is to re-send the
         # existing key. To make sure that really happens, though, we have to
         # remove it from the vocab table, otherwise we'll tokenize the
@@ -432,13 +434,14 @@ class Banana(protocol.Protocol):
         #
         # return self.outgoingVocabulary[string]
 
-        self.pendingVocabAdditions.remove(self.value)
+        self.pendingVocabAdditions.remove(value)
         index = self.nextAvailableOutgoingVocabularyIndex
         self.nextAvailableOutgoingVocabularyIndex = index + 1
         return index
 
-    def outgoingVocabTableWasAmended(self, index, string):
-        self.outgoingVocabulary[string] = index
+    def outgoingVocabTableWasAmended(self, index, value):
+        value = six.ensure_binary(value)
+        self.outgoingVocabulary[value] = index
 
     # these methods define how we emit low-level tokens
 
@@ -565,7 +568,7 @@ class Banana(protocol.Protocol):
         self.connectionAbandoned = False
         self.buffer = stringchain.StringChain()
 
-        self.incomingVocabulary = {}
+        self.incomingVocabulary = {} # bytes->int
         self.skipBytes = 0 # used to discard a single long token
         self.discardCount = 0 # used to discard non-primitive objects
         self.exploded = None # last-ditch error catcher
@@ -601,10 +604,15 @@ class Banana(protocol.Protocol):
     def replaceIncomingVocabulary(self, vocabDict):
         # maps small integer to string, should be called in response to a
         # OPEN(set-vocab) sequence.
+        for k,v in vocabDict.items():
+            assert isinstance(k, int)
+            assert isinstance(v, bytes)
         self.incomingVocabulary = vocabDict
 
     def addIncomingVocabulary(self, key, value):
         # called in response to an OPEN(add-vocab) sequence
+        assert isinstance(key, int)
+        assert isinstance(value, bytes)
         self.incomingVocabulary[key] = value
 
     def dataReceived(self, chunk):
@@ -934,7 +942,7 @@ class Banana(protocol.Protocol):
                     return
 
             elif typebyte == VOCAB:
-                obj = self.incomingVocabulary[header]
+                obj = self.incomingVocabulary[header] # yieds bytes
                 # TODO: bail if expanded string is too big
                 # this actually means doing self.checkToken(VOCAB, len(obj))
                 # but we have to make sure we handle the rejection properly

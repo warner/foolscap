@@ -142,7 +142,7 @@ def untokenize(tokens):
             elif isinstance(t, float):
                 data.append(FLOAT)
                 data.append(struct.pack("!d", t))
-            elif isinstance(t, six.string_types):
+            elif isinstance(t, six.string_types) or isinstance(t, six.binary_type):
                 t = six.ensure_binary(t)
                 int2b128(len(t), data.append)
                 data.append(STRING)
@@ -1022,17 +1022,17 @@ class DecodeFailureTest(TestBananaMixin, unittest.TestCase):
         o = self.shouldDecode(self.nestedStream)
         self.assertEqual(o, [1,[2,3]])
         o = self.shouldDecode(self.nestedStream2)
-        self.assertEqual(o, ("a",[1,[2,3]],"b"))
+        self.assertEqual(o, (b"a",[1,[2,3]],b"b"))
 
     def testLongHeader(self):
         # would be a string but the header is too long
-        s = "\x01" * 66 + "\x82" + "stupidly long string"
+        s = b"\x01" * 66 + b"\x82" + b"stupidly long string"
         f = self.shouldDropConnection(s)
         self.assertTrue(f.value.args[0].startswith("token prefix is limited to 64 bytes"))
 
     def testLongHeader2(self):
         # bad string while discarding
-        s = "\x01" * 66 + "\x82" + "stupidly long string"
+        s = b"\x01" * 66 + b"\x82" + b"stupidly long string"
         s = bOPEN("errorful",0) + bINT(1) + s + bINT(2) + bCLOSE(0)
         self.banana.mode = "start"
         f = self.shouldDropConnection(s)
@@ -1303,11 +1303,11 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
         pass # TODO: after implementing new LONGINT token
 
     def testConstrainedString(self):
-        self.conform2("\x82", "",
-                    schema.StringConstraint(10))
-        self.conform2("\x0a\x82" + "a"*10 + "extra", "a"*10,
-                    schema.StringConstraint(10))
-        self.violate2("\x0b\x82" + "a"*11 + "extra",
+        self.conform2(b"\x82", b"",
+                      schema.StringConstraint(10))
+        self.conform2(b"\x0a\x82" + b"a"*10 + b"extra", b"a"*10,
+                      schema.StringConstraint(10))
+        self.violate2(b"\x0b\x82" + b"a"*11 + b"extra",
                       "<RootUnslicer>",
                       schema.StringConstraint(10))
 
@@ -1340,7 +1340,7 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                            bCLOSE(1)),
                       [1,2],
                       schema.ListOf(int))
-        self.violate2(join(bOPEN('list',1), bINT(1), "\x01\x82b",
+        self.violate2(join(bOPEN('list',1), bINT(1), b"\x01\x82b",
                            bCLOSE(1)),
                       "<RootUnslicer>.[1]",
                       schema.ListOf(int))
@@ -1354,10 +1354,10 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                            bCLOSE(1)),
                       "<RootUnslicer>.[3]",
                       schema.ListOf(int, maxLength=3))
-        a100 = six.int2byte(100) + "\x82" + "a"*100
-        b100 = six.int2byte(100) + "\x82" + "b"*100
+        a100 = six.int2byte(100) + b"\x82" + b"a"*100
+        b100 = six.int2byte(100) + b"\x82" + b"b"*100
         self.conform2(join(bOPEN('list',1), a100, b100, bCLOSE(1)),
-                      ["a"*100, "b"*100],
+                      [b"a"*100, b"b"*100],
                       schema.ListOf(schema.StringConstraint(100), 2))
         self.violate2(join(bOPEN('list',1), a100, b100, bCLOSE(1)),
                       "<RootUnslicer>.[0]",
@@ -1406,8 +1406,8 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
         self.conform2(join(bOPEN('tuple',1),
                            bINT(1), bSTR("twine"),
                            bCLOSE(1)),
-                      (1, "twine"),
-                      schema.TupleOf(int, str))
+                      (1, b"twine"),
+                      schema.TupleOf(int, bytes))
         self.conform2(join(bOPEN('tuple',1),
                            bINT(1),
                             bOPEN('list',2),
@@ -1443,29 +1443,29 @@ class InboundByteStream2(TestBananaMixin, unittest.TestCase):
                            bINT(2), bSTR("b"),
                            bINT(3), bSTR("c"),
                            bCLOSE(1)),
-                      {1:"a", 2:"b", 3:"c"},
-                      schema.DictOf(int, str))
+                      {1:b"a", 2:b"b", 3:b"c"},
+                      schema.DictOf(int, bytes))
         self.conform2(join(bOPEN('dict',1),
                            bINT(1), bSTR("a"),
                            bINT(2), bSTR("b"),
                            bINT(3), bSTR("c"),
                            bCLOSE(1)),
-                      {1:"a", 2:"b", 3:"c"},
-                      schema.DictOf(int, str, maxKeys=3))
+                      {1:b"a", 2:b"b", 3:b"c"},
+                      schema.DictOf(int, bytes, maxKeys=3))
         self.violate2(join(bOPEN('dict',1),
                            bINT(1), bSTR("a"),
                            bINT(2), bINT(10),
                            bINT(3), bSTR("c"),
                            bCLOSE(1)),
                       "<RootUnslicer>.{}[2]",
-                      schema.DictOf(int, str))
+                      schema.DictOf(int, bytes))
         self.violate2(join(bOPEN('dict',1),
                            bINT(1), bSTR("a"),
                            bINT(2), bSTR("b"),
                            bINT(3), bSTR("c"),
                            bCLOSE(1)),
                       "<RootUnslicer>.{}",
-                      schema.DictOf(int, str, maxKeys=2))
+                      schema.DictOf(int, bytes, maxKeys=2))
 
     def TRUE(self):
         return join(bOPEN("boolean",2), bINT(1), bCLOSE(2))
@@ -1509,12 +1509,12 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
 
     def test_bigint(self):
         # some of these are small enough to fit in an INT
-        d = self.looptest(int(2**31-1)) # most positive representable number
+        d = self.looptest(int(2**31-1)) # most positive representable INT
         d.addCallback(lambda res: self.looptest(long_type(2**31+0)))
         d.addCallback(lambda res: self.looptest(long_type(2**31+1)))
 
         d.addCallback(lambda res: self.looptest(long_type(-2**31-1)))
-        # the following is the most negative representable number
+        # the following is the most negative representable INT
         d.addCallback(lambda res: self.looptest(int(-2**31+0)))
         d.addCallback(lambda res: self.looptest(int(-2**31+1)))
 
@@ -1679,7 +1679,7 @@ class VocabTest1(unittest.TestCase):
     def test_incoming1(self):
         b = TokenBanana()
         b.connectionMade()
-        vdict = {1: 'list', 2: 'tuple', 3: 'dict'}
+        vdict = {1: b'list', 2: b'tuple', 3: b'dict'}
         keys = list(vdict.keys())
         keys.sort()
         setVdict = [tOPEN(0),'set-vocab']
@@ -1696,10 +1696,10 @@ class VocabTest1(unittest.TestCase):
         b.connectionMade()
         b.tokens = []
         strings = ["list", "tuple", "dict"]
-        vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
+        vdict = {0: b'list', 1: b'tuple', 2: b'dict'}
         keys = list(vdict.keys())
         keys.sort()
-        setVdict = [tOPEN(0),'set-vocab']
+        setVdict = [tOPEN(0),b'set-vocab']
         for k in keys:
             setVdict.append(k)
             setVdict.append(vdict[k])
@@ -1719,12 +1719,13 @@ class VocabTest1(unittest.TestCase):
 
 class VocabTest2(TestBananaMixin, unittest.TestCase):
     def vbOPEN(self, count, opentype):
+        opentype = six.ensure_binary(opentype)
         num = self.invdict[opentype]
-        return six.int2byte(count) + "\x88" + six.int2byte(num) + "\x87"
+        return six.int2byte(count) + b"\x88" + six.int2byte(num) + b"\x87"
 
     def test_loop(self):
         strings = ["list", "tuple", "dict"]
-        vdict = {0: 'list', 1: 'tuple', 2: 'dict'}
+        vdict = {0: b'list', 1: b'tuple', 2: b'dict'}
         self.invdict = dict(list(zip(list(vdict.values()), list(vdict.keys()))))
 
         self.banana.setOutgoingVocabulary(strings)
@@ -1737,14 +1738,14 @@ class VocabTest2(TestBananaMixin, unittest.TestCase):
         self.clearOutput()
 
         vbOPEN = self.vbOPEN
-        expected = "".join([vbOPEN(1,"list"),
+        expected = b"".join([vbOPEN(1,"list"),
                              vbOPEN(2,"tuple"),
                               vbOPEN(3,"dict"),
                                bSTR('a'), bINT(1),
                               bCLOSE(3),
                              bCLOSE(2),
                             bCLOSE(1)])
-        d = self.encode([({'a':1},)])
+        d = self.encode([({b'a':1},)])
         d.addCallback(self.wantEqual, expected)
         return d
 
@@ -1755,7 +1756,7 @@ class SliceableByItself(slicer.BaseSlicer):
     def slice(self, streamable, banana):
         self.streamable = streamable
         # this is our "instance state"
-        yield {"value": self.value}
+        yield {b"value": self.value}
 
 class CouldBeSliceable:
     def __init__(self, value):
@@ -1764,7 +1765,7 @@ class CouldBeSliceable:
 class _AndICanHelp(slicer.BaseSlicer):
     def slice(self, streamable, banana):
         self.streamable = streamable
-        yield {"value": self.obj.value}
+        yield {b"value": self.obj.value}
 registerAdapter(_AndICanHelp, CouldBeSliceable, ISlicer)
 
 class Sliceable(unittest.TestCase):
@@ -1783,7 +1784,7 @@ class Sliceable(unittest.TestCase):
         d = self.do(i)
         d.addCallback(self.assertEqual,
                       [tOPEN(0),
-                       tOPEN(1), "dict", "value", 42, tCLOSE(1),
+                       tOPEN(1), b"dict", b"value", 42, tCLOSE(1),
                        tCLOSE(0)])
         return d
 
@@ -1793,7 +1794,7 @@ class Sliceable(unittest.TestCase):
         d = self.do(i)
         d.addCallback(self.assertEqual,
                       [tOPEN(0),
-                       tOPEN(1), "dict", "value", 43, tCLOSE(1),
+                       tOPEN(1), b"dict", b"value", 43, tCLOSE(1),
                        tCLOSE(0)])
         return d
 

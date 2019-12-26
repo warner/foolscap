@@ -1,5 +1,5 @@
-
 from hashlib import sha1
+import six
 
 # here is the list of initial vocab tables. If the two ends negotiate to use
 # initial-vocab-table-index N, then both sides will start with the words from
@@ -25,7 +25,7 @@ INITIAL_VOCAB_TABLES = { 0: vocab_v0, 1: vocab_v1 }
 # compared by the receiving side.
 
 def hashVocabTable(table_index):
-    data = "\x00".join(INITIAL_VOCAB_TABLES[table_index])
+    data = b"\x00".join([six.ensure_binary(v) for v in INITIAL_VOCAB_TABLES[table_index]])
     digest = sha1(data).hexdigest()
     return digest[:4]
 

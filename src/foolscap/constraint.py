@@ -8,6 +8,7 @@
 import six, re
 from zope.interface import implementer, Interface
 
+from foolscap.util import ensure_tuple_str
 from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
      STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, \
      tokenNames
@@ -88,7 +89,7 @@ class Constraint(object):
     opentypes = None
     """opentypes is a list of currently acceptable OPEN token types. None
     indicates that all types are accepted. An empty list indicates that no
-    OPEN tokens are accepted.
+    OPEN tokens are accepted. These are native strings.
     """
 
     name = None
@@ -124,6 +125,7 @@ class Constraint(object):
 
         if self.opentypes == None:
             return
+        opentype = ensure_tuple_str(opentype)
 
         # shared references are always accepted. checkOpentype() is a defense
         # against resource-exhaustion attacks, and references don't consume

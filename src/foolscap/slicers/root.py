@@ -1,7 +1,6 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
 from __future__ import print_function
-import types
 import six
 from zope.interface import implementer
 from twisted.internet.defer import Deferred
