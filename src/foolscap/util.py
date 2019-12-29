@@ -114,7 +114,7 @@ def move_into_place(source, dest):
     os.rename(source, dest)
 
 def isSubstring(small, big):
-    assert type(small) is str and type(big) is str
+    assert type(small) is bytes and type(big) is bytes
     return small in big
 
 def allocate_tcp_port():

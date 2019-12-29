@@ -126,7 +126,7 @@ class TestAnswer(unittest.TestCase):
 
     def testAccept2(self):
         req = TestRequest(12)
-        req.setConstraint(IConstraint(str))
+        req.setConstraint(IConstraint(bytes))
         self.broker.addRequest(req)
         u = self.newUnslicer()
         u.start(0)
@@ -276,10 +276,10 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         # 'rr' which lives on side B. Then we use 'rr' to invoke r.getName
         # from side A.
         r = Target()
-        r.name = "ernie"
+        r.name = b"ernie"
         d = self.send(r)
         d.addCallback(lambda rr: rr.callRemote("getName"))
-        d.addCallback(self.assertEqual, "ernie")
+        d.addCallback(self.assertEqual, b"ernie")
         return d
 
     def testRef6(self):
@@ -374,24 +374,6 @@ class TestReferenceable(TargetMixin, unittest.TestCase):
         self.assertFalse(res1 is res2)
 
 
-class TestFactory(unittest.TestCase):
-    def setUp(self):
-        self.client = None
-        self.server = None
-
-    def gotReference(self, ref):
-        self.client = ref
-
-    def tearDown(self):
-        if self.client:
-            self.client.broker.transport.loseConnection()
-        if self.server:
-            d = self.server.stopListening()
-        else:
-            d = defer.succeed(None)
-        d.addCallback(flushEventualQueue)
-        return d
-
 class TestCallable(MakeTubsMixin, unittest.TestCase):
     def setUp(self):
         self.tubA, self.tubB = self.makeTubs(2)
@@ -469,7 +451,7 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
             f = failures[0]
             self.assertTrue(isinstance(f, failure.Failure))
             self.failUnlessIn("Traceback:", str(f))
-            self.failUnlessIn("exceptions.ValueError", str(f))
+            self.failUnlessIn("ValueError", str(f))
             self.failUnlessIn(": you asked me to fail\n", str(f))
         d.addBoth(_check)
         return d
@@ -506,10 +488,8 @@ class TestCallable(MakeTubsMixin, unittest.TestCase):
             #self.failUnless("\n kwargs={}\n" in text)
             self.assertEqual(len(failures), 1)
             f = failures[0]
-            self.assertTrue("Traceback (most recent call last):\n"
-                            in str(f))
-            self.assertTrue("\nexceptions.ValueError: you asked me to fail\n"
-                            in str(f))
+            self.assertIn("Traceback (most recent call last):\n", str(f))
+            self.assertIn("ValueError: you asked me to fail\n", str(f))
         d.addBoth(_check)
         return d
     testLogRemoteFailure.timeout = 2
@@ -694,7 +674,7 @@ class TestService(unittest.TestCase):
         return d
     testBadMethod2.timeout = 5
     def _testBadMethod2_eb(self, f):
-        self.assertEqual(reflect.qual(f.type), 'exceptions.AttributeError')
+        self.assertIn("AttributeError", reflect.qual(f.type))
         self.failUnlessSubstring("TargetWithoutInterfaces", f.value)
         self.failUnlessSubstring(" has no attribute 'remote_missing'", f.value)
 

@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import time
+import six
 from twisted.python.failure import Failure
 from twisted.internet import protocol, reactor, defer
 from twisted.internet.error import ConnectionDone
@@ -178,7 +179,7 @@ class Negotiation(protocol.Protocol):
             # should be a dict of keys or something. distinguish between
             # offer and decision.
             self.negotiationOffer['negotiation-forced'] = "True"
-        self.buffer = ""
+        self.buffer = b""
         self._test_options = {}
         # to trigger specific race conditions during unit tests, it is useful
         # to allow certain operations to be stalled for a moment.
@@ -243,21 +244,24 @@ class Negotiation(protocol.Protocol):
         # the broker class is set when we find out which Tub we should use
 
     def parseLines(self, header):
-        lines = header.split("\r\n")
+        lines = header.split(b"\r\n")
         block = {}
         for line in lines:
-            colon = line.index(":")
+            colon = line.index(b":")
             key = line[:colon].lower()
             value = line[colon+1:].lstrip()
-            block[key] = value
+            block[six.ensure_str(key)] = six.ensure_str(value)
         return block
 
     def sendBlock(self, block):
         keys = list(block.keys())
         keys.sort()
         for k in keys:
-            self.transport.write("%s: %s\r\n" % (k.lower(), block[k]))
-        self.transport.write("\r\n") # end block
+            self.transport.write(six.ensure_binary(k.lower()) +
+                                 b": " +
+                                 six.ensure_binary(str(block[k])) +
+                                 b"\r\n")
+        self.transport.write(b"\r\n") # end block
 
     def debug_doTimer(self, name, timeout, call, *args):
         if ("debug_slow_%s" % name in self._test_options and
@@ -346,8 +350,8 @@ class Negotiation(protocol.Protocol):
         self.log("sendPlaintextClient: wantEncryption=True")
         req.append("Upgrade: TLS/1.0")
         req.append("Connection: Upgrade")
-        self.transport.write("\r\n".join(req))
-        self.transport.write("\r\n\r\n")
+        self.transport.write(b"\r\n".join([six.ensure_binary(r) for r in req]))
+        self.transport.write(b"\r\n\r\n")
         # the next thing the other end expects to see is the encrypted phase
         self.send_phase = ENCRYPTED
 
@@ -395,7 +399,7 @@ class Negotiation(protocol.Protocol):
             # we accumulate a header block for each phase
             if len(self.buffer) > 4096:
                 raise BananaError("Header too long")
-            eoh = self.buffer.find('\r\n\r\n')
+            eoh = self.buffer.find(b'\r\n\r\n')
             if eoh == -1:
                 return
             header, self.buffer = self.buffer[:eoh], self.buffer[eoh+4:]
@@ -414,7 +418,7 @@ class Negotiation(protocol.Protocol):
             # self.buffer will be emptied when we switchToBanana, so in that
             # case we won't call the wrong dataReceived.
             if self.buffer:
-                self.dataReceived("")
+                self.dataReceived(b"")
 
         except Exception as e:
             why = Failure()
@@ -431,8 +435,8 @@ class Negotiation(protocol.Protocol):
                     errmsg = "internal server error, see logs"
                 errmsg = errmsg.replace("\n", " ").replace("\r", " ")
                 if self.send_phase == PLAINTEXT:
-                    resp = ("HTTP/1.1 500 Internal Server Error: %s\r\n\r\n"
-                            % errmsg)
+                    resp = (b"HTTP/1.1 500 Internal Server Error: %s\r\n\r\n"
+                            % six.ensure_binary(errmsg))
                     self.transport.write(resp)
                 elif self.send_phase in (ENCRYPTED, DECIDING):
                     block = {'banana-decision-version': 1,
@@ -451,7 +455,7 @@ class Negotiation(protocol.Protocol):
             msg = msg[:SIZE_LIMIT-10] + "..."
         int2b128(len(msg), self.transport.write)
         self.transport.write(ERROR)
-        self.transport.write(msg)
+        self.transport.write(six.ensure_binary(msg))
         # now you should drop the connection
 
     def connectionLost(self, reason):
@@ -475,20 +479,20 @@ class Negotiation(protocol.Protocol):
 
     def handlePLAINTEXTServer(self, header):
         # the client sends us a GET message
-        lines = header.split("\r\n")
-        if not lines[0].startswith("GET "):
+        lines = header.split(b"\r\n")
+        if not lines[0].startswith(b"GET "):
             raise BananaError("not right")
         command, url, version = lines[0].split()
-        if not url.startswith("/id/"):
+        if not url.startswith(b"/id/"):
             # probably a web browser
             raise BananaError("not right")
-        targetTubID = url[4:]
+        targetTubID = six.ensure_str(url[4:])
         self.log("handlePLAINTEXTServer: targetTubID='%s'" % targetTubID,
                  level=NOISY)
         if targetTubID == "":
             # they're asking for an old UnauthenticatedTub. Refuse.
             raise NegotiationError("secure Tubs require encryption")
-        if isSubstring("Upgrade: TLS/1.0\r\n", header):
+        if isSubstring(b"Upgrade: TLS/1.0\r\n", header):
             wantEncrypted = True
         else:
             wantEncrypted = False
@@ -504,7 +508,7 @@ class Negotiation(protocol.Protocol):
             self.tub = tub # our tub
             self._test_options.update(self.tub._test_options)
             self.brokerClass = self.tub.brokerClass
-            self.myTubID = tub.tubID
+            self.myTubID = tub.tubID # native string
             self.sendPlaintextServerAndStartENCRYPTED()
         elif redirect:
             self.sendRedirect(redirect)
@@ -520,8 +524,8 @@ class Negotiation(protocol.Protocol):
                             "Upgrade: TLS/1.0, PB/1.0",
                             "Connection: Upgrade",
                             ])
-        self.transport.write(resp)
-        self.transport.write("\r\n\r\n")
+        self.transport.write(six.ensure_binary(resp))
+        self.transport.write(b"\r\n\r\n")
         # the next thing they expect is the encrypted block
         self.send_phase = ENCRYPTED
         self.startENCRYPTED()
@@ -534,15 +538,15 @@ class Negotiation(protocol.Protocol):
 
     def handlePLAINTEXTClient(self, header):
         self.log("handlePLAINTEXTClient: header='%s'" % header)
-        lines = header.split("\r\n")
+        lines = header.split(b"\r\n")
         tokens = lines[0].split()
         # TODO: accept a 303 redirect
-        if tokens[1] != "101":
+        if tokens[1] != b"101":
             raise BananaError("not right, got '%s', "
                               "expected 101 Switching Protocols"
-                              % lines[0])
-        if not isSubstring("Upgrade: TLS/1.0", header):
-            raise BananaError("header didn't contain TLS upgrade: %r" % (header,))
+                              % six.ensure_str(lines[0]))
+        if not isSubstring(b"Upgrade: TLS/1.0", header):
+            raise BananaError("header didn't contain TLS upgrade: %r" % (six.ensure_str(header),))
         # we ignore everything else
 
         # now we upgrade to TLS
@@ -617,6 +621,7 @@ class Negotiation(protocol.Protocol):
             - We are not the master: DECISION is None
         """
 
+        # offer: native_str -> native_str
         self.log("evaluateHello(isClient=%s): offer=%s" %
                  (self.isClient, offer))
         if 'banana-negotiation-range' not in offer:
@@ -993,6 +998,7 @@ class Negotiation(protocol.Protocol):
         the negotiation from the server. The client must accept this decision
         (and return the connection parameters dict), or raise
         NegotiationError to hang up.negotiationResults."""
+        # decision: native_str -> native_str
         self.log("Banana.acceptDecision: got %s" % decision, level=OPERATIONAL)
 
         version = decision.get('banana-decision-version')
@@ -1120,7 +1126,7 @@ class Negotiation(protocol.Protocol):
         self.connectionLost = b.connectionLost
 
         b.makeConnection(self.transport)
-        buf, self.buffer = self.buffer, "" # empty our buffer, just in case
+        buf, self.buffer = self.buffer, b"" # empty our buffer, just in case
         b.dataReceived(buf) # and hand it to the new protocol
 
         self._connectionInfo._set_connected(True)

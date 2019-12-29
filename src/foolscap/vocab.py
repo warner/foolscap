@@ -7,16 +7,16 @@ import six
 
 vocab_v0 = []
 vocab_v1 = [ # all opentypes used in 0.0.6
-    "none", "boolean", "reference",
-    "dict", "list", "tuple", "set", "immutable-set",
-    "unicode", "set-vocab", "add-vocab",
-    "call", "arguments", "answer", "error",
-    "my-reference", "your-reference", "their-reference", "copyable",
+    b"none", b"boolean", b"reference",
+    b"dict", b"list", b"tuple", b"set", b"immutable-set",
+    b"unicode", b"set-vocab", b"add-vocab",
+    b"call", b"arguments", b"answer", b"error",
+    b"my-reference", b"your-reference", b"their-reference", b"copyable",
     # these are only used by storage.py
-    "instance", "module", "class", "method", "function",
+    b"instance", b"module", b"class", b"method", b"function",
     # I'm not sure this one is actually used anywhere, but the first 127 of
     # these are basically free.
-    "attrdict",
+    b"attrdict",
     ]
 INITIAL_VOCAB_TABLES = { 0: vocab_v0, 1: vocab_v1 }
 

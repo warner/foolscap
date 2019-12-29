@@ -163,8 +163,8 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.remote_tubref = remote_tubref
         self.keepaliveTimeout = keepaliveTimeout
         self.disconnectTimeout = disconnectTimeout
-        self._banana_decision_version = params.get("banana-decision-version")
-        vocab_table_index = params.get('initial-vocab-table-index')
+        self._banana_decision_version = params.get("banana-decision-version") # native str
+        vocab_table_index = params.get('initial-vocab-table-index') # native str
         if vocab_table_index:
             table = vocab.INITIAL_VOCAB_TABLES[vocab_table_index]
             self.populateVocabTable(table)

@@ -104,6 +104,7 @@ class Listener(protocol.ServerFactory, service.Service):
         return proto
 
     def lookupTubID(self, tubID):
+        tubID = six.ensure_str(tubID)
         tub = None
         if tubID == self._tub.tubID:
             tub = self._tub
@@ -216,7 +217,7 @@ class Tub(service.MultiService):
         self.tubID = crypto.digest32(cert.digest("sha1"))
 
     def make_incarnation(self):
-        unique = binascii.b2a_hex(os.urandom(8))
+        unique = six.ensure_str(binascii.b2a_hex(os.urandom(8)))
         # TODO: it'd be nice to have a sequential component, so incarnations
         # could be ordered, but it requires disk space
         sequential = None
