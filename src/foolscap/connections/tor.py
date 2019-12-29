@@ -1,4 +1,5 @@
 import os, re
+import six
 from twisted.internet.interfaces import IStreamClientEndpoint
 from twisted.internet.defer import inlineCallbacks, returnValue, succeed
 from twisted.internet.endpoints import clientFromString
@@ -15,7 +16,7 @@ def is_non_public_numeric_address(host):
     # for numeric hostnames, skip RFC1918 addresses, since no Tor exit
     # node will be able to reach those. Likewise ignore IPv6 addresses.
     try:
-        a = ipaddress.ip_address(host.decode("ascii")) # wants unicode
+        a = ipaddress.ip_address(six.ensure_text(host))
     except ValueError:
         return False # non-numeric, let Tor try it
     if a.version != 4:
@@ -68,10 +69,6 @@ class _Common:
             raise InvalidHintError("ignoring non-Tor-able ipaddr %s" % host)
         with add_context(update_status, "connecting to a Tor"):
             socks_endpoint = yield self._maybe_connect(reactor, update_status)
-        # txsocksx doesn't like unicode: it concatenates some binary protocol
-        # bytes with the hostname when talking to the SOCKS server, so the
-        # py2 automatic unicode promotion blows up
-        host = host.encode("ascii")
         ep = txtorcon.TorClientEndpoint(host, portnum,
                                         socks_endpoint=socks_endpoint)
         returnValue( (ep, host) )
@@ -190,7 +187,7 @@ class _ConnectedTor(_Common):
         # I've seen "9050", and "unix:/var/run/tor/socks WorldWritable"
         # and recently [["9050", "unix:.."]] which is weird
         try:
-            (socks_endpoint, socks_desc) = find_port(reactor, ports).next()
+            (socks_endpoint, socks_desc) = next(find_port(reactor, ports))
             self._socks_desc = socks_desc # stash for tests
             returnValue(socks_endpoint)
         except StopIteration:
