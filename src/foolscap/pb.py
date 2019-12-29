@@ -419,11 +419,11 @@ class Tub(service.MultiService):
         return crypto.createCertificate()
 
     def getCertData(self):
-        # the string returned by this method can be used as the certData=
+        # the bytes returned by this method can be used as the certData=
         # argument to create a new Tub with the same identity. TODO: actually
         # test this, I don't know if dump/keypair.newCertificate is the right
         # pair of methods.
-        return self.myCertificate.dumpPEM()
+        return six.ensure_binary(self.myCertificate.dumpPEM())
 
     def setLocation(self, *hints):
         """Tell this service what its location is: a host:port description of

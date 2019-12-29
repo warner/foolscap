@@ -55,8 +55,8 @@ class TestCertFile(unittest.TestCase):
     def test_generate(self):
         t = Tub()
         certdata = t.getCertData()
-        self.assertTrue("BEGIN CERTIFICATE" in certdata)
-        self.assertTrue("PRIVATE KEY" in certdata)
+        self.assertTrue(b"BEGIN CERTIFICATE" in certdata)
+        self.assertTrue(b"PRIVATE KEY" in certdata)
 
     def test_certdata(self):
         t1 = Tub()
