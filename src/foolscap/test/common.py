@@ -252,8 +252,8 @@ class RIMyTarget(RemoteInterface):
     def add(a=int, b=int): return int
     #add = schema.callable(add) # the metaclass makes this unnecessary
     # but it could be used for adding options or something
-    def join(a=str, b=str, c=int): return str
-    def getName(): return str
+    def join(a=bytes, b=bytes, c=int): return bytes
+    def getName(): return bytes
     disputed = RemoteMethodSchema(_response=int, a=int)
     def fail(): return str  # actually raises an exception
     def failstring(): return str # raises a string exception
