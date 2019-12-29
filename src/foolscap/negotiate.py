@@ -392,7 +392,7 @@ class Negotiation(protocol.Protocol):
         self.buffer += chunk
 
         if self.debug_addTimerCallback("connectionMade",
-                                       self.dataReceived, ''):
+                                       self.dataReceived, b''):
             return
 
         try:
@@ -845,7 +845,7 @@ class Negotiation(protocol.Protocol):
 
         # step one: does the inbound offer have a my-incarnation header? If
         # not, this is an older peer (<foolscap-0.1.7). We use
-        # offer.get("my-incarnation") instead of "my-incarnation" in offer
+        # 'offer.get("my-incarnation")' instead of '"my-incarnation" in offer'
         # so that unit tests can cause a client to send an empty string to
         # simulate the earlier version.
         if not offer.get("my-incarnation") or "last-connection" not in offer:

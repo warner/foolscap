@@ -62,7 +62,7 @@ class Versus(BaseMixin, unittest.TestCase):
     def testVersusHTTPClientAuthenticated(self):
         url, portnum = self.makeServer()
         a = Agent(reactor)
-        response = yield a.request("GET", "http://127.0.0.1:%d/foo" % portnum)
+        response = yield a.request(b"GET", b"http://127.0.0.1:%d/foo" % portnum)
         self.assertEqual(response.code, 500)
     testVersusHTTPClientAuthenticated.timeout = 10
 
