@@ -1,4 +1,5 @@
 from __future__ import print_function
+import six
 from twisted.trial import unittest
 from twisted.python import components, failure, reflect
 from foolscap.test.common import TargetMixin, HelperTarget
@@ -40,11 +41,11 @@ class MyCopyable3:
 
 class MyCopyable3Slicer(copyable.CopyableSlicer):
     def slice(self, streamable, banana):
-        yield 'copyable'
-        yield "MyCopyable3name"
+        yield b'copyable'
+        yield b"MyCopyable3name"
         state = self.obj.getAlternateCopyableState()
         for k,v in state.items():
-            yield k
+            yield six.ensure_binary(k)
             yield v
 
 class MyRemoteCopy3:
@@ -124,7 +125,7 @@ class Copyable(TargetMixin, unittest.TestCase):
         #print "CopiedFailure is:", f
         #print f.__dict__
         (f,) = xxx_todo_changeme
-        self.assertEqual(reflect.qual(f.type), "exceptions.RuntimeError")
+        self.assertIn("RuntimeError", reflect.qual(f.type))
         self.assertTrue(f.check, RuntimeError)
         self.assertEqual(f.value, "message here")
         self.assertEqual(f.frames, [])
@@ -161,7 +162,7 @@ class Copyable(TargetMixin, unittest.TestCase):
         #print "CopiedFailure is:", f
         #print f.__dict__
         (f,) = xxx_todo_changeme1
-        self.assertEqual(reflect.qual(f.type), "exceptions.RuntimeError")
+        self.assertIn("RuntimeError", reflect.qual(f.type))
         self.assertTrue(f.check, RuntimeError)
         self.assertEqual(f.value, "message here")
         self.assertEqual(f.frames, [])
@@ -212,7 +213,7 @@ class Copyable(TargetMixin, unittest.TestCase):
     def testCopy3(self):
         obj = MyCopyable3() # has a custom Slicer
         obj.a = 12 # ignored
-        obj.b = "foo" # ignored
+        obj.b = b"foo" # ignored
         d = self.send(obj)
         d.addCallback(self._testCopy3_1)
         return d
@@ -226,7 +227,7 @@ class Copyable(TargetMixin, unittest.TestCase):
     def testCopy4(self):
         obj = MyCopyable4()
         obj.foo = 12
-        obj.bar = "bar"
+        obj.bar = b"bar"
         d = self.send(obj)
         d.addCallback(self._testCopy4_1, obj)
         return d
@@ -234,9 +235,9 @@ class Copyable(TargetMixin, unittest.TestCase):
         (res,) = xxx_todo_changeme5
         self.assertTrue(isinstance(res, MyRemoteCopy4))
         self.assertEqual(res.foo, 12)
-        self.assertEqual(res.bar, "bar")
+        self.assertEqual(res.bar, b"bar")
 
-        obj.bad = "unwanted attribute"
+        obj.bad = b"unwanted attribute"
         d = self.send(obj)
         d.addCallbacks(lambda res: self.fail("this was supposed to fail"),
                        self._testCopy4_2, errbackArgs=(obj,))
@@ -246,7 +247,7 @@ class Copyable(TargetMixin, unittest.TestCase):
         self.failUnlessSubstring("unknown attribute 'bad'", str(why))
         del obj.bad
 
-        obj.foo = "not a number"
+        obj.foo = b"not a number"
         d = self.send(obj)
         d.addCallbacks(lambda res: self.fail("this was supposed to fail"),
                        self._testCopy4_3, errbackArgs=(obj,))
@@ -257,7 +258,7 @@ class Copyable(TargetMixin, unittest.TestCase):
                                  str(why))
 
         obj.foo = 12
-        obj.bar = "very long " * 1000
+        obj.bar = b"very long " * 1000
         # MyRemoteCopy4 says .bar is a String(1000), so reject long strings
         d = self.send(obj)
         d.addCallbacks
