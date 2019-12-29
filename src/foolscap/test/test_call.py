@@ -673,7 +673,7 @@ class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
         # violation.
         rr, target = self.setupTarget(Target(), True)
         d = self.shouldFail(RemoteException, "one", None,
-                            rr.callRemote, "add", a=1,b="foo", _useSchema=False)
+                            rr.callRemote, "add", a=1,b=b"foo", _useSchema=False)
         d.addCallback(self._examine_remote_violation, True)
         return d
 
@@ -681,14 +681,14 @@ class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
         self._set_expose(True)
         rr, target = self.setupTarget(Target(), True)
         d = self.shouldFail(Violation, "one", None,
-                            rr.callRemote, "add", a=1,b="foo", _useSchema=False)
+                            rr.callRemote, "add", a=1,b=b"foo", _useSchema=False)
         d.addCallback(self._examine_remote_violation, False)
         return d
 
     def test_remote_violation_default(self):
         rr, target = self.setupTarget(Target(), True)
         d = self.shouldFail(Violation, "one", None,
-                            rr.callRemote, "add", a=1,b="foo", _useSchema=False)
+                            rr.callRemote, "add", a=1,b=b"foo", _useSchema=False)
         d.addCallback(self._examine_remote_violation, False)
         return d
 
@@ -727,7 +727,7 @@ class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
         rr, target = self.setupTarget(Target(), True)
         d = self.shouldFail(Violation, "one", None,
                             rr.callRemote,
-                            "add", a=1, b=2, _resultConstraint=str)
+                            "add", a=1, b=2, _resultConstraint=bytes)
         d.addCallback(self._examine_local_return_violation)
         return d
 
@@ -736,7 +736,7 @@ class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
         rr, target = self.setupTarget(Target(), True)
         d = self.shouldFail(Violation, "one", None,
                             rr.callRemote,
-                            "add", a=1, b=2, _resultConstraint=str)
+                            "add", a=1, b=2, _resultConstraint=bytes)
         d.addCallback(self._examine_local_return_violation)
         return d
 
@@ -744,7 +744,7 @@ class Failures(ExamineFailuresMixin, TargetMixin, ShouldFailMixin,
         rr, target = self.setupTarget(Target(), True)
         d = self.shouldFail(Violation, "one", None,
                             rr.callRemote,
-                            "add", a=1, b=2, _resultConstraint=str)
+                            "add", a=1, b=2, _resultConstraint=bytes)
         d.addCallback(self._examine_local_return_violation)
         return d
 
