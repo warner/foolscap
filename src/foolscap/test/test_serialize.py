@@ -34,7 +34,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
 
 
     def NOT_test_data_synchronous(self):
-        obj = ["look at the pretty graph", 3, True]
+        obj = [b"look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
         data = serialize(obj)
         obj2 = unserialize(data)
@@ -42,7 +42,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         self.failUnlessIdentical(obj2[3], obj2)
 
     def test_data(self):
-        obj = ["simple graph", 3, True]
+        obj = [b"simple graph", 3, True]
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
@@ -51,7 +51,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         return d
 
     def test_cycle(self):
-        obj = ["look at the pretty graph", 3, True]
+        obj = [b"look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
@@ -62,7 +62,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         return d
 
     def test_copyable(self):
-        obj = ["fire pretty", Bar()]
+        obj = [b"fire pretty", Bar()]
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
@@ -72,7 +72,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         return d
 
     def test_data_outstream(self):
-        obj = ["look at the pretty graph", 3, True]
+        obj = [b"look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
         b = BytesIO()
         d = serialize(obj, outstream=b)
@@ -95,7 +95,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         obj2 = [1, Foo()]
         d.addCallback(lambda ign:
                       self.shouldFail(Violation, "2",
-                                      "cannot serialize <foolscap.test.test_serialize.Foo instance",
+                                      "cannot serialize <foolscap.test.test_serialize.Foo ",
                                       serialize, obj2))
         return d
 
@@ -116,7 +116,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d = t1.serialize(obj)
         del r1; del obj
         def _done(data):
-            self.assertTrue("their-reference" in data)
+            self.assertTrue(b"their-reference" in data)
             return data
         d.addCallback(_done)
         d.addCallback(lambda data: t2.unserialize(data))

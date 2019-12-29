@@ -103,7 +103,7 @@ def unserialize(str_or_instream, banana=None, root_class=StorageRootUnslicer):
         b.unslicerClass = root_class
     b.connectionMade()
     d = b.prepare() # this will fire with the unserialized object
-    if isinstance(str_or_instream, str):
+    if isinstance(str_or_instream, bytes):
         b.dataReceived(str_or_instream)
     else:
         raise RuntimeError("input streams not implemented yet")
