@@ -516,6 +516,7 @@ class Banana(protocol.Protocol):
     def sendError(self, msg):
         if not self.transport:
             return
+        msg = six.ensure_binary(msg)
         if len(msg) > SIZE_LIMIT:
             msg = msg[:SIZE_LIMIT-10] + "..."
         int2b128(len(msg), self.transport.write)
