@@ -206,7 +206,7 @@ class IncidentClassifierBase:
         for fn in os.listdir(plugindir):
             if not (fn.startswith("classify_") and fn.endswith(".py")):
                 continue
-            f = open(os.path.join(plugindir, fn), "r")
+            f = open(os.path.join(plugindir, fn), "r").read()
             localdict = {}
             six.exec_(f, localdict)
             self.add_classifier(localdict["classify_incident"])

@@ -3,11 +3,11 @@ from zope.interface import Interface
 from foolscap.remoteinterface import RemoteInterface
 from foolscap.schema import DictOf, ListOf, Any, Optional, ChoiceOf
 
-TubID = str # printable, base32 encoded
-Incarnation = (str, ChoiceOf(str, None))
-Header = DictOf(str, Any())
-Event = DictOf(str, Any()) # this has message:, level:, facility:, etc
-EventWrapper = DictOf(str, Any()) # this has from:, rx_time:, and d:
+TubID = Any() # printable, base32 encoded
+Incarnation = (Any(), ChoiceOf(Any(), None))
+Header = DictOf(Any(), Any())
+Event = DictOf(Any(), Any()) # this has message:, level:, facility:, etc
+EventWrapper = DictOf(Any(), Any()) # this has from:, rx_time:, and d:
 
 class RILogObserver(RemoteInterface):
     __remote_name__ = "RILogObserver.foolscap.lothar.com"
@@ -16,7 +16,7 @@ class RILogObserver(RemoteInterface):
     def done():
         return None
 
-    def new_incident(name=str, trigger=Event):
+    def new_incident(name=Any(), trigger=Event):
         # should this give (tubid, incarnation, trigger) like list_incidents?
         return None
     def done_with_incident_catchup():
@@ -30,7 +30,7 @@ class RILogFile(RemoteInterface):
         #  num_events,
         #  level_map, # maps string severity to count of messages
         # )
-        return (TubID, int, (int, int), (int, int), int, DictOf(str, int))
+        return (TubID, int, (int, int), (int, int), int, DictOf(Any(), int))
     def get_events(receiver=RILogObserver):
         """The designated receiver will be sent every event in the logfile,
         followed by a done() call."""
@@ -51,7 +51,7 @@ class RISubscription(RemoteInterface):
 class RILogPublisher(RemoteInterface):
     __remote_name__ = "RILogPublisher.foolscap.lothar.com"
     def get_versions():
-        return DictOf(str, str)
+        return DictOf(Any(), Any())
     def get_pid():
         return int
 
@@ -73,7 +73,7 @@ class RILogPublisher(RemoteInterface):
 
     # Incident support
 
-    def list_incidents(since=Optional(str, "")):
+    def list_incidents(since=Optional(Any(), "")):
         """Return a dict that maps an 'incident name' (a string of the form
         'incident-TIMESTAMP-UNIQUE') to the triggering event (a single event
         dictionary). The incident name can be passed to get_incident() to
@@ -86,11 +86,11 @@ class RILogPublisher(RemoteInterface):
         poll an application for incidents that have occurred since a previous
         query. For real-time reporting, use subscribe_to_incidents() instead.
         """
-        return DictOf(str, Event)
+        return DictOf(Any(), Event)
 
     def subscribe_to_incidents(observer=RILogObserver,
                                catch_up=Optional(bool, False),
-                               since=Optional(str, "")):
+                               since=Optional(Any(), "")):
         """Subscribe to hear about new Incidents, optionally catching up on
         old ones.
 
@@ -112,7 +112,7 @@ class RILogPublisher(RemoteInterface):
         """
         return RISubscription
 
-    def get_incident(incident_name=str):
+    def get_incident(incident_name=Any()):
         """Given an incident name, return the header dict and list of event
         dicts for that incident."""
         # note that this puts all the events in memory at the same time, but

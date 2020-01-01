@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 from collections import deque
+import six
 from zope.interface import implementer
 from twisted.python import filepath
 from foolscap.referenceable import Referenceable
@@ -109,8 +110,7 @@ class IncidentSubscription(Referenceable):
             fn = new[name]
             trigger = self.publisher.get_incident_trigger(fn)
             if trigger:
-                self.observer.callRemoteOnly("new_incident", name,
-                                             _keys_to_bytes(trigger))
+                self.observer.callRemoteOnly("new_incident", name, trigger)
         self.observer.callRemoteOnly("done_with_incident_catchup")
 
     def unsubscribe(self):
@@ -129,15 +129,6 @@ class IncidentSubscription(Referenceable):
         print("INCIDENT PUBLISH FAILED: %s" % f)
         self.unsubscribe()
 
-
-def _keys_to_bytes(d):
-    # the interfaces.Header and Event schema require the keys to be bytes
-    # ("str", since we're in py2), but we get unicode since we're pulling
-    # from a JSON-serialized incident file. These keys are fixed strings
-    # like (message, level, facility, from, rx_time, d). Encode to ASCII to
-    # make this clear. The user-provided data lives in the *values* of
-    # these dicts, which are unconstrained (the schemas use Any())
-    return dict([ (k.encode("ascii"), v) for (k,v) in d.items()])
 
 @implementer(RILogPublisher)
 class LogPublisher(Referenceable):
@@ -204,12 +195,14 @@ class LogPublisher(Referenceable):
 
     def list_incident_names(self, since=""):
         # yields (name, absfilename) pairs
+        since = six.ensure_str(since)
         basedir = self._logger.logdir
         for fn in os.listdir(basedir):
             if fn.startswith("incident") and not fn.endswith(".tmp"):
-                basename = self.trim(fn, ".bz2", ".flog")
+                basename = six.ensure_str(self.trim(fn, ".bz2", ".flog"))
                 if basename > since:
-                    yield (basename, os.path.join(basedir, fn))
+                    fullname = six.ensure_str(os.path.join(basedir, fn))
+                    yield (basename, fullname)
 
     def get_incident_trigger(self, abs_fn):
         events = flogfile.get_events(abs_fn)
@@ -226,10 +219,11 @@ class LogPublisher(Referenceable):
         for (name,fn) in self.list_incident_names(since):
             trigger = self.get_incident_trigger(fn)
             if trigger:
-                incidents[name] = _keys_to_bytes(trigger)
+                incidents[six.ensure_str(name)] = trigger
         return incidents
 
     def remote_get_incident(self, name):
+        name = six.ensure_str(name)
         if not name.startswith("incident"):
             raise KeyError("bad incident name %s" % name)
         incident_dir = filepath.FilePath(self._logger.logdir)
@@ -240,10 +234,10 @@ class LogPublisher(Referenceable):
                 fn = abs_fn
             events = flogfile.get_events(fn)
             # note the generator isn't actually cycled yet, not until next()
-            header = _keys_to_bytes(next(events)["header"])
+            header = next(events)["header"]
         except EnvironmentError:
             raise KeyError("no incident named %s" % name)
-        wrapped_events = [_keys_to_bytes(event["d"]) for event in events]
+        wrapped_events = [event["d"] for event in events]
         return (header, wrapped_events)
 
     def remote_subscribe_to_incidents(self, observer, catch_up=False, since=""):
