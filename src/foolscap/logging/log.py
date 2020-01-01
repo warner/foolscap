@@ -1,8 +1,8 @@
 from __future__ import print_function
-import six
 import os, sys, time, weakref, binascii
 import traceback
 import collections
+import six
 from twisted.python import log as twisted_log
 from twisted.python import failure
 from foolscap import eventual
@@ -450,10 +450,12 @@ def bridgeLogsToTwisted(filter=None,
 class LogFileObserver:
     def __init__(self, filename, level=OPERATIONAL):
         if filename.endswith(".bz2"):
+            # py3: bz2file ignores "b", only accepts bytes, not str
             import bz2
-            self._logFile = bz2.BZ2File(filename, "w")
+            f = bz2.BZ2File(filename, "w")
         else:
-            self._logFile = open(filename, "wb")
+            f = open(filename, "wb")
+        self._logFile = f # todo: line_buffering=True ?
         self._level = level
         self._logFile.write(flogfile.MAGIC)
         flogfile.serialize_header(self._logFile,

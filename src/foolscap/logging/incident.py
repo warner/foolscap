@@ -247,7 +247,7 @@ class IncidentClassifier(IncidentClassifierBase):
                 from foolscap.logging.log import format_message
                 print(format_message(trigger), file=out)
                 #pprint(trigger, stream=out)
-                print(json.dumps(trigger).decode("ascii"), file=out)
+                print(six.ensure_text(json.dumps(trigger)), file=out)
                 if 'failure' in trigger:
                     print(u" FAILURE:", file=out)
                     lines = str(trigger['failure']).split("\n")

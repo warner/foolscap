@@ -1,5 +1,6 @@
 
 import os, sys, json, time, bz2, base64, re
+import six
 import mock
 from io import StringIO
 from zope.interface import implementer
@@ -300,7 +301,7 @@ class Serialization(unittest.TestCase):
             f = failure.Failure()
         out = json.loads(ser({"f": f}))["f"]
         self.assertEqual(out["@"], "Failure")
-        self.assertIn("Failure exceptions.ValueError: oops5", out["repr"])
+        self.assertIn("ValueError: oops5", out["repr"])
         self.assertIn("traceback", out)
 
     def test_unserializable(self):
@@ -311,7 +312,7 @@ class Serialization(unittest.TestCase):
         unjsonable = [set([1,2])]
         self.assertEqual(json.loads(ser(unjsonable)),
                          [{'@': 'UnJSONable',
-                           'repr': 'set([1, 2])',
+                           'repr': repr(set([1, 2])),
                            'message': "log.msg() was given an object that could not be encoded into JSON. I've replaced it with this UnJSONable object. The object's repr is in .repr"}])
 
         # if the repr() fails, we get a different message
@@ -321,7 +322,7 @@ class Serialization(unittest.TestCase):
         unrep = [Unreprable()]
         self.assertEqual(json.loads(ser(unrep)),
                          [{"@": "Unreprable",
-                           "exception_repr": "ValueError('oops7',)",
+                           "exception_repr": repr(ValueError('oops7')),
                            "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. I've put the repr of the exception in .exception_repr",
                            }])
 
@@ -331,10 +332,16 @@ class Serialization(unittest.TestCase):
             if isinstance(o, ValueError):
                 raise TypeError("oops9")
             return real_repr(o)
-        import __builtin__
-        assert __builtin__.repr is repr
-        with mock.patch("__builtin__.repr", really_bad_repr):
-            s = ser(unrep)
+        if six.PY2:
+            import __builtin__
+            assert __builtin__.repr is repr
+            with mock.patch("__builtin__.repr", really_bad_repr):
+                s = ser(unrep)
+        else:
+            import builtins
+            assert builtins.repr is repr
+            with mock.patch("builtins.repr", really_bad_repr):
+                s = ser(unrep)
         self.assertEqual(json.loads(s),
                          [{"@": "ReallyUnreprable",
                            "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. That exception wasn't repr()able either. I give up. Good luck.",
