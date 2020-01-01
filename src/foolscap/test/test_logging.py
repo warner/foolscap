@@ -1781,7 +1781,7 @@ class Tail(unittest.TestCase):
 
         self.assertTrue(":50.002 L30 []#125 oops\n FAILURE:\n" in outmsg,
                         outmsg)
-        self.assertTrue("exceptions.RuntimeError" in outmsg, outmsg)
+        self.assertTrue("RuntimeError" in outmsg, outmsg)
         self.assertTrue(": fake error" in outmsg, outmsg)
         self.assertTrue("--- <exception caught here> ---\n" in outmsg, outmsg)
 
@@ -2309,7 +2309,7 @@ class Filter(unittest.TestCase, LogfileWriterMixin, LogfileReaderMixin):
 @inlineCallbacks
 def getPage(url):
     a = client.Agent(reactor)
-    response = yield a.request("GET", url)
+    response = yield a.request(b"GET", six.ensure_binary(url))
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -2319,7 +2319,7 @@ def getPage(url):
         page = yield client.readBody(response)
     if response.code != 200:
         raise ValueError("request failed (%d), page contents were: %s" % (
-            response.code, page))
+            response.code, six.ensure_str(page)))
     returnValue(page)
 
 class Web(unittest.TestCase):
@@ -2358,6 +2358,7 @@ class Web(unittest.TestCase):
         self.baseurl = self.url[:self.url.rfind("/")] + "/"
 
         page = yield getPage(self.url)
+        page = six.ensure_str(page)
         mypid = os.getpid()
         self.assertTrue("PID %s" % mypid in page,
                         "didn't see 'PID %s' in '%s'" % (mypid, page))
@@ -2368,11 +2369,13 @@ class Web(unittest.TestCase):
                         in page)
 
         page = yield getPage(self.baseurl + "summary/0-20")
+        page = six.ensure_str(page)
         self.assertTrue("Events at level 20" in page)
         self.assertTrue(": two" in page)
         self.assertFalse("four" in page)
 
         def check_all_events(page):
+            page = six.ensure_str(page)
             self.assertTrue("3 root events" in page)
             self.assertTrue(": one</span>" in page)
             self.assertTrue(": two</span>" in page)
