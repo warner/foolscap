@@ -3,7 +3,10 @@ dist: xenial
 language: python
 python:
   - "2.7"
+  - "3.5"
+  - "3.6"
   - "3.7"
+  - "3.8"
   - "pypy"
 install: pip install -U pip tox codecov
 script: tox -e coverage
@@ -11,4 +14,5 @@ after_success: codecov
 matrix:
   allow_failures:
     - python: "pypy"
-    - python: "3.7"
+    - python: "3.5"
+    - python: "3.6"
