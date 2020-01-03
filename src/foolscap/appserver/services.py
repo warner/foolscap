@@ -1,4 +1,4 @@
-
+from __future__ import unicode_literals
 import os
 from twisted.python import usage, runtime, filepath, log
 from twisted.application import service
@@ -118,7 +118,7 @@ class FileUploader(service.MultiService, Referenceable):
 
         # TODO: use os.open and set the file mode earlier
         #f = open(tmpfile, "w")
-        f = tmpfile.open("w")
+        f = tmpfile.open("wb")
         reader = FileUploaderReader(f, source)
         d = reader.read_file()
         def _done(res):
@@ -215,7 +215,7 @@ class CommandPP(protocol.ProcessProtocol):
             self.outpipe.callRemoteOnly("stdout", data)
         if self.log_stdout:
             sent = {True:"sent", False:"not sent"}[bool(self.outpipe)]
-            log.msg("stdout (%s): %r" % (sent, data))
+            log.msg("stdout (%s): %r" % (sent, data)) # TODO?: bytes get b''
     def errReceived(self, data):
         if self.errpipe:
             self.errpipe.callRemoteOnly("stderr", data)
@@ -235,7 +235,7 @@ class Command(Referenceable):
         self.log_stdin = log_stdin
         self.closed = False
     def remote_feed_stdin(self, data):
-        if not isinstance(data, str):
+        if not isinstance(data, bytes):
             raise TypeError("stdin can accept only strings of bytes, not '%s'"
                             % (type(data),))
         if self.log_stdin:
@@ -268,6 +268,9 @@ class CommandRunner(service.MultiService, Referenceable):
         # spawnProcess uses os.execvpe, which will search your $PATH
         executable = o.command_argv[0]
 
+        # spawnProcess argv accepts bytes, or unicode that
+        # sys.getfilesystemencoding() can convert into bytes
+
         log.msg("command started in dir %s: %s" % (o.targetdir, o.command_argv))
         p = reactor.spawnProcess(pp,
                                  executable,
@@ -286,11 +289,12 @@ all_services = {
     }
 
 def build_service(basedir, tub, service_type, service_args):
-    # TODO: service_type is text, args are native strings
+    # service_type/service_args are text
     # this will be replaced by a plugin system. For now it's pretty static.
     if service_type in all_services:
         (optclass, svcclass) = all_services[service_type]
         options = optclass()
+        # TODO: can parseOptions on py2 accept text?
         options.parseOptions(service_args)
         service = svcclass(basedir, tub, options)
         return service
