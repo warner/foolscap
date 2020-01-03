@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 import six, os, sys, shutil, errno, time, signal
 from io import StringIO
 from twisted.python import usage
@@ -84,15 +84,18 @@ appserver.setServiceParent(application)
 
 class Create:
     def run(self, options):
-        basedir = options.basedir
+        basedir = six.ensure_text(options.basedir)
         stdout = options.stdout
         stderr = options.stderr
         if os.path.exists(basedir):
-            print(u"Refusing to touch pre-existing directory %s" % basedir, file=stderr)
+            print("Refusing to touch pre-existing directory %s" % basedir,
+                  file=stderr)
             return 1
 
         assert options["port"]
         assert options["location"]
+        port = six.ensure_text(options["port"])
+        location = six.ensure_text(options["location"])
 
         os.makedirs(basedir)
         os.makedirs(os.path.join(basedir, "services"))
@@ -104,12 +107,12 @@ class Create:
         # running).
 
         f = open(os.path.join(basedir, "port"), "w")
-        f.write("%s\n" % options["port"])
+        f.write("%s\n" % port)
         f.close()
         # we'll overwrite BASEDIR/port if necessary
 
         f = open(os.path.join(basedir, "location"), "w")
-        f.write("%s\n" % options["location"])
+        f.write("%s\n" % location)
         f.close()
 
         f = open(os.path.join(basedir, "umask"), "w")
@@ -135,10 +138,10 @@ class Create:
         f.close()
 
         if not options["quiet"]:
-            print(u"Foolscap Application Server created in %s" % basedir, file=stdout)
-            print(u"TubID %s, listening on port %s" % (tub.getTubID(),
-                                                      options["port"]), file=stdout)
-            print(u"Now launch the daemon with 'flappserver start %s'" % basedir, file=stdout)
+            print("Foolscap Application Server created in %s" % basedir, file=stdout)
+            tubid = six.ensure_text(tub.getTubID())
+            print("TubID %s, listening on port %s" % (tubid, port), file=stdout)
+            print("Now launch the daemon with 'flappserver start %s'" % basedir, file=stdout)
         return defer.succeed(0)
 
 class AddOptions(BaseOptions):
@@ -166,7 +169,7 @@ class AddOptions(BaseOptions):
         return t
 
 def make_swissnum():
-    return generateSwissnumber(Tub.NAMEBITS)
+    return six.ensure_text(generateSwissnumber(Tub.NAMEBITS))
 
 def find_next_service_basedir(basedir):
     services_basedir = os.path.join(basedir, "services")
@@ -180,7 +183,7 @@ def find_next_service_basedir(basedir):
         except ValueError:
             pass
     # return value is relative to basedir
-    return os.path.join("services", str(max([0]+nums)+1))
+    return os.path.join("services", "%d" % (max([0]+nums)+1))
 
 def add_service(basedir, service_type, service_args, comment, swissnum=None):
     if not swissnum:
@@ -219,8 +222,8 @@ class Add:
                                             service_type, service_args,
                                             options["comment"])
         if not options["quiet"]:
-            print(u"Service added in %s" % service_basedir, file=stdout)
-            print(u"FURL is %s" % furl, file=stdout)
+            print("Service added in %s" % service_basedir, file=stdout)
+            print("FURL is %s" % furl, file=stdout)
 
         return 0
 
@@ -258,14 +261,14 @@ class List:
         basedir = options.basedir
         stdout = options.stdout
         for s in list_services(basedir):
-            print(u"", file=stdout)
-            print(u"%s:" % s.swissnum, file=stdout)
-            print(u" %s %s" % (s.service_type, " ".join(s.service_args)), file=stdout)
+            print("", file=stdout)
+            print("%s:" % s.swissnum, file=stdout)
+            print(" %s %s" % (s.service_type, " ".join(s.service_args)), file=stdout)
             if s.comment:
-                print(u" # %s" % s.comment, file=stdout)
-            print(u" %s" % s.furl, file=stdout)
-            print(u" %s" % s.service_basedir, file=stdout)
-        print(u"", file=stdout)
+                print(" # %s" % s.comment, file=stdout)
+            print(" %s" % s.furl, file=stdout)
+            print(" %s" % s.service_basedir, file=stdout)
+        print("", file=stdout)
 
         return 0
 
@@ -290,13 +293,13 @@ class Start:
                 tac = fn
                 break
         else:
-            print(u"%s does not look like a node directory (no .tac file)" % basedir, file=stderr)
+            print("%s does not look like a node directory (no .tac file)" % basedir, file=stderr)
             return 1
 
         os.chdir(options.basedir)
         twistd_args = list(options.twistd_args)
         sys.argv[1:] = ["--no_save", "--python", tac] + twistd_args
-        print(u"Launching Server...", file=stderr)
+        print("Launching Server...", file=stderr)
         twistd.run()
 
 
@@ -339,7 +342,7 @@ class Stop:
         pidfile = os.path.join(basedir, "twistd.pid")
         if not os.path.exists(pidfile):
             if not options["quiet"]:
-                print(u"%s does not look like a running node directory (no twistd.pid)" % basedir, file=stderr)
+                print("%s does not look like a running node directory (no twistd.pid)" % basedir, file=stderr)
             # we define rc=2 to mean "nothing is running, but it wasn't me
             # who stopped it"
             return 2
@@ -350,10 +353,10 @@ class Stop:
         # file.
         if not try_to_kill(pid, signal.SIGTERM):
             try_to_remove_pidfile(pidfile)
-            print(u"process %d wasn't running, removing twistd.pid to cleanup" % pid, file=stderr)
+            print("process %d wasn't running, removing twistd.pid to cleanup" % pid, file=stderr)
             return 2
 
-        print(u"SIGKILL sent to process %d, waiting for shutdown" % pid, file=stderr)
+        print("SIGKILL sent to process %d, waiting for shutdown" % pid, file=stderr)
         counter = 30 # failsafe in case a timequake occurs
         timeout = time.time() + 15
         while time.time() < timeout and counter > 0:
@@ -361,11 +364,11 @@ class Stop:
             if not try_to_kill(pid, 0):
                 # it's gone
                 try_to_remove_pidfile(pidfile)
-                print(u"process %d terminated" % pid, file=stderr)
+                print("process %d terminated" % pid, file=stderr)
                 return 0
             time.sleep(0.5)
 
-        print(u"Process %d didn't respond to SIGTERM, sending SIGKILL." % pid, file=stderr)
+        print("Process %d didn't respond to SIGTERM, sending SIGKILL." % pid, file=stderr)
         try_to_kill(pid, signal.SIGKILL)
         try_to_remove_pidfile(pidfile)
         return 0
@@ -402,8 +405,8 @@ class Options(usage.Options):
 
     def opt_version(self):
         from twisted import copyright
-        print(u"Foolscap version:", foolscap.__version__)
-        print(u"Twisted version:", copyright.version)
+        print("Foolscap version:", foolscap.__version__)
+        print("Twisted version:", copyright.version)
         sys.exit(0)
 
 dispatch_table = {
@@ -420,7 +423,7 @@ def dispatch(command, options):
         c = dispatch_table[command]()
         return c.run(options)
     else:
-        print(u"unknown command '%s'" % command)
+        print("unknown command '%s'" % command)
         raise NotImplementedError
 
 def run_flappserver(argv=None, run_by_human=True):
@@ -434,7 +437,7 @@ def run_flappserver(argv=None, run_by_human=True):
     except usage.error as e:
         if not run_by_human:
             raise
-        print(u"%s:  %s" % (command_name, e))
+        print("%s:  %s" % (command_name, e))
         print()
         c = getattr(config, 'subOptions', config)
         print(str(c))
@@ -452,7 +455,7 @@ def run_flappserver(argv=None, run_by_human=True):
         r = dispatch(command, so)
     except (usage.UsageError, BadServiceArguments) as e:
         r = 1
-        print(u"Error:", six.text_type(e), file=so.stderr)
+        print("Error:", six.text_type(e), file=so.stderr)
     from twisted.internet import defer
     if run_by_human:
         if isinstance(r, defer.Deferred):
@@ -463,7 +466,7 @@ def run_flappserver(argv=None, run_by_human=True):
                 stash_rc.append(rc)
                 reactor.stop()
             def oops(f):
-                print(u"Command failed:")
+                print("Command failed:")
                 print(f)
                 stash_rc.append(-1)
                 reactor.stop()
