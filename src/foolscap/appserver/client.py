@@ -43,7 +43,7 @@ class UploadFile(Referenceable):
     def _upload(self, _ignored, rref, sf, name):
         return Uploader().run(rref, sf, name)
     def _done(self, _ignored, options, name):
-        print(b"%s: uploaded" % six.ensure_binary(name), file=options.stdout)
+        options.stdout.write(six.ensure_binary("%s: uploaded\n" % name))
 
 
 class RunCommandOptions(BaseOptions):
@@ -193,13 +193,13 @@ class ClientOptions(usage.Options):
             raise usage.UsageError("must specify a command")
 
     def opt_help(self):
-        print(six.ensure_binary(self.synopsis), file=self.stdout)
+        self.stdout.write(six.ensure_binary("%s\n" % (self.synopsis,)))
         sys.exit(0)
 
     def opt_version(self):
         from twisted import copyright
-        print(b"Foolscap version:", six.ensure_binary(foolscap.__version__), file=self.stdout)
-        print(b"Twisted version:", six.ensure_binary(copyright.version), file=self.stdout)
+        self.stdout.write(six.ensure_binary("Foolscap version: %s\n" % foolscap.__version__))
+        self.stdout.write(six.ensure_binary("Twisted version: %s\n" % copyright.version))
         sys.exit(0)
 
 dispatch_table = {
@@ -220,10 +220,10 @@ def parse_options(command_name, argv, stdio, stdout, stderr):
         config.subOptions.stderr = stderr
 
     except usage.error as e:
-        print(six.ensure_binary("%s:  %s" % (command_name, e)), file=stderr)
-        print(b"", file=stderr)
+        stderr.write(six.ensure_binary("%s:  %s\n" % (command_name, e)))
+        stderr.write(b"\n")
         c = getattr(config, 'subOptions', config)
-        print(six.ensure_binary(str(c)), file=stderr)
+        stderr.write(six.ensure_binary("%s\n" % (c,)))
         sys.exit(1)
 
     return config
@@ -284,8 +284,8 @@ def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
             if f.check(SystemExit):
                 stash_rc.append(f.value.args[0])
             else:
-                print(b"flappclient command failed:", file=stderr)
-                print(six.ensure_binary(str(f)), file=stderr)
+                stderr.write(b"flappclient command failed:\n")
+                stderr.write(six.ensure_binary("%s\n" % (f,)))
                 stash_rc.append(-1)
             reactor.stop()
         d.addCallbacks(good, oops)
