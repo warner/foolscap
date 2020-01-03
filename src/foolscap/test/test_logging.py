@@ -119,7 +119,7 @@ class Advanced(unittest.TestCase):
             self.assertEqual(expected_magic, flogfile.MAGIC)
             events = []
             for line in f:
-                events.append(json.loads(line))
+                events.append(json.loads(line.decode("utf-8")))
             self.assertEqual(len(events), 3)
             self.assertEqual(events[0]["header"]["type"],
                                  "log-file-observer")
@@ -1824,9 +1824,9 @@ class Tail(unittest.TestCase):
         f = open(saveto_filename, "rb")
         expected_magic = f.read(len(flogfile.MAGIC))
         self.assertEqual(expected_magic, flogfile.MAGIC)
-        data = json.loads(f.readline()) # header
+        data = json.loads(f.readline().decode("utf-8")) # header
         self.assertEqual(data["header"]["type"], "tail")
-        data = json.loads(f.readline()) # event
+        data = json.loads(f.readline().decode("utf-8")) # event
         self.assertEqual(data["from"], "jiijpvbg")
         self.assertEqual(data["d"]["message"], "howdy")
         self.assertEqual(data["d"]["num"], 123)

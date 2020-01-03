@@ -88,4 +88,4 @@ def get_events(fn):
                 raise ThisIsActuallyAFurlFileError
             raise BadMagic(repr(maybe_magic))
         for line in f.readlines():
-            yield json.loads(line)
+            yield json.loads(line.decode("utf-8"))

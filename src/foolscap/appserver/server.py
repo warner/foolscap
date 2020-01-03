@@ -12,7 +12,7 @@ class UnknownVersion(Exception):
 def load_service_data(basedir):
     services_file = os.path.join(basedir, "services.json")
     if os.path.exists(services_file):
-        data = json.load(open(services_file, "rb"))
+        data = json.load(open(services_file, "r"))
         if data["version"] != 1:
             raise UnknownVersion("unable to handle version %d" % data["version"])
     else:

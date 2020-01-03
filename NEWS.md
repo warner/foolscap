@@ -2,7 +2,7 @@ User visible changes in Foolscap
 
 ## Release ??
 
-Foolscap has been ported to py3 (specifically py3.6+). It currently still
+Foolscap has been ported to py3 (specifically py3.5+). It currently still
 works under py2.7 as well, although support may go away at any time.
 
 Several features were removed to support the transition:
@@ -39,7 +39,6 @@ soon:
   a py2 emitter sends events to a py3 follower
 * appserver: the `flappserver` and `flappclient` tools have not been
   extensively tested following the conversion
-* py3.5 does not appear to work yet
 
 
 ## Release 0.13.2 (22-Dec-2019)

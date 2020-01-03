@@ -14,4 +14,3 @@ after_success: codecov
 matrix:
   allow_failures:
     - python: "pypy"
-    - python: "3.5"
