@@ -286,6 +286,7 @@ all_services = {
     }
 
 def build_service(basedir, tub, service_type, service_args):
+    # TODO: service_type is text, args are native strings
     # this will be replaced by a plugin system. For now it's pretty static.
     if service_type in all_services:
         (optclass, svcclass) = all_services[service_type]
