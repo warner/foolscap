@@ -1,6 +1,6 @@
-
 import os, sys, json
 from io import StringIO
+import six
 from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.application import service
@@ -42,12 +42,16 @@ def old_add_service(basedir, service_type, service_args, comment, swissnum):
     furl = furl_prefix + swissnum
     return furl, service_basedir
 
+def write_json(obj, f):
+    s = json.dumps(obj)
+    f.write(six.ensure_binary(s))
+
 class ServiceData(unittest.TestCase):
     def test_parse_json(self):
         basedir = "appserver/ServiceData/parse_json"
         os.makedirs(basedir)
         f = open(os.path.join(basedir, "services.json"), "wb")
-        json.dump(orig_service_data, f)
+        write_json(orig_service_data, f)
         f.close()
         data = server.load_service_data(basedir)
         self.assertEqual(orig_service_data, data)
@@ -60,7 +64,7 @@ class ServiceData(unittest.TestCase):
         J = os.path.join
 
         f = open(os.path.join(basedir, "furl_prefix"), "wb")
-        f.write("prefix")
+        f.write(b"prefix")
         f.close()
 
         old_add_service(basedir,
@@ -108,7 +112,7 @@ class ServiceData(unittest.TestCase):
         os.makedirs(basedir)
         orig = {"version": 99}
         f = open(os.path.join(basedir, "services.json"), "wb")
-        json.dump(orig, f)
+        write_json(orig, f)
         f.close()
         e = self.assertRaises(server.UnknownVersion,
                               server.load_service_data, basedir)
@@ -544,7 +548,7 @@ class Upload(unittest.TestCase, ShouldFailMixin):
 
         sourcefile = os.path.join(basedir, "foo.txt")
         f = open(sourcefile, "wb")
-        DATA = "This is some source text.\n"
+        DATA = b"This is some source text.\n"
         f.write(DATA)
         f.close()
         d.addCallback(lambda _ign: self.run_client("--furl", self.furl,
@@ -553,8 +557,8 @@ class Upload(unittest.TestCase, ShouldFailMixin):
         def _check_client(xxx_todo_changeme22):
             (rc,out,err) = xxx_todo_changeme22
             self.assertEqual(rc, 0)
-            self.assertEqual(out.strip(), "foo.txt: uploaded")
-            self.assertEqual(err.strip(), "")
+            self.assertEqual(out.strip(), b"foo.txt: uploaded")
+            self.assertEqual(err.strip(), b"")
             fn = os.path.join(incomingdir, "foo.txt")
             self.assertTrue(os.path.exists(fn))
             contents = open(fn,"rb").read()
@@ -563,7 +567,7 @@ class Upload(unittest.TestCase, ShouldFailMixin):
 
         sourcefile2 = os.path.join(basedir, "bar.txt")
         f = open(sourcefile2, "wb")
-        DATA2 = "This is also some source text.\n"
+        DATA2 = b"This is also some source text.\n"
         f.write(DATA2)
         f.close()
         d.addCallback(lambda _ign: self.run_client("--furlfile", furlfile,
@@ -572,8 +576,8 @@ class Upload(unittest.TestCase, ShouldFailMixin):
         def _check_client2(xxx_todo_changeme23):
             (rc,out,err) = xxx_todo_changeme23
             self.assertEqual(rc, 0)
-            self.assertEqual(out.strip(), "bar.txt: uploaded")
-            self.assertEqual(err.strip(), "")
+            self.assertEqual(out.strip(), b"bar.txt: uploaded")
+            self.assertEqual(err.strip(), b"")
             fn = os.path.join(incomingdir, "bar.txt")
             self.assertTrue(os.path.exists(fn))
             contents = open(fn,"rb").read()
@@ -588,24 +592,24 @@ class Upload(unittest.TestCase, ShouldFailMixin):
         def _check_client3(xxx_todo_changeme24):
             (rc,out,err) = xxx_todo_changeme24
             self.assertNotEqual(rc, 0)
-            self.failUnlessIn("must provide --furl or --furlfile", err.strip())
+            self.failUnlessIn(b"must provide --furl or --furlfile", err.strip())
         d.addCallback(_check_client3)
 
         sourcefile3 = os.path.join(basedir, "file3.txt")
         f = open(sourcefile3, "wb")
-        DATA3 = "file number 3\n"
+        DATA3 = b"file number 3\n"
         f.write(DATA3)
         f.close()
 
         sourcefile4 = os.path.join(basedir, "file4.txt")
         f = open(sourcefile4, "wb")
-        DATA4 = "file number 4\n"
+        DATA4 = b"file number 4\n"
         f.write(DATA4)
         f.close()
 
         sourcefile5 = os.path.join(basedir, "file5.txt")
         f = open(sourcefile5, "wb")
-        DATA5 = "file number 5\n"
+        DATA5 = b"file number 5\n"
         f.write(DATA5)
         f.close()
 
@@ -615,10 +619,10 @@ class Upload(unittest.TestCase, ShouldFailMixin):
         def _check_client4(xxx_todo_changeme25):
             (rc,out,err) = xxx_todo_changeme25
             self.assertEqual(rc, 0)
-            self.failUnlessIn("file3.txt: uploaded", out)
-            self.failUnlessIn("file4.txt: uploaded", out)
-            self.failUnlessIn("file5.txt: uploaded", out)
-            self.assertEqual(err.strip(), "")
+            self.failUnlessIn(b"file3.txt: uploaded", out)
+            self.failUnlessIn(b"file4.txt: uploaded", out)
+            self.failUnlessIn(b"file5.txt: uploaded", out)
+            self.assertEqual(err.strip(), b"")
 
             fn = os.path.join(incomingdir, "file3.txt")
             self.assertTrue(os.path.exists(fn))
@@ -651,14 +655,14 @@ class Client(unittest.TestCase):
         def _check_client1(xxx_todo_changeme26):
             (rc,out,err) = xxx_todo_changeme26
             self.assertNotEqual(rc, 0)
-            self.failUnlessIn("must provide --furl or --furlfile", err)
+            self.failUnlessIn(b"must provide --furl or --furlfile", err)
         d.addCallback(_check_client1)
 
         d.addCallback(lambda _ign: self.run_client("--furl", "foo"))
         def _check_client2(xxx_todo_changeme27):
             (rc,out,err) = xxx_todo_changeme27
             self.assertNotEqual(rc, 0)
-            self.failUnlessIn("must specify a command", err)
+            self.failUnlessIn(b"must specify a command", err)
         d.addCallback(_check_client2)
         return d
 
@@ -667,8 +671,8 @@ class Client(unittest.TestCase):
         def _check_client(xxx_todo_changeme28):
             (rc,out,err) = xxx_todo_changeme28
             self.assertEqual(rc, 0)
-            self.failUnlessIn("Usage: flappclient [--furl=|--furlfile=] ", out)
-            self.assertEqual("", err.strip())
+            self.failUnlessIn(b"Usage: flappclient [--furl=|--furlfile=] ", out)
+            self.assertEqual(b"", err.strip())
         d.addCallback(_check_client)
         return d
 
@@ -677,8 +681,8 @@ class Client(unittest.TestCase):
         def _check_client(xxx_todo_changeme29):
             (rc,out,err) = xxx_todo_changeme29
             self.assertEqual(rc, 0)
-            self.failUnlessIn("Foolscap version:", out)
-            self.assertEqual("", err.strip())
+            self.failUnlessIn(b"Foolscap version:", out)
+            self.assertEqual(b"", err.strip())
         d.addCallback(_check_client)
         return d
 
@@ -745,7 +749,7 @@ class RunCommand(unittest.TestCase, StallMixin):
             self.assertTrue(os.path.isdir(serverdir))
         d.addCallback(_check)
         targetfile = os.path.join(incomingdir, "foo.txt")
-        DATA = "Contents of foo.txt.\n"
+        DATA = b"Contents of foo.txt.\n"
 
         def _populate_foo(ign):
             f = open(targetfile, "wb")
@@ -772,8 +776,8 @@ class RunCommand(unittest.TestCase, StallMixin):
                       self.run_client("--furl", self.furls[0], "run-command"))
         def _check_client(xxx_todo_changeme32):
             (rc,out,err) = xxx_todo_changeme32
-            self.assertEqual(rc, 0)
-            self.assertEqual(err.strip(), "")
+            self.assertEqual(rc, 0, (out, err))
+            self.assertEqual(err.strip(), b"")
             self.assertEqual(out.strip(), DATA.strip())
         d.addCallback(_check_client)
 
@@ -786,9 +790,9 @@ class RunCommand(unittest.TestCase, StallMixin):
         def _check_client2(xxx_todo_changeme33):
             (rc,out,err) = xxx_todo_changeme33
             self.assertNotEqual(rc, 0)
-            self.assertEqual(out, "")
+            self.assertEqual(out, b"")
             self.assertEqual(err.strip(),
-                                 "cat: foo.txt: No such file or directory")
+                             b"cat: foo.txt: No such file or directory")
         d.addCallback(_check_client2)
 
         d.addCallback(lambda ign:
@@ -800,7 +804,7 @@ class RunCommand(unittest.TestCase, StallMixin):
         d.addCallback(self.stash_furl, 1)
 
         barfile = os.path.join(incomingdir, "bar.txt")
-        DATA2 = "Pass this\ninto stdin\n"
+        DATA2 = b"Pass this\ninto stdin\n"
         d.addCallback(lambda _ign:
                       self.run_client_with_stdin(DATA2,
                                                  "--furl", self.furls[1], "run-command"))
@@ -810,8 +814,8 @@ class RunCommand(unittest.TestCase, StallMixin):
             bardata = open(barfile,"rb").read()
             self.assertEqual(bardata, DATA2)
             # we use a script instead of the real dd; we know how it behaves
-            self.assertEqual(out, "")
-            self.failUnlessIn("records in", err.strip())
+            self.assertEqual(out, b"")
+            self.failUnlessIn(b"records in", err.strip())
         d.addCallback(_check_client3)
 
         # exercise some more options
@@ -840,7 +844,7 @@ class RunCommand(unittest.TestCase, StallMixin):
             (rc,out,err) = xxx_todo_changeme35
             self.assertEqual(rc, 0)
             self.assertEqual(out.strip(), DATA.strip())
-            self.assertEqual(err, "")
+            self.assertEqual(err, b"")
         d.addCallback(_check_client4)
 
         d.addCallback(lambda _ign:
@@ -848,8 +852,8 @@ class RunCommand(unittest.TestCase, StallMixin):
         def _check_client5(xxx_todo_changeme36):
             (rc,out,err) = xxx_todo_changeme36
             self.assertEqual(rc, 0)
-            self.assertEqual(out, "") # --no-stdout
-            self.assertEqual(err, "")
+            self.assertEqual(out, b"") # --no-stdout
+            self.assertEqual(err, b"")
         d.addCallback(_check_client5)
 
         d.addCallback(_delete_foo)
@@ -858,8 +862,8 @@ class RunCommand(unittest.TestCase, StallMixin):
         def _check_client6(xxx_todo_changeme37):
             (rc,out,err) = xxx_todo_changeme37
             self.assertNotEqual(rc, 0)
-            self.assertEqual(out, "")
-            self.assertEqual(err, "") # --no-stderr
+            self.assertEqual(out, b"")
+            self.assertEqual(err, b"") # --no-stderr
         d.addCallback(_check_client6)
 
         d.addCallback(lambda _ign:
@@ -867,9 +871,9 @@ class RunCommand(unittest.TestCase, StallMixin):
         def _check_client7(xxx_todo_changeme38):
             (rc,out,err) = xxx_todo_changeme38
             self.assertNotEqual(rc, 0)
-            self.assertEqual(out, "") # --no-stdout
+            self.assertEqual(out, b"") # --no-stdout
             self.assertEqual(err.strip(),
-                                 "cat: foo.txt: No such file or directory")
+                             b"cat: foo.txt: No such file or directory")
         d.addCallback(_check_client7)
 
         return d
