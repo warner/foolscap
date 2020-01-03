@@ -15,4 +15,3 @@ matrix:
   allow_failures:
     - python: "pypy"
     - python: "3.5"
-    - python: "3.6"

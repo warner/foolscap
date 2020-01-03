@@ -2,8 +2,8 @@ User visible changes in Foolscap
 
 ## Release ??
 
-Foolscap has been ported to py3 (specifically py3.7). It currently supports
-py2.7 (for now), and py3.7.
+Foolscap has been ported to py3 (specifically py3.6+). It currently still
+works under py2.7 as well, although support may go away at any time.
 
 Several features were removed to support the transition:
 
