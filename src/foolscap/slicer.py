@@ -1,12 +1,14 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
+import six
 from twisted.python.components import registerAdapter
 from twisted.python import log
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet.defer import Deferred
-import tokens
-from tokens import Violation, BananaError
+from . import tokens
+from .tokens import Violation, BananaError
 from foolscap.ipb import IBroker
+from foolscap.util import ensure_tuple_str
 
 class SlicerClass(type):
     # auto-register Slicers
@@ -17,11 +19,9 @@ class SlicerClass(type):
         if typ:
             registerAdapter(self, typ, tokens.ISlicer)
 
-
+@six.add_metaclass(SlicerClass)
+@implementer(tokens.ISlicer)
 class BaseSlicer(object):
-    __metaclass__ = SlicerClass
-    implements(tokens.ISlicer)
-
     slices = None
 
     parent = None
@@ -51,7 +51,9 @@ class BaseSlicer(object):
         self.streamable = streamable
         assert self.opentype
         for o in self.opentype:
-            yield o
+            # our wire protocol, which originated in py2, uses bytes for the
+            # index tokens
+            yield six.ensure_binary(o)
         for t in self.sliceBody(streamable, banana):
             yield t
     def sliceBody(self, streamable, banana):
@@ -129,9 +131,10 @@ UnslicerRegistry = {}
 BananaUnslicerRegistry = {}
 
 def registerUnslicer(opentype, factory, registry=None):
+    opentype = ensure_tuple_str(opentype)
     if registry is None:
         registry = UnslicerRegistry
-    assert not registry.has_key(opentype)
+    assert opentype not in registry
     registry[opentype] = factory
 
 class UnslicerClass(type):
@@ -143,10 +146,10 @@ class UnslicerClass(type):
         if opentype:
             registerUnslicer(opentype, self, reg)
 
+@six.add_metaclass(UnslicerClass)
+@implementer(tokens.IUnslicer)
 class BaseUnslicer(object):
-    __metaclass__ = UnslicerClass
     opentype = None
-    implements(tokens.IUnslicer)
 
     def __init__(self):
         pass
@@ -260,13 +263,13 @@ class ScopedUnslicer(BaseUnslicer):
 
     def setObject(self, counter, obj):
         if self.protocol.debugReceive:
-            print "setObject(%s): %s{%s}" % (counter, obj, id(obj))
+            print("setObject(%s): %s{%s}" % (counter, obj, id(obj)))
         self.references[counter] = obj
 
     def getObject(self, counter):
         obj = self.references.get(counter)
         if self.protocol.debugReceive:
-            print "getObject(%s) -> %s{%s}" % (counter, obj, id(obj))
+            print("getObject(%s) -> %s{%s}" % (counter, obj, id(obj)))
         return obj
 
 

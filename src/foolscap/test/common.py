@@ -1,7 +1,9 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-import re, time
-from zope.interface import implements, implementsOnly, implementedBy, Interface
+from __future__ import print_function
+import six
+import time
+from zope.interface import implementer, implementer_only, implementedBy, Interface
 from twisted.python import log
 from twisted.internet import defer, reactor, task, protocol
 from twisted.application import internet
@@ -15,7 +17,7 @@ from foolscap.schema import Any, SetOf, DictOf, ListOf, TupleOf, \
      NumberConstraint, ByteStringConstraint, IntegerConstraint, \
      UnicodeConstraint, ChoiceOf
 from foolscap.referenceable import TubRef
-from foolscap.util import allocate_tcp_port
+from foolscap.util import allocate_tcp_port, long_type
 
 from twisted.python import failure
 from twisted.internet.main import CONNECTION_DONE
@@ -44,7 +46,7 @@ class Loopback:
         except:
             f = failure.Failure()
             log.err(f)
-            print "Loopback.write exception:", f
+            print("Loopback.write exception:", f)
             self.loseConnection(f)
 
     def loseConnection(self, why=failure.Failure(CONNECTION_DONE)):
@@ -68,18 +70,15 @@ class Loopback:
     def getHost(self):
         return broker.LoopbackAddress()
 
-Digits = re.compile("\d*")
-MegaSchema1 = DictOf(str,
+MegaSchema1 = DictOf(ByteStringConstraint(),
                      ListOf(TupleOf(SetOf(int, maxLength=10, mutable=True),
-                                    str, bool, int, long, float, None,
+                                    six.binary_type, bool, int, long_type, float, None,
                                     UnicodeConstraint(),
                                     ByteStringConstraint(),
                                     Any(), NumberConstraint(),
                                     IntegerConstraint(),
                                     ByteStringConstraint(maxLength=100,
-                                                         minLength=90,
-                                                         regexp="\w+"),
-                                    ByteStringConstraint(regexp=Digits),
+                                                         minLength=90),
                                     ),
                             maxLength=20),
                      maxKeys=5)
@@ -104,8 +103,8 @@ class RIHelper(RemoteInterface):
     def mega3(obj1=MegaSchema3): return None
     def choice1(obj1=ChoiceOf(ByteStringConstraint(2000), int)): return None
 
+@implementer(RIHelper)
 class HelperTarget(Referenceable):
-    implements(RIHelper)
     d = None
     def __init__(self, name="unnamed"):
         self.name = name
@@ -253,8 +252,8 @@ class RIMyTarget(RemoteInterface):
     def add(a=int, b=int): return int
     #add = schema.callable(add) # the metaclass makes this unnecessary
     # but it could be used for adding options or something
-    def join(a=str, b=str, c=int): return str
-    def getName(): return str
+    def join(a=bytes, b=bytes, c=int): return bytes
+    def getName(): return bytes
     disputed = RemoteMethodSchema(_response=int, a=int)
     def fail(): return str  # actually raises an exception
     def failstring(): return str # raises a string exception
@@ -284,9 +283,8 @@ RIMyTarget3['sub'] = RemoteMethodSchema(_response=int, a=int, b=int)
 RIMyTarget3['sub'].name = "sub"
 RIMyTarget3['sub'].interface = RIMyTarget3
 
+@implementer(RIMyTarget)
 class Target(Referenceable):
-    implements(RIMyTarget)
-
     def __init__(self, name=None):
         self.calls = []
         self.name = name
@@ -311,13 +309,13 @@ class Target(Referenceable):
     def remote_failstring(self):
         raise "string exceptions are annoying"
 
+@implementer_only(implementedBy(Referenceable))
 class TargetWithoutInterfaces(Target):
     # undeclare the RIMyTarget interface
-    implementsOnly(implementedBy(Referenceable))
+    pass
 
+@implementer(RIMyTarget)
 class BrokenTarget(Referenceable):
-    implements(RIMyTarget)
-
     def remote_add(self, a, b):
         return "error"
 
@@ -326,8 +324,9 @@ class IFoo(Interface):
     # non-remote Interface
     pass
 
+@implementer(IFoo)
 class Foo(Referenceable):
-    implements(IFoo)
+    pass
 
 class RIDummy(RemoteInterface):
     pass
@@ -339,12 +338,12 @@ class RITypes(RemoteInterface):
     def takes_interface(a=IFoo): return str
     def returns_interface(work=bool): return IFoo
 
+@implementer(RIDummy)
 class DummyTarget(Referenceable):
-    implements(RIDummy)
+    pass
 
+@implementer(RITypes)
 class TypesTarget(Referenceable):
-    implements(RITypes)
-
     def remote_returns_none(self, work):
         if work:
             return None
@@ -389,7 +388,7 @@ class ShouldFailMixin:
                     self.fail("got failure %s, was expecting %s"
                               % (res, expected_failure))
                 if substring:
-                    self.failUnless(substring in str(res),
+                    self.assertTrue(substring in str(res),
                                     "%s: substring '%s' not in '%s'"
                                     % (which, substring, str(res)))
                 # make the Failure available to a subsequent callback, but

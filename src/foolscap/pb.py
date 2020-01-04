@@ -1,8 +1,9 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
 import os.path, weakref, binascii, re
+import six
 from warnings import warn
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet import (reactor, defer, protocol, error, interfaces,
                               endpoints)
 from twisted.application import service
@@ -103,6 +104,7 @@ class Listener(protocol.ServerFactory, service.Service):
         return proto
 
     def lookupTubID(self, tubID):
+        tubID = six.ensure_str(tubID)
         tub = None
         if tubID == self._tub.tubID:
             tub = self._tub
@@ -115,9 +117,10 @@ class Listener(protocol.ServerFactory, service.Service):
         return desc
 
 def generateSwissnumber(bits):
-    bytes = os.urandom(bits/8)
+    bytes = os.urandom(bits//8)
     return base32.encode(bytes)
 
+@implementer(ipb.ITub)
 class Tub(service.MultiService):
     """I am a presence in the PB universe, also known as a Tub.
 
@@ -169,7 +172,6 @@ class Tub(service.MultiService):
                  authentication information, hash of SSL certificate
 
     """
-    implements(ipb.ITub)
 
     unsafeTracebacks = True # TODO: better way to enable this
     logLocalFailures = False
@@ -215,7 +217,7 @@ class Tub(service.MultiService):
         self.tubID = crypto.digest32(cert.digest("sha1"))
 
     def make_incarnation(self):
-        unique = binascii.b2a_hex(os.urandom(8))
+        unique = six.ensure_str(binascii.b2a_hex(os.urandom(8)))
         # TODO: it'd be nice to have a sequential component, so incarnations
         # could be ordered, but it requires disk space
         sequential = None
@@ -273,6 +275,7 @@ class Tub(service.MultiService):
         self.accept_gifts = True
 
     def setOption(self, name, value):
+        name = six.ensure_str(name)
         if name == "logLocalFailures":
             # log (with log.err) any exceptions that occur during the
             # execution of a local Referenceable's method, which is invoked
@@ -284,7 +287,7 @@ class Tub(service.MultiService):
             # TODO: This does not yet include Violations which were raised
             # because the inbound callRemote had arguments that didn't meet
             # our specifications. But it should.
-            self.logLocalFailures = value
+            self.logLocalFailures = bool(value)
         elif name == "logRemoteFailures":
             # log (with log.err) any exceptions that occur during the
             # execution of a remote Referenceabe's method, invoked on behalf
@@ -292,11 +295,11 @@ class Tub(service.MultiService):
             # reported to our local caller through the usual Deferred.errback
             # mechanism: this enables logging on the caller's side (i.e. our
             # side) as well.
-            self.logRemoteFailures = value
+            self.logRemoteFailures = bool(value)
         elif name == "keepaliveTimeout":
-            self.keepaliveTimeout = value
+            self.keepaliveTimeout = int(value)
         elif name == "disconnectTimeout":
-            self.disconnectTimeout = value
+            self.disconnectTimeout = int(value)
         elif name == "logport-furlfile":
             self.setLogPortFURLFile(value)
         elif name == "log-gatherer-furl":
@@ -327,11 +330,11 @@ class Tub(service.MultiService):
 
     def addConnectionHintHandler(self, hint_type, handler):
         assert ipb.IConnectionHintHandler.providedBy(handler)
-        self._connectionHandlers[hint_type] = handler
+        self._connectionHandlers[six.ensure_str(hint_type)] = handler
 
     def setLogGathererFURL(self, gatherer_furl_or_furls):
         assert not self._log_gatherer_furls
-        if isinstance(gatherer_furl_or_furls, basestring):
+        if isinstance(gatherer_furl_or_furls, (type(b""), type(u""))):
             self._log_gatherer_furls.append(gatherer_furl_or_furls)
         else:
             self._log_gatherer_furls.extend(gatherer_furl_or_furls)
@@ -416,11 +419,11 @@ class Tub(service.MultiService):
         return crypto.createCertificate()
 
     def getCertData(self):
-        # the string returned by this method can be used as the certData=
+        # the bytes returned by this method can be used as the certData=
         # argument to create a new Tub with the same identity. TODO: actually
         # test this, I don't know if dump/keypair.newCertificate is the right
         # pair of methods.
-        return self.myCertificate.dumpPEM()
+        return six.ensure_binary(self.myCertificate.dumpPEM())
 
     def setLocation(self, *hints):
         """Tell this service what its location is: a host:port description of
@@ -438,7 +441,7 @@ class Tub(service.MultiService):
 
         if self.locationHints:
             raise PBError("Tub.setLocation() can only be called once")
-        self.locationHints = hints
+        self.locationHints = [six.ensure_str(hint) for hint in hints]
         self._maybeCreateLogPortFURLFile()
         self._maybeConnectToGatherer()
 
@@ -501,13 +504,16 @@ class Tub(service.MultiService):
         @return: The Listener object that was created. This can be used to
         stop listening later on."""
 
+        if isinstance(what, (six.binary_type, six.text_type)):
+            what = six.ensure_str(what)
+
         if what in ("0", "tcp:0"):
             warningString = ("Tub.listenOn('tcp:0') was deprecated "
                              "in Foolscap 0.12.0; please use pre-allocated "
                              "port numbers instead")
             warn(warningString, DeprecationWarning, stacklevel=2)
 
-        if isinstance(what, str) and re.search(r"^\d+$", what):
+        if isinstance(what, six.string_types) and re.search(r"^\d+$", what):
             warn("Tub.listenOn('12345') was deprecated "
                  "in Foolscap 0.12.0; please use qualified endpoint "
                  "descriptions like 'tcp:12345'",
@@ -591,7 +597,7 @@ class Tub(service.MultiService):
         for c in list(self._activeConnectors):
             c.shutdown()
         why = Failure(error.ConnectionDone("Tub.stopService was called"))
-        for b in self.brokers.values():
+        for b in list(self.brokers.values()):
             broker_disconnected = defer.Deferred()
             dl.append(broker_disconnected)
             b._notifyOnConnectionLost(
@@ -612,6 +618,8 @@ class Tub(service.MultiService):
         # host:port
         hints = ",".join(self.locationHints)
         return "pb://" + self.tubID + "@" + hints + "/" + name
+        #hints = b",".join(self.locationHints)
+        #return b"pb://" + self.tubID + b"@" + hints + b"/" + name
 
     def registerReference(self, ref, name=None, furlFile=None):
         """Make a Referenceable available to the outside world. A URL is
@@ -671,7 +679,7 @@ class Tub(service.MultiService):
             f.close()
             if need_to_chmod:
                 # XXX: open-to-chmod race here
-                os.chmod(furlFile, 0600)
+                os.chmod(furlFile, 0o600)
         return furl
 
     # this is called by either registerReference or by
@@ -684,7 +692,7 @@ class Tub(service.MultiService):
         if not self.locationHints:
             # without a location, there is no point in giving it a name
             return None
-        if self.referenceToName.has_key(ref):
+        if ref in self.referenceToName:
             return self.referenceToName[ref]
         name = preferred_name
         if not name:
@@ -800,6 +808,7 @@ class Tub(service.MultiService):
         if isinstance(sturdyOrURL, SturdyRef):
             sturdy = sturdyOrURL
         else:
+            sturdyOrURL = six.ensure_str(sturdyOrURL)
             sturdy = SturdyRef(sturdyOrURL)
 
         if not self.running:
@@ -815,7 +824,7 @@ class Tub(service.MultiService):
         d.addCallback(lambda b: b.getYourReferenceByName(name))
         return d
 
-    def connectTo(self, _sturdyOrURL, _cb, *args, **kwargs):
+    def connectTo(self, _furl, _cb, *args, **kwargs):
         """Establish (and maintain) a connection to a given PBURL.
 
         I establish a connection to the PBURL and run a callback to inform
@@ -854,12 +863,12 @@ class Tub(service.MultiService):
          rc.stopConnecting() # later
         """
 
-        rc = Reconnector(_sturdyOrURL, _cb, args, kwargs)
+        rc = Reconnector(_furl, _cb, args, kwargs)
         if self.running:
             rc.startConnecting(self)
         else:
             self.log("Tub.connectTo(%s) queued until Tub.startService called"
-                     % _sturdyOrURL, level=UNUSUAL)
+                     % _furl, level=UNUSUAL)
         self.reconnectors.append(rc)
         return rc
 
@@ -982,7 +991,7 @@ class Tub(service.MultiService):
         # this doesn't confuse us.
 
         # the Broker will have already severed all active references
-        for tubref in self.brokers.keys():
+        for tubref in list(self.brokers.keys()):
             if self.brokers[tubref] is broker:
                 del self.brokers[tubref]
 
@@ -993,13 +1002,11 @@ class Tub(service.MultiService):
         # 'outbound' is a list of PendingRequest objects (one per message
         # that's waiting on a remote broker to complete).
         output = []
-        all_brokers = self.brokers.items()
+        all_brokers = list(self.brokers.items())
         for tubref,_broker in all_brokers:
             inbound = _broker.inboundDeliveryQueue[:]
             outbound = [pr
                         for (reqID, pr) in
                         sorted(_broker.waitingForAnswers.items()) ]
             output.append( (str(tubref), inbound, outbound) )
-        output.sort(lambda x,y: cmp( (len(x[1]), len(x[2])),
-                                     (len(y[1]), len(y[2])) ))
         return output

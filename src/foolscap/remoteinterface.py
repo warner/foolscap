@@ -1,7 +1,7 @@
 
 import types
 import inspect
-from zope.interface import interface, providedBy, implements
+from zope.interface import interface, providedBy, implementer
 from foolscap.constraint import Constraint, OpenerConstraint, nothingTaster, \
      IConstraint, IRemoteMethodConstraint, Optional, Any
 from foolscap.tokens import Violation, InvalidRemoteInterface
@@ -68,11 +68,11 @@ class RemoteInterfaceClass(interface.InterfaceClass):
 
         # and see if there is a __remote_name__ . We delete it because
         # InterfaceClass doesn't like arbitrary attributes
-        if attrs.has_key("__remote_name__"):
+        if "__remote_name__" in attrs:
             del attrs["__remote_name__"]
 
         # determine all remotely-callable methods
-        names = [name for name in attrs.keys()
+        names = [name for name in list(attrs.keys())
                  if ((type(attrs[name]) == types.FunctionType and
                       not name.startswith("_")) or
                      IConstraint.providedBy(attrs[name]))]
@@ -120,7 +120,7 @@ def registerRemoteInterface(iface, name=None):
     if not name:
         name = iface.__remote_name__
     assert isinstance(iface, RemoteInterfaceClass)
-    if RemoteInterfaceRegistry.has_key(name):
+    if name in RemoteInterfaceRegistry:
         old = RemoteInterfaceRegistry[name]
         msg = "remote interface %s was registered with the same name (%s) as %s, please use __remote_name__ to provide a unique name" % (old, name, iface)
         raise DuplicateRemoteInterfaceError(msg)
@@ -130,7 +130,7 @@ def getRemoteInterfaceByName(iname):
     return RemoteInterfaceRegistry.get(iname)
 
 
-
+@implementer(IRemoteMethodConstraint)
 class RemoteMethodSchema(object):
     """
     This is a constraint for a single remotely-invokable method. It gets to
@@ -149,8 +149,6 @@ class RemoteMethodSchema(object):
     The remotely-accesible object's .getMethodSchema() method may return one
     of these objects.
     """
-
-    implements(IRemoteMethodConstraint)
 
     taster = {} # this should not be used as a top-level constraint
     opentypes = [] # overkill
@@ -176,14 +174,14 @@ class RemoteMethodSchema(object):
             self.responseConstraint = IConstraint(_response)
         self.options = {} # return, wait, reliable, etc
 
-        if kwargs.has_key("__ignoreUnknown__"):
+        if "__ignoreUnknown__" in kwargs:
             self.ignoreUnknown = kwargs["__ignoreUnknown__"]
             del kwargs["__ignoreUnknown__"]
-        if kwargs.has_key("__acceptUnknown__"):
+        if "__acceptUnknown__" in kwargs:
             self.acceptUnknown = kwargs["__acceptUnknown__"]
             del kwargs["__acceptUnknown__"]
 
-        for argname, constraint in kwargs.items():
+        for argname, constraint in list(kwargs.items()):
             self.argumentNames.append(argname)
             constraint = IConstraint(constraint)
             self.argConstraints[argname] = constraint
@@ -268,13 +266,13 @@ class RemoteMethodSchema(object):
                             % (len(self.argumentNames), len(args)))
         for i,argvalue in enumerate(args):
             allargs[self.argumentNames[i]] = argvalue
-        for argname,argvalue in kwargs.items():
+        for argname,argvalue in list(kwargs.items()):
             if argname in allargs:
                 raise Violation("got multiple values for keyword argument '%s'"
                                 % (argname,))
             allargs[argname] = argvalue
 
-        for argname, argvalue in allargs.items():
+        for argname, argvalue in list(allargs.items()):
             accept, constraint = self.getKeywordArgConstraint(argname)
             if not accept:
                 # this argument will be ignored by the far end. TODO: emit a
@@ -282,7 +280,7 @@ class RemoteMethodSchema(object):
                 pass
             try:
                 constraint.checkObject(argvalue, inbound)
-            except Violation, v:
+            except Violation as v:
                 v.setLocation("%s=" % argname)
                 raise
 
@@ -296,6 +294,7 @@ class RemoteMethodSchema(object):
             # location appropriately: they have more information than we do.
             self.responseConstraint.checkObject(results, inbound)
 
+@implementer(IRemoteMethodConstraint)
 class UnconstrainedMethod(object):
     """I am a method constraint that accepts any arguments and any return
     value.
@@ -307,7 +306,6 @@ class UnconstrainedMethod(object):
              return str
          not_method = UnconstrainedMethod()  # this one is not
     """
-    implements(IRemoteMethodConstraint)
 
     def getPositionalArgConstraint(self, argnum):
         return (True, Any())

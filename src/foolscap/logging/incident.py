@@ -1,7 +1,8 @@
-
+from __future__ import print_function
+import six
 import sys, os.path, time, bz2
-from pprint import pprint
-from zope.interface import implements
+import json
+from zope.interface import implementer
 from twisted.python import usage
 from twisted.internet import reactor
 from foolscap.logging.interfaces import IIncidentReporter
@@ -37,6 +38,7 @@ class IncidentQualifier:
         if self.check_event(ev) and self.handler:
             self.handler.declare_incident(ev)
 
+@implementer(IIncidentReporter)
 class IncidentReporter:
     """Once an Incident has been declared, I am responsible for making a
     durable record all relevant log events. I do this by creating a logfile
@@ -55,7 +57,6 @@ class IncidentReporter:
     of the logfile I created and the triggering event. This can be used to
     notify remote subscribers about the incident that just occurred.
     """
-    implements(IIncidentReporter)
 
     TRAILING_DELAY = 5.0 # gather 5 seconds of post-trigger events
     TRAILING_EVENT_LIMIT = 100 # or 100 events, whichever comes first
@@ -108,7 +109,7 @@ class IncidentReporter:
 
         # use self.logger.buffers, copy events into logfile
         events = list(self.logger.get_buffered_events())
-        events.sort(lambda a,b: cmp(a['num'], b['num']))
+        events.sort(key=lambda a: a['num'])
         for e in events:
             flogfile.serialize_wrapper(self.f1, e,
                                        from_=self.tubid_s, rx_time=now)
@@ -205,9 +206,9 @@ class IncidentClassifierBase:
         for fn in os.listdir(plugindir):
             if not (fn.startswith("classify_") and fn.endswith(".py")):
                 continue
-            f = open(os.path.join(plugindir, fn), "r")
+            f = open(os.path.join(plugindir, fn), "r").read()
             localdict = {}
-            exec f in localdict
+            six.exec_(f, localdict)
             self.add_classifier(localdict["classify_incident"])
 
     def load_incident(self, abs_fn):
@@ -239,17 +240,18 @@ class IncidentClassifier(IncidentClassifierBase):
             abs_fn = os.path.expanduser(f)
             incident = self.load_incident(abs_fn)
             categories = self.classify_incident(incident)
-            print >>out, "%s: %s" % (f, ",".join(sorted(categories)))
+            print(u"%s: %s" % (f, ",".join(sorted(categories))), file=out)
             if list(categories) == ["unknown"] and options["verbose"]:
                 (header, events) = incident
                 trigger = header["trigger"]
                 from foolscap.logging.log import format_message
-                print >>out, format_message(trigger)
-                pprint(trigger, stream=out)
+                print(format_message(trigger), file=out)
+                #pprint(trigger, stream=out)
+                print(six.ensure_text(json.dumps(trigger)), file=out)
                 if 'failure' in trigger:
-                    print >>out," FAILURE:"
+                    print(u" FAILURE:", file=out)
                     lines = str(trigger['failure']).split("\n")
                     for line in lines:
-                        print >>out, " %s" % (line,)
-                print >>out, ""
+                        print(u" %s" % (line,), file=out)
+                print(u"", file=out)
 

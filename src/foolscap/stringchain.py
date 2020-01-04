@@ -14,6 +14,7 @@ class StringChain(object):
 
     def append(self, s):
         """ Add s to the end of the chain. """
+        assert isinstance(s, bytes)
         #assert self._assert_invariants()
         if not s:
             return
@@ -29,6 +30,7 @@ class StringChain(object):
 
     def appendleft(self, s):
         """ Add s to the beginning of the chain. """
+        assert isinstance(s, bytes)
         #assert self._assert_invariants()
         if not s:
             return
@@ -42,7 +44,7 @@ class StringChain(object):
         self.len += len(s)
         #assert self._assert_invariants()
 
-    def __str__(self):
+    def as_bytes(self):
         """ Return the entire contents of this chain as a single
         string. (Obviously this requires copying all of the bytes, so don't do
         this unless you need to.) This has a side-effect of collecting all the
@@ -52,20 +54,20 @@ class StringChain(object):
         if self.d:
             return self.d[0]
         else:
-            return ''
+            return b''
 
-    def popleft_new_stringchain(self, bytes):
+    def popleft_new_stringchain(self, numbytes):
         """ Remove some of the leading bytes of the chain and return them as a
         new StringChain object. (Use str() on it if you want the bytes in a
         string, or call popleft() instead of popleft_new_stringchain().) """
         #assert self._assert_invariants()
-        if not bytes or not self.d:
+        if not numbytes or not self.d:
             return self.__class__()
 
-        assert bytes >= 0, bytes
+        assert numbytes >= 0, numbytes
 
         # We need to add at least this many bytes to the new StringChain.
-        bytesleft = bytes + self.ignored
+        bytesleft = numbytes + self.ignored
         n = self.__class__()
         n.ignored = self.ignored
 
@@ -89,23 +91,23 @@ class StringChain(object):
             self.ignored = 0
 
         # Either you got exactly how many you asked for, or you drained self entirely and you asked for more than you got.
-        #assert (n.len == bytes) or ((not self.d) and (bytes > self.len)), (n.len, bytes, len(self.d))
+        #assert (n.len == numbytes) or ((not self.d) and (numbytes > self.len)), (n.len, numbytes, len(self.d))
 
         #assert self._assert_invariants()
         #assert n._assert_invariants()
         return n
 
-    def popleft(self, bytes):
+    def popleft(self, numbytes):
         """ Remove some of the leading bytes of the chain and return them as a
         string. """
         #assert self._assert_invariants()
-        if not bytes or not self.d:
-            return ''
+        if not numbytes or not self.d:
+            return b''
 
-        assert bytes >= 0, bytes
+        assert numbytes >= 0, numbytes
 
         # We need to add at least this many bytes to the result.
-        bytesleft = bytes
+        bytesleft = numbytes
         resstrs = []
 
         s = self.d.popleft()
@@ -130,10 +132,10 @@ class StringChain(object):
             self.len += overrun
             resstrs[-1] = resstrs[-1][:-overrun]
 
-        resstr = ''.join(resstrs)
+        resstr = b''.join(resstrs)
 
         # Either you got exactly how many you asked for, or you drained self entirely and you asked for more than you got.
-        #assert (len(resstr) == bytes) or ((not self.d) and (bytes > self.len)), (len(resstr), bytes, len(self.d), overrun)
+        #assert (len(resstr) == numbytes) or ((not self.d) and (numbytes > self.len)), (len(resstr), numbytes, len(self.d), overrun)
 
         #assert self._assert_invariants()
 
@@ -143,11 +145,11 @@ class StringChain(object):
         #assert self._assert_invariants()
         return self.len
 
-    def trim(self, bytes):
+    def trim(self, numbytes):
         """ Trim off some of the leading bytes. """
         #assert self._assert_invariants()
-        self.ignored += bytes
-        self.len -= bytes
+        self.ignored += numbytes
+        self.len -= numbytes
         while self.d and self.ignored >= len(self.d[0]):
             s = self.d.popleft()
             self.ignored -= len(s)
@@ -203,7 +205,7 @@ class StringChain(object):
             self.d[-1] = self.d[-1][:-self.tailignored]
             self.tailignored = 0
         if len(self.d) > 1:
-            newstr = ''.join(self.d)
+            newstr = b''.join(self.d)
             self.d.clear()
             self.d.append(newstr)
         #assert self._assert_invariants()

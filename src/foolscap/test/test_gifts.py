@@ -1,5 +1,5 @@
-
-from zope.interface import implements
+from __future__ import print_function
+from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.internet import defer, protocol, reactor
 from twisted.internet.error import ConnectionRefusedError
@@ -16,9 +16,8 @@ class RIConstrainedHelper(RemoteInterface):
     def set(obj=RIHelper): return None
 
 
+@implementer(RIConstrainedHelper)
 class ConstrainedHelper(Referenceable):
-    implements(RIConstrainedHelper)
-
     def __init__(self, name="unnamed"):
         self.name = name
 
@@ -57,17 +56,17 @@ class Base(ShouldFailMixin, MakeTubsMixin):
 
     def createInitialReferences(self):
         # we must start by giving Alice a reference to both Bob and Carol.
-        if self.debug: print "Alice gets Bob"
+        if self.debug: print("Alice gets Bob")
         d = self.tubA.getReference(self.bob_url)
         def _aliceGotBob(abob):
-            if self.debug: print "Alice got bob"
+            if self.debug: print("Alice got bob")
             self.abob = abob # Alice's reference to Bob
-            if self.debug: print "Alice gets carol"
+            if self.debug: print("Alice gets carol")
             d = self.tubA.getReference(self.carol_url)
             return d
         d.addCallback(_aliceGotBob)
         def _aliceGotCarol(acarol):
-            if self.debug: print "Alice got carol"
+            if self.debug: print("Alice got carol")
             self.acarol = acarol # Alice's reference to Carol
             d = self.tubB.getReference(self.dave_url)
             return d
@@ -131,24 +130,25 @@ class Gifts(Base, unittest.TestCase):
         d = self.createInitialReferences()
         def _introduce(res):
             d2 = self.bob.waitfor()
-            if self.debug: print "Alice introduces Carol to Bob"
+            if self.debug: print("Alice introduces Carol to Bob")
             # send the gift. This might not get acked by the time the test is
             # done and everything is torn down, so we use callRemoteOnly
             self.abob.callRemoteOnly("set", obj=(self.alice, self.acarol))
             return d2 # this fires with the gift that bob got
         d.addCallback(_introduce)
-        def _bobGotCarol((balice,bcarol)):
-            if self.debug: print "Bob got Carol"
+        def _bobGotCarol(xxx_todo_changeme):
+            (balice,bcarol) = xxx_todo_changeme
+            if self.debug: print("Bob got Carol")
             self.bcarol = bcarol
-            if self.debug: print "Bob says something to Carol"
+            if self.debug: print("Bob says something to Carol")
             d2 = self.carol.waitfor()
             # handle ConnectionDone as described before
             self.bcarol.callRemoteOnly("set", obj=12)
             return d2
         d.addCallback(_bobGotCarol)
         def _carolCalled(res):
-            if self.debug: print "Carol heard from Bob"
-            self.failUnlessEqual(res, 12)
+            if self.debug: print("Carol heard from Bob")
+            self.assertEqual(res, 12)
         d.addCallback(_carolCalled)
         return d
     testGift.timeout = 10
@@ -175,7 +175,7 @@ class Gifts(Base, unittest.TestCase):
             # (a_cindy). She sends both of them (plus a reference to herself)
             # to bob.
             d2 = self.bob.waitfor()
-            if self.debug: print "Alice introduces Carol to Bob"
+            if self.debug: print("Alice introduces Carol to Bob")
             # send the gift. This might not get acked by the time the test is
             # done and everything is torn down, so explicitly silence any
             # ConnectionDone error that might result. When we get
@@ -185,15 +185,16 @@ class Gifts(Base, unittest.TestCase):
                                                  a_cindy))
             return d2 # this fires with the gift that bob got
         d.addCallback(_introduce)
-        def _bobGotCarol((b_alice,b_carol,b_cindy)):
-            if self.debug: print "Bob got Carol"
-            self.failUnless(b_alice)
-            self.failUnless(b_carol)
-            self.failUnless(b_cindy)
+        def _bobGotCarol(xxx_todo_changeme1):
+            (b_alice,b_carol,b_cindy) = xxx_todo_changeme1
+            if self.debug: print("Bob got Carol")
+            self.assertTrue(b_alice)
+            self.assertTrue(b_carol)
+            self.assertTrue(b_cindy)
             self.bcarol = b_carol
-            if self.debug: print "Bob says something to Carol"
+            if self.debug: print("Bob says something to Carol")
             d2 = self.carol.waitfor()
-            if self.debug: print "Bob says something to Cindy"
+            if self.debug: print("Bob says something to Cindy")
             d3 = self.cindy.waitfor()
 
             # handle ConnectionDone as described before
@@ -202,12 +203,12 @@ class Gifts(Base, unittest.TestCase):
             return defer.DeferredList([d2,d3])
         d.addCallback(_bobGotCarol)
         def _carolAndCindyCalled(res):
-            if self.debug: print "Carol heard from Bob"
+            if self.debug: print("Carol heard from Bob")
             ((carol_s, carol_result), (cindy_s, cindy_result)) = res
-            self.failUnless(carol_s)
-            self.failUnless(cindy_s)
-            self.failUnlessEqual(carol_result, 4)
-            self.failUnlessEqual(cindy_result, 5)
+            self.assertTrue(carol_s)
+            self.assertTrue(cindy_s)
+            self.assertEqual(carol_result, 4)
+            self.assertEqual(cindy_result, 5)
         d.addCallback(_carolAndCindyCalled)
         return d
 
@@ -222,11 +223,11 @@ class Gifts(Base, unittest.TestCase):
         d.addCallback(_introduce)
         def _check(adave):
             # this ought to be a RemoteReference to dave, usable by alice
-            self.failUnless(isinstance(adave, RemoteReference))
+            self.assertTrue(isinstance(adave, RemoteReference))
             return adave.callRemote("set", 12)
         d.addCallback(_check)
         def _check2(res):
-            self.failUnlessEqual(self.dave.obj, 12)
+            self.assertEqual(self.dave.obj, 12)
         d.addCallback(_check2)
         return d
 
@@ -240,11 +241,11 @@ class Gifts(Base, unittest.TestCase):
         def _check(obj):
             adave = list(obj["foo"][0][0])[0]
             # this ought to be a RemoteReference to dave, usable by alice
-            self.failUnless(isinstance(adave, RemoteReference))
+            self.assertTrue(isinstance(adave, RemoteReference))
             return adave.callRemote("set", 12)
         d.addCallback(_check)
         def _check2(res):
-            self.failUnlessEqual(self.dave.obj, 12)
+            self.assertEqual(self.dave.obj, 12)
         d.addCallback(_check2)
         return d
 
@@ -263,10 +264,10 @@ class Gifts(Base, unittest.TestCase):
         d.addCallback(_introduce)
         def _checkBob(res):
             # this runs after all three messages have been acked by Bob
-            self.failUnlessEqual(len(self.bob.calls), 3)
-            self.failUnlessEqual(self.bob.calls[0], 1)
-            self.failUnless(isinstance(self.bob.calls[1], RemoteReference))
-            self.failUnlessEqual(self.bob.calls[2], 3)
+            self.assertEqual(len(self.bob.calls), 3)
+            self.assertEqual(self.bob.calls[0], 1)
+            self.assertTrue(isinstance(self.bob.calls[1], RemoteReference))
+            self.assertEqual(self.bob.calls[2], 3)
         d.addCallback(_checkBob)
         return d
 
@@ -291,32 +292,32 @@ class Gifts(Base, unittest.TestCase):
         d.addCallback(_introduce)
         def _checkBob(res):
             # this runs after all three messages have been acked by Bob
-            self.failUnlessEqual(len(self.bob.calls), 5)
+            self.assertEqual(len(self.bob.calls), 5)
 
             bcharlene = self.bob.calls.pop(0)
-            self.failUnless(isinstance(bcharlene, set))
-            self.failUnlessEqual(len(bcharlene), 1)
-            self.failUnless(isinstance(list(bcharlene)[0], RemoteReference))
+            self.assertTrue(isinstance(bcharlene, set))
+            self.assertEqual(len(bcharlene), 1)
+            self.assertTrue(isinstance(list(bcharlene)[0], RemoteReference))
 
             bchristine = self.bob.calls.pop(0)
-            self.failUnless(isinstance(bchristine, frozenset))
-            self.failUnlessEqual(len(bchristine), 1)
-            self.failUnless(isinstance(list(bchristine)[0], RemoteReference))
+            self.assertTrue(isinstance(bchristine, frozenset))
+            self.assertEqual(len(bchristine), 1)
+            self.assertTrue(isinstance(list(bchristine)[0], RemoteReference))
 
             bclarisse = self.bob.calls.pop(0)
-            self.failUnless(isinstance(bclarisse, list))
-            self.failUnlessEqual(len(bclarisse), 1)
-            self.failUnless(isinstance(bclarisse[0], RemoteReference))
+            self.assertTrue(isinstance(bclarisse, list))
+            self.assertEqual(len(bclarisse), 1)
+            self.assertTrue(isinstance(bclarisse[0], RemoteReference))
 
             bcolette = self.bob.calls.pop(0)
-            self.failUnless(isinstance(bcolette, tuple))
-            self.failUnlessEqual(len(bcolette), 1)
-            self.failUnless(isinstance(bcolette[0], RemoteReference))
+            self.assertTrue(isinstance(bcolette, tuple))
+            self.assertEqual(len(bcolette), 1)
+            self.assertTrue(isinstance(bcolette[0], RemoteReference))
 
             bcourtney = self.bob.calls.pop(0)
-            self.failUnless(isinstance(bcourtney, dict))
-            self.failUnlessEqual(len(bcourtney), 1)
-            self.failUnless(isinstance(bcourtney['a'], RemoteReference))
+            self.assertTrue(isinstance(bcourtney, dict))
+            self.assertEqual(len(bcourtney), 1)
+            self.assertTrue(isinstance(bcourtney['a'], RemoteReference))
 
         d.addCallback(_checkBob)
         return d
@@ -338,7 +339,7 @@ class Gifts(Base, unittest.TestCase):
             return self.abob.callRemote("set", self.acarol)
         d.addCallback(_introduce)
         def _checkBob(res):
-            self.failUnless(isinstance(self.bob.obj, RemoteReference))
+            self.assertTrue(isinstance(self.bob.obj, RemoteReference))
         d.addCallback(_checkBob)
         return d
 
@@ -350,8 +351,9 @@ class Gifts(Base, unittest.TestCase):
     # introduction pattern is going to change soon, so it has been disabled
     # until I figure out what the new scheme ought to be asserting.
 
-    def OFF_bobGotCarol(self, (balice,bcarol)):
-        if self.debug: print "Bob got Carol"
+    def OFF_bobGotCarol(self, xxx_todo_changeme4):
+        (balice,bcarol) = xxx_todo_changeme4
+        if self.debug: print("Bob got Carol")
         # Bob has received the gift
         self.bcarol = bcarol
 
@@ -360,11 +362,11 @@ class Gifts(Base, unittest.TestCase):
         # gift-bearing message is delivered). To make sure alice has received
         # it, send a message back along the same path.
         def _check_alice(res):
-            if self.debug: print "Alice should have the decgift"
+            if self.debug: print("Alice should have the decgift")
             # alice's gift table should be empty
             brokerAB = self.abob.tracker.broker
-            self.failUnlessEqual(brokerAB.myGifts, {})
-            self.failUnlessEqual(brokerAB.myGiftsByGiftID, {})
+            self.assertEqual(brokerAB.myGifts, {})
+            self.assertEqual(brokerAB.myGiftsByGiftID, {})
         d1 = self.alice.waitfor()
         d1.addCallback(_check_alice)
         # the ack from this message doesn't always make it back by the time
@@ -376,7 +378,7 @@ class Gifts(Base, unittest.TestCase):
         # the recipient to not bother sending a response).
         balice.callRemote("set", 39).addErrback(lambda ignored: None)
 
-        if self.debug: print "Bob says something to Carol"
+        if self.debug: print("Bob says something to Carol")
         d2 = self.carol.waitfor()
         d = self.bcarol.callRemote("set", obj=12)
         d.addCallback(lambda res: d2)
@@ -410,7 +412,7 @@ class Bad(Base, unittest.TestCase):
         d.addCallback(_introduce)
         # make sure we can still talk to Carol, though
         d.addCallback(lambda res: self.acarol.callRemote("set", 14))
-        d.addCallback(lambda res: self.failUnlessEqual(self.carol.obj, 14))
+        d.addCallback(lambda res: self.assertEqual(self.carol.obj, 14))
         return d
 
     def test_tubid(self):
@@ -500,7 +502,7 @@ class Bad(Base, unittest.TestCase):
         d.addCallback(_introduce)
         # make sure we can still talk to Bob, though
         d.addCallback(lambda res: self.abob.callRemote("set", 14))
-        d.addCallback(lambda res: self.failUnlessEqual(self.bob.obj, 14))
+        d.addCallback(lambda res: self.assertEqual(self.bob.obj, 14))
         return d
 
 class LongFURL(Base, unittest.TestCase):
@@ -518,24 +520,25 @@ class LongFURL(Base, unittest.TestCase):
         d = self.createInitialReferences()
         def _introduce(res):
             d2 = self.bob.waitfor()
-            if self.debug: print "Alice introduces Carol to Bob"
+            if self.debug: print("Alice introduces Carol to Bob")
             # send the gift. This might not get acked by the time the test is
             # done and everything is torn down, so we use callRemoteOnly
             self.abob.callRemoteOnly("set", obj=(self.alice, self.acarol))
             return d2 # this fires with the gift that bob got
         d.addCallback(_introduce)
-        def _bobGotCarol((balice,bcarol)):
-            if self.debug: print "Bob got Carol"
+        def _bobGotCarol(xxx_todo_changeme2):
+            (balice,bcarol) = xxx_todo_changeme2
+            if self.debug: print("Bob got Carol")
             self.bcarol = bcarol
-            if self.debug: print "Bob says something to Carol"
+            if self.debug: print("Bob says something to Carol")
             d2 = self.carol.waitfor()
             # handle ConnectionDone as described before
             self.bcarol.callRemoteOnly("set", obj=12)
             return d2
         d.addCallback(_bobGotCarol)
         def _carolCalled(res):
-            if self.debug: print "Carol heard from Bob"
-            self.failUnlessEqual(res, 12)
+            if self.debug: print("Carol heard from Bob")
+            self.assertEqual(res, 12)
         d.addCallback(_carolCalled)
         return d
 
@@ -554,8 +557,8 @@ class Enabled(Base, unittest.TestCase):
                        self.tubD.getShortTubID()]
 
     def get_connections(self, tub):
-        self.failIf(tub.waitingForBrokers)
-        return set([tr.getShortTubID() for tr in tub.brokers.keys()])
+        self.assertFalse(tub.waitingForBrokers)
+        return set([tr.getShortTubID() for tr in list(tub.brokers.keys())])
 
     def testGiftsEnabled(self):
         # enabled is the default, so this shouldn't change anything
@@ -568,11 +571,12 @@ class Enabled(Base, unittest.TestCase):
             d3.addCallback(lambda _: d2)
             return d3 # this fires with the gift that bob got
         d.addCallback(_introduce)
-        def _bobGotCarol((balice,bcarol)):
+        def _bobGotCarol(xxx_todo_changeme3):
+            (balice,bcarol) = xxx_todo_changeme3
             A,B,C,D = self.tubIDs
             b_connections = self.get_connections(self.tubB)
             self.assertIn(C, b_connections)
-            self.failUnlessEqual(b_connections, set([A, C, D]))
+            self.assertEqual(b_connections, set([A, C, D]))
         d.addCallback(_bobGotCarol)
         return d
 
@@ -586,12 +590,12 @@ class Enabled(Base, unittest.TestCase):
                                       "gifts are prohibited in this Tub",
                                       self.abob.callRemote,
                                       "set", obj=(self.alice, self.acarol)))
-        d.addCallback(lambda _: self.failIf(self.bob.obj))
+        d.addCallback(lambda _: self.assertFalse(self.bob.obj))
         def _check_tub(_):
             A,B,C,D = self.tubIDs
             b_connections = self.get_connections(self.tubB)
             self.failIfIn(C, b_connections)
-            self.failUnlessEqual(b_connections, set([A, D]))
+            self.assertEqual(b_connections, set([A, D]))
         d.addCallback(_check_tub)
         return d
 
@@ -610,6 +614,6 @@ class Enabled(Base, unittest.TestCase):
             A,B,C,D = self.tubIDs
             a_connections = self.get_connections(self.tubA)
             self.failIfIn(D, a_connections)
-            self.failUnlessEqual(a_connections, set([B,C]))
+            self.assertEqual(a_connections, set([B,C]))
         return d
 

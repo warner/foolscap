@@ -1,5 +1,46 @@
 User visible changes in Foolscap
 
+## Release ??
+
+Foolscap has been ported to py3 (specifically py3.5+). It currently still
+works under py2.7 as well, although support may go away at any time.
+
+Several features were removed to support the transition:
+
+* The SOCKS connection handler has been removed: the `txsocksx` library it
+  required remains py2-only. The `[socks]` extra has been removed.
+* The I2P connection handler has been removed, as `txi2p` is py2-only. The
+  `[i2p]` extra has been removed.
+* The `UnsafeBanana` utility has been removed. This worked like stdlib
+  "pickle", and was just as unsafe, and nobody used it.
+
+Most APIs now accept either bytes or text, and return native strings
+(`str/bytes` on py2, `str`/unicode on py3).
+
+To maintain wire-level compatibility between foolscap-based programs across
+heterogeneous peers, you must keep careful track of the types sent as
+arguments inside `callRemote` messages. Programs which casually sent native
+strings (bytes) on py2 will continue to send those bytes over the wire, so a
+py3 port of the same program will receive bytes, even though the same
+(unmodified) code will send unicode instances to the py2 program. When
+porting, I recommend first making all string types explicit (`b"for bytes"`
+and `u"for text"`), and make sure a py2 version with these changes can
+interoperate with the original py2 version. Then a py3 version has a stronger
+chance of working. You may be stuck with these awkward `bytes` markers for a
+long time.
+
+Some features may no longer work very well. Hopefully these will be fixed
+soon:
+
+* logging: Foolscap's extensive logging system stores data in JSON "incident"
+  files, and has multiple tools to deliver log events over the wire, some of
+  which might rely upon implicit string conversion. Several of these may now
+  display spurious `b''` wrappers around the data they display, especially if
+  a py2 emitter sends events to a py3 follower
+* appserver: the `flappserver` and `flappclient` tools have not been
+  extensively tested following the conversion
+
+
 ## Release 0.13.2 (22-Dec-2019)
 
 NOTE: This is the last release to support Python-2.x. The Python3 porting

@@ -1,6 +1,6 @@
-
+from __future__ import print_function
 import sys
-from StringIO import StringIO
+from io import StringIO
 from twisted.python import usage
 
 import foolscap
@@ -37,13 +37,13 @@ class Options(usage.Options):
             raise usage.UsageError("must specify a command")
 
     def opt_help(self):
-        print self.synopsis
+        print(self.synopsis)
         sys.exit(0)
 
     def opt_version(self):
         from twisted import copyright
-        print "Foolscap version:", foolscap.__version__
-        print "Twisted version:", copyright.version
+        print("Foolscap version:", foolscap.__version__)
+        print("Twisted version:", copyright.version)
         sys.exit(0)
 
 
@@ -75,7 +75,7 @@ def dispatch(command, options):
         return ic.run(options)
 
     else:
-        print "unknown command '%s'" % command
+        print("unknown command '%s'" % command)
         raise NotImplementedError
 
 def run_flogtool(argv=None, run_by_human=True):
@@ -86,13 +86,13 @@ def run_flogtool(argv=None, run_by_human=True):
     config = Options()
     try:
         config.parseOptions(argv)
-    except usage.error, e:
+    except usage.error as e:
         if not run_by_human:
             raise
-        print "%s:  %s" % (command_name, e)
-        print
+        print("%s:  %s" % (command_name, e))
+        print()
         c = getattr(config, 'subOptions', config)
-        print str(c)
+        print(str(c))
         sys.exit(1)
 
     command = config.subCommand

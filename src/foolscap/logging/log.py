@@ -1,7 +1,8 @@
-
+from __future__ import print_function
 import os, sys, time, weakref, binascii
 import traceback
 import collections
+import six
 from twisted.python import log as twisted_log
 from twisted.python import failure
 from foolscap import eventual
@@ -33,14 +34,14 @@ _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 def format_message(e):
     try:
         if "format" in e:
-            assert isinstance(e['format'], (str,unicode))
+            assert isinstance(e['format'], (six.binary_type, six.text_type))
             return e['format'] % e
         elif "args" in e:
             assert "message" in e
-            assert isinstance(e['message'], (str,unicode))
+            assert isinstance(e['message'], (six.binary_type, six.text_type))
             return e['message'] % e['args']
         elif "message" in e:
-            assert isinstance(e['message'], (str,unicode))
+            assert isinstance(e['message'], (six.binary_type, six.text_type))
             return e['message']
         else:
             return ""
@@ -94,6 +95,10 @@ class FoolscapLogger:
 
     def get_incarnation(self):
         unique = binascii.b2a_hex(os.urandom(8))
+        # b2a_hex yields bytes on both py2/py3
+        if sys.version_info.major != 2:
+            unique = unique.decode("ascii")
+        # 'unique' is native string
         sequential = None
         return (unique, sequential)
 
@@ -308,8 +313,8 @@ class FoolscapLogger:
         # iterates over all current log events in no particular order. The
         # caller should sort them by event number. If this isn't iterated
         # quickly enough, more events may arrive.
-        for facility,b1 in self.buffers.iteritems():
-            for level,q in b1.iteritems():
+        for facility,b1 in self.buffers.items():
+            for level,q in b1.items():
                 for event in q:
                     yield event
 
@@ -366,7 +371,9 @@ class TwistedLogBridge:
             # level.
             log_level = d.pop("log_level")
             new_log_level = llmap.get(log_level, log_level)
-            if not isinstance(new_log_level, (int, long, str, unicode, bool)):
+            if not isinstance(new_log_level,
+                              six.integer_types +
+                              (six.binary_type, six.text_type, bool)):
                 # it was something weird: just stringify it in-place
                 new_log_level = str(new_log_level)
             kwargs["level"] = new_log_level # foolscap level, not twisted
@@ -443,10 +450,12 @@ def bridgeLogsToTwisted(filter=None,
 class LogFileObserver:
     def __init__(self, filename, level=OPERATIONAL):
         if filename.endswith(".bz2"):
+            # py3: bz2file ignores "b", only accepts bytes, not str
             import bz2
-            self._logFile = bz2.BZ2File(filename, "w")
+            f = bz2.BZ2File(filename, "w")
         else:
-            self._logFile = open(filename, "wb")
+            f = open(filename, "wb")
+        self._logFile = f # todo: line_buffering=True ?
         self._level = level
         self._logFile.write(flogfile.MAGIC)
         flogfile.serialize_header(self._logFile,
@@ -486,8 +495,8 @@ if _flogfile:
         theLogger.addObserver(lfo.msg)
         #theLogger.set_generation_threshold(UNUSUAL, "foolscap.negotiation")
     except IOError:
-        print >>sys.stderr, "FLOGFILE: unable to write to %s, ignoring" % \
-              (_flogfile,)
+        print("FLOGFILE: unable to write to %s, ignoring" % \
+              (_flogfile,), file=sys.stderr)
 
 if "FLOGTWISTED" in os.environ:
     bridgeLogsFromTwisted()

@@ -4,7 +4,7 @@ from twisted.python.failure import Failure
 from twisted.internet import defer
 from foolscap.eventual import eventually
 
-EVENTUAL, CHAINED, NEAR, BROKEN = range(4)
+EVENTUAL, CHAINED, NEAR, BROKEN = list(range(4))
 
 class UsageError(Exception):
     """Raised when you do something inappropriate to a Promise."""

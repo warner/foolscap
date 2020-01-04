@@ -2,7 +2,7 @@
 
 from twisted.trial import unittest
 from twisted.application import service
-from cStringIO import StringIO
+from io import BytesIO
 import gc
 
 from foolscap.api import Referenceable, Copyable, RemoteCopy, \
@@ -34,47 +34,47 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
 
 
     def NOT_test_data_synchronous(self):
-        obj = ["look at the pretty graph", 3, True]
+        obj = [b"look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
         data = serialize(obj)
         obj2 = unserialize(data)
-        self.failUnlessEqual(obj2[1], 3)
+        self.assertEqual(obj2[1], 3)
         self.failUnlessIdentical(obj2[3], obj2)
 
     def test_data(self):
-        obj = ["simple graph", 3, True]
+        obj = [b"simple graph", 3, True]
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
-            self.failUnlessEqual(obj2[1], 3)
+            self.assertEqual(obj2[1], 3)
         d.addCallback(_check)
         return d
 
     def test_cycle(self):
-        obj = ["look at the pretty graph", 3, True]
+        obj = [b"look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
-            self.failUnlessEqual(obj2[1], 3)
+            self.assertEqual(obj2[1], 3)
             self.failUnlessIdentical(obj2[3], obj2)
         d.addCallback(_check)
         return d
 
     def test_copyable(self):
-        obj = ["fire pretty", Bar()]
+        obj = [b"fire pretty", Bar()]
         d = serialize(obj)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
-            self.failUnless(isinstance(obj2[1], Bar))
+            self.assertTrue(isinstance(obj2[1], Bar))
             self.failIfIdentical(obj[1], obj2[1])
         d.addCallback(_check)
         return d
 
     def test_data_outstream(self):
-        obj = ["look at the pretty graph", 3, True]
+        obj = [b"look at the pretty graph", 3, True]
         obj.append(obj) # and look at the pretty cycle
-        b = StringIO()
+        b = BytesIO()
         d = serialize(obj, outstream=b)
         def _out(res):
             self.failUnlessIdentical(res, b)
@@ -82,7 +82,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d.addCallback(_out)
         d.addCallback(lambda data: unserialize(data))
         def _check(obj2):
-            self.failUnlessEqual(obj2[1], 3)
+            self.assertEqual(obj2[1], 3)
             self.failUnlessIdentical(obj2[3], obj2)
         d.addCallback(_check)
         return d
@@ -95,7 +95,7 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         obj2 = [1, Foo()]
         d.addCallback(lambda ign:
                       self.shouldFail(Violation, "2",
-                                      "cannot serialize <foolscap.test.test_serialize.Foo instance",
+                                      "cannot serialize <foolscap.test.test_serialize.Foo ",
                                       serialize, obj2))
         return d
 
@@ -116,13 +116,13 @@ class Serialize(unittest.TestCase, ShouldFailMixin):
         d = t1.serialize(obj)
         del r1; del obj
         def _done(data):
-            self.failUnless("their-reference" in data)
+            self.assertTrue(b"their-reference" in data)
             return data
         d.addCallback(_done)
         d.addCallback(lambda data: t2.unserialize(data))
         def _check(obj2):
-            self.failUnlessEqual(obj2[0], "graph tangly")
-            self.failUnless(isinstance(obj2[1], RemoteReference))
+            self.assertEqual(obj2[0], "graph tangly")
+            self.assertTrue(isinstance(obj2[1], RemoteReference))
         d.addCallback(_check)
         return d
     test_referenceable.timeout = 5

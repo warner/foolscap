@@ -1,6 +1,7 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
 import decimal
+import six
 from twisted.internet.defer import Deferred
 from foolscap.tokens import BananaError, STRING, VOCAB
 from foolscap.slicer import BaseSlicer, LeafUnslicer
@@ -10,7 +11,7 @@ class DecimalSlicer(BaseSlicer):
     opentype = ("decimal",)
     slices = decimal.Decimal
     def sliceBody(self, streamable, banana):
-        yield str(self.obj)
+        yield six.ensure_binary(str(self.obj))
 
 class DecimalUnslicer(LeafUnslicer):
     opentype = ("decimal",)
@@ -33,7 +34,7 @@ class DecimalUnslicer(LeafUnslicer):
         assert ready_deferred is None
         if self.value != None:
             raise BananaError("already received a string")
-        self.value = decimal.Decimal(obj)
+        self.value = decimal.Decimal(six.ensure_str(obj))
 
     def receiveClose(self):
         return self.value, None

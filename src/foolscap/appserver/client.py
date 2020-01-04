@@ -1,6 +1,7 @@
-
+from __future__ import print_function, unicode_literals
+import six
 import os, sys
-from StringIO import StringIO
+from io import BytesIO
 from twisted.python import usage
 from twisted.internet import defer
 
@@ -42,7 +43,7 @@ class UploadFile(Referenceable):
     def _upload(self, _ignored, rref, sf, name):
         return Uploader().run(rref, sf, name)
     def _done(self, _ignored, options, name):
-        print >>options.stdout, "%s: uploaded" % name
+        options.stdout.write(six.ensure_binary("%s: uploaded\n" % name))
 
 
 class RunCommandOptions(BaseOptions):
@@ -87,6 +88,13 @@ from twisted.internet.protocol import Protocol
 #from zope.interface import implements
 #from twisted.internet.interfaces import IHalfCloseableProtocol
 
+def wrap_in_binary_mode(f):
+    if hasattr(f, "buffer"):
+        # py3 "text file", as returned by open(), or sys.std(in|out|err)
+        return f.buffer # _io.BufferedWriter
+    assert isinstance(f, BytesIO)
+    return f
+
 class RunCommand(Referenceable, Protocol):
     #implements(IHalfCloseableProtocol)
     def run(self, rref, options):
@@ -103,7 +111,7 @@ class RunCommand(Referenceable, Protocol):
         return self.d
 
     def dataReceived(self, data):
-        if not isinstance(data, str):
+        if not isinstance(data, bytes):
             raise TypeError("stdin can accept only strings of bytes, not '%s'"
                             % (type(data),))
         # this is from stdin. It shouldn't be called until after _started
@@ -121,9 +129,14 @@ class RunCommand(Referenceable, Protocol):
         # otherwise they don't want our stdin, so leave stdin_writer=None
 
     def remote_stdout(self, data):
+        #print(b"remote_stdout", type(data))
+        assert isinstance(data, bytes)
+        #print(data)
         self.stdout.write(data)
         self.stdout.flush()
+        #print(b"flushed stdout")
     def remote_stderr(self, data):
+        assert isinstance(data, bytes)
         self.stderr.write(data)
         self.stderr.flush()
     def remote_done(self, signal, exitcode):
@@ -180,13 +193,13 @@ class ClientOptions(usage.Options):
             raise usage.UsageError("must specify a command")
 
     def opt_help(self):
-        print >>self.stdout, self.synopsis
+        self.stdout.write(six.ensure_binary("%s\n" % (self.synopsis,)))
         sys.exit(0)
 
     def opt_version(self):
         from twisted import copyright
-        print >>self.stdout, "Foolscap version:", foolscap.__version__
-        print >>self.stdout, "Twisted version:", copyright.version
+        self.stdout.write(six.ensure_binary("Foolscap version: %s\n" % foolscap.__version__))
+        self.stdout.write(six.ensure_binary("Twisted version: %s\n" % copyright.version))
         sys.exit(0)
 
 dispatch_table = {
@@ -206,11 +219,11 @@ def parse_options(command_name, argv, stdio, stdout, stderr):
         config.subOptions.stdout = stdout
         config.subOptions.stderr = stderr
 
-    except usage.error, e:
-        print >>stderr, "%s:  %s" % (command_name, e)
-        print >>stderr
+    except usage.error as e:
+        stderr.write(six.ensure_binary("%s:  %s\n" % (command_name, e)))
+        stderr.write(b"\n")
         c = getattr(config, 'subOptions', config)
-        print >>stderr, str(c)
+        stderr.write(six.ensure_binary("%s\n" % (c,)))
         sys.exit(1)
 
     return config
@@ -245,11 +258,11 @@ def run_command(config):
 
 def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
     if run_by_human:
-        stdout = sys.stdout
-        stderr = sys.stderr
+        stdout = wrap_in_binary_mode(sys.stdout)
+        stderr = wrap_in_binary_mode(sys.stderr)
     else:
-        stdout = StringIO()
-        stderr = StringIO()
+        stdout = BytesIO()
+        stderr = BytesIO()
     if argv:
         command_name,argv = argv[0],argv[1:]
     else:
@@ -271,8 +284,8 @@ def run_flappclient(argv=None, run_by_human=True, stdio=StandardIO):
             if f.check(SystemExit):
                 stash_rc.append(f.value.args[0])
             else:
-                print >>stderr, "flappclient command failed:"
-                print >>stderr, f
+                stderr.write(b"flappclient command failed:\n")
+                stderr.write(six.ensure_binary("%s\n" % (f,)))
                 stash_rc.append(-1)
             reactor.stop()
         d.addCallbacks(good, oops)

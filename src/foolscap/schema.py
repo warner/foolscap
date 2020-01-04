@@ -54,6 +54,7 @@ modifiers:
 
 """
 
+import six
 from foolscap.tokens import Violation, UnknownSchemaType, BananaError, \
      tokenNames
 
@@ -134,14 +135,22 @@ def AnyStringConstraint(*args, **kwargs):
 StringConstraint = ByteStringConstraint
 
 constraintMap = {
-    str: ByteStringConstraint(),
-    unicode: UnicodeConstraint(),
+    six.binary_type: ByteStringConstraint(),
+    six.text_type: UnicodeConstraint(),
     bool: BooleanConstraint(),
-    int: IntegerConstraint(),
-    long: IntegerConstraint(maxBytes=1024),
     float: NumberConstraint(),
     None: Nothing(),
     }
+
+
+# we don't maintain compatibility for constraints defined by types. Back in
+# the py2-only days, 'int' meant a 32-bit signed integer, 'long' meant
+# fit-in-1024-bytes. The new rule is that 'int' means fit-in-1024-bytes (and
+# there is no 'long' in py3, of course). To get a 32-bit signed integer
+# constraint, use Int(maxBytes=-1).
+
+for t in six.integer_types:
+    constraintMap[t] = IntegerConstraint(maxBytes=1024)
 
 # This module provides a function named addToConstraintTypeMap() which helps
 # to resolve some import cycles.

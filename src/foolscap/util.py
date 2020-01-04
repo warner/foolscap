@@ -1,4 +1,5 @@
 import os, sys
+import six
 import socket
 import time
 from twisted.internet import defer, reactor, protocol
@@ -113,7 +114,7 @@ def move_into_place(source, dest):
     os.rename(source, dest)
 
 def isSubstring(small, big):
-    assert type(small) is str and type(big) is str
+    assert type(small) is bytes and type(big) is bytes
     return small in big
 
 def allocate_tcp_port():
@@ -199,3 +200,12 @@ def _make_socket():
     if platformType == "posix" and sys.platform != "cygwin":
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     return s
+
+# long_type(0) is 0L on py2, just plain 0 on py3
+if len(six.integer_types) > 1:
+    long_type = [t for t in six.integer_types if t is not int][0]
+else:
+    long_type = int
+
+def ensure_tuple_str(input_tuple):
+    return tuple([six.ensure_str(s) for s in input_tuple])

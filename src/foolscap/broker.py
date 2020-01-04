@@ -2,10 +2,12 @@
 
 # This module is responsible for the per-connection Broker object
 
+from __future__ import print_function
+import six
 import types, time
 from itertools import count
 
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.python import failure
 from twisted.internet import defer, error
 from twisted.internet import interfaces as twinterfaces
@@ -19,6 +21,7 @@ from foolscap.ipb import DeadReferenceError, IBroker
 from foolscap.slicers.root import RootSlicer, RootUnslicer, ScopedRootSlicer
 from foolscap.eventual import eventually
 from foolscap.logging import log
+from functools import reduce
 
 LOST_CONNECTION_ERRORS = [error.ConnectionLost, error.ConnectionDone]
 try:
@@ -64,7 +67,7 @@ class PBRootUnslicer(RootUnslicer):
                 # TODO: this is silly, of course (should pre-compute maxlen)
                 maxlen = reduce(max,
                                 [len(cname) \
-                                 for cname in copyable.CopyableRegistry.keys()]
+                                 for cname in list(copyable.CopyableRegistry.keys())]
                                 )
                 if size > maxlen:
                     why = "copyable-classname token is too long, %d>%d" % \
@@ -75,9 +78,9 @@ class PBRootUnslicer(RootUnslicer):
         else:
             # TODO: hack for testing
             raise Violation("index token 0x%02x not STRING or VOCAB" % \
-                              ord(typebyte))
+                              six.byte2int(typebyte))
             raise BananaError("index token 0x%02x not STRING or VOCAB" % \
-                              ord(typebyte))
+                              six.byte2int(typebyte))
 
     def open(self, opentype):
         # used for lower-level objects, delegated up from childunslicer.open
@@ -94,7 +97,7 @@ class PBRootUnslicer(RootUnslicer):
 
     def reportViolation(self, f):
         if self.logViolations:
-            print "hey, something failed:", f
+            print("hey, something failed:", f)
         return None # absorb the failure
 
     def receiveChild(self, token, ready_deferred):
@@ -129,6 +132,7 @@ class RIBroker(remoteinterface.RemoteInterface):
         return None
 
 
+@implementer(RIBroker, IBroker)
 class Broker(banana.Banana, referenceable.Referenceable):
     """I manage a connection to a remote Broker.
 
@@ -139,7 +143,6 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     """
 
-    implements(RIBroker, IBroker)
     slicerClass = PBRootSlicer
     unslicerClass = PBRootUnslicer
     unsafeTracebacks = True
@@ -160,8 +163,8 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.remote_tubref = remote_tubref
         self.keepaliveTimeout = keepaliveTimeout
         self.disconnectTimeout = disconnectTimeout
-        self._banana_decision_version = params.get("banana-decision-version")
-        vocab_table_index = params.get('initial-vocab-table-index')
+        self._banana_decision_version = params.get("banana-decision-version") # native str
+        vocab_table_index = params.get('initial-vocab-table-index') # native str
         if vocab_table_index:
             table = vocab.INITIAL_VOCAB_TABLES[vocab_table_index]
             self.populateVocabTable(table)
@@ -175,7 +178,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
         # tracking Referenceables
         # sending side uses these
-        self.nextCLID = count(1).next # 0 is for the broker
+        self.nextCLID = count(1) # 0 is for the broker
         self.myReferenceByPUID = {} # maps ref.processUniqueID to a tracker
         self.myReferenceByCLID = {} # maps CLID to a tracker
         # receiving side uses these
@@ -183,13 +186,13 @@ class Broker(banana.Banana, referenceable.Referenceable):
         self.yourReferenceByURL = {}
 
         # tracking Gifts
-        self.nextGiftID = count(1).next
+        self.nextGiftID = count(1)
         self.myGifts = {} # maps (broker,clid) to (rref, giftID, count)
         self.myGiftsByGiftID = {} # maps giftID to (broker,clid)
 
         # remote calls
         # sending side uses these
-        self.nextReqID = count(1).next # 0 means "we don't want a response"
+        self.nextReqID = count(1) # 0 means "we don't want a response"
         self.waitingForAnswers = {} # we wait for the other side to answer
         self.disconnectWatchers = []
 
@@ -330,7 +333,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         tracker = self.myReferenceByPUID.get(puid)
         if not tracker:
             # need to add one
-            clid = self.nextCLID()
+            clid = next(self.nextCLID)
             tracker = referenceable.ReferenceableTracker(self.tub,
                                                          obj, puid, clid)
             self.myReferenceByPUID[puid] = tracker
@@ -342,7 +345,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         tracker = self.myReferenceByPUID.get(puid)
         if not tracker:
             # need to add one
-            clid = self.nextCLID()
+            clid = next(self.nextCLID)
             clid = -clid
             tracker = referenceable.ReferenceableTracker(self.tub,
                                                          obj, puid, clid)
@@ -423,9 +426,9 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def freeYourReferenceTracker(self, res, tracker):
         if tracker.received_count != 0:
             return
-        if self.yourReferenceByCLID.has_key(tracker.clid):
+        if tracker.clid in self.yourReferenceByCLID:
             del self.yourReferenceByCLID[tracker.clid]
-        if tracker.url and self.yourReferenceByURL.has_key(tracker.url):
+        if tracker.url and tracker.url in self.yourReferenceByURL:
             del self.yourReferenceByURL[tracker.url]
 
 
@@ -439,7 +442,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         was registered with our Factory.
         """
 
-        assert isinstance(clid, (int, long))
+        assert isinstance(clid, six.integer_types)
         if clid == 0:
             return self
         return self.myReferenceByCLID[clid].obj
@@ -449,7 +452,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
 
     def remote_decref(self, clid, count):
         # invoked when the other side sends us a decref message
-        assert isinstance(clid, (int, long))
+        assert isinstance(clid, six.integer_types)
         assert clid != 0
         tracker = self.myReferenceByCLID.get(clid, None)
         if not tracker:
@@ -470,7 +473,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             rref, giftID, count = old
             self.myGifts[i] = (rref, giftID, count+1)
         else:
-            giftID = self.nextGiftID()
+            giftID = next(self.nextGiftID)
             self.myGiftsByGiftID[giftID] = i
             self.myGifts[i] = (rref, giftID, 1)
         return giftID
@@ -500,7 +503,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
     def newRequestID(self):
         if self.disconnected:
             raise DeadReferenceError("Calling Stale Broker")
-        return self.nextReqID()
+        return next(self.nextReqID)
 
     def addRequest(self, req):
         req.broker = self
@@ -517,7 +520,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             raise Violation("non-existent reqID '%d'" % reqID)
 
     def abandonAllRequests(self, why):
-        for req in self.waitingForAnswers.values():
+        for req in list(self.waitingForAnswers.values()):
             if why.check(*LOST_CONNECTION_ERRORS):
                 # map all connection-lost errors to DeadReferenceError, so
                 # application code only needs to check for one exception type
@@ -591,7 +594,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
         obj = delivery.obj
         args = delivery.allargs.args
         kwargs = delivery.allargs.kwargs
-        for i in args + kwargs.values():
+        for i in args + list(kwargs.values()):
             assert not isinstance(i, defer.Deferred)
 
         if delivery.methodSchema:
@@ -625,7 +628,7 @@ class Broker(banana.Banana, referenceable.Referenceable):
             methodName = methodSchema.name
             try:
                 methodSchema.checkResults(res, False) # may raise Violation
-            except Violation, v:
+            except Violation as v:
                 v.prependLocation("in return value of %s.%s" %
                                   (delivery.obj, methodSchema.name))
                 raise
@@ -733,12 +736,13 @@ class StorageBroker(Broker):
 # we use it for real, not just for testing. The IConsumer stuff hasn't been
 # tested at all.
 
+@implementer(twinterfaces.IAddress)
 class LoopbackAddress(object):
-    implements(twinterfaces.IAddress)
+    pass
 
+@implementer(twinterfaces.ITransport, twinterfaces.IConsumer)
 class LoopbackTransport(object):
     # we always create these in pairs, with .peer pointing at each other
-    implements(twinterfaces.ITransport, twinterfaces.IConsumer)
 
     producer = None
 

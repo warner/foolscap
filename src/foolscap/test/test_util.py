@@ -1,9 +1,7 @@
-
 from twisted.trial import unittest
 from twisted.internet import reactor, defer, protocol, endpoints
 from twisted.python import failure
-from foolscap import util, eventual, base32
-
+from foolscap import util, eventual, base32, crypto
 
 class AsyncAND(unittest.TestCase):
     def setUp(self):
@@ -20,14 +18,14 @@ class AsyncAND(unittest.TestCase):
         return d
 
     def shouldNotFire(self, ignored=None):
-        self.failIf(self.fired)
-        self.failIf(self.failed)
+        self.assertFalse(self.fired)
+        self.assertFalse(self.failed)
     def shouldFire(self, ignored=None):
-        self.failUnless(self.fired)
-        self.failIf(self.failed)
+        self.assertTrue(self.fired)
+        self.assertFalse(self.failed)
     def shouldFail(self, ignored=None):
-        self.failUnless(self.failed)
-        self.failIf(self.fired)
+        self.assertTrue(self.failed)
+        self.assertFalse(self.fired)
 
     def tearDown(self):
         return eventual.flushEventualQueue()
@@ -78,9 +76,9 @@ class AsyncAND(unittest.TestCase):
         d2 = defer.Deferred()
         self.attach(util.AsyncAND([d1, d2]))
         def _should_fire(res):
-            self.failIf(isinstance(res, failure.Failure))
+            self.assertFalse(isinstance(res, failure.Failure))
         def _should_fail(f):
-            self.failUnless(isinstance(f, failure.Failure))
+            self.assertTrue(isinstance(f, failure.Failure))
         d1.addBoth(_should_fire)
         d2.addBoth(_should_fail)
         self.shouldNotFire()
@@ -92,29 +90,34 @@ class AsyncAND(unittest.TestCase):
 
 class Base32(unittest.TestCase):
     def test_is_base32(self):
-        self.failUnless(base32.is_base32("abc456"))
-        self.failUnless(base32.is_base32("456"))
-        self.failUnless(base32.is_base32(""))
-        self.failIf(base32.is_base32("123")) # 1 is not in rfc4648 base32
-        self.failIf(base32.is_base32(".123"))
-        self.failIf(base32.is_base32("_"))
-        self.failIf(base32.is_base32("a b c"))
+        self.assertTrue(base32.is_base32("abc456"))
+        self.assertTrue(base32.is_base32("456"))
+        self.assertTrue(base32.is_base32(""))
+        self.assertFalse(base32.is_base32("123")) # 1 is not in rfc4648 base32
+        self.assertFalse(base32.is_base32(".123"))
+        self.assertFalse(base32.is_base32("_"))
+        self.assertFalse(base32.is_base32("a b c"))
+
+    def test_digest32(self):
+        colondigest = b'0F:E6:23:51:58:EA:66:A1:69:52:21:30:01:CA:7D:36:E0:EF:6C:46'
+        d32 = crypto.digest32(colondigest)
+        self.failUnlessEqual(d32, "b7tcguky5jtkc2kseeyadst5g3qo63cg")
 
 class Time(unittest.TestCase):
     def test_format(self):
         when = 1339286175.7071271
-        self.failUnlessEqual(util.format_time(when, "utc"),
+        self.assertEqual(util.format_time(when, "utc"),
                              "2012-06-09_23:56:15.707127Z")
-        self.failUnlessEqual(util.format_time(when, "epoch"),
+        self.assertEqual(util.format_time(when, "epoch"),
                              "1339286175.707")
-        self.failUnless(":" in util.format_time(when, "short-local"))
-        self.failUnless(":" in util.format_time(when, "long-local"))
+        self.assertTrue(":" in util.format_time(when, "short-local"))
+        self.assertTrue(":" in util.format_time(when, "long-local"))
 
 class AllocatePort(unittest.TestCase):
     def test_allocate(self):
         p = util.allocate_tcp_port()
-        self.failUnless(isinstance(p, int))
-        self.failUnless(1 <= p <= 65535, p)
+        self.assertTrue(isinstance(p, int))
+        self.assertTrue(1 <= p <= 65535, p)
         # the allocation function should release the port before it
         # returns, so it should be possible to listen on it immediately
         ep = endpoints.TCP4ServerEndpoint(reactor, p, interface="127.0.0.1")

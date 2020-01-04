@@ -1,3 +1,4 @@
+import six
 import json
 from contextlib import closing
 from twisted.python import failure
@@ -31,30 +32,35 @@ class ExtendedEncoder(json.JSONEncoder):
                         "message": "log.msg() was given an object that could not be encoded into JSON, and when I tried to repr() it I got an error too. That exception wasn't repr()able either. I give up. Good luck.",
                         }
 
+def serialize_to_json_utf8(f, obj):
+    # py2 json.dumps(ensure_ascii=True) always returns bytes (of ascii)
+    # py3 json.dumps always returns str
+    s = json.dumps(obj, cls=ExtendedEncoder)
+    f.write(six.ensure_binary(s))
 
 def serialize_raw_header(f, header):
-    json.dump({"header": header}, f, cls=ExtendedEncoder)
-    f.write("\n")
+    serialize_to_json_utf8(f, {"header": header})
+    f.write(b"\n")
 
 def serialize_header(f, type, **kwargs):
     header = {"header": {"type": type} }
-    for k,v in kwargs.items():
+    for k,v in list(kwargs.items()):
         header["header"][k] = v
-    json.dump(header, f, cls=ExtendedEncoder)
-    f.write("\n")
+    serialize_to_json_utf8(f, header)
+    f.write(b"\n")
 
 def serialize_raw_wrapper(f, wrapper):
-    json.dump(wrapper, f, cls=ExtendedEncoder)
-    f.write("\n")
+    serialize_to_json_utf8(f, wrapper)
+    f.write(b"\n")
 
 def serialize_wrapper(f, ev, from_, rx_time):
     wrapper = {"from": from_,
                "rx_time": rx_time,
                "d": ev}
-    json.dump(wrapper, f, cls=ExtendedEncoder)
-    f.write("\n")
+    serialize_to_json_utf8(f, wrapper)
+    f.write(b"\n")
 
-MAGIC = "# foolscap flogfile v1\n"
+MAGIC = b"# foolscap flogfile v1\n"
 class BadMagic(Exception):
     """The file is not a flogfile: wrong magic number."""
 class EvilPickleFlogFile(BadMagic):
@@ -73,13 +79,13 @@ def get_events(fn):
     with closing(f):
         maybe_magic = f.read(len(MAGIC))
         if maybe_magic != MAGIC:
-            if maybe_magic.startswith("(dp0"):
+            if maybe_magic.startswith(b"(dp0"):
                 raise EvilPickleFlogFile()
-            if maybe_magic.startswith("pb:"):
+            if maybe_magic.startswith(b"pb:"):
                 # this happens when you point "flogtool dump" at a furlfile
                 # (e.g. logport.furl) by mistake. Emit a useful error
                 # message.
                 raise ThisIsActuallyAFurlFileError
             raise BadMagic(repr(maybe_magic))
         for line in f.readlines():
-            yield json.loads(line)
+            yield json.loads(line.decode("utf-8"))

@@ -1,19 +1,21 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
-import types
-from zope.interface import implements
+from __future__ import print_function
+import six
+from zope.interface import implementer
 from twisted.internet.defer import Deferred
 from foolscap import tokens
 from foolscap.tokens import Violation, BananaError
 from foolscap.slicer import BaseUnslicer, ReferenceSlicer
 from foolscap.slicer import UnslicerRegistry, BananaUnslicerRegistry
 from foolscap.slicers.vocab import ReplaceVocabularyTable, AddToVocabularyTable
+from foolscap.util import ensure_tuple_str
 from foolscap import copyable # does this create a cycle?
 from twisted.python import log
+from functools import reduce
 
+@implementer(tokens.ISlicer, tokens.IRootSlicer)
 class RootSlicer:
-    implements(tokens.ISlicer, tokens.IRootSlicer)
-
     streamableInGeneral = True
     producingDeferred = None
     objectSentDeferred = None
@@ -58,18 +60,21 @@ class RootSlicer:
         if slicerFactory:
             if self.debug: log.msg(" got slicerFactory %s" % slicerFactory)
             return slicerFactory(obj)
-        if issubclass(type(obj), types.InstanceType):
-            name = str(obj.__class__)
-        else:
-            name = str(type(obj))
+        name = str(type(obj))
         if self.debug: log.msg("cannot serialize %s (%s)" % (obj, name))
         raise Violation("cannot serialize %s (%s)" % (obj, name))
 
+    sliceAlreadyCalled = False
     def slice(self):
-        return self
+        # this may only be called once
+        assert not self.sliceAlreadyCalled
+        self.sliceAlreadyCalled = True
+        return iter(self)
+
     def __iter__(self):
-        return self # we are our own iterator
-    def next(self):
+        return self
+
+    def __next__(self):
         if self.objectSentDeferred:
             self.objectSentDeferred.callback(None)
             self.objectSentDeferred = None
@@ -78,10 +83,11 @@ class RootSlicer:
             self.streamable = self.streamableInGeneral
             return obj
         if self.protocol.debugSend:
-            print "LAST BAG"
+            print("LAST BAG")
         self.producingDeferred = Deferred()
         self.streamable = True
         return self.producingDeferred
+    next = __next__
 
     def childAborted(self, f):
         assert self.objectSentDeferred
@@ -98,7 +104,7 @@ class RootSlicer:
         if idle:
             # wake up
             if self.protocol.debugSend:
-                print " waking up to send"
+                print(" waking up to send")
             if self.producingDeferred:
                 d = self.producingDeferred
                 self.producingDeferred = None
@@ -157,7 +163,7 @@ class RootUnslicer(BaseUnslicer):
         self.objects = {}
         keys = []
         for r in self.topRegistries + self.openRegistries:
-            for k in r.keys():
+            for k in list(r.keys()):
                 keys.append(len(k[0]))
         self.maxIndexLength = reduce(max, keys)
 
@@ -184,15 +190,16 @@ class RootUnslicer(BaseUnslicer):
         else:
             # TODO: hack for testing
             raise Violation("index token 0x%02x not STRING or VOCAB" % \
-                              ord(typebyte))
+                              six.byte2int(typebyte))
             raise BananaError("index token 0x%02x not STRING or VOCAB" % \
-                              ord(typebyte))
+                              six.byte2int(typebyte))
 
     def open(self, opentype):
         # called (by delegation) by the top Unslicer on the stack, regardless
         # of what kind of unslicer it is. This is only used for "internal"
         # objects: non-top-level nodes
         assert len(self.protocol.receiveStack) > 1
+        opentype = ensure_tuple_str(opentype)
 
         if opentype[0] == 'copyable':
             if len(opentype) > 1:
@@ -217,6 +224,7 @@ class RootUnslicer(BaseUnslicer):
     def doOpen(self, opentype):
         # this is only called for top-level objects
         assert len(self.protocol.receiveStack) == 1
+        opentype = ensure_tuple_str(opentype)
         if self.constraint:
             self.constraint.checkOpentype(opentype)
         for reg in self.topRegistries:
@@ -235,14 +243,14 @@ class RootUnslicer(BaseUnslicer):
         assert not isinstance(obj, Deferred)
         assert ready_deferred is None
         if self.protocol.debugReceive:
-            print "RootUnslicer.receiveChild(%s)" % (obj,)
+            print("RootUnslicer.receiveChild(%s)" % (obj,))
         self.objects = {}
         if obj in (ReplaceVocabularyTable, AddToVocabularyTable):
             # the unslicer has already changed the vocab table
             return
         if self.protocol.exploded:
-            print "protocol exploded, can't deliver object"
-            print self.protocol.exploded
+            print("protocol exploded, can't deliver object")
+            print(self.protocol.exploded)
             self.protocol.receivedObject(self.protocol.exploded)
             return
         self.protocol.receivedObject(obj) # give finished object to Banana

@@ -1,5 +1,7 @@
-
-import time, urllib
+from __future__ import print_function
+import time
+import six
+from six.moves.urllib.parse import quote
 from twisted.internet import reactor, endpoints
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.python import usage
@@ -79,7 +81,7 @@ def web_format_time(t, mode="short-local"):
     return time_s, extended
 
 def web_escape(u):
-    return html.escape(u.encode("utf-8"))
+    return html.escape(six.ensure_str(u))
 
 class Welcome(resource.Resource):
     def __init__(self, viewer, timestamps):
@@ -162,7 +164,7 @@ class Welcome(resource.Resource):
 
         data += "</body></html>"
         req.setHeader("content-type", "text/html")
-        return data
+        return six.ensure_binary(data)
 
 class Summary(resource.Resource):
     def __init__(self, viewer):
@@ -170,8 +172,8 @@ class Summary(resource.Resource):
         resource.Resource.__init__(self)
 
     def getChild(self, path, req):
-        if "-" in path:
-            lfnum,levelnum = map(int, path.split("-"))
+        if b"-" in path:
+            lfnum,levelnum = list(map(int, path.split(b"-")))
             lf = self._viewer.logfiles[lfnum]
             (first, last, num_events, levels,
              pid, versions) = self._viewer.summaries[lf]
@@ -199,7 +201,7 @@ class SummaryView(resource.Resource):
         data += "</ul>\n"
         data += "</body>\n"
         data += "</html>\n"
-        return data
+        return six.ensure_binary(data)
 
 
 
@@ -248,8 +250,8 @@ class EventView(resource.Resource):
                 data += e.to_html(timestamps=timestamps)
                 data += '</span></li>\n'
         elif sortby == "time":
-            events = self.viewer.number_map.values()
-            events.sort(lambda a,b: cmp(a.e['d']['time'], b.e['d']['time']))
+            events = list(self.viewer.number_map.values())
+            events.sort(key=lambda a: a.e['d']['time'])
             for e in events:
                 data += '<li><span class="%s">' % e.level_class()
                 data += e.to_html(timestamps=timestamps)
@@ -259,7 +261,7 @@ class EventView(resource.Resource):
 
         data += "</ul>\n"
         req.setHeader("content-type", "text/html")
-        return data
+        return six.ensure_binary(data)
 
     def _emit_events(self, indent, event, timestamps):
         indent_s = " " * indent
@@ -283,10 +285,10 @@ class LogEvent:
         self.children = []
         self.index = None
         self.anchor_index = "no-number"
-        self.incarnation = base32.encode(e['d']['incarnation'][0])
+        self.incarnation = base32.encode(e['d']['incarnation'][0].encode("utf-8"))
         if 'num' in e['d']:
             self.index = (e['from'], e['d']['num'])
-            self.anchor_index = "%s_%s_%d" % (urllib.quote(e['from'].encode("utf-8")),
+            self.anchor_index = "%s_%s_%d" % (quote(e['from'].encode("utf-8")),
                                               self.incarnation.encode("utf-8"),
                                               e['d']['num'])
         self.parent_index = None
@@ -346,7 +348,7 @@ class Reload(resource.Resource):
     def render_POST(self, req):
         self.viewer.load_logfiles()
         req.redirect("/")
-        return ''
+        return b''
 
 class WebViewer:
 
@@ -354,23 +356,23 @@ class WebViewer:
         d = fireEventually(options)
         d.addCallback(self.start)
         d.addErrback(self._error)
-        print "starting.."
+        print("starting..")
         reactor.run()
 
     def _error(self, f):
-        print "ERROR", f
+        print("ERROR", f)
         reactor.stop()
 
     @inlineCallbacks
     def start(self, options):
         root = static.Data("placeholder", "text/plain")
         welcome = Welcome(self, options["timestamps"])
-        root.putChild("", welcome)
-        root.putChild("welcome", welcome) # we used to only do this
-        root.putChild("reload", Reload(self))
-        root.putChild("all-events", EventView(self))
-        root.putChild("summary", Summary(self))
-        root.putChild("flog.css", static.Data(FLOG_CSS, "text/css"))
+        root.putChild(b"", welcome)
+        root.putChild(b"welcome", welcome) # we used to only do this
+        root.putChild(b"reload", Reload(self))
+        root.putChild(b"all-events", EventView(self))
+        root.putChild(b"summary", Summary(self))
+        root.putChild(b"flog.css", static.Data(FLOG_CSS, "text/css"))
         s = server.Site(root)
 
         port = options["port"]
@@ -383,13 +385,13 @@ class WebViewer:
         url = "http://localhost:%d/" % portnum
 
         if not options["quiet"]:
-            print "scanning.."
+            print("scanning..")
         self.logfiles = [options.dumpfile]
         self.load_logfiles()
 
         if not options["quiet"]:
-            print "please point your browser at:"
-            print url
+            print("please point your browser at:")
+            print(url)
         if options["open"]:
             import webbrowser
             webbrowser.open(url)

@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 from twisted.trial import unittest
 import time
 import platform
@@ -31,22 +31,22 @@ class Versions(unittest.TestCase):
              and is_select ):
             # twisted 8.1.0 bad, 8.0.1 bad, 8.0.0 bad, I think 2.5.0 is too.
             # twisted 10.1.0 ok.
-            print
-            print "-------------"
-            print "Warning: tests will fail (unclean reactor warnings)"
-            print "when pyOpenSSL >= 0.7 is used in conjunction with"
-            print "Twisted <= 8.1.0 . The workaround is to use the pollreactor"
-            print "instead of the default selectreactor (trial -r poll)."
-            print "This bug is fixed in Twisted trunk, and should appear"
-            print "in the next release of Twisted."
-            print " pyOpenSSL version:", OpenSSL.__version__
-            print " Twisted version:", twisted.__version__
-            print " reactor:", str(reactor)
-            print "See http://foolscap.lothar.com/trac/ticket/62 for details."
-            print
-            print "Sleeping for 10 seconds to give you a chance to stop this"
-            print "run and restart with -r poll..."
-            print "-------------"
+            print()
+            print("-------------")
+            print("Warning: tests will fail (unclean reactor warnings)")
+            print("when pyOpenSSL >= 0.7 is used in conjunction with")
+            print("Twisted <= 8.1.0 . The workaround is to use the pollreactor")
+            print("instead of the default selectreactor (trial -r poll).")
+            print("This bug is fixed in Twisted trunk, and should appear")
+            print("in the next release of Twisted.")
+            print(" pyOpenSSL version:", OpenSSL.__version__)
+            print(" Twisted version:", twisted.__version__)
+            print(" reactor:", str(reactor))
+            print("See http://foolscap.lothar.com/trac/ticket/62 for details.")
+            print()
+            print("Sleeping for 10 seconds to give you a chance to stop this")
+            print("run and restart with -r poll...")
+            print("-------------")
 
             # give them a chance to read it and re-run the tests with -r poll
             time.sleep(10)
@@ -61,5 +61,5 @@ class Versions(unittest.TestCase):
         log.msg("platform: %s" % platform.version())
 
     def test_not_unicode(self):
-        self.failUnlessEqual(type(foolscap.__version__), str)
-        self.failUnlessEqual(type(__version__), str)
+        self.assertEqual(type(foolscap.__version__), str)
+        self.assertEqual(type(__version__), str)

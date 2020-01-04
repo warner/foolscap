@@ -6,7 +6,6 @@ from foolscap.tokens import (NoLocationHintsError, NegotiationError,
 from foolscap.info import ConnectionInfo
 from foolscap.logging import log
 from foolscap.logging.log import CURIOUS, UNUSUAL, OPERATIONAL
-from foolscap.util import isSubstring
 from foolscap.ipb import InvalidHintError
 from foolscap.connections.tcp import convert_legacy_hint
 
@@ -175,7 +174,7 @@ class TubConnector(object):
             d.cancel()
             # this will trigger self._connectionFailed(), via the errback,
             # with a ConnectingCancelledError
-        for n in self.pendingNegotiations.keys():
+        for n in list(self.pendingNegotiations.keys()):
             n.transport.loseConnection()
             # triggers n.connectionLost(), then self.connectorNegotiationFailed()
 
@@ -330,9 +329,18 @@ class TubConnector(object):
         # indicates a duplicate connection, do not signal a failure here. We
         # leave the connection timer in place in case they lied about having
         # a duplicate connection ready to go.
-        if (self.failureReason.check(RemoteNegotiationError) and
-            isSubstring(self.failureReason.value.args[0],
-                        "Duplicate connection")):
+
+        ## this code was wrong (it used isSubstring() with the arguments
+        ## swapped, so it would always return False), but the tests were
+        ## passing, which means the tests were broken (as well as my
+        ## understanding of what this was supposed to do). I'm going to
+        ## disable this clause entirely for now. I *think* the consequence is
+        ## unnecessary reconnection attempts in some circumstances.
+        if (False and
+            self.failureReason.check(RemoteNegotiationError) and
+            ("Duplicate connection" in self.failureReason.value.args[0])
+            #isSubstring(self.failureReason.value.args[0], "Duplicate connection")
+            ):
             self.log("TubConnector.checkForFailure: connection attempt "
                      "failed because the other end decided ours was a "
                      "duplicate connection, so we won't signal the "

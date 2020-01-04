@@ -1,4 +1,5 @@
 import re
+import six
 from foolscap import base32
 
 class BadFURLError(Exception):
@@ -6,13 +7,14 @@ class BadFURLError(Exception):
 
 AUTH_STURDYREF_RE = re.compile(r"pb://([^@]+)@([^/]*)/(.+)$")
 
-def decode_furl(furl):
+def decode_furl(furl): # takes either, returns native
     """Returns (tubID, location_hints, name)"""
     # pb://key@{ip:port,host:port,[ipv6]:port}[/unix]/swissnumber
     # i.e. pb://tubID@{locationHints..}/name
     #
     # it can live at any one of a (TODO) variety of network-accessible
     # locations, or (TODO) at a single UNIX-domain socket.
+    furl = six.ensure_str(furl)
 
     mo_auth_furl = AUTH_STURDYREF_RE.search(furl)
     if mo_auth_furl:
@@ -38,5 +40,5 @@ def decode_furl(furl):
     return (tubID, location_hints, name)
 
 def encode_furl(tubID, location_hints, name):
-    location_hints_s = ",".join(location_hints)
-    return "pb://" + tubID + "@" + location_hints_s + "/" + name
+    location_hints_s = ",".join([six.ensure_str(hint) for hint in location_hints])
+    return "pb://" + six.ensure_str(tubID) + "@" + location_hints_s + "/" + six.ensure_str(name)

@@ -1,15 +1,16 @@
-
+from __future__ import print_function
 import os
 from collections import deque
-from zope.interface import implements
+import six
+from zope.interface import implementer
 from twisted.python import filepath
 from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
 from foolscap.logging import app_versions, flogfile
 from foolscap.eventual import eventually
 
+@implementer(RISubscription)
 class Subscription(Referenceable):
-    implements(RISubscription)
     # used as a marker, and as an unsubscribe() method. We use this to manage
     # the outbound size-limited queue.
     MAX_QUEUE_SIZE = 2000
@@ -37,7 +38,7 @@ class Subscription(Referenceable):
             # subscriber see events in sorted order. We bypass the bounded
             # queue for this.
             events = list(self.logger.get_buffered_events())
-            events.sort(lambda a,b: cmp(a['num'], b['num']))
+            events.sort(key=lambda a: a['num'])
             for e in events:
                 self.observer.callRemoteOnly("msg", e)
 
@@ -88,9 +89,8 @@ class Subscription(Referenceable):
         #print "PUBLISH FAILED: %s" % f
         self.unsubscribe()
 
+@implementer(RISubscription)
 class IncidentSubscription(Referenceable):
-    implements(RISubscription)
-
     def __init__(self, observer, logger, publisher):
         self.observer = observer
         self.logger = logger
@@ -110,8 +110,7 @@ class IncidentSubscription(Referenceable):
             fn = new[name]
             trigger = self.publisher.get_incident_trigger(fn)
             if trigger:
-                self.observer.callRemoteOnly("new_incident", name,
-                                             _keys_to_bytes(trigger))
+                self.observer.callRemoteOnly("new_incident", name, trigger)
         self.observer.callRemoteOnly("done_with_incident_catchup")
 
     def unsubscribe(self):
@@ -127,19 +126,11 @@ class IncidentSubscription(Referenceable):
         d.addErrback(self._error)
 
     def _error(self, f):
-        print "INCIDENT PUBLISH FAILED: %s" % f
+        print("INCIDENT PUBLISH FAILED: %s" % f)
         self.unsubscribe()
 
 
-def _keys_to_bytes(d):
-    # the interfaces.Header and Event schema require the keys to be bytes
-    # ("str", since we're in py2), but we get unicode since we're pulling
-    # from a JSON-serialized incident file. These keys are fixed strings
-    # like (message, level, facility, from, rx_time, d). Encode to ASCII to
-    # make this clear. The user-provided data lives in the *values* of
-    # these dicts, which are unconstrained (the schemas use Any())
-    return dict([ (k.encode("ascii"), v) for (k,v) in d.iteritems()])
-
+@implementer(RILogPublisher)
 class LogPublisher(Referenceable):
     """Publish log events to anyone subscribed to our 'logport'.
 
@@ -170,8 +161,6 @@ class LogPublisher(Referenceable):
     will cause the Tub to connect to the gatherer and grant it access to the
     logport.
     """
-
-    implements(RILogPublisher)
 
     # the 'versions' dict used to live here in LogPublisher, but now it lives
     # in foolscap.logging.app_versions and should be accessed from there.
@@ -206,12 +195,14 @@ class LogPublisher(Referenceable):
 
     def list_incident_names(self, since=""):
         # yields (name, absfilename) pairs
+        since = six.ensure_str(since)
         basedir = self._logger.logdir
         for fn in os.listdir(basedir):
             if fn.startswith("incident") and not fn.endswith(".tmp"):
-                basename = self.trim(fn, ".bz2", ".flog")
+                basename = six.ensure_str(self.trim(fn, ".bz2", ".flog"))
                 if basename > since:
-                    yield (basename, os.path.join(basedir, fn))
+                    fullname = six.ensure_str(os.path.join(basedir, fn))
+                    yield (basename, fullname)
 
     def get_incident_trigger(self, abs_fn):
         events = flogfile.get_events(abs_fn)
@@ -228,10 +219,11 @@ class LogPublisher(Referenceable):
         for (name,fn) in self.list_incident_names(since):
             trigger = self.get_incident_trigger(fn)
             if trigger:
-                incidents[name] = _keys_to_bytes(trigger)
+                incidents[six.ensure_str(name)] = trigger
         return incidents
 
     def remote_get_incident(self, name):
+        name = six.ensure_str(name)
         if not name.startswith("incident"):
             raise KeyError("bad incident name %s" % name)
         incident_dir = filepath.FilePath(self._logger.logdir)
@@ -242,10 +234,10 @@ class LogPublisher(Referenceable):
                 fn = abs_fn
             events = flogfile.get_events(fn)
             # note the generator isn't actually cycled yet, not until next()
-            header = _keys_to_bytes(next(events)["header"])
+            header = next(events)["header"]
         except EnvironmentError:
             raise KeyError("no incident named %s" % name)
-        wrapped_events = [_keys_to_bytes(event["d"]) for event in events]
+        wrapped_events = [event["d"] for event in events]
         return (header, wrapped_events)
 
     def remote_subscribe_to_incidents(self, observer, catch_up=False, since=""):

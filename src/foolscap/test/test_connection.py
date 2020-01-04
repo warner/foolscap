@@ -2,17 +2,16 @@ import os
 import mock
 from zope.interface import implementer
 from twisted.trial import unittest
-from twisted.internet import endpoints, defer, reactor
+from twisted.internet import defer, reactor
 from twisted.internet.endpoints import clientFromString
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.interfaces import IStreamClientEndpoint
 from twisted.application import service
 import txtorcon
-from txsocksx.client import SOCKS5ClientEndpoint
 from foolscap.api import Tub
 from foolscap.info import ConnectionInfo
 from foolscap.connection import get_endpoint
-from foolscap.connections import tcp, socks, tor, i2p
+from foolscap.connections import tcp, tor
 from foolscap.tokens import NoLocationHintsError
 from foolscap.ipb import InvalidHintError
 from foolscap.test.common import (certData_low, certData_high, Target,
@@ -35,10 +34,10 @@ class Convert(unittest.TestCase):
                         side_effect=FakeHostnameEndpoint):
             d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
         (ep, host) = self.successResultOf(d)
-        self.failUnless(isinstance(ep, FakeHostnameEndpoint), ep)
+        self.assertTrue(isinstance(ep, FakeHostnameEndpoint), ep)
         self.failUnlessIdentical(ep.reactor, reactor)
-        self.failUnlessEqual(ep.host, expected_host)
-        self.failUnlessEqual(ep.port, expected_port)
+        self.assertEqual(ep.host, expected_host)
+        self.assertEqual(ep.port, expected_port)
 
     def checkBadTCPEndpoint(self, hint):
         d = get_endpoint(hint, {"tcp": tcp.default()}, ConnectionInfo())
@@ -49,18 +48,18 @@ class Convert(unittest.TestCase):
         self.failureResultOf(d, ipb.InvalidHintError)
 
     def testConvertLegacyHint(self):
-        self.failUnlessEqual(tcp.convert_legacy_hint("127.0.0.1:9900"),
+        self.assertEqual(tcp.convert_legacy_hint("127.0.0.1:9900"),
                              "tcp:127.0.0.1:9900")
-        self.failUnlessEqual(tcp.convert_legacy_hint("tcp:127.0.0.1:9900"),
+        self.assertEqual(tcp.convert_legacy_hint("tcp:127.0.0.1:9900"),
                              "tcp:127.0.0.1:9900")
-        self.failUnlessEqual(tcp.convert_legacy_hint("other:127.0.0.1:9900"),
+        self.assertEqual(tcp.convert_legacy_hint("other:127.0.0.1:9900"),
                              "other:127.0.0.1:9900")
         # this is unfortunate
-        self.failUnlessEqual(tcp.convert_legacy_hint("unix:1"), "tcp:unix:1")
+        self.assertEqual(tcp.convert_legacy_hint("unix:1"), "tcp:unix:1")
         # so new hints should do one of these:
-        self.failUnlessEqual(tcp.convert_legacy_hint("tor:host:1234"),
+        self.assertEqual(tcp.convert_legacy_hint("tor:host:1234"),
                              "tor:host:1234") # multiple colons
-        self.failUnlessEqual(tcp.convert_legacy_hint("unix:fd=1"),
+        self.assertEqual(tcp.convert_legacy_hint("unix:fd=1"),
                              "unix:fd=1") # equals signs, key=value -style
 
     def testTCP(self):
@@ -136,7 +135,7 @@ class ErrorSuffix(unittest.TestCase):
                 raise ValueError("foo")
         e = self.assertRaises(ValueError, _try)
         self.assertEqual(statuses, ["context"])
-        self.assert_(hasattr(e, "foolscap_connection_handler_error_suffix"))
+        self.assertTrue(hasattr(e, "foolscap_connection_handler_error_suffix"))
         self.assertEqual(e.foolscap_connection_handler_error_suffix,
                          " (while context)")
 
@@ -177,8 +176,8 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
         tubB.addConnectionHintHandler("type2", h)
         d = tubB.getReference(furl)
         def _got(rref):
-            self.failUnlessEqual(h.asked, 1)
-            self.failUnlessEqual(h.accepted, 1)
+            self.assertEqual(h.asked, 1)
+            self.assertEqual(h.accepted, 1)
         d.addCallback(_got)
         return d
 
@@ -189,8 +188,8 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
         tubB.addConnectionHintHandler("type2", h)
         d = tubB.getReference(furl)
         def _got(rref):
-            self.failUnlessEqual(h.asked, 1)
-            self.failUnlessEqual(h.accepted, 1)
+            self.assertEqual(h.asked, 1)
+            self.assertEqual(h.accepted, 1)
         d.addCallback(_got)
         return d
 
@@ -203,10 +202,10 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
         tubB.addConnectionHintHandler("type2", h2)
         d = tubB.getReference(furl)
         def _got(rref):
-            self.failUnlessEqual(h1.asked, 0)
-            self.failUnlessEqual(h1.accepted, 0)
-            self.failUnlessEqual(h2.asked, 1)
-            self.failUnlessEqual(h2.accepted, 1)
+            self.assertEqual(h1.asked, 0)
+            self.assertEqual(h1.accepted, 0)
+            self.assertEqual(h2.asked, 1)
+            self.assertEqual(h2.accepted, 1)
         d.addCallback(_got)
         return d
 
@@ -219,10 +218,10 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
         tubB.addConnectionHintHandler("type2", h2) # this handles it
         d = tubB.getReference(furl)
         def _got(rref):
-            self.failUnlessEqual(h1.asked, 0)
-            self.failUnlessEqual(h1.accepted, 0)
-            self.failUnlessEqual(h2.asked, 1)
-            self.failUnlessEqual(h2.accepted, 1)
+            self.assertEqual(h1.asked, 0)
+            self.assertEqual(h1.accepted, 0)
+            self.assertEqual(h2.asked, 1)
+            self.assertEqual(h2.accepted, 1)
         d.addCallback(_got)
         return d
 
@@ -235,48 +234,10 @@ class Handlers(ShouldFailMixin, unittest.TestCase):
         self.assertNoResult(d)
         h._d.callback(None)
         def _got(rref):
-            self.failUnlessEqual(h.asked, 1)
-            self.failUnlessEqual(h.accepted, 1)
+            self.assertEqual(h.asked, 1)
+            self.assertEqual(h.accepted, 1)
         d.addCallback(_got)
         return d
-
-class Socks(unittest.TestCase):
-    @mock.patch("foolscap.connections.socks.SOCKS5ClientEndpoint")
-    def test_ep(self, scep):
-        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.socks_endpoint(proxy_ep)
-
-        rv = scep.return_value = mock.Mock()
-        ep, host = h.hint_to_endpoint("tor:example.com:1234", reactor,
-                                      discard_status)
-        self.assertEqual(scep.mock_calls,
-                         [mock.call("example.com", 1234, proxy_ep)])
-        self.assertIdentical(ep, rv)
-        self.assertEqual(host, "example.com")
-
-    def test_real_ep(self):
-        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.socks_endpoint(proxy_ep)
-        ep, host = h.hint_to_endpoint("tcp:example.com:1234", reactor,
-                                      discard_status)
-        self.assertIsInstance(ep, SOCKS5ClientEndpoint)
-        self.assertEqual(host, "example.com")
-
-
-    def test_bad_hint(self):
-        proxy_ep = FakeHostnameEndpoint(reactor, "localhost", 8080)
-        h = socks.socks_endpoint(proxy_ep)
-        # legacy hints will be upgraded before the connection handler is
-        # invoked, so the handler should not handle them
-        self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "example.com:1234", reactor,
-                          discard_status)
-        self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "tcp:example.com:noport", reactor,
-                          discard_status)
-        self.assertRaises(ipb.InvalidHintError,
-                          h.hint_to_endpoint, "tcp:@:1234", reactor,
-                          discard_status)
 
 class Empty:
     pass
@@ -375,7 +336,7 @@ class Tor(unittest.TestCase):
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "foo.onion")
         # launch_tor will allocate a local TCP port for SOCKS
-        self.assert_(h._socks_desc.startswith("tcp:127.0.0.1:"), h._socks_desc)
+        self.assertTrue(h._socks_desc.startswith("tcp:127.0.0.1:"), h._socks_desc)
 
     @inlineCallbacks
     def test_launch_tor_binary(self):
@@ -394,7 +355,7 @@ class Tor(unittest.TestCase):
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "foo.onion")
-        self.assert_(h._socks_desc.startswith("tcp:127.0.0.1:"), h._socks_desc)
+        self.assertTrue(h._socks_desc.startswith("tcp:127.0.0.1:"), h._socks_desc)
 
     @inlineCallbacks
     def test_launch_data_directory(self):
@@ -415,7 +376,7 @@ class Tor(unittest.TestCase):
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "foo.onion")
-        self.assert_(h._socks_desc.startswith("tcp:127.0.0.1:"), h._socks_desc)
+        self.assertTrue(h._socks_desc.startswith("tcp:127.0.0.1:"), h._socks_desc)
 
     @inlineCallbacks
     def test_launch_data_directory_exists(self):
@@ -437,7 +398,7 @@ class Tor(unittest.TestCase):
         ep, host = res
         self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
         self.assertEqual(host, "foo.onion")
-        self.assert_(h._socks_desc.startswith("tcp:127.0.0.1:"), h._socks_desc)
+        self.assertTrue(h._socks_desc.startswith("tcp:127.0.0.1:"), h._socks_desc)
 
     @inlineCallbacks
     def test_control_endpoint(self):
@@ -577,108 +538,3 @@ class Tor(unittest.TestCase):
                 self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
                 self.assertEqual(host, "foo.onion")
                 self.assertEqual(h._socks_desc, "tcp:127.0.0.1:1234")
-
-
-
-class I2P(unittest.TestCase):
-    @inlineCallbacks
-    def test_default(self):
-        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
-            sep.new = n = mock.Mock()
-            n.return_value = expected_ep = object()
-            h = i2p.default(reactor, misc_kwarg="foo")
-            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
-                                           discard_status)
-        self.assertEqual(len(n.mock_calls), 1)
-        args = n.mock_calls[0][1]
-        got_sep, got_host, got_portnum = args
-        self.assertIsInstance(got_sep, endpoints.TCP4ClientEndpoint)
-        self.failUnlessEqual(got_sep._host, "127.0.0.1") # fragile
-        self.failUnlessEqual(got_sep._port, 7656)
-        self.failUnlessEqual(got_host, "fppym.b32.i2p")
-        self.failUnlessEqual(got_portnum, None)
-        kwargs = n.mock_calls[0][2]
-        self.failUnlessEqual(kwargs, {"misc_kwarg": "foo"})
-
-        ep, host = res
-        self.assertIdentical(ep, expected_ep)
-        self.assertEqual(host, "fppym.b32.i2p")
-        self.assertEqual(h.describe(), "i2p")
-
-    @inlineCallbacks
-    def test_default_with_portnum(self):
-        # I2P addresses generally don't use port numbers, but the parser is
-        # supposed to handle them
-        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
-            sep.new = n = mock.Mock()
-            n.return_value = expected_ep = object()
-            h = i2p.default(reactor)
-            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p:1234", reactor,
-                                           discard_status)
-        self.assertEqual(len(n.mock_calls), 1)
-        args = n.mock_calls[0][1]
-        got_sep, got_host, got_portnum = args
-        self.assertIsInstance(got_sep, endpoints.TCP4ClientEndpoint)
-        self.failUnlessEqual(got_sep._host, "127.0.0.1") # fragile
-        self.failUnlessEqual(got_sep._port, 7656)
-        self.failUnlessEqual(got_host, "fppym.b32.i2p")
-        self.failUnlessEqual(got_portnum, 1234)
-        ep, host = res
-        self.assertIdentical(ep, expected_ep)
-        self.assertEqual(host, "fppym.b32.i2p")
-
-    @inlineCallbacks
-    def test_default_with_portnum_kwarg(self):
-        # setting extra kwargs on the handler should provide a default for
-        # the portnum. sequential calls with/without portnums in the hints
-        # should get the right values.
-        h = i2p.default(reactor, port=1234)
-
-        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
-            sep.new = n = mock.Mock()
-            yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
-                                     discard_status)
-        got_portnum = n.mock_calls[0][1][2]
-        self.failUnlessEqual(got_portnum, 1234)
-
-        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
-            sep.new = n = mock.Mock()
-            yield h.hint_to_endpoint("i2p:fppym.b32.i2p:3456", reactor,
-                                     discard_status)
-        got_portnum = n.mock_calls[0][1][2]
-        self.failUnlessEqual(got_portnum, 3456)
-
-        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
-            sep.new = n = mock.Mock()
-            yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
-                                     discard_status)
-        got_portnum = n.mock_calls[0][1][2]
-        self.failUnlessEqual(got_portnum, 1234)
-
-    def test_default_badhint(self):
-        h = i2p.default(reactor)
-        d = defer.maybeDeferred(h.hint_to_endpoint, "i2p:not@a@hint", reactor,
-                                discard_status)
-        f = self.failureResultOf(d, InvalidHintError)
-        self.assertEqual(str(f.value), "unrecognized I2P hint")
-
-    @inlineCallbacks
-    def test_sam_endpoint(self):
-        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
-            sep.new = n = mock.Mock()
-            n.return_value = expected_ep = object()
-            my_ep = FakeHostnameEndpoint(reactor, "localhost", 1234)
-            h = i2p.sam_endpoint(my_ep, misc_kwarg="foo")
-            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
-                                           discard_status)
-        self.assertEqual(len(n.mock_calls), 1)
-        args = n.mock_calls[0][1]
-        got_sep, got_host, got_portnum = args
-        self.assertIdentical(got_sep, my_ep)
-        self.failUnlessEqual(got_host, "fppym.b32.i2p")
-        self.failUnlessEqual(got_portnum, None)
-        kwargs = n.mock_calls[0][2]
-        self.failUnlessEqual(kwargs, {"misc_kwarg": "foo"})
-        ep, host = res
-        self.assertIdentical(ep, expected_ep)
-        self.assertEqual(host, "fppym.b32.i2p")

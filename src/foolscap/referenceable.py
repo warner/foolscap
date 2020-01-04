@@ -4,9 +4,12 @@
 # Referenceable (callable) objects. All details of actually invoking methods
 # live in call.py
 
+from __future__ import print_function
 import weakref
+from functools import total_ordering
+import six
 from zope.interface import interface
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.python.components import registerAdapter
 Interface = interface.Interface
 from twisted.internet import defer
@@ -23,14 +26,13 @@ from foolscap.copyable import Copyable, RemoteCopy
 from foolscap.eventual import eventually, fireEventually
 from foolscap.furl import decode_furl
 
+@implementer(ipb.IReferenceable)
 class OnlyReferenceable(object):
-    implements(ipb.IReferenceable)
-
     def processUniqueID(self):
         return id(self)
 
+@implementer(ipb.IReferenceable, ipb.IRemotelyCallable)
 class Referenceable(OnlyReferenceable):
-    implements(ipb.IReferenceable, ipb.IRemotelyCallable)
     _interface = None
     _interfaceName = None
 
@@ -122,21 +124,18 @@ class ReferenceableSlicer(slicer.BaseSlicer):
         tracker = broker.getTrackerForMyReference(puid, self.obj)
         if broker.remote_broker:
             # emit a my-reference sequence
-            yield 'my-reference'
+            yield b'my-reference'
             yield tracker.clid
             firstTime = tracker.send()
             if firstTime:
                 # this is the first time the Referenceable has crossed this
                 # wire. In addition to the clid, send the interface name (if
                 # any), and any URL this reference might be known by
-                iname = ipb.IRemotelyCallable(self.obj).getInterfaceName()
-                if iname:
-                    yield iname
-                else:
-                    yield ""
+                iname = ipb.IRemotelyCallable(self.obj).getInterfaceName() or ""
+                yield six.ensure_binary(iname)
                 url = tracker.getURL()
                 if url:
-                    yield url
+                    yield six.ensure_binary(url)
         else:
             # when we're serializing to data, rather than to a live
             # connection, all of my Referenceables are turned into
@@ -148,9 +147,9 @@ class ReferenceableSlicer(slicer.BaseSlicer):
             # Referenceable that you want to include in the serialized data,
             # and take steps to make sure that later incarnations of this Tub
             # will do the same.
-            yield 'their-reference'
+            yield b'their-reference'
             yield 0 # giftID==0 tells the recipient to not try to ack it
-            yield tracker.getURL()
+            yield six.ensure_binary(tracker.getURL())
 
 
 registerAdapter(ReferenceableSlicer, Referenceable, ipb.ISlicer)
@@ -173,14 +172,11 @@ class CallableSlicer(slicer.BaseSlicer):
             # this is the first time the Call has crossed this wire. In
             # addition to the clid, send the schema name and any URL this
             # reference might be known by
-            schema = self.getSchema()
-            if schema:
-                yield schema
-            else:
-                yield ""
+            schema = self.getSchema() or ""
+            yield six.ensure_binary(schema)
             url = tracker.getURL()
             if url:
-                yield url
+                yield six.ensure_binary(url)
 
     def getSchema(self):
         return None # TODO: not quite ready yet
@@ -229,13 +225,11 @@ class ReferenceUnslicer(slicer.BaseUnslicer):
             self.state = 1
         elif self.state == 1:
             # must be the interface name
-            self.interfaceName = obj
-            if obj == "":
-                self.interfaceName = None
+            self.interfaceName = six.ensure_str(obj) or None
             self.state = 2
         elif self.state == 2:
             # URL
-            self.url = obj
+            self.url = six.ensure_str(obj)
             self.state = 3
         else:
             raise BananaError("Too many my-reference parameters")
@@ -337,9 +331,8 @@ class RemoteReferenceTracker(object):
         # _handleRefLost. In this case, don't decref anything.
 
 
+@implementer(ipb.IRemoteReference)
 class RemoteReferenceOnly(object):
-    implements(ipb.IRemoteReference)
-
     def __init__(self, tracker):
         """@param tracker: the RemoteReferenceTracker which points to us"""
         self.tracker = tracker
@@ -426,6 +419,7 @@ class RemoteReference(RemoteReferenceOnly):
     def _callRemote(self, _name, *args, **kwargs):
         req = None
         broker = self.tracker.broker
+        _name = six.ensure_str(_name)
 
         # remember that "none" is not a valid constraint, so we use it to
         # mean "not set by the caller", which means we fall back to whatever
@@ -461,6 +455,7 @@ class RemoteReference(RemoteReferenceOnly):
         (interfaceName,
          methodName,
          methodSchema) = self._getMethodInfo(_name)
+        methodName = six.ensure_str(methodName)
 
         req = call.PendingRequest(reqID, self, interfaceName, methodName)
         # TODO: consider adding a stringified stack trace to that
@@ -480,7 +475,7 @@ class RemoteReference(RemoteReferenceOnly):
             # any arguments are of the wrong type
             try:
                 methodSchema.checkAllArgs(args, kwargs, False)
-            except Violation, v:
+            except Violation as v:
                 v.setLocation("%s.%s(%s)" % (interfaceName, methodName,
                                              v.getLocation()))
                 raise
@@ -606,8 +601,8 @@ class RemoteMethodReference(RemoteReference):
         methodSchema = None
         return interfaceName, methodName, methodSchema
 
+@implementer(ipb.IRemoteReference)
 class LocalReferenceable(object):
-    implements(ipb.IRemoteReference)
     def __init__(self, original):
         self.original = original
 
@@ -645,7 +640,7 @@ class YourReferenceSlicer(slicer.BaseSlicer):
         tracker = self.obj.tracker
         if tracker.broker == broker:
             # sending back to home broker
-            yield 'your-reference'
+            yield b'your-reference'
             yield tracker.clid
         else:
             # sending somewhere else
@@ -655,9 +650,9 @@ class YourReferenceSlicer(slicer.BaseSlicer):
                 furl = ""
             assert isinstance(furl, str)
             giftID = broker.makeGift(self.obj)
-            yield 'their-reference'
+            yield b'their-reference'
             yield giftID
-            yield furl
+            yield six.ensure_binary(furl)
 
     def describe(self):
         return "<your-ref-%s>" % self.obj.tracker.clid
@@ -718,7 +713,7 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
             self.state = 1
         elif self.state == 1:
             # URL
-            self.url = obj
+            self.url = six.ensure_str(obj)
             self.state = 2
         else:
             raise BananaError("Too many their-reference parameters")
@@ -776,6 +771,7 @@ class TheirReferenceUnslicer(slicer.LeafUnslicer):
         return "<gift-%s>" % self.giftID
 
 
+@total_ordering
 class SturdyRef(Copyable, RemoteCopy):
     """I am a pointer to a Referenceable that lives in some (probably remote)
     Tub. This pointer is long-lived, however you cannot send messages with it
@@ -798,6 +794,7 @@ class SturdyRef(Copyable, RemoteCopy):
         self.locationHints = [] # list of strings
         self.url = url
         if url:
+            self.url = six.ensure_str(self.url)
             self.tubID, self.locationHints, self.name = decode_furl(url)
 
     def getTubRef(self):
@@ -818,12 +815,17 @@ class SturdyRef(Copyable, RemoteCopy):
 
     def __hash__(self):
         return hash(self._distinguishers())
-    def __cmp__(self, them):
-        return (cmp(type(self), type(them)) or
-                cmp(self.__class__, them.__class__) or
-                cmp(self._distinguishers(), them._distinguishers()))
 
+    def __lt__(self, them):
+        return self._distinguishers() < them._distinguishers()
+    def __eq__(self, them):
+        return (type(self) is type(them) and
+                self.__class__ == them.__class__ and
+                self._distinguishers() == them._distinguishers())
+    def __ne__(self, them):
+        return not self == them
 
+@total_ordering
 class TubRef(object):
     """This is a little helper class which provides a comparable identifier
     for Tubs. TubRefs can be used as keys in dictionaries that track
@@ -835,7 +837,7 @@ class TubRef(object):
         assert isinstance(locationHints, list), locationHints
         assert all([isinstance(hint, str) for hint in locationHints]), \
                locationHints
-        self.tubID = tubID
+        self.tubID = tubID and six.ensure_str(tubID)
         self.locationHints = locationHints
 
     def getLocations(self):
@@ -855,7 +857,12 @@ class TubRef(object):
 
     def __hash__(self):
         return hash(self._distinguishers())
-    def __cmp__(self, them):
-        return (cmp(type(self), type(them)) or
-                cmp(self.__class__, them.__class__) or
-                cmp(self._distinguishers(), them._distinguishers()))
+
+    def __lt__(self, them):
+        return self._distinguishers() < them._distinguishers()
+    def __eq__(self, them):
+        return (type(self) is type(them) and
+                self.__class__ == them.__class__ and
+                self._distinguishers() == them._distinguishers())
+    def __ne__(self, them):
+        return not self == them

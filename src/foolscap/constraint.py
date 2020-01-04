@@ -5,9 +5,10 @@
 
 # This imports foolscap.tokens, but no other Foolscap modules.
 
-import re
-from zope.interface import implements, Interface
+import six
+from zope.interface import implementer, Interface
 
+from foolscap.util import ensure_tuple_str
 from foolscap.tokens import Violation, BananaError, SIZE_LIMIT, \
      STRING, LIST, INT, NEG, LONGINT, LONGNEG, VOCAB, FLOAT, OPEN, \
      tokenNames
@@ -65,14 +66,13 @@ class IRemoteMethodConstraint(IConstraint):
 
         This should either raise Violation or return None."""
 
+@implementer(IConstraint)
 class Constraint(object):
     """
     Each __schema__ attribute is turned into an instance of this class, and
     is eventually given to the unserializer (the 'Unslicer') to enforce as
     the tokens are arriving off the wire.
     """
-
-    implements(IConstraint)
 
     taster = everythingTaster
     """the Taster is a dict that specifies which basic token types are
@@ -89,7 +89,7 @@ class Constraint(object):
     opentypes = None
     """opentypes is a list of currently acceptable OPEN token types. None
     indicates that all types are accepted. An empty list indicates that no
-    OPEN tokens are accepted.
+    OPEN tokens are accepted. These are native strings.
     """
 
     name = None
@@ -125,6 +125,7 @@ class Constraint(object):
 
         if self.opentypes == None:
             return
+        opentype = ensure_tuple_str(opentype)
 
         # shared references are always accepted. checkOpentype() is a defense
         # against resource-exhaustion attacks, and references don't consume
@@ -203,20 +204,14 @@ class ByteStringConstraint(Constraint):
     opentypes = [] # redundant, as taster doesn't accept OPEN
     name = "ByteStringConstraint"
 
-    def __init__(self, maxLength=None, minLength=0, regexp=None):
+    def __init__(self, maxLength=None, minLength=0):
         self.maxLength = maxLength
         self.minLength = minLength
-        # regexp can either be a string or a compiled SRE_Match object..
-        # re.compile appears to notice SRE_Match objects and pass them
-        # through unchanged.
-        self.regexp = None
-        if regexp:
-            self.regexp = re.compile(regexp)
         self.taster = {STRING: self.maxLength,
                        VOCAB: None}
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, str):
+        if not isinstance(obj, six.binary_type):
             raise Violation("'%r' is not a bytestring" % (obj,))
         if self.maxLength != None and len(obj) > self.maxLength:
             raise Violation("string too long (%d > %d)" %
@@ -224,9 +219,6 @@ class ByteStringConstraint(Constraint):
         if len(obj) < self.minLength:
             raise Violation("string too short (%d < %d)" %
                             (len(obj), self.minLength))
-        if self.regexp:
-            if not self.regexp.search(obj):
-                raise Violation("regexp failed to match")
 
 class IntegerConstraint(Constraint):
     opentypes = [] # redundant
@@ -244,7 +236,7 @@ class IntegerConstraint(Constraint):
             self.taster[LONGNEG] = maxBytes
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, (int, long)):
+        if not isinstance(obj, six.integer_types):
             raise Violation("'%r' is not a number" % (obj,))
         if self.maxBytes == -1:
             if obj >= 2**31 or obj < -2**31:
