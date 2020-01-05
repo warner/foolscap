@@ -251,7 +251,6 @@ stashed_path = [
 import sys
 needed = [p for p in stashed_path if p not in sys.path]
 sys.path = needed + sys.path
-print 'NEEDED', needed
 
 from foolscap.logging import gatherer
 from twisted.application import service
@@ -532,7 +531,6 @@ stashed_path = [
 import sys
 needed = [p for p in stashed_path if p not in sys.path]
 sys.path = needed + sys.path
-print 'NEEDED', needed
 
 from foolscap.logging import gatherer
 from twisted.application import service
