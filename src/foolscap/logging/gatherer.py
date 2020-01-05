@@ -224,7 +224,7 @@ class GathererService(GatheringBase):
 
     def remote_logport(self, nodeid, publisher):
         # nodeid is actually a printable string
-        nodeid_s = nodeid
+        nodeid_s = six.ensure_text(nodeid)
         o = Observer(nodeid_s, self)
         d = publisher.callRemote("subscribe_to_all", o)
         d.addCallback(lambda res: None)

@@ -372,7 +372,7 @@ class Tub(service.MultiService):
         # tub.getLogPortFURL() directly.
         ignored = self.getLogPortFURL()
         del ignored
-        tubID = self.tubID
+        tubID = six.ensure_binary(self.tubID)
         rref.callRemoteOnly('logport', tubID, self.getLogPort())
 
 
