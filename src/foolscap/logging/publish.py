@@ -8,6 +8,7 @@ from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
 from foolscap.logging import app_versions, flogfile
 from foolscap.eventual import eventually
+from foolscap.util import ensure_dict_binary
 
 @implementer(RISubscription)
 class Subscription(Referenceable):
@@ -110,7 +111,7 @@ class IncidentSubscription(Referenceable):
             fn = new[name]
             trigger = self.publisher.get_incident_trigger(fn)
             if trigger:
-                self.observer.callRemoteOnly("new_incident", name, trigger)
+                self.observer.callRemoteOnly("new_incident", six.ensure_binary(name), trigger)
         self.observer.callRemoteOnly("done_with_incident_catchup")
 
     def unsubscribe(self):
@@ -122,7 +123,7 @@ class IncidentSubscription(Referenceable):
         return self.unsubscribe()
 
     def send(self, name, trigger):
-        d = self.observer.callRemote("new_incident", name, trigger)
+        d = self.observer.callRemote("new_incident", six.ensure_binary(name), trigger)
         d.addErrback(self._error)
 
     def _error(self, f):
@@ -172,7 +173,7 @@ class LogPublisher(Referenceable):
         logger.setLogPort(self)
 
     def remote_get_versions(self):
-        return app_versions.versions
+        return ensure_dict_binary(app_versions.versions)
     def remote_get_pid(self):
         return os.getpid()
 
@@ -241,6 +242,7 @@ class LogPublisher(Referenceable):
         return (header, wrapped_events)
 
     def remote_subscribe_to_incidents(self, observer, catch_up=False, since=""):
+        since = six.ensure_str(since)
         s = IncidentSubscription(observer, self._logger, self)
         eventually(s.subscribe, catch_up, since)
         # allow the call to return before we send them any events

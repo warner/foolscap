@@ -7,7 +7,7 @@ from foolscap import base32
 from foolscap.api import Tub, Referenceable, fireEventually
 from foolscap.logging import log, flogfile
 from foolscap.referenceable import SturdyRef
-from foolscap.util import format_time, FORMAT_TIME_MODES
+from foolscap.util import format_time, FORMAT_TIME_MODES, ensure_dict_str, ensure_dict_str_keys
 from .interfaces import RILogObserver
 
 def short_tubid_b2a(tubid):
@@ -77,6 +77,7 @@ class LogPrinter(Referenceable):
         self.output = output
 
     def got_versions(self, versions, pid=None):
+        versions = ensure_dict_str(versions)
         print("Remote Versions:", file=self.output)
         for k in sorted(versions.keys()):
             print(" %s: %s" % (k, versions[k]), file=self.output)
@@ -84,6 +85,7 @@ class LogPrinter(Referenceable):
             self.saver.emit_header(versions, pid)
 
     def remote_msg(self, d):
+        d = ensure_dict_str_keys(d)
         if self.options['verbose']:
             self.simple_print(d)
         else:
@@ -102,7 +104,7 @@ class LogPrinter(Referenceable):
 
         tubid = "" # TODO
         print("%s L%d [%s]#%d %s" % (time_s, level, tubid,
-                                                    d["num"], msg), file=self.output)
+                                     d["num"], msg), file=self.output)
         if 'failure' in d:
             print(" FAILURE:", file=self.output)
             lines = str(d['failure']).split("\n")

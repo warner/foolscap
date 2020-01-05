@@ -224,7 +224,7 @@ class GathererService(GatheringBase):
 
     def remote_logport(self, nodeid, publisher):
         # nodeid is actually a printable string
-        nodeid_s = nodeid
+        nodeid_s = six.ensure_text(nodeid)
         o = Observer(nodeid_s, self)
         d = publisher.callRemote("subscribe_to_all", o)
         d.addCallback(lambda res: None)
@@ -251,7 +251,6 @@ stashed_path = [
 import sys
 needed = [p for p in stashed_path if p not in sys.path]
 sys.path = needed + sys.path
-print 'NEEDED', needed
 
 from foolscap.logging import gatherer
 from twisted.application import service
@@ -345,7 +344,7 @@ class IncidentObserver(Referenceable):
         # look for a local state file, to see what incidents we've already
         # got
         statefile = self.basedir.child("latest").path
-        latest = b""
+        latest = ""
         try:
             latest = open(statefile, "r").read().strip()
         except EnvironmentError:
@@ -354,7 +353,8 @@ class IncidentObserver(Referenceable):
               % (self.tubid_s, latest), file=self.stdout)
         # now subscribe to everything since then
         d = self.publisher.callRemote("subscribe_to_incidents", self,
-                                      catch_up=True, since=latest)
+                                      catch_up=True,
+                                      since=six.ensure_binary(latest))
         # for testing, we arrange for this Deferred (which governs the return
         # from remote_logport) to not fire until we've finished catching up
         # on all incidents.
@@ -365,6 +365,7 @@ class IncidentObserver(Referenceable):
         # name= should look like "incident-2008-07-29-204211-aspkxoi". We
         # prevent name= from containing path metacharacters like / or : by
         # using FilePath later on.
+        name = six.ensure_str(name)
         self.incidents_wanted.append( (name, trigger) )
         self.maybe_fetch_incident()
 
@@ -378,7 +379,7 @@ class IncidentObserver(Referenceable):
         self.incident_fetch_outstanding = True
         (name, trigger) = self.incidents_wanted.pop(0)
         print("fetching incident", six.text_type(name), file=self.stdout)
-        d = self.publisher.callRemote("get_incident", name)
+        d = self.publisher.callRemote("get_incident", six.ensure_binary(name))
         def _clear_outstanding(res):
             self.incident_fetch_outstanding = False
             return res
@@ -530,7 +531,6 @@ stashed_path = [
 import sys
 needed = [p for p in stashed_path if p not in sys.path]
 sys.path = needed + sys.path
-print 'NEEDED', needed
 
 from foolscap.logging import gatherer
 from twisted.application import service

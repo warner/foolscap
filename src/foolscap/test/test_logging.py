@@ -19,7 +19,7 @@ import foolscap
 from foolscap.logging import gatherer, log, tail, incident, cli, web, \
      publish, dumper, flogfile
 from foolscap.logging.interfaces import RILogObserver
-from foolscap.util import format_time, allocate_tcp_port
+from foolscap.util import format_time, allocate_tcp_port, ensure_dict_str
 from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.tokens import NoLocationError
 from foolscap.test.common import PollMixin, StallMixin
@@ -696,8 +696,9 @@ class Publish(PollMixin, unittest.TestCase):
         def _got_logport(logport):
             d = logport.callRemote("get_versions")
             def _check(versions):
+                versions = ensure_dict_str(versions)
                 self.assertEqual(versions["foolscap"],
-                                     foolscap.__version__)
+                                 six.ensure_text(foolscap.__version__))
             d.addCallback(_check)
             # note: catch_up=False, so this message won't be sent
             log.msg("message 0 here, before your time")
@@ -853,8 +854,9 @@ class Publish(PollMixin, unittest.TestCase):
         def _got_logport(logport):
             d = logport.callRemote("get_versions")
             def _check_versions(versions):
+                versions = ensure_dict_str(versions)
                 self.assertEqual(versions["foolscap"],
-                                     foolscap.__version__)
+                                 six.ensure_text(foolscap.__version__))
             d.addCallback(_check_versions)
             d.addCallback(lambda res: logport.callRemote("get_pid"))
             def _check_pid(pid):
