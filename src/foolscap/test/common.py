@@ -309,6 +309,9 @@ class Target(Referenceable):
     def remote_failstring(self):
         raise "string exceptions are annoying"
 
+    def remote_with_f(self, f):
+        return f
+
 @implementer_only(implementedBy(Referenceable))
 class TargetWithoutInterfaces(Target):
     # undeclare the RIMyTarget interface
