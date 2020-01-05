@@ -405,18 +405,19 @@ class RemoteReferenceOnly(object):
 class RemoteReference(RemoteReferenceOnly):
     def callRemote(self, _name, *args, **kwargs):
         # Note: for consistency, *all* failures are reported asynchronously.
-        return defer.maybeDeferred(self._callRemote, _name, *args, **kwargs)
+        return defer.maybeDeferred(self._callRemote, _name, False,
+                                   args, kwargs)
 
     def callRemoteOnly(self, _name, *args, **kwargs):
         # the remote end will not send us a response. The only error cases
         # are arguments that don't match the schema, or broken invariants. In
         # particular, DeadReferenceError will be silently consumed.
-        d = defer.maybeDeferred(self._callRemote, _name, _callOnly=True,
-                                *args, **kwargs)
+        d = defer.maybeDeferred(self._callRemote, _name, True,
+                                args, kwargs)
         del d
         return None
 
-    def _callRemote(self, _name, *args, **kwargs):
+    def _callRemote(self, _name, callOnly, args, kwargs):
         req = None
         broker = self.tracker.broker
         _name = six.ensure_str(_name)
@@ -428,7 +429,6 @@ class RemoteReference(RemoteReferenceOnly):
         methodConstraintOverride = kwargs.get("_methodConstraint", "none")
         resultConstraint = kwargs.get("_resultConstraint", "none")
         useSchema = kwargs.get("_useSchema", True)
-        callOnly = kwargs.get("_callOnly", False)
 
         if "_methodConstraint" in kwargs:
             del kwargs["_methodConstraint"]
@@ -436,8 +436,6 @@ class RemoteReference(RemoteReferenceOnly):
             del kwargs["_resultConstraint"]
         if "_useSchema" in kwargs:
             del kwargs["_useSchema"]
-        if "_callOnly" in kwargs:
-            del kwargs["_callOnly"]
 
         if callOnly:
             if broker.disconnected:
