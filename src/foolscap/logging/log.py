@@ -9,6 +9,7 @@ from foolscap import eventual
 from foolscap.logging.interfaces import IIncidentReporter
 from foolscap.logging.incident import IncidentQualifier, IncidentReporter
 from foolscap.logging import app_versions, flogfile
+from foolscap.util import ensure_dict_str_keys
 
 from foolscap.logging.levels import NOISY, OPERATIONAL, UNUSUAL, \
      INFREQUENT, CURIOUS, WEIRD, SCARY, BAD
@@ -32,21 +33,30 @@ except ImportError:
 _unused = [NOISY, OPERATIONAL, UNUSUAL, INFREQUENT, CURIOUS, WEIRD, SCARY, BAD]
 
 def format_message(e):
+    # the dict might have come from json.loads (so unicode everywhere), or
+    # over the wire from a py2 program (so bytes), or from a py3 program (so
+    # unicode). Do our best to produce text.
+    e = ensure_dict_str_keys(e)
     try:
         if "format" in e:
-            assert isinstance(e['format'], (six.binary_type, six.text_type))
-            return e['format'] % e
+            fmt = six.ensure_str(e['format'])
+            args = e
         elif "args" in e:
             assert "message" in e
-            assert isinstance(e['message'], (six.binary_type, six.text_type))
-            return e['message'] % e['args']
+            fmt = six.ensure_str(e['message'])
+            args = e['args']
         elif "message" in e:
+            fmt = "%(message)s"
             assert isinstance(e['message'], (six.binary_type, six.text_type))
-            return e['message']
+            args = {"message": six.ensure_str(e['message'])}
+            # i.e. just return e['message']
         else:
-            return ""
+            fmt = ""
+            args = {}
+        assert isinstance(fmt, (six.binary_type, six.text_type))
+        return six.ensure_text(fmt % args)
     except (ValueError, TypeError):
-        return e.get('message', "[no message]") + " [formatting failed]"
+        return six.ensure_text(e.get('message', "[no message]")) + " [formatting failed]"
 
 
 class Count:

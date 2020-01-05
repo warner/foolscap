@@ -8,6 +8,7 @@ from foolscap.referenceable import Referenceable
 from foolscap.logging.interfaces import RISubscription, RILogPublisher
 from foolscap.logging import app_versions, flogfile
 from foolscap.eventual import eventually
+from foolscap.util import ensure_dict_binary
 
 @implementer(RISubscription)
 class Subscription(Referenceable):
@@ -172,7 +173,7 @@ class LogPublisher(Referenceable):
         logger.setLogPort(self)
 
     def remote_get_versions(self):
-        return app_versions.versions
+        return ensure_dict_binary(app_versions.versions)
     def remote_get_pid(self):
         return os.getpid()
 

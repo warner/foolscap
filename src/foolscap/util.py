@@ -209,3 +209,15 @@ else:
 
 def ensure_tuple_str(input_tuple):
     return tuple([six.ensure_str(s) for s in input_tuple])
+
+def ensure_dict_binary(d):
+    return dict([(six.ensure_binary(k), six.ensure_binary(v))
+                 for (k,v) in d.items()])
+
+def ensure_dict_str(d):
+    return dict([(six.ensure_str(k), six.ensure_str(v))
+                 for (k,v) in d.items()])
+
+def ensure_dict_str_keys(d):
+    return dict([(six.ensure_str(k), v)
+                 for (k,v) in d.items()])
