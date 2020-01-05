@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import os
+import six
 from twisted.python import usage, runtime, filepath, log
 from twisted.application import service
 from twisted.internet import defer, reactor, protocol
@@ -94,6 +95,7 @@ class FileUploader(service.MultiService, Referenceable):
         self.targetdir = filepath.FilePath(options.targetdir)
 
     def remote_putfile(self, name, source):
+        name = six.ensure_str(name)
         #if "/" in name or name == "..":
         #    raise BadFilenameError()
         #targetfile = os.path.join(self.options.targetdir, name)

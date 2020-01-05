@@ -26,7 +26,7 @@ class UploadFileOptions(BaseOptions):
 class Uploader(Referenceable):
     def run(self, rref, sourcefile, name):
         self.f = open(os.path.expanduser(sourcefile), "rb")
-        return rref.callRemote("putfile", name, self)
+        return rref.callRemote("putfile", six.ensure_binary(name), self)
 
     def remote_read(self, size):
         return self.f.read(size)
