@@ -81,6 +81,12 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         return d
     testCall1b.timeout = 2
 
+    def testCallWithF(self):
+        rr, target = self.setupTarget(TargetWithoutInterfaces())
+        d = rr.callRemote("with_f", f=1)
+        d.addCallback(lambda res: self.assertEqual(res, 1))
+        return d
+
     def testFail1(self):
         # this is done without interfaces
         rr, target = self.setupTarget(TargetWithoutInterfaces())
