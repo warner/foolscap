@@ -117,7 +117,7 @@ class PBRootSlicer(RootSlicer):
 
 
 class RIBroker(remoteinterface.RemoteInterface):
-    def getReferenceByName(name=str):
+    def getReferenceByName(name=bytes):
         """If I have published an object by that name, return a reference to
         it."""
         # return Remote(interface=any)
@@ -491,11 +491,13 @@ class Broker(banana.Banana, referenceable.Referenceable):
     # methods to deal with URLs
 
     def getYourReferenceByName(self, name):
+        # remain compatible with remotes running py2
+        name = six.ensure_binary(name)
         d = self.remote_broker.callRemote("getReferenceByName", name=name)
         return d
 
     def remote_getReferenceByName(self, name):
-        return self.tub.getReferenceForName(name)
+        return self.tub.getReferenceForName(six.ensure_str(name))
 
     # remote-method-invocation methods, calling side, invoked by
     # RemoteReference.callRemote and CallSlicer
