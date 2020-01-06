@@ -372,7 +372,7 @@ class WebViewer:
         root.putChild(b"reload", Reload(self))
         root.putChild(b"all-events", EventView(self))
         root.putChild(b"summary", Summary(self))
-        root.putChild(b"flog.css", static.Data(FLOG_CSS, "text/css"))
+        root.putChild(b"flog.css", static.Data(six.ensure_binary(FLOG_CSS), "text/css"))
         s = server.Site(root)
 
         port = options["port"]
