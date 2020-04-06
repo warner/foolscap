@@ -64,6 +64,22 @@ must be correctly interpreted by the py3 nodes, and vice versa. This is a
 question of application protocol design, which is beyond the reach of what
 Foolscap's compatibility code can help with.
 
+Porting
+-------
+
+To maintain wire-level compatibility between foolscap-based programs across
+heterogeneous peers, you must keep careful track of the types sent as
+arguments inside `callRemote` messages. Programs which casually sent native
+strings (bytes) on py2 will continue to send those bytes over the wire, so a
+py3 port of the same program will receive bytes, even though the same
+(unmodified) code will send unicode instances to the py2 program. When
+porting, I recommend first making all string types explicit (`b"for bytes"`
+and `u"for text"`), and make sure a py2 version with these changes can
+interoperate with the original py2 version. Then a py3 version has a stronger
+chance of working. You may be stuck with these awkward `bytes` markers for a
+long time.
+
+
 The next section examines some of these second issues.
 
 Method Signatures
@@ -150,13 +166,14 @@ log entries named "incidents", automated classification of incidents (to
 filter out problems which are understood but not yet fixed, and displaying
 logfiles in a web-based viewer application.
 
-The serialized forms of these log events can expose additional py2-vs-py3
-incompatibilities. In general, the Foolscap logging systems can tolerate
-events and files created on a different version of Python. However, in
-several cases, the displayed values may have rendering artifacts, even when
-both emitter and receiver are running the same version. For example, a string
-``foo`` might be displayed with an additional prefix, like ``b'foo'`` or
-``u'foo'``.
+The JSON-serialized forms of these log events can expose additional
+py2-vs-py3 incompatibilities. In general, the Foolscap logging systems can
+tolerate events and files created on a different version of Python, however
+these may perform implicit string conversions. As a result the displayed
+values may have rendering artifacts: a string ``foo`` might be displayed with
+an additional prefix, like ``b'foo'``, especially when the emitter runs py2
+and the follower runs py3. Similar problems can cause ``u'foo'`` -type
+suffixes, even when both sides use the same version.
 
 Flappserver
 -----------

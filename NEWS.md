@@ -15,7 +15,7 @@ Several features were removed to support the transition:
   "pickle", and was just as unsafe, and nobody used it.
 
 Most APIs now accept either bytes or text, and return native strings
-(`str/bytes` on py2, `str`/unicode on py3).
+(`str`/`bytes` on py2, `str`/`unicode` on py3).
 
 To maintain wire-level compatibility between foolscap-based programs across
 heterogeneous peers, you must keep careful track of the types sent as
@@ -39,6 +39,8 @@ soon:
   a py2 emitter sends events to a py3 follower
 * appserver: the `flappserver` and `flappclient` tools have not been
   extensively tested following the conversion
+
+See docs/py2-3-porting.rst for details and porting recommendations.
 
 
 ## Release 0.13.2 (22-Dec-2019)
