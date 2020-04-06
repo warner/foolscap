@@ -22,7 +22,7 @@ Full documentation and examples are in the doc/ directory.
 
 ## DEPENDENCIES
 
-* Python 2.7
+* Python 3.5 or higher (still works under Python 2.7 for now)
 * Twisted 16.0.0 or later
 * PyOpenSSL (tested against 16.0.0)
 
@@ -53,10 +53,11 @@ fail with a NegotiationError.
 Please check the NEWS file for announcements of compatibility-breaking
 changes in any given release.
 
-Foolscap-0.9.1 was compatible with (and tested against) Python-2.6 . Since
-that release, Twisted-15.5.0 dropped py2.6 support (throwing an error at
-import time), so Foolscap is no longer tested against py2.6, nor against any
-version of Twisted earlier than 16.0.0.
+As of Foolscap-0.14.0, this library is mostly compatible with Python 3
+(specifically 3.5 or higher), and is tested against 3.5, 3.6, 3.7, and 3.8.
+It will retain compatibility with Python 2.7 for a little while longer, to
+ease the transition, but since Python 2 was marked End-Of-Life in January
+2020, this compatibility will not be maintained forever.
 
 
 ## HISTORY

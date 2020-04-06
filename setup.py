@@ -22,6 +22,26 @@ class Trial(Command):
 commands["trial"] = Trial
 commands["test"] = Trial
 
+trove_classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 2",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: System :: Networking",
+    "Topic :: Software Development :: Object Brokering",
+    ]
+
 setup_args = {
     "name": "foolscap",
     "version": versioneer.get_version(),
@@ -36,17 +56,7 @@ as 'Perspective Broker'. This allows an object in one process to be used by
 code in a distant process. This module provides data marshaling, a remote
 object reference system, and a capability-based security model.
 """,
-    "classifiers": [
-        "Development Status :: 3 - Alpha",
-        "Operating System :: OS Independent",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python",
-        "Topic :: Internet",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-        "Topic :: System :: Distributed Computing",
-        "Topic :: System :: Networking",
-        "Topic :: Software Development :: Object Brokering",
-        ],
+    "classifiers": trove_classifiers,
     "platforms": ["any"],
 
     "package_dir": {"": "src"},
