@@ -1,16 +1,16 @@
 User visible changes in Foolscap
 
-## Release ??
+## Release 0.14.0 (12-Apr-2020)
 
-Foolscap has been ported to py3 (specifically py3.5+). It currently still
-works under py2.7 as well, although support may go away at any time.
+Foolscap has finally been ported to py3 (specifically py3.5+). It currently
+still works under py2.7 as well, although support may go away at any time.
 
 Several features were removed to support the transition:
 
 * The SOCKS connection handler has been removed: the `txsocksx` library it
-  required remains py2-only. The `[socks]` extra has been removed.
-* The I2P connection handler has been removed, as `txi2p` is py2-only. The
-  `[i2p]` extra has been removed.
+  required does not yet work under py3. The `[socks]` extra has been removed.
+* The I2P connection handler has been removed, as `txi2p` is still py2-only.
+  The `[i2p]` extra has been removed.
 * The `UnsafeBanana` utility has been removed. This worked like stdlib
   "pickle", and was just as unsafe, and nobody used it.
 
@@ -41,6 +41,10 @@ soon:
   extensively tested following the conversion
 
 See docs/py2-3-porting.rst for details and porting recommendations.
+
+Other fixes:
+
+* `callRemote()` did not accept a keyword argument named `f` (#65)
 
 
 ## Release 0.13.2 (22-Dec-2019)
