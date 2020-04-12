@@ -1,6 +1,6 @@
 User visible changes in Foolscap
 
-## Release 0.14.0 (12-Apr-2020)
+## Release 20.4.0 (12-Apr-2020)
 
 Foolscap has finally been ported to py3 (specifically py3.5+). It currently
 still works under py2.7 as well, although support may go away at any time.
@@ -45,6 +45,9 @@ See docs/py2-3-porting.rst for details and porting recommendations.
 Other fixes:
 
 * `callRemote()` did not accept a keyword argument named `f` (#65)
+* switch release numbers to [CalVer](https://calver.org/), following the
+  [Twisted](https://github.com/twisted/twisted/blob/twisted-20.3.0/docs/core/development/policy/release-process.rst#version-numbers)
+  standard of YY.MM.patch
 
 
 ## Release 0.13.2 (22-Dec-2019)
