@@ -1,5 +1,8 @@
 # Foolscap
 
+[![PyPI](http://img.shields.io/pypi/v/foolscap.svg)](https://pypi.python.org/pypi/foolscap)
+[![Build Status](https://travis-ci.org/warner/foolscap.svg?branch=master)](https://travis-ci.org/warner/foolscap)
+
 Foolscap is an RPC/RMI (Remote Procedure Call / Remote Method Invocation)
 protocol for use with Twisted, derived/inspired by Twisted's built-in
 "Perspective Broker" package.
