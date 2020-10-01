@@ -558,9 +558,7 @@ class RemoteReference(RemoteReferenceOnly):
         return req.deferred
 
     def _getMethodInfo(self, name):
-        if six.PY2 and isinstance(name, six.text_type):
-            name = name.encode("utf-8")
-        assert type(name) is str
+        name = six.ensure_str(name)
         interfaceName = None
         methodName = name
         methodSchema = None
