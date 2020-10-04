@@ -1,4 +1,5 @@
 
+import six
 import types
 import inspect
 from zope.interface import interface, providedBy, implementer
@@ -89,9 +90,6 @@ class RemoteInterfaceClass(interface.InterfaceClass):
             del attrs[name]
 
         return remote_name, remote_attrs
-
-RemoteInterface = RemoteInterfaceClass("RemoteInterface")
-
 
 
 def getRemoteInterface(obj):
@@ -409,3 +407,10 @@ def _makeConstraint(t):
     return LocalInterfaceConstraint(t)
 
 addToConstraintTypeMap(interface.InterfaceClass, _makeConstraint)
+
+
+six.exec_("""class RemoteInterface(object):
+    __metaclass__ = RemoteInterfaceClass
+""" if six.PY2 else """class RemoteInterface(metaclass=RemoteInterfaceClass):
+    pass
+""")
