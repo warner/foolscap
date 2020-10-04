@@ -28,10 +28,9 @@ class RemoteInterfaceClass(interface.InterfaceClass):
 
     """
 
-    def __init__(self, iname, bases=(), attrs=None, __module__=None):
+    def __init__(self, iname, bases=(), attrs=None):
         if attrs is None:
-            interface.InterfaceClass.__init__(self, iname, bases, attrs,
-                                              __module__)
+            interface.InterfaceClass.__init__(self, iname, bases, attrs)
             return
 
         # parse (and remove) the attributes that make this a RemoteInterface
@@ -41,8 +40,7 @@ class RemoteInterfaceClass(interface.InterfaceClass):
             raise
 
         # now let the normal InterfaceClass do its thing
-        interface.InterfaceClass.__init__(self, iname, bases, attrs,
-                                          __module__)
+        interface.InterfaceClass.__init__(self, iname, bases, attrs)
 
         # now add all the remote methods that InterfaceClass would have
         # complained about. This is really gross, and it really makes me
@@ -92,8 +90,7 @@ class RemoteInterfaceClass(interface.InterfaceClass):
 
         return remote_name, remote_attrs
 
-RemoteInterface = RemoteInterfaceClass("RemoteInterface",
-                                       __module__="pb.flavors")
+RemoteInterface = RemoteInterfaceClass("RemoteInterface")
 
 
 
