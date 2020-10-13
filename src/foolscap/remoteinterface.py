@@ -411,8 +411,5 @@ def _makeConstraint(t):
 addToConstraintTypeMap(interface.InterfaceClass, _makeConstraint)
 
 
-six.exec_("""class RemoteInterface(interface.Interface):
-    __metaclass__ = RemoteInterfaceClass
-""" if six.PY2 else """class RemoteInterface(metaclass=RemoteInterfaceClass):
+class RemoteInterface(six.with_metaclass(RemoteInterfaceClass, interface.Interface)):
     pass
-""")
