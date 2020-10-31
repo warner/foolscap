@@ -7,3 +7,4 @@ include tox.ini .coveragerc
 include misc/classify_foolscap.py
 include versioneer.py
 include src/foolscap/_version.py
+include src/foolscap/py.typed

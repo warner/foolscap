@@ -76,6 +76,10 @@ object reference system, and a capability-based security model.
         },
 }
 
+setup_args.update(
+    include_package_data=True,
+)
+
 if __name__ == "__main__":
     setup(**setup_args)
 
