@@ -34,8 +34,6 @@ class RemoteInterfaceClass(interface.InterfaceClass):
             interface.InterfaceClass.__init__(self, iname, bases, attrs)
             return
 
-        attrs.pop('__metaclass__', None)
-
         # parse (and remove) the attributes that make this a RemoteInterface
         try:
             rname, remote_attrs = self._parseRemoteInterface(iname, attrs)
