@@ -61,8 +61,6 @@ at least the following hint types:
   `HOSTNAME:PORT` via a Tor proxy. The only meaningful reason for putting a
   `tor:` hint in your FURL is if `HOSTNAME` ends in `.onion`, indicating that
   the Tub is listening on a Tor "onion service" (aka "hidden service").
-* `i2p:ADDR` : Like `tor:`, but use an I2P proxy. `i2p:ADDR:PORT` is also
-  legal, although I2P services do not generally use port numbers.
 
 Built-In Connection Handlers
 ----------------------------
@@ -127,21 +125,11 @@ Foolscap's built-in connection handlers are:
   and can speed up the second invocation of the program considerably. If not
   provided, a ephemeral temporary directory is used (and deleted at
   shutdown).
-* `i2p.default(reactor)` : This uses the "SAM" protocol over the default I2P
-  daemon port (localhost:7656) to reach an I2P server. Most I2P daemons are
-  listening on this port.
-* `i2p.sam_endpoint(endpoint)` : This uses SAM on an alternate port to reach
-  the I2P daemon.
-* (future) `i2p.local_i2p(configdir=None)` : When implemented, this will
-  contact an already-running I2P daemon by reading it's configuration to find
-  a contact method.
-* (future) `i2p.launch(configdir=None, binary=None)` : When implemented, this
-  will launch a new I2P daemon (with arguments similar to `tor.launch`).
 
 Applications which want to enable as many connection-hint types as possible
-should simply install the `tor.default_socks()` and `i2p.default()` handlers
+should simply install the `tor.default_socks()` handler
 if they can be imported. This will Just Work(tm) if the most common
-deployments of Tor/I2P are installed+running on the local machine. If not,
+deployments of Tor are installed+running on the local machine. If not,
 those connection hints will be ignored.
 
 .. code-block:: python
@@ -151,11 +139,6 @@ those connection hints will be ignored.
         tub.addConnectionHintHandler("tor", tor.default_socks())
     except ImportError:
         pass # we're missing txtorcon, oh well
-    try:
-        from foolscap.connections import i2p
-        tub.addConnectionHintHandler("i2p", i2p.default(reactor))
-    except ImportError:
-        pass # we're missing txi2p
 
 
 Configuring Endpoints for Connection Handlers
@@ -247,7 +230,7 @@ Status delivery: the third argument to ``hint_to_endpoint()`` will be a
 one-argument callable named ``update_status()``. While the handler is trying
 to produce an endpoint, it may call ``update_status(status)`` with a (native)
 string argument each time the connection process has achieved some new state
-(e.g. ``launching tor``, ``connecting to i2p``). This will be used by the
+(e.g. ``launching tor``). This will be used by the
 ``ConnectionInfo`` object to provide connection status to the application.
 Note that once the handler returns an endpoint (or the handler's Deferred
 finally fires), the status will be replaced by ``connecting``, and the
