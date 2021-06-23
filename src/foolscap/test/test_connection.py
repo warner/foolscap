@@ -2,7 +2,7 @@ import os
 import mock
 from zope.interface import implementer
 from twisted.trial import unittest
-from twisted.internet import defer, reactor
+from twisted.internet import endpoints, defer, reactor
 from twisted.internet.endpoints import clientFromString
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.interfaces import IStreamClientEndpoint
@@ -11,7 +11,7 @@ import txtorcon
 from foolscap.api import Tub
 from foolscap.info import ConnectionInfo
 from foolscap.connection import get_endpoint
-from foolscap.connections import tcp, tor
+from foolscap.connections import tcp, tor, i2p
 from foolscap.tokens import NoLocationHintsError
 from foolscap.ipb import InvalidHintError
 from foolscap.test.common import (certData_low, certData_high, Target,
@@ -538,3 +538,108 @@ class Tor(unittest.TestCase):
                 self.assertIsInstance(ep, txtorcon.endpoints.TorClientEndpoint)
                 self.assertEqual(host, "foo.onion")
                 self.assertEqual(h._socks_desc, "tcp:127.0.0.1:1234")
+
+
+
+class I2P(unittest.TestCase):
+    @inlineCallbacks
+    def test_default(self):
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            n.return_value = expected_ep = object()
+            h = i2p.default(reactor, misc_kwarg="foo")
+            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
+                                           discard_status)
+        self.assertEqual(len(n.mock_calls), 1)
+        args = n.mock_calls[0][1]
+        got_sep, got_host, got_portnum = args
+        self.assertIsInstance(got_sep, endpoints.TCP4ClientEndpoint)
+        self.failUnlessEqual(got_sep._host, "127.0.0.1") # fragile
+        self.failUnlessEqual(got_sep._port, 7656)
+        self.failUnlessEqual(got_host, "fppym.b32.i2p")
+        self.failUnlessEqual(got_portnum, None)
+        kwargs = n.mock_calls[0][2]
+        self.failUnlessEqual(kwargs, {"misc_kwarg": "foo"})
+
+        ep, host = res
+        self.assertIdentical(ep, expected_ep)
+        self.assertEqual(host, "fppym.b32.i2p")
+        self.assertEqual(h.describe(), "i2p")
+
+    @inlineCallbacks
+    def test_default_with_portnum(self):
+        # I2P addresses generally don't use port numbers, but the parser is
+        # supposed to handle them
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            n.return_value = expected_ep = object()
+            h = i2p.default(reactor)
+            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p:1234", reactor,
+                                           discard_status)
+        self.assertEqual(len(n.mock_calls), 1)
+        args = n.mock_calls[0][1]
+        got_sep, got_host, got_portnum = args
+        self.assertIsInstance(got_sep, endpoints.TCP4ClientEndpoint)
+        self.failUnlessEqual(got_sep._host, "127.0.0.1") # fragile
+        self.failUnlessEqual(got_sep._port, 7656)
+        self.failUnlessEqual(got_host, "fppym.b32.i2p")
+        self.failUnlessEqual(got_portnum, 1234)
+        ep, host = res
+        self.assertIdentical(ep, expected_ep)
+        self.assertEqual(host, "fppym.b32.i2p")
+
+    @inlineCallbacks
+    def test_default_with_portnum_kwarg(self):
+        # setting extra kwargs on the handler should provide a default for
+        # the portnum. sequential calls with/without portnums in the hints
+        # should get the right values.
+        h = i2p.default(reactor, port=1234)
+
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
+                                     discard_status)
+        got_portnum = n.mock_calls[0][1][2]
+        self.failUnlessEqual(got_portnum, 1234)
+
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            yield h.hint_to_endpoint("i2p:fppym.b32.i2p:3456", reactor,
+                                     discard_status)
+        got_portnum = n.mock_calls[0][1][2]
+        self.failUnlessEqual(got_portnum, 3456)
+
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
+                                     discard_status)
+        got_portnum = n.mock_calls[0][1][2]
+        self.failUnlessEqual(got_portnum, 1234)
+
+    def test_default_badhint(self):
+        h = i2p.default(reactor)
+        d = defer.maybeDeferred(h.hint_to_endpoint, "i2p:not@a@hint", reactor,
+                                discard_status)
+        f = self.failureResultOf(d, InvalidHintError)
+        self.assertEqual(str(f.value), "unrecognized I2P hint")
+
+    @inlineCallbacks
+    def test_sam_endpoint(self):
+        with mock.patch("foolscap.connections.i2p.SAMI2PStreamClientEndpoint") as sep:
+            sep.new = n = mock.Mock()
+            n.return_value = expected_ep = object()
+            my_ep = FakeHostnameEndpoint(reactor, "localhost", 1234)
+            h = i2p.sam_endpoint(my_ep, misc_kwarg="foo")
+            res = yield h.hint_to_endpoint("i2p:fppym.b32.i2p", reactor,
+                                           discard_status)
+        self.assertEqual(len(n.mock_calls), 1)
+        args = n.mock_calls[0][1]
+        got_sep, got_host, got_portnum = args
+        self.assertIdentical(got_sep, my_ep)
+        self.failUnlessEqual(got_host, "fppym.b32.i2p")
+        self.failUnlessEqual(got_portnum, None)
+        kwargs = n.mock_calls[0][2]
+        self.failUnlessEqual(kwargs, {"misc_kwarg": "foo"})
+        ep, host = res
+        self.assertIdentical(ep, expected_ep)
+        self.assertEqual(host, "fppym.b32.i2p")
