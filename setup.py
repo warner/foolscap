@@ -72,8 +72,12 @@ object reference system, and a capability-based security model.
     "install_requires": ["six", "twisted[tls] >= 16.0.0", "pyOpenSSL"],
     "extras_require": {
         "dev": ["mock", "txtorcon >= 19.0.0",
+                "txi2p-tahoe >= 0.3.5; python_version > '3.0'",
+                "txi2p >= 0.3.2; python_version < '3.0'",
                 "pywin32 ; sys_platform == 'win32'"],
         "tor": ["txtorcon >= 19.0.0"],
+        "i2p": ["txi2p-tahoe >= 0.3.5; python_version > '3.0'",
+                "txi2p >= 0.3.2; python_version < '3.0'"],
         },
 }
 

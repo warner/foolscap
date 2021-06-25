@@ -1,5 +1,10 @@
 User visible changes in Foolscap
 
+## TBD
+
+* The I2P connection handler has been restored.
+* Improved support for type checking with `mypy-zope`.
+
 ## Release 20.4.0 (12-Apr-2020)
 
 Foolscap has finally been ported to py3 (specifically py3.5+). It currently
