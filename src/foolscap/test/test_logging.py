@@ -938,6 +938,10 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         # dump some other files in the incident directory
         self._write_to(logdir, "distraction.bz2")
         self._write_to(logdir, "noise")
+
+        os.remove(os.path.join(logdir,"distraction.bz2"))
+        os.remove(os.path.join(logdir, "noise"))
+
         # and a few real-looking incidents
         I1 = "incident-2008-07-29-204211-aspkxoi"
         I2 = "incident-2008-07-30-112233-wodaei"
@@ -954,6 +958,9 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
 
         new = list(p.list_incident_names(since=I1))
         self.assertEqual(set([name for (name,fn) in new]), set([I2]))
+
+        os.remove(os.path.join(logdir, I1 + ".flog"))
+        os.remove(os.path.join(logdir, I2 + ".flog.bz2"))
 
 
     def test_get_incidents(self):
@@ -972,6 +979,8 @@ class IncidentPublisher(PollMixin, unittest.TestCase):
         f = open(os.path.join(logdir, "noise"), "w")
         f.write("stuff")
         f.close()
+
+        os.remove(os.path.join(logdir, "distraction.bz2"))
 
         # fill the buffers with some messages
         t.logger.msg("one")
@@ -1832,6 +1841,7 @@ class Tail(unittest.TestCase):
         self.assertEqual(data["from"], "jiijpvbg")
         self.assertEqual(data["d"]["message"], "howdy")
         self.assertEqual(data["d"]["num"], 123)
+        os.remove(saveto_filename)
 
     def test_options(self):
         basedir = "logging/Tail/options"

@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import os.path
+import os
 from twisted.trial import unittest
 from twisted.internet import defer
 from twisted.application import service
@@ -75,6 +76,9 @@ class TestCertFile(unittest.TestCase):
         data2 = t2.getCertData()
         self.assertTrue(data1 == data2)
 
+        if os.path.exists(fn):
+            os.remove(fn)
+
     def test_tubid(self):
         t = Tub(certData=CERT_DATA)
         self.assertEqual(t.getTubID(), CERT_TUBID)
@@ -114,35 +118,42 @@ class FurlFile(unittest.TestCase):
     def setUp(self):
         self.s = service.MultiService()
         self.s.startService()
+        self.cfn = "test_tub.FurlFile.test_furlfile.certfile"
+        self.ffn_furl = "test_tub.FurlFile.test_furlfile.furlfile"
+        self.ffn_tubid = "test_tub.FurlFile.test_tubid_check.furlfile"
 
     def tearDown(self):
         d = self.s.stopService()
         d.addCallback(flushEventualQueue)
+        if os.path.exists(self.cfn):
+            os.remove(self.cfn)
+        if os.path.exists(self.ffn_furl):
+            os.remove(self.ffn_furl)
+        if os.path.exists(self.ffn_tubid):
+            os.remove(self.ffn_tubid)
         return d
 
     def test_furlfile(self):
-        cfn = "test_tub.FurlFile.test_furlfile.certfile"
-        t1 = Tub(certFile=cfn)
+        t1 = Tub(certFile=self.cfn)
         t1.setServiceParent(self.s)
         portnum = allocate_tcp_port()
         port1 = "tcp:%d:interface=127.0.0.1" % portnum
         t1.listenOn(port1)
         t1.setLocation("127.0.0.1:%d" % portnum)
         r1 = Referenceable()
-        ffn = "test_tub.FurlFile.test_furlfile.furlfile"
-        furl1 = t1.registerReference(r1, furlFile=ffn)
+        furl1 = t1.registerReference(r1, furlFile=self.ffn_furl)
         d = defer.maybeDeferred(t1.disownServiceParent)
 
-        self.assertTrue(os.path.exists(ffn))
-        self.assertEqual(furl1, open(ffn,"r").read().strip())
+        self.assertTrue(os.path.exists(self.ffn_furl))
+        self.assertEqual(furl1, open(self.ffn_furl,"r").read().strip())
 
         def _take2(res):
-            t2 = Tub(certFile=cfn)
+            t2 = Tub(certFile=self.cfn)
             t2.setServiceParent(self.s)
             t2.listenOn(port1)
             t2.setLocation("127.0.0.1:%d" % portnum)
             r2 = Referenceable()
-            furl2 = t2.registerReference(r2, furlFile=ffn)
+            furl2 = t2.registerReference(r2, furlFile=self.ffn_furl)
             self.assertEqual(furl1, furl2)
             return t2.disownServiceParent()
         d.addCallback(_take2)
@@ -156,12 +167,11 @@ class FurlFile(unittest.TestCase):
         t1.listenOn(port1)
         t1.setLocation("127.0.0.1:%d" % portnum)
         r1 = Referenceable()
-        ffn = "test_tub.FurlFile.test_tubid_check.furlfile"
-        furl1 = t1.registerReference(r1, furlFile=ffn)
+        furl1 = t1.registerReference(r1, furlFile=self.ffn_tubid)
         d = defer.maybeDeferred(t1.disownServiceParent)
 
-        self.assertTrue(os.path.exists(ffn))
-        self.assertEqual(furl1, open(ffn,"r").read().strip())
+        self.assertTrue(os.path.exists(self.ffn_tubid))
+        self.assertEqual(furl1, open(self.ffn_tubid,"r").read().strip())
 
         def _take2(res):
             t2 = Tub() # gets a different key
@@ -170,7 +180,7 @@ class FurlFile(unittest.TestCase):
             t2.setLocation("127.0.0.1:%d" % portnum)
             r2 = Referenceable()
             self.assertRaises(WrongTubIdError,
-                                  t2.registerReference, r2, furlFile=ffn)
+                                  t2.registerReference, r2, furlFile=self.ffn_tubid)
             return t2.disownServiceParent()
         d.addCallback(_take2)
         return d
