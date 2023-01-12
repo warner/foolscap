@@ -1,5 +1,6 @@
 
 import six
+import sys
 import types
 import inspect
 from zope.interface import interface, providedBy, implementer
@@ -188,7 +189,10 @@ class RemoteMethodSchema(object):
         # argument constraints expressed as default arguments, and which
         # does nothing but returns the appropriate return type
 
-        names, _, _, typeList = inspect.getargspec(method)
+        if sys.version_info < (3, 0):
+            names, _, _, typeList = inspect.getargspec(method)
+        else:
+            names, _, _, typeList, *_ = inspect.getfullargspec(method)
         if names and names[0] == 'self':
             why = "RemoteInterface methods should not have 'self' in their argument list"
             raise InvalidRemoteInterface(why)
