@@ -188,7 +188,9 @@ class RemoteMethodSchema(object):
         # argument constraints expressed as default arguments, and which
         # does nothing but returns the appropriate return type
 
-        names, _, _, typeList = inspect.getargspec(method)
+        spec = inspect.getfullargspec(method)
+        names = spec.args
+        typeList = spec.defaults
         if names and names[0] == 'self':
             why = "RemoteInterface methods should not have 'self' in their argument list"
             raise InvalidRemoteInterface(why)

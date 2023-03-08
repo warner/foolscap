@@ -23,17 +23,15 @@ commands["trial"] = Trial
 commands["test"] = Trial
 
 trove_classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 6 - Mature",
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 2",
-    "Programming Language :: Python :: 2.7",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.5",
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Internet",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -79,8 +77,7 @@ object reference system, and a capability-based security model.
         "i2p": ["txi2p-tahoe >= 0.3.5; python_version > '3.0'",
                 "txi2p >= 0.3.2; python_version < '3.0'"],
         },
-    # We support Python 3.7 or later. 3.11 is not supported yet.
-    "python_requires": ">=3.7, <3.11",
+    "python_requires": ">=3.7",
 }
 
 setup_args.update(
