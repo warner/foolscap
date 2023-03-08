@@ -545,7 +545,7 @@ class BaseMixin(ShouldFailMixin):
         except ImportError:
             raise unittest.SkipTest('this test needs twisted.web')
         root = resource.Resource()
-        root.putChild("", static.Data("hello\n", "text/plain"))
+        root.putChild(b"", static.Data("hello\n", "text/plain"))
         s = internet.TCPServer(0, server.Site(root))
         s.startService()
         self.services.append(s)
