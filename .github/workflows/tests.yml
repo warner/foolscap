@@ -25,5 +25,5 @@ jobs:
         with:
           python-version: "${{ matrix.python-version }}"
       - run: |
-          pip install tox tox-gh-actions
+          pip install 'tox<4' tox-gh-actions
           tox
