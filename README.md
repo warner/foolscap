@@ -25,7 +25,7 @@ Full documentation and examples are in the doc/ directory.
 
 ## DEPENDENCIES
 
-* Python 3.5 or higher (still works under Python 2.7 for now)
+* Python 3.8 or higher
 * Twisted 16.0.0 or later
 * PyOpenSSL (tested against 16.0.0)
 
