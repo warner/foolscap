@@ -77,7 +77,7 @@ object reference system, and a capability-based security model.
         "i2p": ["txi2p-tahoe >= 0.3.5; python_version > '3.0'",
                 "txi2p >= 0.3.2; python_version < '3.0'"],
         },
-    "python_requires": ">=3.7",
+    "python_requires": ">=3.8",
 }
 
 setup_args.update(
