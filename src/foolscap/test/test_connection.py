@@ -1,5 +1,5 @@
 import os
-import mock
+from unittest import mock
 from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.internet import endpoints, defer, reactor
