@@ -1,7 +1,7 @@
 
 import os, sys, json, time, bz2, base64, re
 import six
-import mock
+from unittest import mock
 from io import StringIO
 from zope.interface import implementer
 from twisted.trial import unittest
