@@ -1,5 +1,7 @@
 from __future__ import print_function
 import six
+import os
+import os.path
 from twisted.trial import unittest
 from twisted.python.failure import Failure
 from twisted.python.components import registerAdapter
@@ -809,6 +811,8 @@ class EncodeFailureTest(unittest.TestCase):
         self.banana.connectionMade()
 
     def tearDown(self):
+        if os.path.exists("unserializable.txt"):
+            os.remove("unserializable.txt")
         return flushEventualQueue()
 
     def send(self, obj):
