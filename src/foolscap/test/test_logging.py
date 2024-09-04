@@ -1794,7 +1794,7 @@ class Tail(unittest.TestCase):
                         outmsg)
         self.assertTrue("RuntimeError" in outmsg, outmsg)
         self.assertTrue(": fake error" in outmsg, outmsg)
-        self.assertTrue("--- <exception caught here> ---\n" in outmsg, outmsg)
+        self.assertTrue("test_logging.py" in outmsg, outmsg)
 
     def test_logprinter_verbose(self):
         target_tubid_s = "jiijpvbge2e3c3botuzzz7la3utpl67v"
