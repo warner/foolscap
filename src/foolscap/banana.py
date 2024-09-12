@@ -3,6 +3,7 @@ import six
 import struct, time
 
 from twisted.internet import protocol, defer, reactor
+from twisted.internet.interfaces import ITCPTransport
 from twisted.python.failure import Failure
 from twisted.python import log
 
@@ -106,6 +107,8 @@ class Banana(protocol.Protocol):
     def connectionMade(self):
         if self.debugSend:
             print("Banana.connectionMade")
+        if ITCPTransport.providedBy(self.transport):
+            self.transport.setTcpNoDelay(True)
         self.initSlicer()
         self.initUnslicer()
         if self.keepaliveTimeout is not None:
