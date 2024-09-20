@@ -1,6 +1,5 @@
 # -*- test-case-name: foolscap.test.test_tub -*-
 
-from __future__ import print_function
 import os.path
 import os
 from twisted.trial import unittest

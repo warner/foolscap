@@ -1,4 +1,3 @@
-from __future__ import print_function
 import six
 from twisted.python import usage
 import sys, os, bz2, time

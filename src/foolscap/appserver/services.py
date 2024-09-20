@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import os
 import six
 from twisted.python import usage, runtime, filepath, log

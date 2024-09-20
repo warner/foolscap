@@ -14,7 +14,7 @@ tub = Tub(certFile="pb2server.pem")
 tub.listenOn("tcp:12345")
 tub.setLocation("localhost:12345")
 url = tub.registerReference(myserver, "math-service")
-print "the object is available at:", url
+print("the object is available at:", url)
 
 tub.startService()
 reactor.run()

@@ -35,7 +35,7 @@ tub = Tub()
 tub.listenOn("tcp:12345")
 tub.setLocation("localhost:12345")
 url = tub.registerReference(Calculator(), "calculator")
-print "the object is available at:", url
+print("the object is available at:", url)
 
 application = service.Application("pb2calculator")
 tub.setServiceParent(application)

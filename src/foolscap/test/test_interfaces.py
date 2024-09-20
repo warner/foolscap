@@ -1,6 +1,5 @@
 # -*- test-case-name: foolscap.test.test_interfaces -*-
 
-from __future__ import print_function
 from zope.interface import implementer_only
 from twisted.trial import unittest
 

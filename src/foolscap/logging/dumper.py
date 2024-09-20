@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import six, sys, errno, textwrap
 from twisted.python import usage
 from foolscap.logging import flogfile

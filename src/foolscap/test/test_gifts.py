@@ -1,4 +1,3 @@
-from __future__ import print_function
 from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.internet import defer, protocol, reactor

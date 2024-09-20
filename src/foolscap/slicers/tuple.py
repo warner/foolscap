@@ -1,6 +1,5 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
-from __future__ import print_function
 from twisted.internet.defer import Deferred
 from foolscap.tokens import Violation
 from foolscap.slicer import BaseUnslicer
