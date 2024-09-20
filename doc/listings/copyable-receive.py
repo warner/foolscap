@@ -18,9 +18,9 @@ class RemoteUserRecord(RemoteCopy):
         self.shoe_size = "they wouldn't tell us"
 
     def display(self):
-        print "Name:", self.name
-        print "Age:", self.age
-        print "Shoe Size:", self.shoe_size
+        print("Name:", self.name)
+        print("Age:", self.age)
+        print("Shoe Size:", self.shoe_size)
 
 def getRecord(rref, name):
     d = rref.callRemote("getuser", name=name)

@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import six
 import os, sys
 from io import BytesIO

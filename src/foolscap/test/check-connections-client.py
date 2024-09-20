@@ -1,5 +1,4 @@
 #! /usr/bin/python
-from __future__ import print_function
 
 # This is the client side of a manual test for the socks/tor
 # connection-handler code. To use it, first set up the server as described in

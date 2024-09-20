@@ -2,7 +2,6 @@
 
 # This module is responsible for the per-connection Broker object
 
-from __future__ import print_function
 import six
 import types, time
 from itertools import count

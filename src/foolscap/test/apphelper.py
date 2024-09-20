@@ -5,7 +5,6 @@ I am the command executed by test_appserver.py when it exercises the
 script lets the test work on windows too.
 """
 
-from __future__ import unicode_literals
 import sys, os.path
 import six
 

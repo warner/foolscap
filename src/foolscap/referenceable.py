@@ -4,7 +4,6 @@
 # Referenceable (callable) objects. All details of actually invoking methods
 # live in call.py
 
-from __future__ import print_function
 import weakref
 from functools import total_ordering
 import six

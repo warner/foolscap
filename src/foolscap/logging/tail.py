@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import six, os, sys, time
 from zope.interface import implementer
 from twisted.internet import reactor

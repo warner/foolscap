@@ -6,12 +6,12 @@ from foolscap.api import Referenceable, Tub
 
 class Observer(Referenceable):
     def remote_event(self, msg):
-        print "event:", msg
+        print("event:", msg)
 
 def printResult(number):
-    print "the result is", number
+    print("the result is", number)
 def gotError(err):
-    print "got an error:", err
+    print("got an error:", err)
 def gotRemote(remote):
     o = Observer()
     d = remote.callRemote("addObserver", observer=o)

@@ -1,6 +1,5 @@
 # -*- test-case-name: foolscap.test.test_pb -*-
 
-from __future__ import print_function
 import re
 
 if False:

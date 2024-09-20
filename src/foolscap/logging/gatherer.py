@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import six, os, sys, time, bz2
 signal = None
 try:

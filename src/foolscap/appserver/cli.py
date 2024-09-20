@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import six, os, sys, shutil, errno, time, signal
 from io import StringIO
 from twisted.python import usage

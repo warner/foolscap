@@ -37,6 +37,6 @@ tub = Tub()
 tub.listenOn("tcp:12345")
 tub.setLocation("localhost:12345")
 url = tub.registerReference(db, "database")
-print "the database is at:", url
+print("the database is at:", url)
 tub.startService()
 reactor.run()

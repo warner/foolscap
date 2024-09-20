@@ -1,7 +1,5 @@
 #! /usr/bin/python
 
-from __future__ import print_function
-
 # This is the server side of a manual test for the socks/tor
 # connection-handler code. On the server host, configure Tor to route a
 # hidden service to our port with something like:

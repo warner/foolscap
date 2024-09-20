@@ -1,4 +1,3 @@
-from __future__ import print_function
 import time
 import six
 from six.moves.urllib.parse import quote

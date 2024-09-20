@@ -1,6 +1,5 @@
 # -*- test-case-name: foolscap.test.test_negotiate -*-
 
-from __future__ import print_function
 import time
 import six
 from twisted.python.failure import Failure
