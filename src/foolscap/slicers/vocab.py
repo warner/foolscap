@@ -32,7 +32,7 @@ class ReplaceVocabSlicer(BaseSlicer):
         # flip here at the sending end.
         stringToIndex = self.obj
         for s in stringToIndex.keys():
-            assert isinstance(s, six.binary_type), "%r %s" % (s, type(s))
+            assert isinstance(s, bytes), "%r %s" % (s, type(s))
         indexToString = dict([(stringToIndex[s],s) for s in stringToIndex])
         assert len(stringToIndex) == len(indexToString) # catch duplicates
         indices = list(indexToString.keys())

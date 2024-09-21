@@ -21,7 +21,6 @@ from foolscap.test.common import RIMyTarget, Target, TargetWithoutInterfaces, \
 from foolscap.api import RemoteException, DeadReferenceError
 from foolscap.call import CopiedFailure
 from foolscap.logging import log as flog
-from ..util import long_type
 
 class Unsendable:
     pass
@@ -221,7 +220,7 @@ class TestCall(TargetMixin, ShouldFailMixin, unittest.TestCase):
         # try to exercise all our constraints at once
         rr, target = self.setupTarget(HelperTarget())
         t = (set([1, 2, 3]),
-             b"str", True, 12, long_type(12), 19.3, None,
+             b"str", True, 12, 12, 19.3, None,
              u"unicode",
              b"bytestring",
              "any", 14.3,

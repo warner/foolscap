@@ -14,7 +14,6 @@ from foolscap.eventual import fireEventually, flushEventualQueue
 from foolscap.slicers.allslicers import RootSlicer, DictUnslicer, TupleUnslicer
 from foolscap.constraint import IConstraint
 from foolscap.banana import int2b128, long_to_bytes
-from ..util import long_type
 
 import io
 import struct
@@ -123,7 +122,7 @@ def untokenize(tokens):
             else:
                 raise RuntimeError("bad token")
         else:
-            if isinstance(t, six.integer_types):
+            if isinstance(t, int):
                 if t >= 2**31:
                     s = long_to_bytes(t)
                     int2b128(len(s), data.append)
@@ -143,7 +142,7 @@ def untokenize(tokens):
             elif isinstance(t, float):
                 data.append(FLOAT)
                 data.append(struct.pack("!d", t))
-            elif isinstance(t, six.string_types) or isinstance(t, six.binary_type):
+            elif isinstance(t, six.string_types) or isinstance(t, bytes):
                 t = six.ensure_binary(t)
                 int2b128(len(t), data.append)
                 data.append(STRING)
@@ -1215,14 +1214,6 @@ class InboundByteStream(TestBananaMixin, unittest.TestCase):
         self.check(-1, bINT(-1))
         self.check(-127, bINT(-127))
 
-    def testLong(self):
-        self.check(long_type(258), b"\x02\x85\x01\x02") # TODO: 0x85 for LONGINT??
-        self.check(long_type(-258), b"\x02\x86\x01\x02") # TODO: 0x85 for LONGINT??
-        self.check(long_type(0), b"\x85")
-        self.check(long_type(0), b"\x00\x85")
-        self.check(long_type(0), b"\x86")
-        self.check(long_type(0), b"\x00\x86")
-
     def testString(self):
         self.check(b"", b"\x82")
         self.check(b"", b"\x00\x82")
@@ -1513,18 +1504,18 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
     def test_bigint(self):
         # some of these are small enough to fit in an INT
         d = self.looptest(int(2**31-1)) # most positive representable INT
-        d.addCallback(lambda res: self.looptest(long_type(2**31+0)))
-        d.addCallback(lambda res: self.looptest(long_type(2**31+1)))
+        d.addCallback(lambda res: self.looptest(2**31+0))
+        d.addCallback(lambda res: self.looptest(2**31+1))
 
-        d.addCallback(lambda res: self.looptest(long_type(-2**31-1)))
+        d.addCallback(lambda res: self.looptest(-2**31-1))
         # the following is the most negative representable INT
-        d.addCallback(lambda res: self.looptest(int(-2**31+0)))
-        d.addCallback(lambda res: self.looptest(int(-2**31+1)))
+        d.addCallback(lambda res: self.looptest(-2**31+0))
+        d.addCallback(lambda res: self.looptest(-2**31+1))
 
-        d.addCallback(lambda res: self.looptest(long_type(2**100)))
-        d.addCallback(lambda res: self.looptest(long_type(-2**100)))
-        d.addCallback(lambda res: self.looptest(long_type(2**1000)))
-        d.addCallback(lambda res: self.looptest(long_type(-2**1000)))
+        d.addCallback(lambda res: self.looptest(2**100))
+        d.addCallback(lambda res: self.looptest(-2**100))
+        d.addCallback(lambda res: self.looptest(2**1000))
+        d.addCallback(lambda res: self.looptest(-2**1000))
         return d
 
     def test_decimal(self):
@@ -1592,7 +1583,7 @@ class ThereAndBackAgain(TestBananaMixin, unittest.TestCase):
         self.assertIdentical(z[0][0], z)
 
     def testUnicode(self):
-        x = [six.text_type('blah')]
+        x = ['blah']
         d = self.loop(x)
         d.addCallback(self._testUnicode_1, x)
         return d

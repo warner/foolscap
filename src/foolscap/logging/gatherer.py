@@ -377,7 +377,7 @@ class IncidentObserver(Referenceable):
             return
         self.incident_fetch_outstanding = True
         (name, trigger) = self.incidents_wanted.pop(0)
-        print("fetching incident", six.text_type(name), file=self.stdout)
+        print("fetching incident", str(name), file=self.stdout)
         d = self.publisher.callRemote("get_incident", six.ensure_binary(name))
         def _clear_outstanding(res):
             self.incident_fetch_outstanding = False

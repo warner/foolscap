@@ -5,7 +5,6 @@
 
 # This imports foolscap.tokens, but no other Foolscap modules.
 
-import six
 from zope.interface import implementer, Interface
 
 from foolscap.util import ensure_tuple_str
@@ -211,7 +210,7 @@ class ByteStringConstraint(Constraint):
                        VOCAB: None}
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, six.binary_type):
+        if not isinstance(obj, bytes):
             raise Violation("'%r' is not a bytestring" % (obj,))
         if self.maxLength != None and len(obj) > self.maxLength:
             raise Violation("string too long (%d > %d)" %
@@ -236,7 +235,7 @@ class IntegerConstraint(Constraint):
             self.taster[LONGNEG] = maxBytes
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, six.integer_types):
+        if not isinstance(obj, int):
             raise Violation("'%r' is not a number" % (obj,))
         if self.maxBytes == -1:
             if obj >= 2**31 or obj < -2**31:
