@@ -1,4 +1,3 @@
-import six
 import re
 from twisted.trial import unittest
 from foolscap import schema, copyable, broker
@@ -101,7 +100,7 @@ class ConformTest(unittest.TestCase):
         self.violates(c4, b"I'm a bytestring")
         self.violates(c4, u"spelled entirely without those letters")
         self.conforms(c4, u"add better cases")
-        c5 = schema.UnicodeConstraint(regexp=re.compile("\d+\s\w+"))
+        c5 = schema.UnicodeConstraint(regexp=re.compile(r"\d+\s\w+"))
         self.violates(c5, b"I'm a bytestring")
         self.conforms(c5, u": 123 boo")
         self.violates(c5, u"more than 1  spaces")
@@ -279,7 +278,7 @@ class CreateTest(unittest.TestCase):
         self.check(c, schema.IntegerConstraint)
         self.failUnlessEqual(c.maxBytes, 1024)
 
-        c = make(six.binary_type)
+        c = make(bytes)
         self.check(c, schema.ByteStringConstraint)
         self.failUnlessEqual(c.maxLength, None)
 
@@ -287,7 +286,7 @@ class CreateTest(unittest.TestCase):
         self.check(c, schema.ByteStringConstraint)
         self.failUnlessEqual(c.maxLength, 2000)
 
-        c = make(six.text_type)
+        c = make(str)
         self.check(c, schema.UnicodeConstraint)
         self.failUnlessEqual(c.maxLength, None)
 

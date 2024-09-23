@@ -11,7 +11,6 @@ from twisted.python import log
 from foolscap.slicers.allslicers import RootSlicer, RootUnslicer
 from foolscap.slicers.allslicers import ReplaceVocabSlicer, AddVocabSlicer
 
-from .util import long_type
 from . import stringchain
 from . import tokens
 from .tokens import SIZE_LIMIT, STRING, LIST, INT, NEG, \
@@ -60,7 +59,7 @@ def bytes_to_long(s):
 
     This is (essentially) the inverse of long_to_bytes().
     """
-    acc = long_type(0)
+    acc = 0
     for i in six.iterbytes(s):
         acc <<= 8
         acc += i
@@ -68,7 +67,7 @@ def bytes_to_long(s):
 
 HIGH_BIT_SET = b"\x80"
 
-SIMPLE_TOKENS = six.integer_types + (float, six.binary_type)
+SIMPLE_TOKENS = (int, float, bytes)
 
 # Banana is a big class. It is split up into three sections: sending,
 # receiving, and connection setup. These used to be separate classes, but
@@ -417,7 +416,7 @@ class Banana(protocol.Protocol):
         # this is called by the ReplaceVocabSlicer to manipulate our table.
         # It must certainly *not* be called by higher-level user code.
         for k in newTable.keys():
-            assert isinstance(k, six.binary_type)
+            assert isinstance(k, bytes)
         self.outgoingVocabulary = newTable
         if newTable:
             maxIndex = max(newTable.values()) + 1
@@ -466,7 +465,7 @@ class Banana(protocol.Protocol):
 
     def sendToken(self, obj):
         write = self.transport.write
-        if isinstance(obj, six.integer_types):
+        if isinstance(obj, int):
             if obj >= 2**31:
                 s = long_to_bytes(obj)
                 int2b128(len(s), write)
@@ -486,7 +485,7 @@ class Banana(protocol.Protocol):
         elif isinstance(obj, float):
             write(FLOAT)
             write(struct.pack("!d", obj))
-        elif isinstance(obj, six.binary_type):
+        elif isinstance(obj, bytes):
             if obj in self.outgoingVocabulary:
                 symbolID = self.outgoingVocabulary[obj]
                 int2b128(symbolID, write)
@@ -924,7 +923,7 @@ class Banana(protocol.Protocol):
             elif typebyte == NEG:
                 # -2**31 is too large for a positive int, so go through
                 # LongType first
-                obj = int(-long_type(header))
+                obj = int(-int(header))
             elif typebyte == LONGINT or typebyte == LONGNEG:
                 strlen = header
                 if len(self.buffer) >= strlen:

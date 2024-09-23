@@ -1,6 +1,5 @@
 # -*- test-case-name: foolscap.test.test_banana -*-
 
-import six
 import re
 from twisted.internet.defer import Deferred
 from foolscap.tokens import BananaError, STRING, VOCAB, Violation
@@ -9,7 +8,7 @@ from foolscap.constraint import OpenerConstraint, Any
 
 class UnicodeSlicer(BaseSlicer):
     opentype = ("unicode",)
-    slices = six.text_type
+    slices = str
     def sliceBody(self, streamable, banana):
         yield self.obj.encode("UTF-8")
 
@@ -73,7 +72,7 @@ class UnicodeConstraint(OpenerConstraint):
             self.regexp = re.compile(regexp)
 
     def checkObject(self, obj, inbound):
-        if not isinstance(obj, six.text_type):
+        if not isinstance(obj, str):
             raise Violation("not a unicode object")
         if self.maxLength != None and len(obj) > self.maxLength:
             raise Violation("string too long (%d > %d)" %

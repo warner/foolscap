@@ -454,7 +454,7 @@ def run_flappserver(argv=None, run_by_human=True):
         r = dispatch(command, so)
     except (usage.UsageError, BadServiceArguments) as e:
         r = 1
-        print("Error:", six.text_type(e), file=so.stderr)
+        print("Error:", str(e), file=so.stderr)
     from twisted.internet import defer
     if run_by_human:
         if isinstance(r, defer.Deferred):

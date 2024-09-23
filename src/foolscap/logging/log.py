@@ -46,13 +46,13 @@ def format_message(e):
             args = e['args']
         elif "message" in e:
             fmt = "%(message)s"
-            assert isinstance(e['message'], (six.binary_type, six.text_type))
+            assert isinstance(e['message'], (bytes, str))
             args = {"message": six.ensure_str(e['message'])}
             # i.e. just return e['message']
         else:
             fmt = ""
             args = {}
-        assert isinstance(fmt, (six.binary_type, six.text_type))
+        assert isinstance(fmt, (bytes, str))
         return six.ensure_text(fmt % args)
     except (ValueError, TypeError):
         return six.ensure_text(e.get('message', "[no message]")) + " [formatting failed]"
@@ -380,9 +380,7 @@ class TwistedLogBridge:
             # level.
             log_level = d.pop("log_level")
             new_log_level = llmap.get(log_level, log_level)
-            if not isinstance(new_log_level,
-                              six.integer_types +
-                              (six.binary_type, six.text_type, bool)):
+            if not isinstance(new_log_level, (int, bytes, str, bool)):
                 # it was something weird: just stringify it in-place
                 new_log_level = str(new_log_level)
             kwargs["level"] = new_log_level # foolscap level, not twisted

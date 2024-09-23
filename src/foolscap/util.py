@@ -201,12 +201,6 @@ def _make_socket():
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     return s
 
-# long_type(0) is 0L on py2, just plain 0 on py3
-if len(six.integer_types) > 1:
-    long_type = [t for t in six.integer_types if t is not int][0]
-else:
-    long_type = int
-
 def ensure_tuple_str(input_tuple):
     return tuple([six.ensure_str(s) for s in input_tuple])
 

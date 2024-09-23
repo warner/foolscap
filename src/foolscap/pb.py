@@ -504,7 +504,7 @@ class Tub(service.MultiService):
         @return: The Listener object that was created. This can be used to
         stop listening later on."""
 
-        if isinstance(what, (six.binary_type, six.text_type)):
+        if isinstance(what, (bytes, str)):
             what = six.ensure_str(what)
 
         if what in ("0", "tcp:0"):

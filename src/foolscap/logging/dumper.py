@@ -1,4 +1,4 @@
-import six, sys, errno, textwrap
+import sys, errno, textwrap
 from twisted.python import usage
 from foolscap.logging import flogfile
 from foolscap.logging.log import format_message
@@ -76,7 +76,7 @@ class LogDumper:
             t = h["trigger"]
             self.trigger = (t["incarnation"], t["num"])
         if options['verbose']:
-            print(six.text_type(e), file=stdout)
+            print(str(e), file=stdout)
         if not options["just-numbers"] and not options["verbose"]:
             if "versions" in h:
                 print(u"Application versions (embedded in logfile):", file=stdout)
@@ -95,7 +95,7 @@ class LogDumper:
         d = e['d']
         when = format_time(d['time'], options["timestamps"])
         if options['just-numbers']:
-            print(six.text_type(when), six.text_type(d.get('num')), file=stdout)
+            print(str(when), str(d.get('num')), file=stdout)
             return
 
         eid = (d["incarnation"], d["num"])

@@ -1,4 +1,3 @@
-import six
 from twisted.python import usage
 import sys, os, bz2, time
 from foolscap.logging import log, flogfile
@@ -82,7 +81,7 @@ class Filter:
         for e in flogfile.get_events(options.oldfile):
             if options['verbose']:
                 if "d" in e:
-                    print(six.text_type(e['d']['num']), file=stdout)
+                    print(str(e['d']['num']), file=stdout)
                 else:
                     print(u"HEADER", file=stdout)
             total += 1
