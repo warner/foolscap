@@ -2,7 +2,7 @@ import time
 import six
 from six.moves.urllib.parse import quote
 from twisted.internet import reactor, endpoints
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 from twisted.python import usage
 from foolscap import base32
 from foolscap.eventual import fireEventually
@@ -395,7 +395,7 @@ class WebViewer:
             import webbrowser
             webbrowser.open(url)
 
-        returnValue(url) # for tests
+        return url # for tests
 
     def stop(self):
         return self.lp.stopListening()
