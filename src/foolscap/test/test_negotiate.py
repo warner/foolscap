@@ -2,7 +2,7 @@
 from twisted.trial import unittest
 
 from twisted.internet import protocol, defer, reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 from twisted.application import internet
 from twisted.web.client import Agent
 from foolscap import negotiate, tokens
@@ -386,7 +386,7 @@ class CrossfireMixin(BaseMixin, PollMixin):
         # connection to be dropped, which will happen shortly after the
         # forward direction is established (but after some network traffic).
         yield self.poll(lambda: self.tub2phases)
-        returnValue(rref1)
+        return rref1
 
     def checkConnectedViaReverse(self, rref, targetPhases):
         # assert that connection[0] (from tub1 to tub2) is actually in use.

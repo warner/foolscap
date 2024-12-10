@@ -1,7 +1,7 @@
 import os, re
 import six
 from twisted.internet.interfaces import IStreamClientEndpoint
-from twisted.internet.defer import inlineCallbacks, returnValue, succeed
+from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.internet.endpoints import clientFromString
 import ipaddress
 from .. import observer
@@ -71,7 +71,7 @@ class _Common:
             socks_endpoint = yield self._maybe_connect(reactor, update_status)
         ep = txtorcon.TorClientEndpoint(host, portnum,
                                         socks_endpoint=socks_endpoint)
-        returnValue( (ep, host) )
+        return ep, host
 
     def describe(self):
         return "tor"
@@ -133,7 +133,7 @@ class _LaunchedTor(_Common):
         #print "launched"
         # gives a TorProcessProtocol with .tor_protocol
         self._tor_protocol = tpp.tor_protocol
-        returnValue(socks_endpoint)
+        return socks_endpoint
 
 def launch(data_directory=None, tor_binary=None):
     """Return a handler which launches a new Tor process (once).
@@ -189,7 +189,7 @@ class _ConnectedTor(_Common):
         try:
             (socks_endpoint, socks_desc) = next(find_port(reactor, ports))
             self._socks_desc = socks_desc # stash for tests
-            returnValue(socks_endpoint)
+            return socks_endpoint
         except StopIteration:
             raise ValueError("could not use config.SocksPort: %r" % (ports,))
 

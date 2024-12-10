@@ -7,7 +7,7 @@ from zope.interface import implementer
 from twisted.trial import unittest
 from twisted.application import service
 from twisted.internet import defer, reactor
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 try:
     from twisted import logger as twisted_logger
 except ImportError:
@@ -2332,7 +2332,7 @@ def getPage(url):
     if response.code != 200:
         raise ValueError("request failed (%d), page contents were: %s" % (
             response.code, six.ensure_str(page)))
-    returnValue(page)
+    return page
 
 class Web(unittest.TestCase):
     def setUp(self):
