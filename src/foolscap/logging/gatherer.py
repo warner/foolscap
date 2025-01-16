@@ -518,8 +518,7 @@ class IncidentGathererService(GatheringBase, IncidentClassifierBase):
         return categories
 
 
-INCIDENT_GATHERER_TACFILE = """\
-# -*- python -*-
+INCIDENT_GATHERER_TACFILE = r"""# -*- python -*-
 
 # we record the path when 'flogtool create-incident-gatherer' is run, in case
 # flogtool was run out of a source tree. This is somewhat fragile, of course.
