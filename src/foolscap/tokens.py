@@ -1,25 +1,24 @@
-import six
 from twisted.python.failure import Failure
 from zope.interface import Attribute, Interface
 
 # delimiter characters.
-LIST     = six.int2byte(0x80) # old
-INT      = six.int2byte(0x81)
-STRING   = six.int2byte(0x82)
-NEG      = six.int2byte(0x83)
-FLOAT    = six.int2byte(0x84)
+LIST     = b'\x80' # old
+INT      = b'\x81'
+STRING   = b'\x82'
+NEG      = b'\x83'
+FLOAT    = b'\x84'
 # "optional" -- these might be refused by a low-level implementation.
-LONGINT  = six.int2byte(0x85) # old
-LONGNEG  = six.int2byte(0x86) # old
+LONGINT  = b'\x85' # old
+LONGNEG  = b'\x86' # old
 # really optional; this is is part of the 'pb' vocabulary
-VOCAB    = six.int2byte(0x87)
+VOCAB    = b'\x87'
 # newbanana tokens
-OPEN     = six.int2byte(0x88)
-CLOSE    = six.int2byte(0x89)
-ABORT    = six.int2byte(0x8A)
-ERROR    = six.int2byte(0x8D)
-PING     = six.int2byte(0x8E)
-PONG     = six.int2byte(0x8F)
+OPEN     = b'\x88'
+CLOSE    = b'\x89'
+ABORT    = b'\x8A'
+ERROR    = b'\x8D'
+PING     = b'\x8E'
+PONG     = b'\x8F'
 
 tokenNames = {
     LIST: "LIST",

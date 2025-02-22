@@ -22,7 +22,7 @@ EPSILON = 0.1
 
 def int2b128(integer, stream):
     if integer == 0:
-        stream(six.int2byte(0))
+        stream(b'\0')
         return
     assert integer > 0, "can only encode positive integers"
     while integer:

@@ -513,7 +513,7 @@ class Tub(service.MultiService):
                              "port numbers instead")
             warn(warningString, DeprecationWarning, stacklevel=2)
 
-        if isinstance(what, six.string_types) and re.search(r"^\d+$", what):
+        if isinstance(what, str) and re.search(r"^\d+$", what):
             warn("Tub.listenOn('12345') was deprecated "
                  "in Foolscap 0.12.0; please use qualified endpoint "
                  "descriptions like 'tcp:12345'",

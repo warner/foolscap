@@ -340,8 +340,7 @@ class RemoteCopyOldStyle(_RemoteCopyBase):
     # classes do not do metaclass magic
     copytype = None
 
-@six.add_metaclass(RemoteCopyClass)
-class RemoteCopy(_RemoteCopyBase, object):
+class RemoteCopy(_RemoteCopyBase, metaclass=RemoteCopyClass):
     # Set 'copytype' to a unique string that is shared between the
     # sender-side Copyable and the receiver-side RemoteCopy. This RemoteCopy
     # subclass will be auto-registered using the 'copytype' name. Set
