@@ -142,7 +142,7 @@ def untokenize(tokens):
             elif isinstance(t, float):
                 data.append(FLOAT)
                 data.append(struct.pack("!d", t))
-            elif isinstance(t, six.string_types) or isinstance(t, bytes):
+            elif isinstance(t, (str, bytes)):
                 t = six.ensure_binary(t)
                 int2b128(len(t), data.append)
                 data.append(STRING)

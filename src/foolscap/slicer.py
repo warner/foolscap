@@ -19,9 +19,8 @@ class SlicerClass(type):
         if typ:
             registerAdapter(self, typ, tokens.ISlicer)
 
-@six.add_metaclass(SlicerClass)
 @implementer(tokens.ISlicer)
-class BaseSlicer(object):
+class BaseSlicer(metaclass=SlicerClass):
     slices = None
 
     parent = None
@@ -146,9 +145,8 @@ class UnslicerClass(type):
         if opentype:
             registerUnslicer(opentype, self, reg)
 
-@six.add_metaclass(UnslicerClass)
 @implementer(tokens.IUnslicer)
-class BaseUnslicer(object):
+class BaseUnslicer(metaclass=UnslicerClass):
     opentype = None
 
     def __init__(self):

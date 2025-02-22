@@ -1,5 +1,4 @@
 
-import six
 import types
 import inspect
 from zope.interface import interface, providedBy, implementer
@@ -414,5 +413,5 @@ addToConstraintTypeMap(interface.InterfaceClass, _makeConstraint)
 # See
 # https://github.com/warner/foolscap/pull/76/commits/ff3b9e8c1e4fa13701273a2143ba80b1e58f47cf#r549428977
 # for more background on the use of add_metaclass here.
-class RemoteInterface(six.with_metaclass(RemoteInterfaceClass, interface.Interface)):
+class RemoteInterface(interface.Interface, metaclass=RemoteInterfaceClass):
     pass
